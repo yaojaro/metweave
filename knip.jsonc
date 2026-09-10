@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/knip/schema.json",
+  "workspaces": {
+    ".": {},
+    "packages/parser": {
+      // 占位期豁免：内部依赖属架构契约，由 check:workspace 矩阵管辖
+      "ignoreDependencies": ["@metweave/core"],
+    },
+    "packages/render": {
+      "ignoreDependencies": ["@metweave/core"],
+    },
+    "packages/leaflet": {
+      // TODO(适配器实装时): 移除 leaflet / @types/leaflet，交还 knip 监管
+      "ignoreDependencies": ["@metweave/core", "@metweave/render", "leaflet", "@types/leaflet"],
+    },
+    "packages/metweave": {},
+  },
+}

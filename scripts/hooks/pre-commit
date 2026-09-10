@@ -1,0 +1,10 @@
+#!/bin/sh
+# 公开面前置门禁：信息泄露检查（暂存区）。安装：git config core.hooksPath scripts/hooks
+email=$(git config user.email)
+allowed="325675528+yaojaro@users.noreply.github.com"
+if [ "$email" != "$allowed" ]; then
+  echo "pre-commit: git user.email = ${email}，公开仓库提交应使用 GitHub 隐私邮箱 ${allowed}"
+  echo "  （改用: git config user.email \"${allowed}\"；工作身份仓库请单独 repo-local 设置）"
+  exit 1
+fi
+node "$(dirname "$0")/../check-leaks.mjs" --staged || exit 1

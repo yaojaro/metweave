@@ -1,0 +1,33 @@
+{
+  "name": "metweave-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "lint": "oxlint --type-aware .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "vitest run",
+    "build": "pnpm -r run build",
+    "check:workspace": "node scripts/check-workspace.mjs",
+    "check:leaks": "node scripts/check-leaks.mjs --all",
+    "check:knip": "knip",
+    "check:artifact": "rm -rf node_modules/.artifacts && pnpm -r --filter '!metweave-monorepo' pack --pack-destination node_modules/.artifacts && for f in node_modules/.artifacts/*.tgz; do publint \"$f\" && attw \"$f\" || exit 1; done",
+    "publish:all": "pnpm -r publish --access public"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "knip": "^6.35.0",
+    "oxfmt": "^0.67.0",
+    "oxlint": "^1.82.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "publint": "^0.3.24",
+    "tsdown": "^0.23.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.21.0"
+}

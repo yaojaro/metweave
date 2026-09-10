@@ -1,0 +1,46 @@
+{
+  "options": {
+    "denyWarnings": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn"
+  },
+  "rules": {
+    "no-explicit-any": "error",
+    "no-unused-vars": "error",
+    "no-console": "error",
+    "no-alert": "error",
+    "eqeqeq": "error",
+    "no-non-null-assertion": "warn",
+
+    "no-unsafe-assignment": "error",
+    "no-unsafe-call": "error",
+    "no-unsafe-member-access": "error",
+    "no-unsafe-return": "error",
+    "no-unsafe-argument": "error",
+    "no-floating-promises": "error",
+    "no-misused-promises": "error",
+    "no-base-to-string": "error",
+    "switch-exhaustiveness-check": "error"
+  },
+  "ignorePatterns": ["**/dist/**", "examples/**", "docs/**"],
+  "overrides": [
+    {
+      "files": ["scripts/**"],
+      "rules": {
+        "no-console": "allow",
+        "no-unsafe-assignment": "allow",
+        "no-unsafe-call": "allow",
+        "no-unsafe-member-access": "allow",
+        "no-unsafe-return": "allow",
+        "no-unsafe-argument": "allow",
+        "no-floating-promises": "allow",
+        "no-misused-promises": "allow",
+        "no-base-to-string": "allow",
+        "switch-exhaustiveness-check": "allow"
+      }
+    }
+  ]
+}

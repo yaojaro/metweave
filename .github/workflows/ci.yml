@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # 每个受支持的 Node 版本都跑满四道基础门禁。
+  # 门禁顺序与构建状态无关：内部包开发期解析到 src，发布物经 publishConfig
+  # 在 publish 时替换为 dist。
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm 版本取自根 package.json 的 packageManager 字段
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (type-aware · no-explicit-any/unsafe = error)
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  # 工作区契约与发布物质量：与 Node 版本无关，单环境跑一次。
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Workspace contract (lockstep versions · dep direction · publishConfig)
+        run: pnpm check:workspace
+
+      - name: Info-leak scan (internal refs / identities / credential email)
+        run: pnpm check:leaks
+
+      - name: Dead code check (unused exports / files / deps)
+        run: pnpm check:knip
+
+      - name: Build
+        run: pnpm build
+
+      - name: Artifact check (publint + attw on packed tarballs)
+        run: pnpm check:artifact
