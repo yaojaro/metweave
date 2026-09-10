@@ -13,7 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20, 22]
+        # 开发工具链（pnpm 11 + 二进制 devDeps）基线为 Node 22；
+        # engines ">=20" 是库运行时的消费端兼容承诺，产物为 ES2022。
+        node-version: [22]
     steps:
       - uses: actions/checkout@v4
 
