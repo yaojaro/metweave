@@ -21,3 +21,6 @@ npm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 *.swp
+
+# local-only internal rules (owner & AI collaborators; not published)
+AGENTS.md

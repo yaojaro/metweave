@@ -1,0 +1,49 @@
+name: Fuzz
+
+# 每夜档：种子化变异回放 10 万例（固定种子可复现）——十一项产物契约不变量守夜。
+# 失败即红（违例 / 超时守护 124 / 非 2xx 皆算）；支持手动 workflow_dispatch 触发。
+on:
+  schedule:
+    - cron: "17 20 * * *" # 20:17 UTC 夜间一次（错峰整点，避让 GitHub Actions 高峰）
+  workflow_dispatch:
+    inputs:
+      cases:
+        description: "Number of fuzz cases"
+        required: false
+        default: "100000"
+      seed:
+        description: "Seed for reproducible mutation sequence"
+        required: false
+        default: "20260912"
+
+# 最小权限原则：仅需读取仓库内容
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # pnpm 版本取自根 package.json 的 packageManager 字段
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # fuzz 走 packages/parser/dist（mw-dist 条件自举）——先构建
+      - name: Build
+        run: pnpm build
+
+      - name: Fuzz (100k cases, seeded)
+        env:
+          # 输入经 env 传递而非直接插进 run: 脚本——防 workflow_dispatch 输入注入 shell
+          FUZZ_CASES: ${{ github.event.inputs.cases || '100000' }}
+          FUZZ_SEED: ${{ github.event.inputs.seed || '20260912' }}
+        run: node scripts/fuzz.mjs --cases "$FUZZ_CASES" --seed "$FUZZ_SEED"

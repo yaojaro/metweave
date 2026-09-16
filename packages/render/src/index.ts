@@ -1,11 +1,11 @@
 /**
- * @metweave/render — 渲染层：自研内核与领域组件。
- * The rendering layer: the in-house kernel and domain weather components.
+ * @metweave/render — 渲染层：领域天气组件。
+ * The rendering layer: domain weather components.
  *
- * 内核纪律：Canvas 2D 先行、context 注入式、零 DOM/框架依赖（服务端渲染与
- * 私有化部署的前提）；WebGL 仅为风场粒子阶段的可选后端。报文卡片为纯 DOM 组件、
- * 渐进式自定义，稳定性承诺只覆盖 CSS 变量名与分组函数签名，DOM 内部结构声明 unstable。
+ * 当前交付：报文卡片——纯 DOM 组件、零框架依赖（服务端渲染与私有化部署友好），
+ * 渐进式自定义：默认样式开箱即用（样式随组件注入），宿主可用 className 叠加，
+ * 或绕过组件直接消费 IR 自建 UI。
+ * 路线图（planned）：图表组件计划采用 Canvas 2D 优先、context 注入式内核
+ * （零 DOM 依赖；WebGL 为风场粒子阶段的可选后端）。
  */
-
-/** 脚手架占位导出：验证跨包构建图，内核实装时移除。 */
-export const renderEntry = { name: "@metweave/render", stage: "render" } as const;
+export * from "./card";

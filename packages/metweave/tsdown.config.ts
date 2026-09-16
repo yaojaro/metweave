@@ -1,7 +1,8 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  // 双入口：主入口 + sources 取数子路径（exports "./sources" 的发布面来源）
+  entry: ["src/index.ts", "src/sources.ts"],
   format: ["esm", "cjs"],
   dts: true,
   sourcemap: true,

@@ -1,0 +1,2814 @@
+{
+ "meta": {
+  "version": 1,
+  "note": "single hand-editing entry point; gen --write regenerates the glossary"
+ },
+ "standards": {
+  "WMO306": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+  "WMO4678": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+  "ICAOANNEX3": "ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82)",
+  "FMH1": "US Federal Meteorological Handbook No. 1 — Surface Weather Observations and Reports (FCM-H1-1995, 5th ed., NOAA/NWS)",
+  "AP117": "CAAC Ground Observation Specifications AP-117-TM-2021-01R2 (Civil Aviation Administration of China)",
+  "CCAR117": "CCAR-117R1 — China Civil Aviation Meteorological Working Rules",
+  "MAVIS": "UK Met Office MAVIS — How to decode a METAR (as relayed by an authoritative body)",
+  "PRODUCT": "Product display copy (no matching standard clause; wording approved by the owner)"
+ },
+ "terms": {
+  "card.label.wind": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5 (wind direction and speed group dddff)"
+    }
+   ],
+   "text": "Wind",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.label.visibility": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.6 (prevailing visibility group VVVV)"
+    }
+   ],
+   "text": "Visibility",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.label.weather": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.8 (present weather group w'w')"
+    }
+   ],
+   "text": "Weather",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.label.clouds": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.9 (cloud group NsNsNshshshs)"
+    }
+   ],
+   "text": "Clouds",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.label.temperature": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.11 (air temperature group T'T')"
+    }
+   ],
+   "text": "Temperature",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.label.dewpoint": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.11 (dewpoint temperature group T'dT'd)"
+    }
+   ],
+   "text": "Dewpoint",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.label.altimeter": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.12 (QNH group)"
+    }
+   ],
+   "text": "QNH",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.label.rvr": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7 (RVR group RDRDR/VRVRVRVRi)"
+    }
+   ],
+   "text": "RVR",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.label.trend": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.14 (Trend forecast)"
+    }
+   ],
+   "text": "Trend",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.label.runwayState": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.13.6 (State of the runway)"
+    }
+   ],
+   "text": "Runway state",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.label.windShear": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.13.3 (Wind shear in the lower layers)"
+    }
+   ],
+   "text": "Wind shear",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.badge.speci": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.1 template note (1) (aerodrome special meteorological report)"
+    }
+   ],
+   "text": "SPECI",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.badge.metar": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.1 template note (1) (aerodrome routine meteorological report)"
+    }
+   ],
+   "text": "METAR",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.badge.corrected": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.1 template note (2) (COR for corrected reports)"
+    }
+   ],
+   "text": "COR",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.badge.auto": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.4 (Code word AUTO)"
+    }
+   ],
+   "text": "AUTO",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.badge.cavokShort": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "good visibility; no low cloud or significant weather",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.missingGroup.wind": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Wind group missing",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.missingGroup.visibility": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Visibility group missing",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.missingGroup.weather": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Weather group missing",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.missingGroup.rvr": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "RVR unavailable (RVRNO)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cavokHint": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.10 (Code word CAVOK)"
+    }
+   ],
+   "text": "CAVOK: visibility ≥10 km, no cloud below 5000 ft, no significant weather, and no CB/TCU at any height",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.windShearNote": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.13.3 (take-off/approach path, runway surface up to 500 m/1600 ft)"
+    }
+   ],
+   "text": "Low-level wind shear — a major hazard during takeoff and landing (WS, WMO 306 FM15 §15.13.3)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.gust": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5.5 (Gust)"
+    }
+   ],
+   "text": "Gust",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.variable": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5.2 (VRB conditions)"
+    }
+   ],
+   "text": "Variable",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.missing": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Wind direction missing",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.calm": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5.4 (calm reported as 00000)"
+    }
+   ],
+   "text": "Calm",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.vrbNote": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5.2 (VRB conditions)"
+    }
+   ],
+   "text": "VRB = variable direction (all sectors)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.calmNote": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5.4 (calm reported as 00000)"
+    }
+   ],
+   "text": "Calm = wind speed zero",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.variationNote": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5.3 (two extreme directions, clockwise order)"
+    }
+   ],
+   "text": "wind direction variation = the two extreme directions between which the wind varied (clockwise order)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.hintSep": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "; ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.unit.kt": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5 (wind speed unit KT)"
+    }
+   ],
+   "text": "kt = knots (nautical miles per hour)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.unit.mps": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5 (wind speed unit MPS)"
+    }
+   ],
+   "text": "mps = meters per second",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.unit.kmh": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "FM 15 codes wind speed in KT/MPS only; KMH is accepted tolerantly (used by WMO code families such as FM 50)"
+    }
+   ],
+   "text": "kmh = kilometers per hour",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.gustOf": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(value) => ` (Gust ${value})`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wind.variationOf": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(min, max) => `(wind varying between ${deg3(min)}° and ${deg3(max)}°)`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.amount.FEW": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "ICAOANNEX3",
+     "doc": "ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82)",
+     "clause": "Annex 3 METAR/SPECI template (FEW = 1–2 oktas, abbreviation scheme)"
+    }
+   ],
+   "text": "Few: 1–2 oktas (1/8–2/8)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.amount.SCT": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "ICAOANNEX3",
+     "doc": "ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82)",
+     "clause": "Annex 3 METAR/SPECI template (SCT = 3–4 oktas)"
+    }
+   ],
+   "text": "Scattered: 3–4 oktas (3/8–4/8)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.amount.BKN": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "ICAOANNEX3",
+     "doc": "ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82)",
+     "clause": "Annex 3 METAR/SPECI template (BKN = 5–7 oktas)"
+    }
+   ],
+   "text": "Broken: 5–7 oktas (5/8–7/8)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.amount.OVC": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "ICAOANNEX3",
+     "doc": "ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82)",
+     "clause": "Annex 3 METAR/SPECI template (OVC = 8 oktas)"
+    }
+   ],
+   "text": "Overcast: 8 oktas (8/8, sky fully covered)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.shortAmount.FEW": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "few",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.shortAmount.SCT": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "scattered",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.shortAmount.BKN": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "broken",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.shortAmount.OVC": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "overcast",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.baseShortMeters": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(meters) => `, base ≈ ${meters} m`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.metersShort": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(meters) => ` ≈ ${meters} m`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.baseShortFeet": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(feet) => `, base ${feet} ft`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.feetShort": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(feet) => ` ${feet} ft`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.metersDerivedNote": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": " (metres are converted by this library at 1 ft = 0.3048 m; the report codes cloud base in feet in 100 ft steps, so the metre value is approximate)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.amountUnknown": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "cloud amount not reported",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.vvMissing": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "vertical visibility not reported",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.heightUnknown": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "cloud base not reported",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.vvShort": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "vertical visibility",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.baseFtMeters": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(feet, meters) => `, base ${feet} ft ≈ ${meters} m`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.minimumOf": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(meters, direction) => `minimum visibility ${meters} m (${direction})`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.skyClear.SKC": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "ICAOANNEX3",
+     "doc": "ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82)",
+     "clause": "Annex 3 METAR/SPECI template (NSC = no significant cloud; NCD = nil cloud detected; SKC/CLR are North American practice codes)"
+    }
+   ],
+   "text": "no clouds (manual observation)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.skyClear.NSC": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "ICAOANNEX3",
+     "doc": "ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82)",
+     "clause": "Annex 3 METAR/SPECI template (NSC = no significant cloud; NCD = nil cloud detected; SKC/CLR are North American practice codes)"
+    }
+   ],
+   "text": "no significant clouds",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.skyClear.NCD": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "ICAOANNEX3",
+     "doc": "ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82)",
+     "clause": "Annex 3 METAR/SPECI template (NSC = no significant cloud; NCD = nil cloud detected; SKC/CLR are North American practice codes)"
+    }
+   ],
+   "text": "no clouds detected (automatic station)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.skyClear.CLR": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "ICAOANNEX3",
+     "doc": "ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82)",
+     "clause": "Annex 3 METAR/SPECI template (NSC = no significant cloud; NCD = nil cloud detected; SKC/CLR are North American practice codes)"
+    }
+   ],
+   "text": "no clouds (automatic observation)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.cbNote": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.9.1.3 (CB abbreviation and reporting requirement)"
+    }
+   ],
+   "text": " (CB cumulonimbus: thunderstorm, hail, severe turbulence risk)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.tcuNote": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.9.1.3 (TCU abbreviation note)"
+    }
+   ],
+   "text": " (TCU towering cumulus: severe turbulence and icing risk)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.cloud.vv": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.9.2 note 1 (vertical visibility)"
+    }
+   ],
+   "text": "VV = vertical visibility: height visible when the sky is fully obscured",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.DZ": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "drizzle",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.RA": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "rain",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.SN": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "snow",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.SG": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "snow grains",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.IC": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "No WMO TAC 4678 / AP-117 table entry (US practice; NWS decode key and FAA JO 7340.2: ice crystals)"
+    }
+   ],
+   "text": "ice crystals",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.PL": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "ice pellets",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.GR": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "hail",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.GS": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "small hail and/or snow pellets",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.UP": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "unknown precipitation",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.BR": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "mist",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.FG": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "fog",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.FU": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "smoke",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.VA": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "volcanic ash",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.DU": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "widespread dust",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.SA": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "sand",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.HZ": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "haze",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.PY": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "No WMO TAC 4678 / AP-117 table entry (US FMH-1 usage); \"spray\" is the common rendering"
+    }
+   ],
+   "text": "spray",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.PO": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "dust/sand whirls (dust devils)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.SQ": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "squalls",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.FC": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "funnel cloud (tornado or waterspout)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.SS": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "sandstorm",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.phenomena.DS": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (present-weather abbreviations)"
+    }
+   ],
+   "text": "duststorm",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.descriptors.MI": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (descriptors)"
+    }
+   ],
+   "text": "shallow",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.descriptors.PR": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (descriptors)"
+    }
+   ],
+   "text": "partial",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.descriptors.BC": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (descriptors)"
+    }
+   ],
+   "text": "patches",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.descriptors.DR": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (descriptors)"
+    }
+   ],
+   "text": "low drifting",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.descriptors.BL": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (descriptors)"
+    }
+   ],
+   "text": "blowing",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.descriptors.SH": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (descriptors)"
+    }
+   ],
+   "text": "showers",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.descriptors.TS": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (descriptors)"
+    }
+   ],
+   "text": "thunderstorm",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.descriptors.FZ": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (descriptors)"
+    }
+   ],
+   "text": "freezing",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.heavy": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (+ intensity indicator)"
+    },
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.8.1 (intensity indicators per Code table 4678)"
+    }
+   ],
+   "text": "Heavy",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.light": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (- light intensity indicator)"
+    },
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.8.1 (intensity indicators per Code table 4678)"
+    }
+   ],
+   "text": "Light",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.heavyPlain": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (+ intensity indicator)"
+    },
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.8.1 (intensity indicators per Code table 4678)"
+    }
+   ],
+   "text": "Heavy",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.lightPlain": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (- light intensity indicator)"
+    },
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.8.1 (intensity indicators per Code table 4678)"
+    }
+   ],
+   "text": "Light",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.proximityPrefix": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (VC proximity qualifier)"
+    }
+   ],
+   "text": "null",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.proximitySuffix": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (VC proximity qualifier)"
+    }
+   ],
+   "text": " in vicinity",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.thunderstorm": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (TS)"
+    }
+   ],
+   "text": "thunderstorm",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.thunderstormWith": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "Code table 4678 (TS combined with precipitation)"
+    }
+   ],
+   "text": "(phenom) => `thunderstorm with ${phenom}`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.descCompose": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(descriptor, phenom) =>\n        descriptor === \"showers\"\n          ? phenom === \"\"\n            ? \"showers (type indistinguishable)\"\n            : `${phenom} showers`\n          : phenom === \"\"\n            ? descriptor\n            : `${descriptor} ${phenom}`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.join": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": " and ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.joinParts": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": " ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.wx.hazard": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": " (major flight hazard)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.timeText": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(t) =>\n      `Day ${t.day}, ${String(t.hour).padStart(2, \"0\")}:${String(t.minute).padStart(2, \"0\")} UTC`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.ago": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(minutes) =>\n      minutes < 60\n        ? ` (${minutes} min ago)`\n        : minutes < 48 * 60\n          ? ` (${Math.floor(minutes / 60)} h ago)`\n          : ` (${Math.floor(minutes / 1440)} d ago)`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvrNote.varying": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "ICAOANNEX3",
+     "doc": "ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82)",
+     "clause": "Annex 3 METAR/SPECI template (varying form RvvvVvvv)"
+    },
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7.4 (in the context of the ten-minute observation period)"
+    },
+    {
+     "standard": "MAVIS",
+     "doc": "UK Met Office MAVIS — How to decode a METAR (as relayed by an authoritative body)",
+     "clause": "METAR decode — meaning of the RVR V group (varying between two values)"
+    }
+   ],
+   "text": "V = varying between two extreme values during the period",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvrNote.trend": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7.4.3 (tendency U/D/N)"
+    }
+   ],
+   "text": "U/D/N = up/down/no change",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvrNote.beyond": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7.5 (Extreme values: P/M indicators)"
+    }
+   ],
+   "text": "P/M prefix = above the upper / below the lower limit",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvr.runway": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7.1 (the runway designator RDRDR)"
+    }
+   ],
+   "text": "(runway) => `Runway ${runway}`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvr.above": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "FMH1",
+     "doc": "US Federal Meteorological Handbook No. 1 — Surface Weather Observations and Reports (FCM-H1-1995, 5th ed., NOAA/NWS)",
+     "clause": "ch.12 (the P prefix = above the maximum reportable value)"
+    }
+   ],
+   "text": "above ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvr.below": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "FMH1",
+     "doc": "US Federal Meteorological Handbook No. 1 — Surface Weather Observations and Reports (FCM-H1-1995, 5th ed., NOAA/NWS)",
+     "clause": "ch.12 (the M prefix = below the minimum reportable value)"
+    }
+   ],
+   "text": "below ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvr.varying": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7.4 (the V varying form)"
+    }
+   ],
+   "text": "(min, max, unit) => `varying between ${min} and ${max} ${unit}`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvr.unit.m": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7.1–§15.7.3 (RVR coded in metres)"
+    }
+   ],
+   "text": "m",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvr.unit.ft": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "FMH1",
+     "doc": "US Federal Meteorological Handbook No. 1 — Surface Weather Observations and Reports (FCM-H1-1995, 5th ed., NOAA/NWS)",
+     "clause": "ch.12 (the FT suffix = feet)"
+    }
+   ],
+   "text": "ft",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvr.trendUp": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7.4.3 (U = upward tendency)"
+    }
+   ],
+   "text": ", trend up",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvr.trendDown": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7.4.3 (D = downward tendency)"
+    }
+   ],
+   "text": ", trend down",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rvr.trendNoChange": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7.4.3 (N = no change)"
+    }
+   ],
+   "text": ", no change",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.ws.all": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.13.3 (the WS ALL RWY all-runways form)"
+    }
+   ],
+   "text": "all runways affected",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.ws.runways": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.13.3 (the WS RDRDR runway form)"
+    }
+   ],
+   "text": "(runways) => `runways ${runways} affected`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.title": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "How this was decoded (code → meaning)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.code": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Code",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.basisLabel": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Basis: ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.cavok": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.10 (CAVOK replaces the visibility, weather and cloud groups)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.10 — CAVOK replaces visibility/weather/cloud groups: vis ≥10 km, no low cloud or CB/TCU, no significant weather",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.wind": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5.1–§15.5.6 (wind direction and speed group dddff)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.5.1–15.5.6 — dddff = 10-min mean wind direction and speed, unit suffix follows the group (§15.5.1); VRB variable, 00000 calm, G gust, P above-range (same section)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.windVariation": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.5.3 (direction variation group dndndnVdxdxdx)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.5.3 — dndndnVdxdxdx = the two extreme directions when variation is ≥60° and <180° (clockwise)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.visibility": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.6.1, §15.6.3 (prevailing visibility VVVV; the 9999 upper-limit code)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.6.1, §15.6.3 — VVVV = prevailing visibility, 4 digits in metres; 9999 = 10 km or more (ceiling code)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.visMinimum": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.6.2 (minimum visibility with compass direction)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.6.2 — VNVNVNVNDv = minimum visibility and its compass direction (when markedly different from prevailing)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.rvr": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.7.1–§15.7.5 (RVR group)"
+    },
+    {
+     "standard": "FMH1",
+     "doc": "US Federal Meteorological Handbook No. 1 — Surface Weather Observations and Reports (FCM-H1-1995, 5th ed., NOAA/NWS)",
+     "clause": "ch.12 (RVR coding: the FT suffix and P/M indicators)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.7.1–15.7.5 — RVR group: 4-digit metre value (up to 4 runways), P/M beyond-range, V fluctuation, U/D/N trend; FT suffix = feet (US FMH-1)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.weather": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.8 (present weather w'w')"
+    },
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "the present-weather abbreviation table"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.8 and Code table 4678 — up to three groups; order = intensity/proximity → descriptor → phenomenon; UP = precipitation unidentified by automatic station (§15.8.6)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.clouds": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.9.1, §15.9.1.7 (the cloud group; CB/TCU appendages)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.9.1 — amount FEW/SCT/BKN/OVC (oktas) + base height in hundreds of feet (30 m/100 ft steps); CB/TCU convective appendix (§15.9.1.7)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.skyClear": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.9.1.1 (the NSC/NCD no-cloud codes)"
+    },
+    {
+     "standard": "FMH1",
+     "doc": "US Federal Meteorological Handbook No. 1 — Surface Weather Observations and Reports (FCM-H1-1995, 5th ed., NOAA/NWS)",
+     "clause": "ch.12 (CLR, the US code; FCM-H1-1995)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.9.1.1 — NSC/NCD no-cloud codes (NCD = automatic, none detected); CLR is the US code (FMH-1, FCM-H1-1995)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.tempDew": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.11 (the T'T'/T'dT'd temperature-dewpoint group)"
+    },
+    {
+     "standard": "FMH1",
+     "doc": "US Federal Meteorological Handbook No. 1 — Surface Weather Observations and Reports (FCM-H1-1995, 5th ed., NOAA/NWS)",
+     "clause": "§12.6.10 (the US form)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.11 — T'T'/T'dT'd = whole-°C temperature/dewpoint, M prefix for negative (M00 = −0.5 °C); US form in FMH-1 §12.6.10",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.qnh": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.12 (the Qxxxx QNH group)"
+    },
+    {
+     "standard": "FMH1",
+     "doc": "US Federal Meteorological Handbook No. 1 — Surface Weather Observations and Reports (FCM-H1-1995, 5th ed., NOAA/NWS)",
+     "clause": "ch.12 (the Axxxx altimeter setting)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.12 — Qxxxx = QNH in whole hPa (leading 0 below 1000); Axxxx = US altimeter setting (implied 2 decimals, inHg; FMH-1)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.runwayState": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.13.6 (runway state; code tables 0919/0519/1079/0366)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.13.6 — runway-state codes per code tables 0919/0519/1079/0366; R/SNOCLO = closed, CLRD = cleared",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.windShear": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.13.3 (low-level wind shear WS)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.13.3 — WS RDRDR / WS ALL RWY = low-level wind shear on the takeoff/approach path",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.decode.cite.trend": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.14 (the trend section; NOSIG §15.14.15, period words §15.14.3)"
+    }
+   ],
+   "text": "WMO No. 306 Vol I.1 (2019), FM 15 §15.14 — BECMG gradual, TEMPO temporary, NOSIG no significant change (§15.14.15); period FM/TL/AT (§15.14.3)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.trendNote.nosig": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.14.15 (NOSIG = no significant change)"
+    }
+   ],
+   "text": "no significant change expected",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.trendNote.becmg": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.14.4 (BECMG)"
+    }
+   ],
+   "text": "gradual change",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.trendNote.tempo": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.14.5 (TEMPO temporary fluctuations)"
+    }
+   ],
+   "text": "temporary fluctuations",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.trendNote.unspecified": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "worn trend segment (change indicator lost; gradual vs temporary indistinguishable)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.trendNote.periodAt": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.14.3 (FM from / TL until / AT at)"
+    }
+   ],
+   "text": "(text) => {\n        const m = /^(AT|TL|FM)(\\d{2})(\\d{2})$/.exec(text);\n        if (m === null) return `expected at ${text}`;\n        const hm = `${m[2]}:${m[3]}`;\n        return m[1] === \"TL\" ? `until ${hm}` : m[1] === \"FM\" ? `from ${hm}` : `at ${hm}`;\n      }",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.trendNote.contentLead": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "expected: ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.trendNote.nsw": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO4678",
+     "doc": "WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1)",
+     "clause": "NSW = No significant weather (code table 4678 note: trend forecasts only)"
+    }
+   ],
+   "text": "NSW = no significant weather in the trend period",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.trendNote.windShear": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "wind shear embedded in the trend (WS) — caution on takeoff/landing",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.warningText": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "(code, _message, rawSlice) =>\n      WARNINGS_EN[code] !== undefined\n        ? WARNINGS_EN[code](rawSlice ?? \"\")\n        : rawSlice !== undefined && rawSlice !== \"\"\n          ? `${code}: ${rawSlice}`\n          : code",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.sep": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": " · ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.closed": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 1079 (99 runway non-operational due to snow, slush, ice, large drifts or runway clearance, but depth not reported)"
+    }
+   ],
+   "text": "Runway closed",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.closedAll": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.13.6 (R/SNOCLO: aerodrome closed due to extreme deposit of snow)"
+    }
+   ],
+   "text": "All runways closed",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.cleared": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.13.6 (CLRD//: contaminations ceased to exist)"
+    }
+   ],
+   "text": "Cleared",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.deposit.0": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0919 (0: clear and dry)"
+    }
+   ],
+   "text": "clear and dry",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.deposit.1": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0919 (1: damp)"
+    }
+   ],
+   "text": "damp",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.deposit.2": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0919 (2: wet and water patches)"
+    }
+   ],
+   "text": "wet and water patches",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.deposit.3": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0919 (3: rime and frost covered)"
+    }
+   ],
+   "text": "rime and frost covered",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.deposit.4": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0919 (4: dry snow)"
+    }
+   ],
+   "text": "dry snow",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.deposit.5": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0919 (5: wet snow)"
+    }
+   ],
+   "text": "wet snow",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.deposit.6": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0919 (6: slush)"
+    }
+   ],
+   "text": "slush",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.deposit.7": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0919 (7: ice)"
+    }
+   ],
+   "text": "ice",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.deposit.8": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0919 (8: compacted or rolled snow)"
+    }
+   ],
+   "text": "compacted or rolled snow",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.deposit.9": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0919 (9: frozen ruts or ridges)"
+    }
+   ],
+   "text": "frozen ruts or ridges",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.coverage.1": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0519 (1: less than 10%)"
+    }
+   ],
+   "text": "<10%",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.coverage.2": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0519 (2: 11–25%)"
+    }
+   ],
+   "text": "11–25%",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.coverage.5": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0519 (5: 26–50%)"
+    }
+   ],
+   "text": "26–50%",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.coverage.9": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0519 (9: 51–100%)"
+    }
+   ],
+   "text": "51–100%",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.coverageLabel": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "coverage ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.depthLabel": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "depth ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.depthText": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 1079 (00 = less than 1 mm; 01–90 = millimetres; 92–98 = 10–40 cm; 98 = 40 cm or more)"
+    }
+   ],
+   "text": "(mm) =>\n        mm === 0 ? \"<1 mm\" : mm === 400 ? \"≥40 cm\" : mm >= 100 ? `${mm / 10} cm` : `${mm} mm`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.friction": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0366 (00–90 friction coefficient 0.00–0.90)"
+    }
+   ],
+   "text": "(coeff) => `friction ${coeff.toFixed(2)}`",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.brakingLabel": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "braking ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.braking.poor": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0366 (91 braking action poor)"
+    }
+   ],
+   "text": "poor",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.braking.medium-poor": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0366 (92 braking action medium/poor)"
+    }
+   ],
+   "text": "medium/poor",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.braking.medium": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0366 (93 braking action medium)"
+    }
+   ],
+   "text": "medium",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.braking.medium-good": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0366 (94 braking action medium/good)"
+    }
+   ],
+   "text": "medium/good",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.braking.good": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0366 (95 braking action good)"
+    }
+   ],
+   "text": "good",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.braking.unreliable": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 0366 (99 unreliable)"
+    }
+   ],
+   "text": "unreliable",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.closedNote": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "Code table 1079 code 99 and §15.13.6 (SNOCLO) are modelled as distinct semantics"
+    }
+   ],
+   "text": "runway non-operational (depth digit 99 = closed due to snow/slush/ice/large drifts/runway clearance, depth not reported; SNOCLO = aerodrome closed due to extreme deposit of snow)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.clearedNote": {
+   "kind": "official",
+   "refs": [
+    {
+     "standard": "WMO306",
+     "doc": "WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI",
+     "clause": "§15.13.6 (CLRD followed by a two-digit friction figure or //)"
+    }
+   ],
+   "text": "CLRD: contamination cleared (followed by two friction digits or //)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.wmoNote": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "WMO 306 FM15 §15.13.6 runway state code (code tables 0919/0519/1079/0366; verified against official WMO tables 2026-09-13, pending owner review)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rwy.itemSep": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": ", ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.colon": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": ": ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.dash": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": " — ",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "leaflet.tier.unknown": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Weather unknown",
+   "usage": [
+    "packages/leaflet/src/index.ts#TIER_WORDS"
+   ]
+  },
+  "leaflet.tier.poor": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Weather poor",
+   "usage": [
+    "packages/leaflet/src/index.ts#TIER_WORDS"
+   ]
+  },
+  "leaflet.tier.caution": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Weather caution",
+   "usage": [
+    "packages/leaflet/src/index.ts#TIER_WORDS"
+   ]
+  },
+  "leaflet.tier.good": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Weather good",
+   "usage": [
+    "packages/leaflet/src/index.ts#TIER_WORDS"
+   ]
+  },
+  "errors.invalid-input": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Parse expects a METAR/SPECI report string, received a non-string value",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.missing-station": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Not a METAR/SPECI report: station group missing or unrecognized",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.missing-time": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Not a complete METAR/SPECI report: observation-time group missing",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.invalid-time": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Observation-time group out of range (day 01–31 / hour 00–23 / minute 00–59)",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.unsupported-mode": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Strict mode is not implemented in v0.1 — omit `mode` or pass 'tolerant'",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.batch-parse-failed": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Some reports in the batch failed to parse entirely (see the summary for per-station reasons)",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.http-error": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Source returned a non-2xx HTTP status",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.bad-schema": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Response body does not match the agreed schema",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.empty-data": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "HTTP 200 with empty data — typically a wrong network name",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.timeout": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Request aborted after the configured timeout",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.network": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Network-level failure (offline, DNS, fetch refused)",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  }
+ }
+}

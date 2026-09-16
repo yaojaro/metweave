@@ -25,7 +25,7 @@
     "no-base-to-string": "error",
     "switch-exhaustiveness-check": "error"
   },
-  "ignorePatterns": ["**/dist/**", "examples/**", "docs/**"],
+  "ignorePatterns": ["**/dist/**", "docs/**"],
   "overrides": [
     {
       "files": ["scripts/**"],
@@ -40,6 +40,22 @@
         "no-misused-promises": "allow",
         "no-base-to-string": "allow",
         "switch-exhaustiveness-check": "allow"
+      }
+    },
+    {
+      "files": ["**/*.test.ts"],
+      "rules": {
+        "no-console": "allow",
+        "no-non-null-assertion": "allow",
+        "no-unsafe-assignment": "allow",
+        "no-unsafe-call": "allow",
+        "no-unsafe-member-access": "allow",
+        "no-unsafe-return": "allow",
+        "no-unsafe-argument": "allow",
+        "no-unsafe-type-assertion": "allow",
+        "no-floating-promises": "allow",
+        "no-misused-promises": "allow",
+        "no-base-to-string": "allow"
       }
     }
   ]

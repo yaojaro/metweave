@@ -1,0 +1,2151 @@
+{
+  "suite": "metar",
+  "version": "0.1.0",
+  "parserScope": "v0.1 tolerant（METAR 正文；类型词双形态；COR 组）",
+  "provenance": "全部为真实公开报文（非人工构造），采集自 aviationweather.gov 与 Iowa Environmental Mesonet 公开通路；少数条目为定向补采；个别反常形态在公开通路未见共存实弹、按合规电码形态构造并在 note 标注（见各 fixture.note）。",
+  "coverage": {
+    "trapsCovered": 65,
+    "trapsTotal": 65,
+    "missing": []
+  },
+  "trapsLegend": {
+    "br-out-of-range": "BR 编报超出 WMO 1–5km 区间（美国口径放宽）",
+    "vis-mixed-fraction": "混分数能见度含组内空格（如 1 1/4SM）",
+    "wx-vis-boundary": "天气组与能见度组边界反常（DU@10SM 等）",
+    "rvr-ft-suffix": "RVR 带组内 FT 英尺后缀",
+    "trend-optional": "趋势组可选（NOSIG / 无趋势）",
+    "gust-criteria-split": "阵风编报判据 WMO 与美国口径分歧",
+    "clrd-friction": "CLRD 后附摩擦系数（俄区惯例）",
+    "unit-per-group": "单位跟组走（MPS/KT、SM/米制、Q/A）",
+    "rmk-national-annex": "RMK 整节为国家附加段",
+    "solidi-placeholder": "solidi 占位缺测（//、////、///）",
+    "flags-type-auto-cor": "类型位 × AUTO 位 × COR 位三正交标志",
+    "maintenance-indicator": "报尾 $ 维护指示符",
+    "rvrno-explicit": "RVRNO 显式缺测三态",
+    "precip-window-semantics": "降水窗口组语义依赖观测时刻（6/7 组、雪深）",
+    "temp-dual-track": "正文 M 组与 RMK T 组温度双轨",
+    "altim-slp-dual": "A 组与 SLP 气压双轨（含省略式分支）",
+    "vv-replaces-clouds": "VV 组替换云组、与能见度正交",
+    "type-dual-form": "类型词双形态（带词/被剥）",
+    "madis-junk-row": "MADIS 一分钟假报文形态（/////KT、MADISHF）",
+    "qnh-dirty": "脏 QNH（超界位数）",
+    "cloud-base-fabrication": "云高缺测被库级捏造风险（如 SCT040///）",
+    "wind-vrb-v-calm": "VRB / V 变向组 / 00000KT 三岔口",
+    "clear-family": "无云五兄弟 SKC/NSC/NCD/CAVOK/CLR",
+    "fz-family": "FZ 挂降水 vs FZFG 条文特批",
+    "mifg-shallow-fog": "MIFG 浅雾不看能见度门槛",
+    "precip-amount-group": "P 组过去 1h 降水（百分位英寸）",
+    "rmk-window-family": "RMK 窗口家族（6/7 组、I 组、5appp）",
+    "cloud-layers-limit": "云组层数上限（WMO 3 / 美国 6）与近层",
+    "began-ended-codes": "B/E 现象起止码",
+    "intensity-syntax": "强度符语法位（-/+ 只配降水/FC/SS/DS）",
+    "wx-fzra": "冻雨 FZRA",
+    "wx-fzdz": "冻毛毛雨 FZDZ",
+    "wx-shra": "阵雨 SHRA",
+    "wx-shsn": "阵雪 SHSN",
+    "wx-ts": "雷暴组（TS/TSRA/TS 单独）",
+    "wx-bcfg": "雾堤 BCFG",
+    "wx-prfg": "partial fog PRFG",
+    "wx-mifg": "浅雾 MIFG",
+    "wx-fzfg": "FZFG 冻雾",
+    "wx-ss": "沙暴 SS",
+    "wx-ds": "尘暴 DS",
+    "wx-gr": "冰雹 GR",
+    "wx-gs": "霰 GS",
+    "wx-sg": "雪粒 SG",
+    "wx-ic": "冰晶 IC",
+    "wx-pl": "冰针 PL",
+    "wx-po": "尘卷风 PO",
+    "wx-sq": "飑 SQ",
+    "wx-fc": "漏斗云 FC",
+    "wx-va": "火山灰 VA",
+    "wx-vcfg": "机场附近 VCFG",
+    "wx-up": "未知降水 UP（自动站）",
+    "wx-du": "浮尘 DU",
+    "wx-hz": "霾 HZ",
+    "wx-sn": "雪 SN",
+    "wx-ra-dz": "雨/毛毛雨 RA/DZ 基础族",
+    "cavok-preceding-yields": "前序能见度组与 CAVOK 共存（CAVOK 让位契约：vis/weather/cloud 三组让位）",
+    "wx-vcsh": "机场附近阵性降水 VCSH（VC 描述符 + SH 无现象——WMO 4678 特批形态，仅 VC 语境内合法）",
+    "vis-ndv-suffix": "能见度 NDV 后缀（No Directional Variation，加拿大自动站惯例——剥离后正常解析，后缀无 IR 落点）",
+    "vis-p6sm": "美式超上限能见度 P6SM（≥6 英里，exact=false——与 9999/M 前缀同族的阈值性编码）",
+    "rvr-faa-slash-trend": "FAA/加式斜杠趋势 RVR（R13/3500FT/N、R07/P6000FT/U——趋势前带斜杠与 FT 单位标记）",
+    "gts-equals-terminator": "报尾 = 终结符（GTS/AFTN 通路报文行定界符，解析前剥离）",
+    "vv-solidi-missing": "垂直能见度缺测 VV///（天空全遮蔽但垂直能见度不可测；裸 VV 为兼容形态保留）",
+    "runway-state-numeric": "六位数字跑道状态组（沉积物类型/覆盖范围/深度/摩擦电码，WMO 15.13.6；含 ///99// 缺测与不可用形态）",
+    "runway-snoclo": "SNOCLO 跑道/机场因雪冰关闭（R/SNOCLO 全机场、R24L/SNOCLO 逐跑道，WMO 15.13.6.1）",
+    "trend-rmk-boundary": "趋势段收口（NOSIG 后 RMK/跑道状态组不被吞）",
+    "vis-solidi-sm": "英里制能见度缺测（////SM，加拿大自动站）——与米制 ////（米制缺测）正交的同族形态",
+    "nil-report": "NIL 台站无观测（15.4）——最小 IR 形态：站名/时组凭据保留、nil:true、正文组不解析、零告警",
+    "wind-shear": "风切变组 WS（WMO 15.13.3：标准 WS ALL RWY / WS Rdd[LRC]，实务变体 WS RWY ALL / WS RWYdd[LRC] 同等认组——低空风切变，起降阶段重大危害）",
+    "tsno": "TSNO：雷暴传感器不工作（美网高频；探测不可用 ≠ 无雷暴）",
+    "qbb-cloud-base": "QBB 俄区国家组：云底高度（米，3 位直读）——字母组形似 began/ended 家族的误吞雷",
+    "txtn-forecast": "TAF 温度预告组 TX/TN 混入 METAR 通路（ICAO Annex 3 附录五：TX25/0907Z = 最高 25°C、09 日 07Z 到达）——IEM 归档实弹 26 次，中国区 TAF 行混入",
+    "trend-bare-period": "裸趋势时段词（指示组整组丢失，如 Q1009 TL0730 …）——IEM 归档实弹 128 次；按磨损趋势段收下（kind unspecified），防趋势要素散落正文",
+    "trend-fused-indicator": "趋势指示组与时段词粘连（BECMGTL0350——丢空格传输磨损）——IEM 归档实弹 10 次，宽容拆分",
+    "ws-std-designator": "风切变组标准形态 WS Rdd（ICAO/WMO 模板 WS RDRDR，如 WS R15）——IEM 归档实弹 544 次、近月主流形态，零告警一等认组",
+    "rvr-solidi-missing": "RVR 值位全斜杠缺测（R35///// = 分离符 + 四位值位；R10//// 四位为磨损短段）——tgftp/IEM 实弹",
+    "runway-coverage-illegal": "跑道状态覆盖位非法电码（表 0519 外数字，如 R24/000062 位 2 的 0）——该位判缺测 + invalid-format 告警"
+  },
+  "fixtures": [
+    {
+      "id": "verified-a1",
+      "raw": "METAR ZUUU 080800Z 33002MPS 260V050 CAVOK 29/22 Q1008 NOSIG",
+      "station": "ZUUU",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": "风组变向 260V050、CAVOK 语义、MPS 单位"
+    },
+    {
+      "id": "verified-a2",
+      "raw": "METAR ZBAA 080800Z VRB02MPS CAVOK 25/10 Q1019 NOSIG",
+      "station": "ZBAA",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": "VRB 全向风的使用条件"
+    },
+    {
+      "id": "verified-a3",
+      "raw": "METAR EDDF 080750Z AUTO 21006KT 130V250 CAVOK 22/14 Q1014 NOSIG",
+      "station": "EDDF",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "flags-type-auto-cor",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": "AUTO 标识位、CAVOK 与趋势组"
+    },
+    {
+      "id": "verified-a4",
+      "raw": "METAR CYYZ 080800Z 34004KT 15SM SKC 16/13 A3022 RMK SLP234",
+      "station": "CYYZ",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": "SKC 与 NSC/NCD 三兄弟、A 组气压、SLP 省略式"
+    },
+    {
+      "id": "verified-a5",
+      "raw": "METAR RJTT 080800Z 18012KT 9999 FEW010 BKN025 BKN/// 28/27 Q1005 NOSIG",
+      "station": "RJTT",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["solidi-placeholder", "trend-optional", "type-dual-form", "unit-per-group"],
+      "note": "BKN/// 云高缺测、9999"
+    },
+    {
+      "id": "verified-a6",
+      "raw": "METAR LFPG 080800Z 24013KT 210V280 9999 FEW024 SCT260 20/14 Q1013 NOSIG",
+      "station": "LFPG",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group", "wind-vrb-v-calm"],
+      "note": "常规全结构"
+    },
+    {
+      "id": "verified-a7",
+      "raw": "METAR VTBS 080800Z 18013KT 9999 FEW020 SCT035 BKN100 32/23 Q1006 NOSIG",
+      "station": "VTBS",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["cloud-layers-limit", "trend-optional", "type-dual-form", "unit-per-group"],
+      "note": "三层云 FEW/SCT/BKN 叠放、热带高温温露差"
+    },
+    {
+      "id": "verified-a8",
+      "raw": "METAR WSSS 080800Z 17008KT 130V210 9000 FEW020 BKN300 33/24 Q1009 NOSIG",
+      "station": "WSSS",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group", "wind-vrb-v-calm"],
+      "note": "9000 能见度档、130V210"
+    },
+    {
+      "id": "verified-b1",
+      "raw": "METAR EGLL 080750Z AUTO 20008KT 180V240 8000 -RA FEW006 SCT028 BKN037 15/14 Q1009",
+      "station": "EGLL",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "flags-type-auto-cor",
+        "intensity-syntax",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": "AUTO + -RA + 变向风"
+    },
+    {
+      "id": "verified-b2",
+      "raw": "METAR SBGR 080800Z 08006KT 8000 -RA BKN008 OVC013 13/12 Q1021",
+      "station": "SBGR",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["intensity-syntax", "type-dual-form", "unit-per-group"],
+      "note": "低云 + 近饱和温露差"
+    },
+    {
+      "id": "verified-b3",
+      "raw": "METAR ZLXY 080800Z 28003MPS 4000 -RA BR FEW006 SCT012 OVC033 20/19 Q1016 NOSIG",
+      "station": "ZLXY",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["intensity-syntax", "trend-optional", "type-dual-form", "unit-per-group"],
+      "note": "两组天气现象 -RA BR；BR 的 1–5 km 区间现场验证（能见度多少？自查）"
+    },
+    {
+      "id": "verified-b4",
+      "raw": "METAR VIDP 080800Z 30010KT 6000 SCT035 33/24 Q1007 NOSIG",
+      "station": "VIDP",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group"],
+      "note": "6000 m 无天气组——为什么合法？（§15.8.12/13 阈值）"
+    },
+    {
+      "id": "verified-b5",
+      "raw": "METAR UUEE 080800Z 33004G09MPS 290V020 9999 BKN023 10/05 Q1017 R24C/CLRD62 NOSIG",
+      "station": "UUEE",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clrd-friction",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": "阵风 G09、R24C/CLRD62 跑道组（区域惯例变体，答案册详注）"
+    },
+    {
+      "id": "verified-b6",
+      "raw": "METAR KLAX 080753Z 00000KT 10SM FEW060 SCT120 BKN160 25/18 A2989 RMK AO2 SLP118 T02500178 402940228 $",
+      "station": "KLAX",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": "00000KT 静风、RMK 四件套（AO2/SLP/T 组/4 组）、$ 维护指示符"
+    },
+    {
+      "id": "verified-b7",
+      "raw": "SPECI OMDB 080801Z 28010KT CAVOK 42/17 Q1006 NOSIG",
+      "station": "OMDB",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "flags-type-auto-cor",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": "SPECI 与 METAR 的类型位区别"
+    },
+    {
+      "id": "verified-b8",
+      "raw": "METAR OMAA 080800Z 22009KT 140V260 CAVOK 43/13 Q1005 BECMG 30012KT",
+      "station": "OMAA",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": "BECMG 趋势组"
+    },
+    {
+      "id": "verified-b9",
+      "raw": "METAR YSSY 080800Z AUTO 11005KT 9999 // NCD 15/09 Q1024",
+      "station": "YSSY",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "flags-type-auto-cor",
+        "solidi-placeholder",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": "//（§15.8.19 自动站缺测天气组）+ NCD"
+    },
+    {
+      "id": "verified-c1",
+      "raw": "KOKC 240352Z 01015G22KT 1/2SM SN FZFG VV009 M10/M12 A3038 RMK AO2 SLP303 P0004 T11001117 RVRNO $",
+      "station": "KOKC",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "fz-family",
+        "gust-criteria-split",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "rvrno-explicit",
+        "temp-dual-track",
+        "unit-per-group",
+        "vv-replaces-clouds",
+        "wx-fzfg",
+        "wx-sn"
+      ],
+      "note": "SN + FZFG 双组、VV、M 负温、RVRNO"
+    },
+    {
+      "id": "verified-c2",
+      "raw": "KOKC 250152Z 35014KT 4SM -FZDZ BR FEW016 OVC033 M14/M16 A3018 RMK AO2 FZRAB43E50FZDZB50PLE16B30E43SNE17 SLP247 P0001 I1000 T11391161",
+      "station": "KOKC",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "began-ended-codes",
+        "br-out-of-range",
+        "fz-family",
+        "intensity-syntax",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-fzdz",
+        "wx-pl",
+        "wx-sn"
+      ],
+      "note": "-FZDZ BR、RMK 现象起止码 B/E"
+    },
+    {
+      "id": "verified-c3",
+      "raw": "KOKC 250252Z 35013KT 1 1/4SM -SN BR OVC024 M14/M16 A3018 RMK AO2 FZDZE08SNB08PLB08E17 SLP244 P0001 60003 I1000 I3000 T11391161 58003",
+      "station": "KOKC",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "began-ended-codes",
+        "fz-family",
+        "intensity-syntax",
+        "precip-amount-group",
+        "precip-window-semantics",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "vis-mixed-fraction",
+        "wx-pl",
+        "wx-sn"
+      ],
+      "note": "**「1 1/4SM」带空格分数能见度变体**、60003/58003 组"
+    },
+    {
+      "id": "verified-c4",
+      "raw": "KACT 141751Z 14008KT 1/2SM +TSRA FG BKN024 BKN036 OVC049 24/23 A3008 RMK AO2 LTG DSNT NW TSE08B25E48B49 SLP178 P0101 60103 T02390233 10300 20233 53002 $",
+      "station": "KACT",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "began-ended-codes",
+        "intensity-syntax",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "precip-window-semantics",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "temp-dual-track",
+        "unit-per-group",
+        "wx-ts"
+      ],
+      "note": "+TSRA FG 双组、LTG/TSE 雷电与雷暴起止"
+    },
+    {
+      "id": "verified-c5",
+      "raw": "KPDX 260353Z 21015G32KT 8SM -TSRA FEW032 BKN047 OVC095 09/06 A2977 RMK AO2 PK WND 21032/0345 LTG DSNT E RAB16 TSB46 SLP081 P0004 T00940056 $",
+      "station": "KPDX",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "gust-criteria-split",
+        "intensity-syntax",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-ts"
+      ],
+      "note": "-TSRA 轻雷暴、PK WND、RAB/TSB 起始码"
+    },
+    {
+      "id": "verified-c6",
+      "raw": "KPDX 201253Z 14004KT 10SM -DZ BKN046 OVC060 11/08 A3036 RMK AO2 DZB50 SLP282 P0000 T01060083 $",
+      "station": "KPDX",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "intensity-syntax",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group"
+      ],
+      "note": "-DZ（0.5 mm 分界）、DZB50"
+    },
+    {
+      "id": "verified-c7",
+      "raw": "KPYM 081452Z AUTO 25004KT 1SM +RA BR FEW013 BKN026 OVC041 17/17 A2988 RMK AO2 PK WND 26031/1419 WSHFT 1409 RAB1354 SLP121 P0043 60044 T01720167 55005",
+      "station": "KPYM",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "flags-type-auto-cor",
+        "gust-criteria-split",
+        "intensity-syntax",
+        "precip-amount-group",
+        "precip-window-semantics",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group"
+      ],
+      "note": "+RA BR、WSHFT、60044、55005"
+    },
+    {
+      "id": "verified-c8",
+      "raw": "KAST 021355Z AUTO 00000KT 1/2SM FG FEW002 FEW011 11/10 A3005 RMK AO2 SLP175 T01060100",
+      "station": "KAST",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "cloud-layers-limit",
+        "flags-type-auto-cor",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": "静风 + 1/2SM FG + FEW002（雾中碎云）、AUTO"
+    },
+    {
+      "id": "verified-c9",
+      "raw": "KGTF 151753Z 35019G30KT 10SM DU CLR 07/M05 A3020 RMK AO2 PK WND 33041/1725 WSHFT 1716 PRESRR SLP238 T00671050 10122 20011 53040 $",
+      "station": "KGTF",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "gust-criteria-split",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-du",
+        "wx-vis-boundary"
+      ],
+      "note": "**DU 在 10SM（⚠ 与 §15.8.12 冲突，见答案册）**、CLR、PRESRR"
+    },
+    {
+      "id": "verified-c10",
+      "raw": "PANC 151253Z VRB03KT 1/2SM R07R/1800V2200FT FG VV002 07/07 A2964",
+      "station": "PANC",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "flags-type-auto-cor",
+        "rvr-ft-suffix",
+        "unit-per-group",
+        "vv-replaces-clouds",
+        "wind-vrb-v-calm"
+      ],
+      "note": "RVR 组 1800V2200FT（英尺！）、FG + VV002"
+    },
+    {
+      "id": "verified-c11",
+      "raw": "PANC 171553Z 00000KT 10SM MIFG SCT100 06/06 A2950 RMK AO2 SLP989 MIFG NE T00560056",
+      "station": "PANC",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "mifg-shallow-fog",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wind-vrb-v-calm",
+        "wx-mifg"
+      ],
+      "note": "MIFG（§15.8.15 的 2 米规则）、RMK MIFG NE"
+    },
+    {
+      "id": "verified-c12",
+      "raw": "KBIS 181652Z 32027G36KT 5SM BLSN BKN019 BKN026 OVC036 M14/M19 A2995 RMK AO2 PK WND 31042/1605 UPB1556E05B22E30SNE1556 SLP167 P0000 T11441194 $",
+      "station": "KBIS",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "began-ended-codes",
+        "gust-criteria-split",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-sn"
+      ],
+      "note": "BLSN（2 米规则的 BL 侧）、PK WND、RMK 里的 UP 起止"
+    },
+    {
+      "id": "verified-c13",
+      "raw": "OERK 242000Z 31018KT 3000 BLDU NSC 22/M04 Q1015 TEMPO 2000 BLDU",
+      "station": "OERK",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["clear-family", "trend-optional", "unit-per-group"],
+      "note": "BLDU 正文组 + TEMPO 2000 BLDU 趋势、NSC"
+    },
+    {
+      "id": "corpus-031",
+      "raw": "METAR CYEG 090800Z 19003KT 20SM FEW093 BKN120 09/09 A2999 RMK AC1AC4 SLP163",
+      "station": "CYEG",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["altim-slp-dual", "rmk-national-annex", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-032",
+      "raw": "METAR CYVR 090800Z 24004KT 200V260 20SM SKC 16/16 A3026 RMK SLP250",
+      "station": "CYVR",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-033",
+      "raw": "METAR DNMM 090800Z 21008KT 8000 SCT011 27/25 Q1016 NOSIG",
+      "station": "DNMM",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-034",
+      "raw": "METAR EDDB 090750Z AUTO 28016KT 9999 FEW023 18/12 Q1008 TEMPO 29015G25KT",
+      "station": "EDDB",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["flags-type-auto-cor", "trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-035",
+      "raw": "METAR EDDM 090750Z AUTO 35004KT 320V040 9999 BKN025 19/16 Q1012 TEMPO BKN012",
+      "station": "EDDM",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "flags-type-auto-cor",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-036",
+      "raw": "METAR EGKK 090750Z 30010KT 9999 FEW045 14/09 Q1016",
+      "station": "EGKK",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "target-shra-037",
+      "raw": "METAR EHAM 090755Z 27016KT 240V300 9999 FEW011 SCT022CB 15/12 Q1009 RESHRA TEMPO 5000 SHRA",
+      "station": "EHAM",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group", "wind-vrb-v-calm", "wx-shra"],
+      "note": ""
+    },
+    {
+      "id": "corpus-038",
+      "raw": "METAR ENGM 090750Z VRB01KT 9999 FEW003 12/07 Q0997 NOSIG",
+      "station": "ENGM",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group", "wind-vrb-v-calm"],
+      "note": ""
+    },
+    {
+      "id": "corpus-039",
+      "raw": "METAR ESSA 090750Z 22008KT 9999 SCT007 BKN009 14/12 Q0997 BECMG BKN020",
+      "station": "ESSA",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-040",
+      "raw": "METAR GMMN 090800Z 09003KT 030V150 9999 SCT010 24/20 Q1017 NOSIG",
+      "station": "GMMN",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group", "wind-vrb-v-calm"],
+      "note": ""
+    },
+    {
+      "id": "corpus-041",
+      "raw": "METAR KACT 090751Z AUTO 16009KT 10SM CLR 29/23 A3008 RMK AO2 SLP177 T02890233",
+      "station": "KACT",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "flags-type-auto-cor",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-042",
+      "raw": "METAR KAST 090755Z AUTO 00000KT 10SM CLR 12/12 A3021 RMK AO2 SLP228 T01220117 402280089 $",
+      "station": "KAST",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "flags-type-auto-cor",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-043",
+      "raw": "METAR KBOS 090754Z 32006KT 10SM FEW060 18/14 A3024 RMK AO2 SLP240 T01780139",
+      "station": "KBOS",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["altim-slp-dual", "rmk-national-annex", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-044",
+      "raw": "METAR KCLE 090751Z 20009KT 10SM BKN060 OVC150 23/21 A3011 RMK AO2 SLP204 T02330206 $",
+      "station": "KCLE",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-045",
+      "raw": "METAR KDEN 090753Z 20009KT 10SM CLR 17/11 A3024 RMK AO2 SLP158 T01670111",
+      "station": "KDEN",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-046",
+      "raw": "METAR KDHT 090753Z AUTO 00000KT 10SM CLR 22/14 A3018 RMK AO2 SLP153 T02170144",
+      "station": "KDHT",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "flags-type-auto-cor",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-047",
+      "raw": "METAR KGTF 090753Z AUTO 23009KT 10SM CLR 09/04 A3024 RMK AO2 SLP241 T00940044 $",
+      "station": "KGTF",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "flags-type-auto-cor",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-048",
+      "raw": "METAR KIAD 090752Z 19005KT 10SM CLR 19/17 A3022 RMK AO2 SLP231 T01940167 $",
+      "station": "KIAD",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-049",
+      "raw": "METAR KLAS 090756Z 27006KT 10SM SCT180 30/11 A3004 RMK AO2 SLP142 T03000106 403780244 $",
+      "station": "KLAS",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-050",
+      "raw": "METAR KMIA 090753Z 35003KT 10SM FEW025 SCT250 27/25 A3006 RMK AO2 SLP178 T02670250 $",
+      "station": "KMIA",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-051",
+      "raw": "METAR KOKC 090752Z 19008KT 10SM CLR 28/19 A3006 RMK AO2 SLP159 T02780189 $",
+      "station": "KOKC",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-052",
+      "raw": "METAR KPDX 090753Z 00000KT 10SM CLR 17/12 A3019 RMK AO2 SLP222 T01720117 402780106",
+      "station": "KPDX",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-053",
+      "raw": "METAR KSEA 090753Z 02008KT 10SM FEW230 17/11 A3026 RMK AO2 SLP251 T01670111 402330128 $",
+      "station": "KSEA",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-054",
+      "raw": "METAR KSLC 090754Z 25005KT 10SM CLR 17/05 A3030 RMK AO2 SLP214 T01670050 $",
+      "station": "KSLC",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-055",
+      "raw": "METAR LEBL 090800Z 36005KT 300V060 9999 FEW030 FEW057TCU BKN059 24/23 Q1011 TEMPO 3000 TSRA FEW060CB",
+      "station": "LEBL",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group", "wind-vrb-v-calm", "wx-ts"],
+      "note": ""
+    },
+    {
+      "id": "corpus-056",
+      "raw": "METAR LFPG 090800Z 28010KT 9999 FEW033 BKN073 15/11 Q1016 NOSIG",
+      "station": "LFPG",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-057",
+      "raw": "METAR LGAV 090750Z 01012KT 330V030 CAVOK 28/11 Q1013 NOSIG",
+      "station": "LGAV",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-058",
+      "raw": "METAR LIMC 090750Z 07004KT 9999 BKN020 21/18 Q1010 NOSIG",
+      "station": "LIMC",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-059",
+      "raw": "METAR LKPR 090800Z 25010KT 9999 FEW025 21/16 Q1010 NOSIG",
+      "station": "LKPR",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-060",
+      "raw": "METAR LOWW 090750Z 31004KT 240V030 CAVOK 27/14 Q1010 NOSIG",
+      "station": "LOWW",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-061",
+      "raw": "METAR LTFM 090750Z 06016KT 9999 SCT032 24/15 Q1015 NOSIG",
+      "station": "LTFM",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-062",
+      "raw": "METAR MROC 090800Z 09011KT 9999 FEW035 SCT180 24/17 A2996 NOSIG",
+      "station": "MROC",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["altim-slp-dual", "trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-063",
+      "raw": "METAR NZAA 090800Z AUTO 18006KT 9999 SCT040/// BKN065/// 13/09 Q1010",
+      "station": "NZAA",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "cloud-base-fabrication",
+        "flags-type-auto-cor",
+        "solidi-placeholder",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-064",
+      "raw": "METAR OEJN 090800Z 34004KT 9999 SCT040 36/23 Q1007 NOSIG",
+      "station": "OEJN",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-065",
+      "raw": "METAR OJAI 090800Z 27008KT 5000 HZ NSC 30/05 Q1013 NOSIG",
+      "station": "OJAI",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["clear-family", "trend-optional", "type-dual-form", "unit-per-group", "wx-hz"],
+      "note": ""
+    },
+    {
+      "id": "corpus-066",
+      "raw": "METAR OMDB 090800Z 26007KT 170V290 CAVOK 42/13 Q1005 NOSIG",
+      "station": "OMDB",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-067",
+      "raw": "METAR PAFA 090753Z 23009KT 5SM -RA BR BKN015 OVC035CB 11/09 A2978 RMK AO2 SLP088 P0004 T01110094 $",
+      "station": "PAFA",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "intensity-syntax",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-shra-068",
+      "raw": "METAR RJAA 090800Z 05014KT 5000 SHRA BR FEW004 BKN006 BKN008 FEW020CB 22/21 Q1007 TEMPO 2000 +TSRA BR FEW002 BKN005 FEW020CB BECMG 03018G28KT",
+      "station": "RJAA",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "intensity-syntax",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wx-shra",
+        "wx-ts"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-shra-069",
+      "raw": "METAR RJTT 090800Z 01019KT 9999 -SHRA FEW009 BKN015 BKN030 24/22 Q1007 TEMPO FEW008 BKN013",
+      "station": "RJTT",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "intensity-syntax",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wx-shra"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-070",
+      "raw": "METAR RKSS 090800Z 07011KT 040V100 CAVOK 25/13 Q1016 NOSIG",
+      "station": "RKSS",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-071",
+      "raw": "METAR SBGR 090800Z 08006KT 1200 R10R/1300D R28L/1400D R10L/P2000 R28R/P2000 -RA BR SCT001 OVC005 16/15 Q1019",
+      "station": "SBGR",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "intensity-syntax",
+        "precip-amount-group",
+        "rmk-window-family",
+        "type-dual-form",
+        "unit-per-group"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-072",
+      "raw": "METAR SPJC 090800Z 16013KT 9999 FEW010 BKN015 22/20 Q1011 NOSIG RMK PP000",
+      "station": "SPJC",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["rmk-national-annex", "trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "corpus-073",
+      "raw": "METAR UUEE 090800Z 21003MPS 180V270 CAVOK 17/10 Q1014 R24L/CLRD62 R24C/CLRD62 NOSIG",
+      "station": "UUEE",
+      "source": "aw",
+      "obsTime": null,
+      "traps": [
+        "clear-family",
+        "clrd-friction",
+        "trend-optional",
+        "type-dual-form",
+        "unit-per-group",
+        "wind-vrb-v-calm"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-074",
+      "raw": "METAR VCBI 090710Z 23010KT 200V260 9999 SCT018 31/25 Q1010 NOSIG",
+      "station": "VCBI",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["trend-optional", "type-dual-form", "unit-per-group", "wind-vrb-v-calm"],
+      "note": ""
+    },
+    {
+      "id": "corpus-075",
+      "raw": "METAR VIDP 090800Z 27006G16KT 7000 NSC 34/21 Q1007 NOSIG",
+      "station": "VIDP",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["clear-family", "trend-optional", "type-dual-form", "unit-per-group"],
+      "note": ""
+    },
+    {
+      "id": "target-fzra-076",
+      "raw": "KOKC 250145Z AUTO /////KT 3SM -FZRA BR FEW016 OVC033 M14/M16 A3019 RMK P0001 T11401160 MADISHF",
+      "station": "KOKC",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "flags-type-auto-cor",
+        "fz-family",
+        "intensity-syntax",
+        "madis-junk-row",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "solidi-placeholder",
+        "unit-per-group",
+        "wx-fzra"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-fzra-077",
+      "raw": "KOKC 250149Z 35015KT 4SM -FZRA BR FEW016 OVC033 M14/M16 A3019 RMK AO2 FZRAB43PLE16B30E43SNE17 P0001 I1000 $",
+      "station": "KOKC",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "began-ended-codes",
+        "fz-family",
+        "intensity-syntax",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-fzra",
+        "wx-pl",
+        "wx-sn"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-pl-078",
+      "raw": "KOKC 240002Z 02016KT 10SM -PL BKN038 OVC070 M06/M21 A3036 RMK AO2 PLB01 P0000 T10561206",
+      "station": "KOKC",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "intensity-syntax",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-pl"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-pl-079",
+      "raw": "KOKC 240050Z AUTO 04017G23KT 10SM OVC037 M07/M17 A3036 RMK T10701170 PLB01 MADISHF",
+      "station": "KOKC",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "flags-type-auto-cor",
+        "madis-junk-row",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wx-pl"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-shsn-080",
+      "raw": "KBUF 041430Z 29017G26KT 10SM FEW021 FEW035 BKN055 M04/M11 A3008 RMK AO2 PK WND 29032/1416 SNE30 SHSN DSNT ALQDS DRSN P0000 T10441106 $",
+      "station": "KBUF",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "gust-criteria-split",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-shsn",
+        "wx-sn"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-ts-081",
+      "raw": "KACT 131751Z 03012KT 10SM TS BKN020 29/23 A3011 RMK AO2 LTG DSNT SW AND W TSB51 SLP189 T02940228 10311 20244 56005 $",
+      "station": "KACT",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-ts"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-ts-082",
+      "raw": "KACT 131758Z 04011KT 10SM TS BKN050 BKN065 30/23 A3011 RMK AO2 LTG DSNT SW AND W T03000228 $",
+      "station": "KACT",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "maintenance-indicator",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wx-ts"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-fzra-083",
+      "raw": "KBIS 120548Z AUTO 32021G31KT 3SM BLSN BR FEW010 BKN016 OVC031 M09/M11 A3013 RMK AO2 PK WND 32034/0532 UPB02E30B44E47FZRAB30E31SNB06E17B31E44 P0000 I1001",
+      "station": "KBIS",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "began-ended-codes",
+        "flags-type-auto-cor",
+        "fz-family",
+        "gust-criteria-split",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-sn"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-blsn-084",
+      "raw": "KBIS 181614Z 32022G42KT 3SM BLSN FEW016 BKN021 OVC037 M15/M19 A2992 RMK AO2 PK WND 31042/1605 UPB1556E05SNE1556 P0000 T11501189 $",
+      "station": "KBIS",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "gust-criteria-split",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-sn"
+      ],
+      "note": ""
+    },
+    {
+      "id": "corpus-085",
+      "raw": "KOKC 241452Z 01015KT 7SM SCT014 OVC029 M14/M17 A3036 RMK AO2 UPB48E49SNB47E48 SLP304 P0000 60000 T11391167 51009 $",
+      "station": "KOKC",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "began-ended-codes",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "precip-window-semantics",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-sn"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-up-086",
+      "raw": "KOKC 241805Z AUTO /////KT 5SM UP FEW016 SCT025 OVC050 M13/M16 A3031 RMK P0000 T11301160 MADISHF",
+      "station": "KOKC",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "flags-type-auto-cor",
+        "madis-junk-row",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "solidi-placeholder",
+        "unit-per-group",
+        "wx-up"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-shra-087",
+      "raw": "KSEA 052153Z 16008KT 10SM FEW030 BKN060 15/09 A2958 RMK AO2 RAE12 SLP021 SHRA S-W P0000 T01500094 $",
+      "station": "KSEA",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "maintenance-indicator",
+        "precip-amount-group",
+        "rmk-national-annex",
+        "rmk-window-family",
+        "unit-per-group",
+        "wx-shra"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-bcfg-088",
+      "raw": "KRNO 191355Z 23003KT 10SM BCFG CLR M01/M01 A3000 RMK AO2 SLP161 T10061011",
+      "station": "KRNO",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wx-bcfg"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-bcfg-089",
+      "raw": "KRNO 191355Z AUTO 22002KT 10SM BCFG CLR M01/M01 A3000 RMK T10101010 MADISHF",
+      "station": "KRNO",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "flags-type-auto-cor",
+        "madis-junk-row",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wx-bcfg"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-bcfg-090",
+      "raw": "KRNO 191400Z AUTO 20004KT 10SM BCFG CLR M01/M01 A3000 RMK T10101010 MADISHF",
+      "station": "KRNO",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "flags-type-auto-cor",
+        "madis-junk-row",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wx-bcfg"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-bcfg-091",
+      "raw": "KRNO 191405Z AUTO 00000KT 10SM BCFG CLR M00/M01 A3000 RMK T10001010 MADISHF",
+      "station": "KRNO",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "clear-family",
+        "flags-type-auto-cor",
+        "madis-junk-row",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wind-vrb-v-calm",
+        "wx-bcfg"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-ss-092",
+      "raw": "HECA 020830Z 28011KT 0500 R23R/0750 R05L/0700 R05C/0700 R23C/0750 R23L/0700 R05R/0650 SS SCT025 OVC070 19/15 Q1010 NOSIG",
+      "station": "HECA",
+      "source": "iem",
+      "obsTime": null,
+      "traps": ["trend-optional", "unit-per-group", "wx-ss"],
+      "note": ""
+    },
+    {
+      "id": "target-vcfg-ic-093",
+      "raw": "PAFA 121935Z AUTO 19004KT 10SM VCFG SCT060 M32/M34 A2974 RMK T13201340 VISNO NE VCFG E-SE MADISHF",
+      "station": "PAFA",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "flags-type-auto-cor",
+        "madis-junk-row",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wx-vcfg"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-vcfg-ic-094",
+      "raw": "PAFA 121940Z AUTO 18003KT 10SM VCFG SCT060 M33/M36 A2974 RMK T13301360 VISNO NE VCFG E-SE MADISHF",
+      "station": "PAFA",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "flags-type-auto-cor",
+        "madis-junk-row",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wx-vcfg"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-vcfg-ic-095",
+      "raw": "PAFA 121945Z AUTO 19003KT 10SM VCFG SCT060 M32/M35 A2974 RMK T13201350 VISNO NE VCFG E-SE MADISHF",
+      "station": "PAFA",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "flags-type-auto-cor",
+        "madis-junk-row",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wx-vcfg"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-vcfg-ic-096",
+      "raw": "PAFA 121950Z AUTO 21003KT 10SM VCFG FEW015 FEW060 M33/M35 A2975 RMK T13301350 VISNO NE VCFG E-SE MADISHF",
+      "station": "PAFA",
+      "source": "iem",
+      "obsTime": null,
+      "traps": [
+        "altim-slp-dual",
+        "flags-type-auto-cor",
+        "madis-junk-row",
+        "rmk-national-annex",
+        "unit-per-group",
+        "wx-vcfg"
+      ],
+      "note": ""
+    },
+    {
+      "id": "target-du-097",
+      "raw": "HECA 210000Z 22006KT 3000 DU NSC 16/05 Q1006 NOSIG",
+      "station": "HECA",
+      "source": "iem",
+      "obsTime": null,
+      "traps": ["clear-family", "trend-optional", "unit-per-group", "wx-du"],
+      "note": ""
+    },
+    {
+      "id": "target-du-098",
+      "raw": "HECA 210030Z 25007KT 3000 DU NSC 16/05 Q1006 NOSIG",
+      "station": "HECA",
+      "source": "iem",
+      "obsTime": null,
+      "traps": ["clear-family", "trend-optional", "unit-per-group", "wx-du"],
+      "note": ""
+    },
+    {
+      "id": "target-du-099",
+      "raw": "HECA 210100Z 26007KT 3000 DU NSC 16/05 Q10054 NOSIG",
+      "station": "HECA",
+      "source": "iem",
+      "obsTime": null,
+      "traps": ["clear-family", "qnh-dirty", "trend-optional", "wx-du"],
+      "note": ""
+    },
+    {
+      "id": "corpus-100",
+      "raw": "METAR CYOW 090800Z 06006KT 15SM OVC170 15/14 A3014 RMK AC8 SLP207",
+      "station": "CYOW",
+      "source": "aw",
+      "obsTime": null,
+      "traps": ["altim-slp-dual", "rmk-national-annex", "type-dual-form", "unit-per-group"],
+      "note": "补位"
+    },
+    {
+      "id": "arc-zlll-b1e7a0ce",
+      "raw": "ZLLL 010000Z 17002MPS 7000 -RA FEW016 OVC040 13/09 Q1017 NOSIG",
+      "station": "ZLLL",
+      "source": "iem",
+      "obsTime": "2016-06-01T00:00:00Z",
+      "traps": ["wx-ra-dz"],
+      "note": "归档定向补采：雨/毛毛雨 RA/DZ 基础族"
+    },
+    {
+      "id": "arc-zlxy-4d35c24d",
+      "raw": "ZLXY 010000Z 03004MPS 5000 -RA BR FEW010 SCT026 OVC050 19/18 Q1011 NOSIG",
+      "station": "ZLXY",
+      "source": "iem",
+      "obsTime": "2016-06-01T00:00:00Z",
+      "traps": ["wx-ra-dz"],
+      "note": "归档定向补采：雨/毛毛雨 RA/DZ 基础族"
+    },
+    {
+      "id": "arc-zlll-5cea11bb",
+      "raw": "ZLLL 010100Z 27003MPS 240V300 9999 -RA SCT013 OVC040 13/11 Q1017 TEMPO TL0200 RA",
+      "station": "ZLLL",
+      "source": "iem",
+      "obsTime": "2016-06-01T01:00:00Z",
+      "traps": ["wx-ra-dz"],
+      "note": "归档定向补采：雨/毛毛雨 RA/DZ 基础族"
+    },
+    {
+      "id": "arc-zggg-b3af1017",
+      "raw": "ZGGG 040530Z 22014G20MPS 180V240 9999 SQ SCT033CB SCT033 29/21 Q1008 BECMG AT0550 22015G25MPS 1000 +TSRA",
+      "station": "ZGGG",
+      "source": "iem",
+      "obsTime": "2016-06-04T05:30:00Z",
+      "traps": ["wx-sq"],
+      "note": "归档定向补采：飑 SQ"
+    },
+    {
+      "id": "arc-zggg-3e5cade1",
+      "raw": "ZGGG 040600Z 21012G17MPS 170V240 3000 TSRA SQ BKN036CB SCT036 23/23 Q1008 BECMG AT0600 08004MPS -SHRA",
+      "station": "ZGGG",
+      "source": "iem",
+      "obsTime": "2016-06-04T06:00:00Z",
+      "traps": ["wx-sq"],
+      "note": "归档定向补采：飑 SQ"
+    },
+    {
+      "id": "arc-zbyn-55be06ce",
+      "raw": "ZBYN 131200Z 35010G16MPS 4000 -TSRA SQ OVC030CB 15/14 Q1003 RESHRA BECMG TL1340 31005MPS -SHRA",
+      "station": "ZBYN",
+      "source": "iem",
+      "obsTime": "2016-06-13T12:00:00Z",
+      "traps": ["wx-sq"],
+      "note": "归档定向补采：飑 SQ"
+    },
+    {
+      "id": "arc-zsnj-e5601edc",
+      "raw": "ZSNJ 041900Z 00000MPS 2000 R06/1400VP2000D R07/0550V1100 PRFG BR NSC 15/15 Q1010 NOSIG",
+      "station": "ZSNJ",
+      "source": "iem",
+      "obsTime": "2016-06-04T19:00:00Z",
+      "traps": ["wx-prfg"],
+      "note": "归档定向补采：partial fog PRFG"
+    },
+    {
+      "id": "arc-zsnj-0982e038",
+      "raw": "ZSNJ 042000Z 31001MPS 1500 R06/0275V0550 R07/0750V1200 PRFG BR NSC 15/15 Q1010 NOSIG",
+      "station": "ZSNJ",
+      "source": "iem",
+      "obsTime": "2016-06-04T20:00:00Z",
+      "traps": ["wx-prfg"],
+      "note": "归档定向补采：partial fog PRFG"
+    },
+    {
+      "id": "arc-zgkl-faea45ec",
+      "raw": "ZGKL 052200Z 33002MPS 9999 PRFG FEW040 SCT066 24/24 Q1008 NOSIG",
+      "station": "ZGKL",
+      "source": "iem",
+      "obsTime": "2016-07-05T22:00:00Z",
+      "traps": ["wx-prfg"],
+      "note": "归档定向补采：partial fog PRFG"
+    },
+    {
+      "id": "arc-zbhh-fc618c25",
+      "raw": "ZBHH 220900Z 34007G12MPS 310V020 6000 +TSGRRA SCT040 SCT040CB 13/10 Q1014 BECMG TL0920 -TSRA",
+      "station": "ZBHH",
+      "source": "iem",
+      "obsTime": "2016-09-22T09:00:00Z",
+      "traps": ["wx-gr"],
+      "note": "归档定向补采：冰雹 GR"
+    },
+    {
+      "id": "arc-zgkl-167c37f7",
+      "raw": "ZGKL 040400Z VRB03MPS 1800 TSGRRA BR SCT023 BKN043 FEW043CB 10/09 Q1015 BECMG FM0500 3000 -RA",
+      "station": "ZGKL",
+      "source": "iem",
+      "obsTime": "2019-03-04T04:00:00Z",
+      "traps": ["wx-gr"],
+      "note": "归档定向补采：冰雹 GR"
+    },
+    {
+      "id": "arc-zgkl-149b5e26",
+      "raw": "ZGKL 040500Z VRB02MPS 3200 SHRA BR SCT026 FEW043CB BKN043 11/09 Q1014 RETSGR BECMG FM0700 2500 -SHRA",
+      "station": "ZGKL",
+      "source": "iem",
+      "obsTime": "2019-03-04T05:00:00Z",
+      "traps": ["wx-gr"],
+      "note": "归档定向补采：冰雹 GR"
+    },
+    {
+      "id": "arc-zytl-4f6fd202",
+      "raw": "ZYTL 101000Z 26006MPS 230V290 7000 -TSRA GS SCT010 BKN026 SCT033CB 09/06 Q1011 NOSIG",
+      "station": "ZYTL",
+      "source": "iem",
+      "obsTime": "2016-11-10T10:00:00Z",
+      "traps": ["wx-gs"],
+      "note": "归档定向补采：霰 GS"
+    },
+    {
+      "id": "arc-zshc-d936f949",
+      "raw": "ZSHC 110500Z 12002MPS 070V150 9999 -GS SCT011 BKN023 03/M01 Q1033 NOSIG",
+      "station": "ZSHC",
+      "source": "iem",
+      "obsTime": "2019-02-11T05:00:00Z",
+      "traps": ["wx-gs"],
+      "note": "归档定向补采：霰 GS"
+    },
+    {
+      "id": "arc-zshc-268dec0b",
+      "raw": "ZSHC 110530Z 12002MPS 080V150 9999 -GS SCT011 BKN023 03/M02 Q1033 NOSIG",
+      "station": "ZSHC",
+      "source": "iem",
+      "obsTime": "2019-02-11T05:30:00Z",
+      "traps": ["wx-gs"],
+      "note": "归档定向补采：霰 GS"
+    },
+    {
+      "id": "arc-zwww-6d829d10",
+      "raw": "ZWWW 160630Z 30003MPS 250V330 1800 -SG BR BKN007 M00/M01 Q1017 BECMG TL0820 3000 BR",
+      "station": "ZWWW",
+      "source": "iem",
+      "obsTime": "2016-11-16T06:30:00Z",
+      "traps": ["wx-sg"],
+      "note": "归档定向补采：雪粒 SG"
+    },
+    {
+      "id": "arc-zwww-d966653e",
+      "raw": "ZWWW 160830Z 34003MPS 5000 -SG BR BKN007 M02/M03 Q1019 NOSIG",
+      "station": "ZWWW",
+      "source": "iem",
+      "obsTime": "2016-11-16T08:30:00Z",
+      "traps": ["wx-sg"],
+      "note": "归档定向补采：雪粒 SG"
+    },
+    {
+      "id": "arc-zwww-e44cbfbf",
+      "raw": "ZWWW 160900Z 33002MPS 8000 -SG BKN007 M02/M03 Q1020 NOSIG",
+      "station": "ZWWW",
+      "source": "iem",
+      "obsTime": "2016-11-16T09:00:00Z",
+      "traps": ["wx-sg"],
+      "note": "归档定向补采：雪粒 SG"
+    },
+    {
+      "id": "arc-zycc-6b9b8265",
+      "raw": "ZYCC 060500Z 29011G20MPS 260V330 0900 R24/1300U DS FEW026TCU BKN026 09/M12 Q1000 BECMG TL0630 1500 SA",
+      "station": "ZYCC",
+      "source": "iem",
+      "obsTime": "2017-05-06T05:00:00Z",
+      "traps": ["wx-ds"],
+      "note": "归档定向补采：尘暴 DS"
+    },
+    {
+      "id": "arc-zycc-a3dccb4d",
+      "raw": "ZYCC 060600Z 30009G19MPS 270V330 0900 R24/1300U DS FEW026TCU BKN026 08/M10 Q1000 BECMG TL0730 1500 SA",
+      "station": "ZYCC",
+      "source": "iem",
+      "obsTime": "2017-05-06T06:00:00Z",
+      "traps": ["wx-ds"],
+      "note": "归档定向补采：尘暴 DS"
+    },
+    {
+      "id": "arc-zycc-d397f4f4",
+      "raw": "ZYCC 060700Z 29010G18MPS 260V350 0700 R24/1200D DS FEW026TCU BKN026 08/M10 Q1001 BECMG TL0830 1500 SA",
+      "station": "ZYCC",
+      "source": "iem",
+      "obsTime": "2017-05-06T07:00:00Z",
+      "traps": ["wx-ds"],
+      "note": "归档定向补采：尘暴 DS"
+    },
+    {
+      "id": "arc-zlll-2bebb50b",
+      "raw": "ZLLL 120700Z 12002MPS 9999 PO FEW023 25/M07 Q1017 BECMG TL0840 03006MPS",
+      "station": "ZLLL",
+      "source": "iem",
+      "obsTime": "2017-05-12T07:00:00Z",
+      "traps": ["wx-po"],
+      "note": "归档定向补采：尘卷风 PO"
+    },
+    {
+      "id": "arc-zlll-9ad61505",
+      "raw": "ZLLL 120800Z VRB01MPS 9999 PO SCT023 25/M07 Q1016 NOSIG",
+      "station": "ZLLL",
+      "source": "iem",
+      "obsTime": "2017-05-12T08:00:00Z",
+      "traps": ["wx-po"],
+      "note": "归档定向补采：尘卷风 PO"
+    },
+    {
+      "id": "arc-zwsh-30f476f0",
+      "raw": "ZWSH 160700Z VRB05MPS 9999 PO FEW040 29/M07 Q1006 NOSIG",
+      "station": "ZWSH",
+      "source": "iem",
+      "obsTime": "2019-05-16T07:00:00Z",
+      "traps": ["wx-po"],
+      "note": "归档定向补采：尘卷风 PO"
+    },
+    {
+      "id": "arc-zwww-e5cc79ab",
+      "raw": "ZWWW 281730Z 04002MPS 1200 R25/1900N IC BR NSC M12/M14 Q1038 NOSIG",
+      "station": "ZWWW",
+      "source": "iem",
+      "obsTime": "2019-11-28T17:30:00Z",
+      "traps": ["wx-ic"],
+      "note": "归档定向补采：冰晶 IC"
+    },
+    {
+      "id": "arc-zbhh-1dcadfd1",
+      "raw": "ZBHH 090300Z VRB01MPS 1000 R26/0750VP2000U IC BR BKN016 M14/M16 Q1025 BECMG TL0430 1600",
+      "station": "ZBHH",
+      "source": "iem",
+      "obsTime": "2020-01-09T03:00:00Z",
+      "traps": ["wx-ic"],
+      "note": "归档定向补采：冰晶 IC"
+    },
+    {
+      "id": "arc-zwww-31d631ab",
+      "raw": "ZWWW 111530Z 00000MPS 1200 R25/1600N IC BR NSC M19/M21 Q1028 NOSIG",
+      "station": "ZWWW",
+      "source": "iem",
+      "obsTime": "2020-01-11T15:30:00Z",
+      "traps": ["wx-ic"],
+      "note": "归档定向补采：冰晶 IC"
+    },
+    {
+      "id": "arc-kokc-99614434",
+      "raw": "KOKC 312357Z 14024G36KT 10SM FC -TSRA FEW005 SCT070 BKN100 BKN250 27/22 A2950 RMK FUNNEL CLOUD B55 W MOV E AO2 PK WND 13036/2353 P0000",
+      "station": "KOKC",
+      "source": "iem",
+      "obsTime": "2013-05-31T23:57:00Z",
+      "traps": [
+        "wx-fc",
+        "began-ended-codes",
+        "gust-criteria-split",
+        "intensity-syntax",
+        "rmk-window-family"
+      ],
+      "note": "IEM 定向网采（KOKC 2013-05 漏斗云事件）：正文 FC 组 + RMK FUNNEL CLOUD 起止码 + PK WND"
+    },
+    {
+      "id": "arc-kokc-46607b1b",
+      "raw": "KOKC 010006Z 34039G61KT 8SM FC -TSRA FEW005 SCT070 BKN100 BKN250 26/21 A2957 RMK FUNNEL CLOUD B2355 W MOV E FUNNEL CLOUD E06 AO2 PK WND 34061/0005 WSHFT 2352 PRESRR P0000",
+      "station": "KOKC",
+      "source": "iem",
+      "obsTime": "2013-06-01T00:06:00Z",
+      "traps": [
+        "wx-fc",
+        "began-ended-codes",
+        "gust-criteria-split",
+        "intensity-syntax",
+        "rmk-window-family"
+      ],
+      "note": "IEM 定向网采（KOKC 2013-05 漏斗云事件）：正文 FC 组 + RMK FUNNEL CLOUD 起止码 + PK WND"
+    },
+    {
+      "id": "arc-zgsz-616e8960",
+      "raw": "ZGSZ 112300Z 10005MPS 060V130 0800 R15/0750U R16/P2000 +TSRA SCT007 FEW025CB BKN030 27/26 Q1003 REFC BECMG AT0040 20005MPS 4000 -SHRA",
+      "station": "ZGSZ",
+      "source": "iem",
+      "obsTime": null,
+      "traps": ["wx-ts", "intensity-syntax", "trend-optional", "unit-per-group"],
+      "note": "强对流脏形态集锦：+TSRA、FEW025CB、BECMG 带 AT 时刻、RVR 带 U 趋势、REFC 疑似畸变组（未知组告警素材）"
+    },
+    {
+      "id": "arc-panc-3cdc3da1",
+      "raw": "PANC 290153Z 29007KT 10SM VA FEW046 BKN060 BKN200 M04/M08 A2984 RMK AO2 SLP106 VAB38 T10391083",
+      "station": "PANC",
+      "source": "iem",
+      "obsTime": "2009-03-29T01:53:00Z",
+      "traps": [
+        "wx-va",
+        "began-ended-codes",
+        "rmk-national-annex",
+        "altim-slp-dual",
+        "temp-dual-track",
+        "unit-per-group"
+      ],
+      "note": "IEM 定向网采（PANC 2009-03 Redoubt 火山喷发）：VA 组 + RMK VAB38 起始码 + SLP/T 组双轨"
+    },
+    {
+      "id": "arc-panc-8a6f1d32",
+      "raw": "PANC 290240Z 28009KT 10SM VA SCT015 BKN047 OVC200 M04/M08 A2985 RMK AO2",
+      "station": "PANC",
+      "source": "iem",
+      "obsTime": "2009-03-29T02:40:00Z",
+      "traps": ["wx-va", "rmk-national-annex", "unit-per-group"],
+      "note": "IEM 定向网采（PANC 2009-03 Redoubt 火山喷发）：VA 组简式"
+    },
+    {
+      "id": "arc-kclt-44c4240f",
+      "raw": "KCLT 092002Z COR 21004KT 10SM SCT060 BKN250 32/16 A3020 RMK AO2 T03170161",
+      "station": "KCLT",
+      "source": "iem",
+      "obsTime": "2026-09-09T20:02:00Z",
+      "traps": ["flags-type-auto-cor", "type-dual-form", "temp-dual-track", "rmk-national-annex"],
+      "note": "IEM 定向网采实例：COR 修正位实例；同报文在 aviationweather.gov 通路带 SPECI 前缀而 IEM 剥词——类型双形态实锤"
+    },
+    {
+      "id": "arc-urwi-c15e35a0",
+      "raw": "URWI 120400Z AUTO 23005MPS 9999 // ///////// 22/00 Q1019 RMK QNH764 QFE751/1002",
+      "station": "URWI",
+      "source": "iem",
+      "obsTime": "2026-09-12T04:00:00Z",
+      "traps": ["solidi-placeholder", "rmk-national-annex"],
+      "note": "IEM 定向网采（RU__ASOS 俄罗斯 Elista 自动站）：裸 // 天气缺测组 + ///////// 云组三段全缺测 + 俄式 QNH/QFE 备注段"
+    },
+    {
+      "id": "synth-cavok-preceding",
+      "raw": "ZGGG 120000Z 27008KT 9999 CAVOK 26/22 Q1009 NOSIG",
+      "station": "ZGGG",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["cavok-preceding-yields"],
+      "note": "构造形态（公开通路未见共存实弹，按合规电码形态构造锁定契约）：前序能见度组与 CAVOK 双报——CAVOK 时 vis/weather/cloud 三组让位"
+    },
+    {
+      "id": "target-vcsh-vtbs",
+      "raw": "VTBS 020900Z 35005KT 9999 VCSH FEW020CB 31/24 Q1004 RETS NOSIG",
+      "station": "VTBS",
+      "source": "iem",
+      "obsTime": "2026-06-02T09:00:00Z",
+      "traps": ["wx-vcsh", "trend-optional"],
+      "note": "IEM 归档定向补采（清迈季风对流日）：正文 VCSH——VC 邻近 + SH 无现象的 WMO 特批形态（美式 VCSH 只出现在 RMK 段）"
+    },
+    {
+      "id": "target-vcsh-wsss",
+      "raw": "WSSS 060700Z 16011KT 9000 VCSH FEW017TCU FEW018CB SCT300 32/25 Q1009 NOSIG",
+      "station": "WSSS",
+      "source": "iem",
+      "obsTime": "2026-06-06T07:00:00Z",
+      "traps": ["wx-vcsh", "trend-optional"],
+      "note": "IEM 归档定向补采（新加坡对流日）：VCSH + TCU/CB 对流云叠放"
+    },
+    {
+      "id": "target-ndv-skmd",
+      "raw": "SKMD 120700Z AUTO 01004KT 330V050 9999NDV // FEW014/// OVC044/// 21/18 Q1018",
+      "station": "SKMD",
+      "source": "iem",
+      "obsTime": "2026-09-12T07:00:00Z",
+      "traps": ["vis-ndv-suffix", "solidi-placeholder", "wind-vrb-v-calm"],
+      "note": "IEM 实网采（科罗拉多网）：9999NDV——NDV=无方向变化（No Directional Variation），剥离后缀按 9999 解析；NDV 语义（能见度各方向一致）IR 无落点，丢弃；同报带云型位缺测（///）"
+    },
+    {
+      "id": "target-ndv-skui",
+      "raw": "SKUI 120700Z AUTO VRB02KT 6000NDV // SCT006/// OVC008/// 25/25 Q1008",
+      "station": "SKUI",
+      "source": "iem",
+      "obsTime": "2026-09-12T07:00:00Z",
+      "traps": ["vis-ndv-suffix", "solidi-placeholder", "wind-vrb-v-calm"],
+      "note": "IEM 实网采（科罗拉多网）：非上限值 6000NDV + VRB 风——NDV 剥离后 exact=true"
+    },
+    {
+      "id": "target-rvrslash-cyow",
+      "raw": "CYOW 010400Z 02010KT 3/4SM R07/P6000FT/U R32/P6000FT/U -SN VV010 M10/M13 A2943 RMK SN8 /S02/ SLP976",
+      "station": "CYOW",
+      "source": "iem",
+      "obsTime": "2026-01-01T04:00:00Z",
+      "traps": [
+        "rvr-faa-slash-trend",
+        "rvr-ft-suffix",
+        "vv-replaces-clouds",
+        "wx-sn",
+        "intensity-syntax"
+      ],
+      "note": "IEM 归档定向补采（渥太华降雪日）：R07/P6000FT/U——P 超界 + FT 单位 + 斜杠趋势三合一的加式 RVR 形态"
+    },
+    {
+      "id": "target-rvrslash-cyqr",
+      "raw": "CYQR 011200Z 00000KT 3/8SM R13/2400V3000FT/N -SN FZFG VV003 M13/M15 A2988 RMK FG8 FROIN SLP167",
+      "station": "CYQR",
+      "source": "iem",
+      "obsTime": "2026-01-01T12:00:00Z",
+      "traps": [
+        "rvr-faa-slash-trend",
+        "rvr-ft-suffix",
+        "wx-fzfg",
+        "vv-replaces-clouds",
+        "wx-sn",
+        "wind-vrb-v-calm"
+      ],
+      "note": "IEM 归档定向补采（里贾纳冻雾日）：R13/2400V3000FT/N——波动形态 + FT + 斜杠趋势"
+    },
+    {
+      "id": "target-clrd-unkl",
+      "raw": "UNKL 120700Z 14003MPS CAVOK 22/13 Q1026 R11/CLRD// NOSIG",
+      "station": "UNKL",
+      "source": "iem",
+      "obsTime": "2026-09-12T07:00:00Z",
+      "traps": ["clrd-friction", "clear-family", "trend-optional"],
+      "note": "IEM 实网采（克拉斯诺亚尔斯克）：R11/CLRD//——WMO 15.13.6.1 标准形态（跑道清除 + 两位斜杠摩擦缺测）；与俄区 CLRD62、非标 CLRD/// 同族"
+    },
+    {
+      "id": "synth-p6sm",
+      "raw": "KEDW 251855Z 24016KT P6SM CLR 41/M09 A2992 RMK AO2 SLP104",
+      "station": "KEDW",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["vis-p6sm"],
+      "note": "构造形态（按 FAA/AF 口径超上限能见度电码构造）：P6SM=6 英里以上——采不到实弹：IEM 归档 2006–2026 美军站（EDW/LSV/VBG/NFL/NZX/NYL/NID 等）全数规整为 nSM，OGIMET 通路当次不可用；建模为 visibility 6SM、exact=false（与 9999 同族）"
+    },
+    {
+      "id": "synth-equals-q",
+      "raw": "METAR ZUUU 080800Z 33002MPS 260V050 CAVOK 29/22 Q1006=",
+      "station": "ZUUU",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["gts-equals-terminator"],
+      "note": "构造形态（GTS/AFTN 报文行以 = 定界，AFTN 源必踩）：报尾 = 粘连气压组——解析前剥离；IEM/NOAA 公开通路均已剥除 =，故按通路形态构造"
+    },
+    {
+      "id": "synth-equals-nosig",
+      "raw": "METAR ZGGG 120000Z 27008KT 9999 FEW030 26/22 Q1009 NOSIG=",
+      "station": "ZGGG",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["gts-equals-terminator"],
+      "note": "构造形态（同上，= 粘连趋势词形态）：报尾 = 粘连 NOSIG"
+    },
+    {
+      "id": "synth-vv-solidi",
+      "raw": "ZBAA 120000Z 00000MPS 0800 FG VV/// 05/04 Q1024 NOSIG",
+      "station": "ZBAA",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["vv-solidi-missing", "vv-replaces-clouds"],
+      "note": "构造形态（按合规电码形态构造）：VV///——天空全遮蔽但垂直能见度缺测（现实报文从无裸 VV，缺测形态为三位斜杠）；采不到实弹：中美加俄四网数万条归档均未见"
+    },
+    {
+      "id": "target-rwystate-uspp",
+      "raw": "USPP 150000Z 12004MPS CAVOK M20/M24 Q1038 R21/490160 TEMPO 2000 FU BKN003 RMK QFE768",
+      "station": "USPP",
+      "source": "iem",
+      "obsTime": "2026-01-15T00:00:00Z",
+      "traps": ["runway-state-numeric"],
+      "note": "IEM 归档定向补采（彼尔姆冬季）：R21/490160——六位状态电码：4 干雪 / 9 覆盖 51–100% / 01 深度 1mm / 60 摩擦 0.60（WMO 15.13.6）"
+    },
+    {
+      "id": "target-rwystate-uudd",
+      "raw": "UUDD 150000Z 25001G07MPS 5000 -SN OVC015 M09/M11 Q1022 R13R/550237 NOSIG",
+      "station": "UUDD",
+      "source": "iem",
+      "obsTime": "2026-01-15T00:00:00Z",
+      "traps": ["runway-state-numeric", "wx-sn"],
+      "note": "IEM 归档定向补采（多莫杰多沃降雪日）：R13R/550237——带方位字母的六位状态电码：5 湿雪 / 5 覆盖 26–50% / 02 深度 2mm / 37 摩擦 0.37"
+    },
+    {
+      "id": "target-rwystate-uudd-99",
+      "raw": "UUDD 191500Z 29005MPS 9999 -SN FEW011 M07/M09 Q1029 R31L///99// NOSIG",
+      "station": "UUDD",
+      "source": "iem",
+      "obsTime": "2026-01-19T15:00:00Z",
+      "traps": ["runway-state-numeric"],
+      "note": "IEM 归档定向补采（多莫杰多沃）：R31L///99//——沉积/覆盖缺报（//）+ 深度位 99（跑道不可用，closed 语义）+ 摩擦缺报（//）"
+    },
+    {
+      "id": "synth-snoclo",
+      "raw": "UUEE 150000Z 27005MPS 9999 -SN SCT020 OVC030 13/09 Q1016 R24L/SNOCLO NOSIG",
+      "station": "UUEE",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["runway-snoclo"],
+      "note": "构造形态（按 WMO 15.13.6.1 电码形态构造）：逐跑道 R24L/SNOCLO（跑道因雪冰关闭）；采不到实弹：UUEE/UUDD 2026-01 冬季窗与 2010-12 莫斯科冰雪危机归档均未见（机场整体关闭极罕见）；全机场 R/SNOCLO 形态见回归测试"
+    },
+    {
+      "id": "ru-trend-rmk-qfe",
+      "raw": "UNOO 120930Z 17006MPS CAVOK 30/08 Q1010 R07/CLRD63 NOSIG RMK QFE749",
+      "station": "UNOO",
+      "source": "iem",
+      "obsTime": "2026-09-12T09:30:00Z",
+      "traps": ["trend-rmk-boundary"],
+      "note": "俄区 NOSIG 后 RMK QFE 段（第二轮复评根因实弹：趋势段曾整段吞 RMK，RU 61/65、KZ 18/18 命中）"
+    },
+    {
+      "id": "ru-trend-rwy-state",
+      "raw": "UUDD 120900Z 30003MPS 8000 -SHRA BKN024CB 14/14 Q1009 NOSIG R01/290150 RMK QFE746",
+      "station": "UUDD",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["trend-rmk-boundary"],
+      "note": "同族词序防御（复评点名）：趋势后跟跑道状态组不被吞——RU 实弹片段组装（USPP/UUDD 词序倒排）"
+    },
+    {
+      "id": "target-solidism-cyus",
+      "raw": "CYUS 120900Z AUTO 33002KT ////SM ////// 01/00 A2973 RMK VIS MISG CLD MISG T00080001 SLP072",
+      "station": "CYUS",
+      "source": "tgftp",
+      "obsTime": "2026-09-12T09:00:00Z",
+      "traps": ["vis-solidi-sm"],
+      "note": "tgftp 全球 cycle 实弹（加拿大自动站）：////SM=英里制能见度缺测（RMK VIS MISG 佐证），与米制 //// 正交的缺测形态；同报 ////// 为云组量/高双缺测，CWUS 家族 10 站同形态"
+    },
+    {
+      "id": "synth-nil-report",
+      "raw": "METAR ZGGG 120300Z NIL=",
+      "station": "ZGGG",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["nil-report"],
+      "note": "构造 NIL 形态（tgftp 当日 00–13Z 共 14 个全量 cycle 约 87 万行实测零 NIL——该形态主要见于台站整体停发场景，当前分发惯例已少见）：台站无观测，最小 IR（station/time/nil:true，正文组不解析，零告警）；语料级锁降级为夹具锁，实测数字见 note"
+    },
+    {
+      "id": "arc-ws-rwy-zggg-20110506",
+      "raw": "ZGGG 061200Z 29005MPS 220V310 3000 +TSRA BR SCT009 SCT026CB BKN026 24/24 Q1008 WS RWY02L BECMG AT1230 -SHRA SCT011 SCT023CB BKN030",
+      "station": "ZGGG",
+      "source": "iem",
+      "obsTime": "2011-05-06T12:00:00Z",
+      "traps": ["wind-shear"],
+      "note": "风切变组 WS RWY02L（数字+方位字母形态，WMO 15.4）：IEM 归档实弹（2011-05-06 广州，02L 跑道）；组位于 QNH 之后、BECMG 趋势之前，趋势不被吞"
+    },
+    {
+      "id": "arc-ws-rwy-zbaa-20110511",
+      "raw": "ZBAA 111630Z 32009G14MPS 290V350 7000 BLDU NSC 19/M12 Q1010 WS RWY36R NOSIG",
+      "station": "ZBAA",
+      "source": "iem",
+      "obsTime": "2011-05-11T16:30:00Z",
+      "traps": ["wind-shear"],
+      "note": "风切变组 WS RWY36R（右跑道形态）：IEM 归档实弹（2011-05-11 北京）；紧邻 NOSIG 收尾"
+    },
+    {
+      "id": "arc-ws-rwy-zppp-20110514",
+      "raw": "ZPPP 140700Z 18006MPS 140V220 9999 -TSRA SCT026CB FEW026 SCT040 19/16 Q1016 WS RWY21 TEMPO -TSRA",
+      "station": "ZPPP",
+      "source": "iem",
+      "obsTime": "2011-05-14T07:00:00Z",
+      "traps": ["wind-shear"],
+      "note": "风切变组 WS RWY21（纯数字跑道形态）：IEM 归档实弹（2011-05-14 昆明）；组后跟 TEMPO 趋势"
+    },
+    {
+      "id": "synth-ws-rwy-all",
+      "raw": "ZGGG 120000Z 27008MPS 9999 -SHRA BKN030 26/22 Q1009 WS RWY ALL NOSIG",
+      "station": "ZGGG",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["wind-shear"],
+      "note": "构造 WS RWY ALL 形态（全部跑道风切变，三 token）：IEM 归档与 tgftp 语料均未见实报（797 万行归档零命中），按 WMO 15.4 编码规则构造；allRunways=true 断言用"
+    },
+    {
+      "id": "target-tsno-paya",
+      "raw": "PAYA 120853Z AUTO 00000KT 10SM CLR 04/04 A3020 RMK AO2 SLP227 T00440044 402000028 57007 TSNO $",
+      "station": "PAYA",
+      "source": "iem",
+      "obsTime": "2026-09-12T08:53:00Z",
+      "traps": ["tsno"],
+      "note": "TSNO（雷暴传感器不工作，美网高频 RMK 组）：IEM AK_ASOS 整网实弹（2026-09-12 Yakutat）；认组 kind thunderstorm-sensor，不再 unknown——语义是探测不可用而非无雷暴"
+    },
+    {
+      "id": "target-qbb-uhmd",
+      "raw": "UHMD 102200Z 19012MPS 1000 RA BR VV002 06/05 Q1009 RMK QBB060 MT OBSC QFE756/1008",
+      "station": "UHMD",
+      "source": "iem",
+      "obsTime": "2026-09-12T09:30:00Z",
+      "traps": ["qbb-cloud-base"],
+      "note": "QBB060（俄区国家组：云底高度 60 米）：IEM RU__ASOS 整网实弹（2026-09-12 Magadan）；与正文 VV002（垂直能见度 200ft≈60m）互为印证；原被 began-ended 正则误吞为 FZRA 同类"
+    },
+    {
+      "id": "target-txtn-zhhh",
+      "raw": "ZHHH 090302Z 0906/1006 20003MPS 6000 NSC TX25/0907Z TN16/0922Z",
+      "station": "ZHHH",
+      "source": "iem",
+      "obsTime": "2026-05-09T03:02:00Z",
+      "traps": ["txtn-forecast"],
+      "note": "TAF 温度预告组混入 METAR 通路（IEM 归档 2026-05 实弹，26 次全为中国区 TAF 行）：TX25/0907Z 最高 25°C 09 日 07Z 到达、TN16/0922Z 最低 16°C 09 日 22Z；0906/1006 为 TAF 有效期组（仍 unknown，不在本雷范围）"
+    },
+    {
+      "id": "target-bareperiod-zsam",
+      "raw": "ZSAM 250600Z 02004MPS 9999 BKN050 31/22 Q1009 TL0730 11005MPS",
+      "station": "ZSAM",
+      "source": "iem",
+      "obsTime": null,
+      "traps": ["trend-bare-period"],
+      "note": "裸趋势时段词（指示组 BECMG/TEMPO 整组丢失）：IEM 归档实弹 128 次；TL0730 引导磨损趋势段收为 kind unspecified——同时防趋势风组 11005MPS 以 last-wins 覆盖正文真风组 02004MPS"
+    },
+    {
+      "id": "target-fused-trend-zbaa",
+      "raw": "ZBAA 290330Z 11002MPS 5000 BR SCT007 OVC033 21/21 Q1005 BECMGTL0350 FEW030",
+      "station": "ZBAA",
+      "source": "iem",
+      "obsTime": "2012-06-29T03:30:00Z",
+      "traps": ["trend-fused-indicator"],
+      "note": "趋势指示组与时段词粘连（BECMGTL0350 = BECMG TL0350 丢空格）：IEM 归档实弹 10 次，宽容拆分——kind becmg + period TL0350，语义完整可恢复"
+    },
+    {
+      "id": "target-ws-worn-zgsz",
+      "raw": "ZGSZ 131000Z 29006G18MPS 230V320 8000 TSRA BKN011 FEW020CB BKN030 26/22 Q1010 WS R15 TEMPO VRB09G16MPS 2000 TSRA SCT006 SCT025CB OVC040",
+      "station": "ZGSZ",
+      "source": "iem",
+      "obsTime": null,
+      "traps": ["ws-std-designator"],
+      "note": "风切变组标准形态 WS R15（ICAO/WMO 模板 WS RDRDR）：IEM 归档实弹 544 次（近月主流形态）；零告警一等认组"
+    },
+    {
+      "id": "target-rvr-solidi5-scvd",
+      "raw": "SCVD 120900Z AUTO 18002KT //// R35///// NCD M02/M02 Q1030",
+      "station": "SCVD",
+      "source": "iem",
+      "obsTime": "2026-09-12T09:00:00Z",
+      "traps": ["rvr-solidi-missing"],
+      "note": "RVR 值位全斜杠缺测标准形态（R35///// = 分离符 + 四位值位斜杠）：tgftp cycle 实弹（拉美自动站族）；跑道号在位、值全缺 → runwayVisualRange missing + missing-expected"
+    },
+    {
+      "id": "target-rvr-solidi4-zytl",
+      "raw": "ZYTL 300300Z 08004MPS 8000 R10//// NSC 30/20 Q1009 NOSIG",
+      "station": "ZYTL",
+      "source": "iem",
+      "obsTime": null,
+      "traps": ["rvr-solidi-missing"],
+      "note": "RVR 全斜杠缺测磨损短段（R10//// 四位斜杠对标准五位少一位）：IEM 归档实弹 15 次；按缺测收下 + invalid-format info 标注磨损"
+    },
+    {
+      "id": "target-rwystate-illegal-coverage-uuww",
+      "raw": "UUWW 120930Z 27007MPS 9999 FEW030 15/07 Q1017 R24/000062 NOSIG",
+      "station": "UUWW",
+      "source": "iem",
+      "obsTime": "2026-09-12T09:30:00Z",
+      "traps": ["runway-coverage-illegal"],
+      "note": "跑道状态覆盖位非法电码（R24/000062 位 2 = 0，WMO 表 0519 仅 1/2/5/9 与 /）：tgftp cycle 实弹 2 站次；沉积 0（干燥）合法保留、覆盖位判缺测 + invalid-format"
+    }
+  ],
+  "count": 167
+}

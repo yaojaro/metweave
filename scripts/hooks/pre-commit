@@ -1,10 +1,34 @@
 #!/bin/sh
 # 公开面前置门禁：信息泄露检查（暂存区）。安装：git config core.hooksPath scripts/hooks
+# 身份门禁两层化：
+#   - 邮箱匹配 owner 身份特征（含 yaojaro）→ 必须使用 GitHub 隐私邮箱（保护 owner 误用身份）；
+#   - 其余视为外部贡献者 → 跳过该门禁并 info 提示（不拦外部贡献者）。
+# 泄露扫描分层：配置 METWEAVE_LEAK_PATTERNS 时人人执行；未配置时——owner 身份照旧强制
+#（fail-closed），外部贡献者跳过暂存区扫描并提示（CI 的 check:leaks --all 通用模式仍覆盖）。
 email=$(git config user.email)
+owner_like=$(echo "$email" | grep -c yaojaro)
 allowed="325675528+yaojaro@users.noreply.github.com"
-if [ "$email" != "$allowed" ]; then
-  echo "pre-commit: git user.email = ${email}，公开仓库提交应使用 GitHub 隐私邮箱 ${allowed}"
-  echo "  （改用: git config user.email \"${allowed}\"；工作身份仓库请单独 repo-local 设置）"
-  exit 1
+if [ "$owner_like" -ne 0 ]; then
+  if [ "$email" != "$allowed" ]; then
+    echo "pre-commit: 检测到 owner 身份特征（yaojaro）但邮箱不是 GitHub 隐私邮箱：${email}"
+    echo "  （改用: git config user.email \"${allowed}\"；工作身份仓库请单独 repo-local 设置）"
+    exit 1
+  fi
+else
+  echo "pre-commit: 提交者邮箱 ${email} 非 owner 身份——跳过 owner 隐私邮箱门禁（泄露扫描按下方分层策略）"
 fi
-node "$(dirname "$0")/../check-leaks.mjs" --staged || exit 1
+
+if [ -n "$METWEAVE_LEAK_PATTERNS" ]; then
+  node "$(dirname "$0")/../check-leaks.mjs" --staged || exit 1
+elif [ "$owner_like" -ne 0 ]; then
+  echo "pre-commit: 未设置 METWEAVE_LEAK_PATTERNS，owner 身份拒绝以弱模式提交。"
+  echo "  设置：~/.zshrc 加入 export METWEAVE_LEAK_PATTERNS=<私有敏感词清单绝对路径>"
+  exit 1
+else
+  echo "pre-commit: 外部贡献者无私有清单，跳过暂存区泄露扫描——CI 的通用模式扫描（check:leaks --all）仍会执行"
+fi
+
+# 文档双语门禁（规则见根 AGENTS.md）：暂存区含 .md 时执行——拦截纯单语与英文在前。
+if git diff --cached --name-only | grep -q '\.md$'; then
+  node "$(dirname "$0")/../check-docs-chinese.mjs" || exit 1
+fi

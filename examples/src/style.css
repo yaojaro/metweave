@@ -1,0 +1,169 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+/* hidden 属性压倒一切 display 声明（UA 的 [hidden]{display:none} 可被 #status 等显式
+ * flex 覆盖，实测状态条「hidden 后仍常驻」）——整类问题一处根治 */
+[hidden] {
+  display: none !important;
+}
+
+/* 地图容器垫浅色底：天地图矢量/注记瓦片背景为透明像素（深色系统主题下会透黑） */
+#map {
+  height: 100%;
+  background: #f2f0eb;
+}
+
+/* 底图 key 提示：未配置天地图 key 时就地说明配置方式（不静默换底图） */
+#basemap-hint {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  max-width: 420px;
+  background: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  color: #a05a2c;
+  font:
+    13px/1.6 system-ui,
+    sans-serif;
+}
+
+/* 免责声明：常驻页脚（演示用途与无隶属关系），不随交互消失 */
+#disclaimer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1100;
+  background: rgba(28, 39, 51, 0.9);
+  color: #e8eef5;
+  padding: 6px 14px;
+  font:
+    12px/1.5 system-ui,
+    sans-serif;
+  text-align: center;
+}
+
+#disclaimer strong {
+  color: #ffd9a0;
+}
+
+/* 错误/摘要面板：纯文本单条消息（textContent 装载），无子结构样式。
+ * bottom 抬高到免责声明栏之上，避免被页脚压住 */
+#panel {
+  position: fixed;
+  right: 10px;
+  bottom: 48px;
+  z-index: 1000;
+  max-width: 480px;
+  background: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  font:
+    13px/1.6 system-ui,
+    sans-serif;
+}
+
+/* 状态条：实况拉取进度（loading → ok / error），role=status + aria-live 供读屏。
+ * bottom 抬高到免责声明栏之上 */
+#status {
+  position: fixed;
+  left: 10px;
+  bottom: 48px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  font:
+    13px/1.6 system-ui,
+    sans-serif;
+}
+
+#status[data-tone="ok"] {
+  color: #1e6b40;
+}
+
+#status[data-tone="error"] {
+  color: #a02c2c;
+}
+
+#status-spinner {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 2px solid #cbd5e1;
+  border-top-color: #475569;
+  border-radius: 50%;
+  animation: mw-demo-spin 0.9s linear infinite;
+}
+
+#status[data-tone="ok"] #status-spinner,
+#status[data-tone="error"] #status-spinner {
+  display: none;
+}
+
+@keyframes mw-demo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 待更新站点圆点：呼吸动画提示「实况未到达」，与实况条件色圆点视觉上明确区分 */
+.mw-demo-pending {
+  animation: mw-demo-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mw-demo-pulse {
+  0%,
+  100% {
+    fill-opacity: 0.35;
+  }
+  50% {
+    fill-opacity: 0.8;
+  }
+}
+
+/* 加载/失败弹窗：与状态条同一套反馈语言 */
+.mw-demo-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+  font:
+    13px/1.6 system-ui,
+    sans-serif;
+}
+
+.mw-demo-loading small {
+  color: #6b7785;
+}
+
+.mw-demo-loading-error {
+  color: #a02c2c;
+}
+
+/* 无 key 预览态：示例报文渲染的静态卡片条（本地解析、非实况，caption 已标注） */
+.mw-demo-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  align-items: flex-start;
+}
+
+.mw-demo-preview-caption {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: #6b7785;
+}

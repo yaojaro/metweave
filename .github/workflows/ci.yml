@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# 最小权限原则：CI 只需要读取仓库内容（checkout），显式收紧防第三方 PR 提权面
+permissions:
+  contents: read
+
 jobs:
   # 每个受支持的 Node 版本都跑满四道基础门禁。
   # 门禁顺序与构建状态无关：内部包开发期解析到 src，发布物经 publishConfig
@@ -14,17 +18,18 @@ jobs:
     strategy:
       matrix:
         # 开发工具链（pnpm 11 + 二进制 devDeps）基线为 Node 22；
-        # engines ">=20" 是库运行时的消费端兼容承诺，产物为 ES2022。
-        node-version: [22]
+        # engines ">=20" 是库运行时的消费端兼容承诺，产物为 ES2022——20 档验证消费端承诺。
+        node-version: [20, 22]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # pnpm 版本取自根 package.json 的 packageManager 字段
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node-version }}
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -45,11 +50,11 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
@@ -63,14 +68,27 @@ jobs:
       - name: Workspace contract (lockstep versions · dep direction · publishConfig)
         run: pnpm check:workspace
 
+      - name: Terminology glossary conformance (all user-visible copy registered)
+        run: pnpm check:terms
+
       - name: Info-leak scan (internal refs / identities / credential email)
         run: pnpm check:leaks
+
+      - name: Docs bilingual gate (all docs zh+en, Chinese first)
+        run: pnpm check:docs
 
       - name: Dead code check (unused exports / files / deps)
         run: pnpm check:knip
 
       - name: Build
         run: pnpm build
+
+      # 示例 app 不进根 build：它不是可发布产物（examples 为 private workspace），
+      # 而本地带 key 构建会把密钥内联进 examples/dist，与 check:leaks 的产物扫描相冲。
+      # 类型检查仍由 pnpm typecheck 覆盖示例；打包单独守一道——CI 无 VITE_TIANDITU_KEY，
+      # 走的正是「未配置 key」那条分支。
+      - name: Build examples (keyless)
+        run: pnpm build:examples
 
       - name: Artifact check (publint + attw on packed tarballs)
         run: pnpm check:artifact

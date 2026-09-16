@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>metweave · 公开气象报文可视化</title>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="basemap-hint" role="note" hidden></div>
+    <aside id="panel" role="alert" hidden></aside>
+    <footer id="disclaimer">
+      演示用途：数据来自公开通路（IEM / NOAA 等），按现状提供、无 SLA，可能延迟或缺失；
+      本页及本库均<strong>不得用于飞行决策或任何运行决策</strong>。圆点色仅为扫视参考，
+      非标准分级。本演示与 IEM、NOAA/NWS、天地图均无隶属或背书关系。
+    </footer>
+    <div id="status" role="status" aria-live="polite" hidden>
+      <span id="status-spinner" aria-hidden="true"></span>
+      <span id="status-text"></span>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

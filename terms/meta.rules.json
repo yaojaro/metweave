@@ -1,0 +1,1268 @@
+{
+  "note": "术语元数据入册规则（引用层级模型：每条 official 术语先引国际根规范 WMO306/WMO4678/ICAOANNEX3，再引对应中文规范 AP117/CCAR117；无国际根的国内独有条目必须显式 scope=domestic；英文册由 terms.mjs 自动剥除国内规范，仅保留国际层）。keys 精确匹配优先，prefixes 按最长前缀匹配；仅对 refs 为空的条目生效，不覆盖人工修订。doc 字段由 terms.mjs 按规范登记表自动展开。",
+  "keys": {
+    "card.label.wind": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5（风向风速组 dddff）"
+        },
+        {
+          "standard": "CCAR117",
+          "clause": "第四十七条（地面风观测）"
+        }
+      ]
+    },
+    "card.label.visibility": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.6（VVVV 主导能见度组）"
+        },
+        {
+          "standard": "CCAR117",
+          "clause": "第二章观测项目（主导能见度）"
+        }
+      ]
+    },
+    "card.label.weather": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.8（现在天气 w'w' 组）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第八十八条（现在天气组）"
+        }
+      ]
+    },
+    "card.label.clouds": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.9（云组 NsNsNshshshs）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第五编 云和垂直能见度"
+        }
+      ]
+    },
+    "card.label.temperature": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.11（气温组 T'T'）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第一百四十一条（气温观测）"
+        }
+      ]
+    },
+    "card.label.dewpoint": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.11（露点温度 T'dT'd）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第一百四十二条（湿度观测，含露点温度）"
+        }
+      ]
+    },
+    "card.label.altimeter": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.12（QNH 组）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第一百五十一条（气压观测：修正海平面气压）"
+        },
+        {
+          "standard": "CCAR117",
+          "clause": "第七十三条（气压 QNH）"
+        }
+      ]
+    },
+    "card.label.rvr": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.7（RVR 组 RDRDR/VRVRVRVRi）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第七十条（跑道视程定义）"
+        }
+      ]
+    },
+    "card.label.trend": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.14（Trend forecast）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录六（趋势预报 TREND）"
+        }
+      ]
+    },
+    "card.label.runwayState": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.13.6（State of the runway）"
+        }
+      ]
+    },
+    "card.label.windShear": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.13.3（Wind shear in the lower layers）"
+        },
+        {
+          "standard": "CCAR117",
+          "clause": "第九章第四节（风切变警报）"
+        }
+      ]
+    },
+    "card.badge.speci": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.1 模板注 (1)（aerodrome special meteorological report）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录六 说明 1（机场特殊天气报告）"
+        }
+      ]
+    },
+    "card.badge.metar": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.1 模板注 (1)（aerodrome routine meteorological report）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录六 说明 1（机场例行天气报告）"
+        }
+      ]
+    },
+    "card.badge.corrected": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.1 模板注 (2)（COR for corrected reports）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录六（METAR COR 更正报）"
+        }
+      ]
+    },
+    "card.badge.auto": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.4（Code word AUTO）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录六（自动或缺省报告标志）"
+        }
+      ]
+    },
+    "card.cavokHint": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.10（Code word CAVOK）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第一百四十条（CAVOK 编报条件）"
+        }
+      ]
+    },
+    "card.windShearNote": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.13.3（起飞/进近航径、跑道面至 500 m/1600 ft）"
+        }
+      ]
+    },
+    "card.wind.gust": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5.5（Gust）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第三十九条（阵风）"
+        }
+      ]
+    },
+    "card.wind.variable": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5.2（VRB 条件）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第三十九条（风向不定）"
+        }
+      ]
+    },
+    "card.wind.vrbNote": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5.2（VRB 条件）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第三十九条（风向不定）"
+        }
+      ]
+    },
+    "card.wind.calm": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5.4（Calm 编报 00000）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第三十九条（静风）"
+        }
+      ]
+    },
+    "card.wind.calmNote": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5.4（Calm 编报 00000）"
+        }
+      ]
+    },
+    "card.wind.variationNote": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5.3（two extreme directions, clockwise order）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第三十九条、第四十五条（风向变化范围、顺时针记录）"
+        }
+      ]
+    },
+    "card.wind.unit.kt": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5（风速单位 KT）"
+        }
+      ]
+    },
+    "card.wind.unit.mps": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5（风速单位 MPS）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十一（风速单位米/秒）"
+        }
+      ]
+    },
+    "card.wind.unit.kmh": {
+      "kind": "product",
+      "refs": [
+        {
+          "standard": "PRODUCT",
+          "doc": "产品显示文案",
+          "clause": "FM15 风速仅 KT/MPS；KMH 为容错解析口径（WMO 电码族 FM50 等使用）"
+        }
+      ]
+    },
+    "card.cloud.amount.FEW": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "ICAOANNEX3",
+          "clause": "附录 3 METAR/SPECI 模板（FEW = 1–2 oktas 缩写体系）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第一百三十一条（少云 1/8-2/8）"
+        }
+      ]
+    },
+    "card.cloud.amount.SCT": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "ICAOANNEX3",
+          "clause": "附录 3 METAR/SPECI 模板（SCT = 3–4 oktas）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第一百三十一条（疏云 3/8-4/8）"
+        }
+      ]
+    },
+    "card.cloud.amount.BKN": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "ICAOANNEX3",
+          "clause": "附录 3 METAR/SPECI 模板（BKN = 5–7 oktas）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第一百三十一条（多云 5/8-7/8）"
+        }
+      ]
+    },
+    "card.cloud.amount.OVC": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "ICAOANNEX3",
+          "clause": "附录 3 METAR/SPECI 模板（OVC = 8 oktas）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第一百三十一条（阴天 8/8）"
+        }
+      ]
+    },
+    "card.cloud.cbNote": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.9.1.3（CB 缩写与编报要求）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十六（积雨云 Cb）"
+        }
+      ]
+    },
+    "card.cloud.tcuNote": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.9.1.3（TCU 缩写注）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十六（垂直发展旺盛的浓积云/塔状积云 Tcu）"
+        }
+      ]
+    },
+    "card.cloud.vv": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.9.2 注 1（vertical visibility）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第一百三十九条（垂直能见度）"
+        }
+      ]
+    },
+    "card.rvrNote.varying": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "ICAOANNEX3",
+          "clause": "附录 3 METAR/SPECI 模板（RvvvVvvv 变化形态）"
+        },
+        {
+          "standard": "WMO306",
+          "clause": "§15.7.4（十分钟观测时段语境）"
+        },
+        {
+          "standard": "MAVIS",
+          "clause": "METAR decode — RVR V 组释义（varying between two values）"
+        }
+      ]
+    },
+    "card.rvrNote.trend": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.7.4.3（tendency U/D/N）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第七十四条（三）（U/D/N 趋势码）"
+        }
+      ]
+    },
+    "card.rvrNote.beyond": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.7.5（Extreme values: P/M indicators）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "第七十四条（一）（P2000 / M50）"
+        }
+      ]
+    },
+    "card.trendNote.nosig": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.14.15（NOSIG = no significant change）"
+        }
+      ]
+    },
+    "card.trendNote.becmg": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.14.4（BECMG）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录六（渐变 BECMG）"
+        }
+      ]
+    },
+    "card.trendNote.tempo": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.14.5（TEMPO temporary fluctuations）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录六（短时 TEMPO）"
+        }
+      ]
+    },
+    "card.trendNote.periodAt": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.14.3（FM from / TL until / AT at）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录六（变化时段：从/至/在，FMnnnn 和/或 TLnnnn 或 ATnnnn）"
+        }
+      ]
+    },
+    "card.trendNote.nsw": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO4678",
+          "clause": "NSW = No significant weather（表 4678 注：仅用于趋势报）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录六（无重要天气 NSW）"
+        }
+      ]
+    },
+    "card.cloud.skyClear.SKC": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "ICAOANNEX3",
+          "clause": "附录 3 METAR/SPECI 模板（NSC = no significant cloud；NCD = nil cloud detected；SKC/CLR 为北美惯例电码）"
+        }
+      ]
+    },
+    "card.cloud.skyClear.NSC": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "ICAOANNEX3",
+          "clause": "附录 3 METAR/SPECI 模板（NSC = no significant cloud；NCD = nil cloud detected；SKC/CLR 为北美惯例电码）"
+        }
+      ]
+    },
+    "card.cloud.skyClear.NCD": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "ICAOANNEX3",
+          "clause": "附录 3 METAR/SPECI 模板（NSC = no significant cloud；NCD = nil cloud detected；SKC/CLR 为北美惯例电码）"
+        }
+      ]
+    },
+    "card.cloud.skyClear.CLR": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "ICAOANNEX3",
+          "clause": "附录 3 METAR/SPECI 模板（NSC = no significant cloud；NCD = nil cloud detected；SKC/CLR 为北美惯例电码）"
+        }
+      ]
+    },
+    "card.rwy.deposit.0": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（0 Clear and dry）"
+        }
+      ]
+    },
+    "card.rwy.deposit.1": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（1 Damp）"
+        }
+      ]
+    },
+    "card.rwy.deposit.2": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（2 Wet and water patches）"
+        }
+      ]
+    },
+    "card.rwy.deposit.3": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（3 Rime and frost covered）"
+        }
+      ]
+    },
+    "card.rwy.deposit.4": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（4 Dry snow）"
+        }
+      ]
+    },
+    "card.rwy.deposit.5": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（5 Wet snow）"
+        }
+      ]
+    },
+    "card.rwy.deposit.6": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（6 Slush）"
+        }
+      ]
+    },
+    "card.rwy.deposit.7": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（7 Ice）"
+        }
+      ]
+    },
+    "card.rwy.deposit.8": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（8 Compacted or rolled snow）"
+        }
+      ]
+    },
+    "card.rwy.deposit.9": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（9 Frozen ruts or ridges）"
+        }
+      ]
+    },
+    "card.rwy.coverage.1": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0519（1 <10%）"
+        }
+      ]
+    },
+    "card.rwy.coverage.2": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0519（2 11–25%）"
+        }
+      ]
+    },
+    "card.rwy.coverage.5": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0519（5 26–50%）"
+        }
+      ]
+    },
+    "card.rwy.coverage.9": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0519（9 51–100%）"
+        }
+      ]
+    },
+    "card.rwy.depthText": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 1079（00=less than 1 mm；01–90 毫米；92–98=10–40 cm；98=40 cm or more）"
+        }
+      ]
+    },
+    "card.rwy.friction": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0366（00–90 friction coefficient 0.00–0.90）"
+        }
+      ]
+    },
+    "card.rwy.braking.poor": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0366（91 Braking action poor）"
+        }
+      ]
+    },
+    "card.rwy.braking.medium-poor": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0366（92 Braking action medium/poor）"
+        }
+      ]
+    },
+    "card.rwy.braking.medium": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0366（93 Braking action medium）"
+        }
+      ]
+    },
+    "card.rwy.braking.medium-good": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0366（94 Braking action medium/good）"
+        }
+      ]
+    },
+    "card.rwy.braking.good": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0366（95 Braking action good）"
+        }
+      ]
+    },
+    "card.rwy.braking.unreliable": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0366（99 Unreliable）"
+        }
+      ]
+    },
+    "card.rwy.closed": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 1079（99 Runway non-operational due to snow, slush, ice, large drifts or runway clearance, but depth not reported）"
+        }
+      ]
+    },
+    "card.rwy.closedAll": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.13.6（R/SNOCLO：aerodrome closed due to extreme deposit of snow）"
+        }
+      ]
+    },
+    "card.rwy.closedNote": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 1079 电码 99 与 §15.13.6（SNOCLO）语义分列"
+        }
+      ]
+    },
+    "card.rwy.cleared": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.13.6（CLRD//：contaminations ceased to exist）"
+        }
+      ]
+    },
+    "card.rwy.clearedNote": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.13.6（CLRD 后随摩擦两位数或 //）"
+        }
+      ]
+    },
+    "card.wx.phenomena.IC": {
+      "kind": "product",
+      "refs": [
+        {
+          "standard": "PRODUCT",
+          "doc": "产品显示文案",
+          "clause": "无 WMO TAC 4678/AP-117 表项（美制惯例，NWS decode key、FAA JO 7340.2：ice crystals）"
+        }
+      ]
+    },
+    "card.wx.phenomena.PY": {
+      "kind": "product",
+      "refs": [
+        {
+          "standard": "PRODUCT",
+          "doc": "产品显示文案",
+          "clause": "无 WMO TAC 4678/AP-117 表项（美制 FMH-1 用），浪花=spray 通用译名"
+        }
+      ]
+    },
+    "card.decode.cite.cavok": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.10（CAVOK 代替能见度/天气/云三族）",
+          "clauseEn": "§15.10 (CAVOK replaces the visibility, weather and cloud groups)"
+        }
+      ]
+    },
+    "card.decode.cite.wind": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5.1–§15.5.6（dddff 风向风速组）",
+          "clauseEn": "§15.5.1–§15.5.6 (wind direction and speed group dddff)"
+        }
+      ]
+    },
+    "card.decode.cite.windVariation": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.5.3（风向变化组 dndndnVdxdxdx）",
+          "clauseEn": "§15.5.3 (direction variation group dndndnVdxdxdx)"
+        }
+      ]
+    },
+    "card.decode.cite.visibility": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.6.1、§15.6.3（VVVV 主导能见度；9999 上限编码）",
+          "clauseEn": "§15.6.1, §15.6.3 (prevailing visibility VVVV; the 9999 upper-limit code)"
+        }
+      ]
+    },
+    "card.decode.cite.visMinimum": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.6.2（最低能见度方向组）",
+          "clauseEn": "§15.6.2 (minimum visibility with compass direction)"
+        }
+      ]
+    },
+    "card.decode.cite.rvr": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.7.1–§15.7.5（RVR 组）",
+          "clauseEn": "§15.7.1–§15.7.5 (RVR group)"
+        },
+        {
+          "standard": "FMH1",
+          "clause": "ch.12（RVR 编报：FT 后缀与 P/M 阈值）",
+          "clauseEn": "ch.12 (RVR coding: the FT suffix and P/M indicators)"
+        }
+      ]
+    },
+    "card.decode.cite.weather": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.8（现在天气 w'w'）",
+          "clauseEn": "§15.8 (present weather w'w')"
+        },
+        {
+          "standard": "WMO4678",
+          "clause": "现在天气现象简语表",
+          "clauseEn": "the present-weather abbreviation table"
+        }
+      ]
+    },
+    "card.decode.cite.clouds": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.9.1、§15.9.1.7（云组；CB/TCU 附标）",
+          "clauseEn": "§15.9.1, §15.9.1.7 (the cloud group; CB/TCU appendages)"
+        }
+      ]
+    },
+    "card.decode.cite.skyClear": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.9.1.1（NSC/NCD 无云电码）",
+          "clauseEn": "§15.9.1.1 (the NSC/NCD no-cloud codes)"
+        },
+        {
+          "standard": "FMH1",
+          "clause": "ch.12（CLR 美制电码，FCM-H1-1995）",
+          "clauseEn": "ch.12 (CLR, the US code; FCM-H1-1995)"
+        }
+      ]
+    },
+    "card.decode.cite.tempDew": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.11（T'T'/T'dT'd 气温露点组）",
+          "clauseEn": "§15.11 (the T'T'/T'dT'd temperature-dewpoint group)"
+        },
+        {
+          "standard": "FMH1",
+          "clause": "§12.6.10（美制同形）",
+          "clauseEn": "§12.6.10 (the US form)"
+        }
+      ]
+    },
+    "card.decode.cite.qnh": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.12（Qxxxx QNH 组）",
+          "clauseEn": "§15.12 (the Qxxxx QNH group)"
+        },
+        {
+          "standard": "FMH1",
+          "clause": "ch.12（Axxxx 高度表设定）",
+          "clauseEn": "ch.12 (the Axxxx altimeter setting)"
+        }
+      ]
+    },
+    "card.decode.cite.runwayState": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.13.6（跑道状态；电码表 0919/0519/1079/0366）",
+          "clauseEn": "§15.13.6 (runway state; code tables 0919/0519/1079/0366)"
+        }
+      ]
+    },
+    "card.decode.cite.windShear": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.13.3（低空风切变 WS）",
+          "clauseEn": "§15.13.3 (low-level wind shear WS)"
+        }
+      ]
+    },
+    "card.decode.cite.trend": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.14（趋势段；NOSIG §15.14.15、时段词 §15.14.3）",
+          "clauseEn": "§15.14 (the trend section; NOSIG §15.14.15, period words §15.14.3)"
+        }
+      ]
+    },
+    "card.rvr.runway": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.7.1（跑道辨识器 RDRDR）",
+          "clauseEn": "§15.7.1 (the runway designator RDRDR)"
+        }
+      ]
+    },
+    "card.rvr.above": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "FMH1",
+          "clause": "ch.12（P 前缀＝高于最大可报值）",
+          "clauseEn": "ch.12 (the P prefix = above the maximum reportable value)"
+        }
+      ]
+    },
+    "card.rvr.below": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "FMH1",
+          "clause": "ch.12（M 前缀＝低于最小可报值）",
+          "clauseEn": "ch.12 (the M prefix = below the minimum reportable value)"
+        }
+      ]
+    },
+    "card.rvr.varying": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.7.4（V 波动形态）",
+          "clauseEn": "§15.7.4 (the V varying form)"
+        }
+      ]
+    },
+    "card.rvr.unit.m": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.7.1–§15.7.3（RVR 以米编报）",
+          "clauseEn": "§15.7.1–§15.7.3 (RVR coded in metres)"
+        }
+      ]
+    },
+    "card.rvr.unit.ft": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "FMH1",
+          "clause": "ch.12（FT 后缀＝英尺）",
+          "clauseEn": "ch.12 (the FT suffix = feet)"
+        }
+      ]
+    },
+    "card.rvr.trendUp": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.7.4.3（U＝趋势上升）",
+          "clauseEn": "§15.7.4.3 (U = upward tendency)"
+        }
+      ]
+    },
+    "card.rvr.trendDown": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.7.4.3（D＝趋势下降）",
+          "clauseEn": "§15.7.4.3 (D = downward tendency)"
+        }
+      ]
+    },
+    "card.rvr.trendNoChange": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.7.4.3（N＝趋势无变化）",
+          "clauseEn": "§15.7.4.3 (N = no change)"
+        }
+      ]
+    },
+    "card.ws.all": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.13.3（WS ALL RWY 全跑道形态）",
+          "clauseEn": "§15.13.3 (the WS ALL RWY all-runways form)"
+        }
+      ]
+    },
+    "card.ws.runways": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "§15.13.3（WS RDRDR 指定跑道形态）",
+          "clauseEn": "§15.13.3 (the WS RDRDR runway form)"
+        }
+      ]
+    }
+  },
+  "prefixes": {
+    "card.wx.phenomena.": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO4678",
+          "clause": "4678 表（现在天气现象简语）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十五 4678 电码表（降水/视程障碍/其它栏 简语表）"
+        }
+      ]
+    },
+    "card.wx.descriptors.": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO4678",
+          "clause": "4678 表（描述词）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十五 4678 电码表（描述词栏：浅的/部分的/散片状的/低吹的/高吹的/阵性的/雷暴/冻的）"
+        }
+      ]
+    },
+    "card.wx.heavy": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO4678",
+          "clause": "4678 表（+ 强度指示码）"
+        },
+        {
+          "standard": "WMO306",
+          "clause": "§15.8.1（intensity indicators per Code table 4678）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十五 4678 电码表（强度栏：+ 强，大）"
+        }
+      ]
+    },
+    "card.wx.light": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO4678",
+          "clause": "4678 表（- 轻微强度指示码）"
+        },
+        {
+          "standard": "WMO306",
+          "clause": "§15.8.1（intensity indicators per Code table 4678）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十五 4678 电码表（强度栏：- 轻微，小）"
+        }
+      ]
+    },
+    "card.wx.proximityPrefix": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO4678",
+          "clause": "4678 表（VC 邻近限定词）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十五（VC 在附近；第九十七条 8–16 km）"
+        }
+      ]
+    },
+    "card.wx.proximitySuffix": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO4678",
+          "clause": "4678 表（VC 邻近限定词）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十五（VC 在附近；第九十七条 8–16 km）"
+        }
+      ]
+    },
+    "card.wx.thunderstorm": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO4678",
+          "clause": "4678 表（TS）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十五（TS 雷暴及组合规则）"
+        }
+      ]
+    },
+    "card.wx.thunderstormWith": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO4678",
+          "clause": "4678 表（TS 与降水组合）"
+        },
+        {
+          "standard": "AP117",
+          "clause": "附录十五 注 10（TS 与 RA/SN/GS/GR/UP 组合）"
+        }
+      ]
+    },
+    "card.rwy.deposit./": {
+      "kind": "official",
+      "refs": [
+        {
+          "standard": "WMO306",
+          "clause": "电码表 0919（/ Type of deposit not reported）"
+        }
+      ]
+    }
+  },
+  "products": [
+    "card.missingGroup.",
+    "card.wind.missing",
+    "card.wind.hintSep",
+    "card.wind.gustOf",
+    "card.wind.variationOf",
+    "card.cloud.baseMeters",
+    "card.cloud.shortAmount.",
+    "card.cloud.baseShortMeters",
+    "card.cloud.metersDerivedNote",
+    "card.cloud.baseFtMeters",
+    "card.cloud.vvShort",
+    "card.cloud.minimumOf",
+    "card.rvrNote.unspecified",
+    "card.trendNote.unspecified",
+    "card.trendNote.windShear",
+    "card.trendNote.contentLead",
+    "card.rwy.coverageLabel",
+    "card.rwy.depthLabel",
+    "card.rwy.brakingLabel",
+    "card.rwy.wmoNote",
+    "card.rwy.itemSep",
+    "card.timeText",
+    "card.ago",
+    "card.warningText",
+    "card.sep",
+    "card.dash",
+    "card.colon",
+    "card.wx.descCompose",
+    "card.wx.join",
+    "card.wx.joinParts",
+    "card.wx.hazard",
+    "leaflet.tier.",
+    "leaflet.msg",
+    "errors.",
+    "sources.msg",
+    "parser.msg",
+    "card.badge.cavokShort",
+    "card.cloud.metersShort",
+    "card.cloud.baseShortFeet",
+    "card.cloud.feetShort",
+    "card.cloud.amountUnknown",
+    "card.cloud.vvMissing",
+    "card.cloud.heightUnknown",
+    "card.decode.title",
+    "card.decode.code",
+    "card.decode.basisLabel"
+  ]
+}

@@ -1,7 +1,14 @@
 {
   "name": "@metweave/render",
   "version": "0.1.0",
-  "description": "metweave rendering layer: an in-house Canvas-2D-first kernel (context-injected, DOM-free) and domain weather components.",
+  "description": "Report cards for parsed METAR/SPECI: a zero-framework DOM component with built-in styles, a RAW cross-check view and plain-language hover hints.",
+  "keywords": [
+    "dom-component",
+    "metar",
+    "report-card",
+    "speci",
+    "weather"
+  ],
   "license": "MIT",
   "author": "YaoJaro <yaojaro@metweave.com>",
   "repository": {
@@ -10,7 +17,9 @@
     "directory": "packages/render"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -48,6 +57,9 @@
   },
   "dependencies": {
     "@metweave/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@metweave/parser": "workspace:*"
   },
   "engines": {
     "node": ">=20"

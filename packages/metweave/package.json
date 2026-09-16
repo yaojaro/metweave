@@ -1,7 +1,18 @@
 {
   "name": "metweave",
   "version": "0.1.0",
-  "description": "metweave umbrella: one entry for the parse → standardize → render pipeline over public weather data.",
+  "description": "Show live airport weather on a Leaflet map in ten lines — METAR parsing, report cards and map layers, straight from public sources.",
+  "keywords": [
+    "airport",
+    "aviation",
+    "leaflet",
+    "map",
+    "metar",
+    "observation",
+    "speci",
+    "visualization",
+    "weather"
+  ],
   "license": "MIT",
   "author": "YaoJaro <yaojaro@metweave.com>",
   "repository": {
@@ -10,7 +21,9 @@
     "directory": "packages/metweave"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -22,6 +35,11 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts",
       "require": "./src/index.ts"
+    },
+    "./sources": {
+      "types": "./src/sources.ts",
+      "import": "./src/sources.ts",
+      "require": "./src/sources.ts"
     }
   },
   "publishConfig": {
@@ -37,6 +55,16 @@
         "require": {
           "types": "./dist/index.d.cts",
           "default": "./dist/index.cjs"
+        }
+      },
+      "./sources": {
+        "import": {
+          "types": "./dist/sources.d.ts",
+          "default": "./dist/sources.js"
+        },
+        "require": {
+          "types": "./dist/sources.d.cts",
+          "default": "./dist/sources.cjs"
         }
       }
     },

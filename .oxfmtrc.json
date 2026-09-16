@@ -1,4 +1,9 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": []
+  "ignorePatterns": [
+    "terms/glossary.zh.md",
+    "terms/glossary.en.md",
+    "terms/terms.zh.json",
+    "terms/terms.en.json"
+  ]
 }

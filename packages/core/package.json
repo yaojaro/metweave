@@ -1,7 +1,15 @@
 {
   "name": "@metweave/core",
   "version": "0.1.0",
-  "description": "metweave standardization layer: the IR data model and semantic utilities shared by parsers and the render kernel.",
+  "description": "The stable data contract for METAR/SPECI pipelines: a JSON-serializable IR with three-state missing values, source spans and machine-readable warnings.",
+  "keywords": [
+    "data-model",
+    "ir",
+    "metar",
+    "observation",
+    "speci",
+    "weather"
+  ],
   "license": "MIT",
   "author": "YaoJaro <yaojaro@metweave.com>",
   "repository": {
@@ -10,7 +18,9 @@
     "directory": "packages/core"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -20,6 +30,9 @@
   "exports": {
     ".": {
       "types": "./src/index.ts",
+      "mw-dist": {
+        "import": "./dist/index.js"
+      },
       "import": "./src/index.ts",
       "require": "./src/index.ts"
     }

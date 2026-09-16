@@ -1,7 +1,15 @@
 {
   "name": "@metweave/leaflet",
   "version": "0.1.0",
-  "description": "metweave Leaflet adapter: bridges the metweave render kernel onto a Leaflet canvas layer.",
+  "description": "Put parsed METAR/SPECI reports on a Leaflet map: markers, tooltips and report-card popups in one call — bring your own tiles.",
+  "keywords": [
+    "leaflet",
+    "map-layer",
+    "marker",
+    "metar",
+    "popup",
+    "weather"
+  ],
   "license": "MIT",
   "author": "YaoJaro <yaojaro@metweave.com>",
   "repository": {
@@ -10,7 +18,9 @@
     "directory": "packages/leaflet"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -51,6 +61,7 @@
     "@metweave/render": "workspace:*"
   },
   "devDependencies": {
+    "@metweave/parser": "workspace:*",
     "@types/leaflet": "^1.9.22",
     "leaflet": "^1.9.4"
   },

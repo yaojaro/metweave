@@ -1,0 +1,131 @@
+{
+  "generatedAt": "2026-09-15T23:38:06.229Z",
+  "files": {
+    "corpus/iem-AK_ASOS.txt": {
+      "lines": 153
+    },
+    "corpus/iem-CO_ASOS.txt": {
+      "lines": 72
+    },
+    "corpus/iem-IA_ASOS.txt": {
+      "lines": 59
+    },
+    "corpus/iem-KZ__ASOS.txt": {
+      "lines": 20
+    },
+    "corpus/iem-RU__ASOS.txt": {
+      "lines": 78
+    },
+    "corpus/iem-archive-ws-rwy.txt": {
+      "lines": 7
+    },
+    "corpus/iem-speci-20260915.txt": {
+      "lines": 16
+    },
+    "corpus/tgftp-cycle-20260912-09Z.txt": {
+      "lines": 1999
+    }
+  },
+  "total": {
+    "lines": 2404,
+    "unique": 2336
+  },
+  "failures": {
+    "total": 0,
+    "classes": {},
+    "samples": []
+  },
+  "unknownShapes": {
+    "M": {
+      "count": 12,
+      "samples": ["M"]
+    },
+    "RE//": {
+      "count": 13,
+      "samples": ["RE//"]
+    },
+    "Q////": {
+      "count": 6,
+      "samples": ["Q////"]
+    },
+    "W///S#": {
+      "count": 3,
+      "samples": ["W///S4"]
+    },
+    "W///H#": {
+      "count": 4,
+      "samples": ["W///H5", "W///H6"]
+    },
+    "GRN": {
+      "count": 4,
+      "samples": ["GRN"]
+    },
+    "R///////": {
+      "count": 1,
+      "samples": ["R///////"]
+    },
+    "##KM": {
+      "count": 3,
+      "samples": ["20KM"]
+    },
+    "AUTO": {
+      "count": 1,
+      "samples": ["AUTO"]
+    },
+    "#####": {
+      "count": 1,
+      "samples": ["00000"]
+    },
+    "///": {
+      "count": 12,
+      "samples": ["///"]
+    },
+    "BLU": {
+      "count": 2,
+      "samples": ["BLU"]
+    },
+    "Q####=?TD": {
+      "count": 1,
+      "samples": ["Q1017=?TD"]
+    },
+    "######Z": {
+      "count": 1,
+      "samples": ["120900Z"]
+    },
+    "CB": {
+      "count": 1,
+      "samples": ["CB"]
+    },
+    "S": {
+      "count": 1,
+      "samples": ["S"]
+    },
+    "BLU+": {
+      "count": 1,
+      "samples": ["BLU+"]
+    },
+    "W##/H##": {
+      "count": 2,
+      "samples": ["W19/H12"]
+    },
+    "W##/H#": {
+      "count": 10,
+      "samples": ["W20/H7", "W20/H6", "W19/H6"]
+    },
+    "W##/S#": {
+      "count": 10,
+      "samples": ["W10/S5", "W14/S4", "W16/S4"]
+    }
+  },
+  "warningCodes": {
+    "missing-expected": 475,
+    "unknown-token": 89,
+    "invalid-format": 12,
+    "cross-check-conflict": 2,
+    "duplicate-group": 10
+  },
+  "rmkHealth": {
+    "trendRawsWithRMK": 0,
+    "remarksNonEmpty": 1665
+  }
+}

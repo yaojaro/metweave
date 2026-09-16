@@ -1,7 +1,16 @@
 {
   "name": "@metweave/parser",
   "version": "0.1.0",
-  "description": "metweave parsing layer: TAC (METAR/SPECI/TAF) to IR, with tolerant/strict modes and non-silent warnings.",
+  "description": "Tolerant METAR/SPECI parser to a JSON IR — unknown groups and missing values are never silent: warnings carry source spans, missing codes map to explicit states.",
+  "keywords": [
+    "aviation",
+    "metar",
+    "parser",
+    "report",
+    "speci",
+    "tolerant",
+    "weather"
+  ],
   "license": "MIT",
   "author": "YaoJaro <yaojaro@metweave.com>",
   "repository": {
@@ -10,7 +19,9 @@
     "directory": "packages/parser"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
@@ -48,6 +59,9 @@
   },
   "dependencies": {
     "@metweave/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22"
   },
   "engines": {
     "node": ">=20"

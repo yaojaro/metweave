@@ -1,0 +1,15 @@
+#!/bin/sh
+# 提交信息泄露门禁：与 pre-commit 同一模式表（check-leaks + 私有清单）、同样 fail-closed。
+# 身份分层与 pre-commit 同款：owner 身份（含 yaojaro）无清单即拒绝；外部贡献者无清单时
+# 跳过并提示（CI 的 --all 通用模式仍覆盖）。
+# 触发：git commit-msg 钩子，参数 1 = 提交信息文件。安装：git config core.hooksPath scripts/hooks
+email=$(git config user.email)
+owner_like=$(echo "$email" | grep -c yaojaro)
+if [ -n "$METWEAVE_LEAK_PATTERNS" ]; then
+  node "$(dirname "$0")/../check-leaks.mjs" --msg-file "$1" || exit 1
+elif [ "$owner_like" -ne 0 ]; then
+  echo "commit-msg: 未设置 METWEAVE_LEAK_PATTERNS，owner 身份拒绝以弱模式提交。"
+  exit 1
+else
+  echo "commit-msg: 外部贡献者无私有清单，跳过提交信息扫描——CI 的通用模式扫描仍会执行"
+fi
