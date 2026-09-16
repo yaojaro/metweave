@@ -1,0 +1,5 @@
+#!/bin/sh
+# 推送前 CI 预演（2026-09-16 起，推送前必做流程）：本地按 ci.yml 同口径全量预演，
+# 防「本地绿、CI 红」反复。失败即阻止推送；绕过（--no-verify）等价于没有门禁。
+echo "pre-push: CI 本地预演开始（约 2-4 分钟，与 GitHub CI 同口径）……"
+pnpm ci:rehearsal || exit 1

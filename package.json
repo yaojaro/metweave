@@ -21,7 +21,8 @@
     "gen:unknown": "node scripts/gen-unknown-shapes.mjs",
     "publish:all": "pnpm build && pnpm check:artifact && pnpm -r publish --access public",
     "gen:terms": "node scripts/terms.mjs gen --write",
-    "check:terms": "node scripts/terms.mjs check"
+    "check:terms": "node scripts/terms.mjs check",
+    "ci:rehearsal": "node scripts/ci-rehearsal.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
