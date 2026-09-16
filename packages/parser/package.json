@@ -11,6 +11,10 @@
     "tolerant",
     "weather"
   ],
+  "homepage": "https://github.com/yaojaro/metweave#readme",
+  "bugs": {
+    "url": "https://github.com/yaojaro/metweave/issues"
+  },
   "license": "MIT",
   "author": "YaoJaro <yaojaro@metweave.com>",
   "repository": {
