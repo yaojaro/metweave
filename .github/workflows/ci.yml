@@ -10,16 +10,22 @@ permissions:
   contents: read
 
 jobs:
-  # 每个受支持的 Node 版本都跑满四道基础门禁。
+  # CI 在单一 Node 22 档跑满四道基础门禁。
   # 门禁顺序与构建状态无关：内部包开发期解析到 src，发布物经 publishConfig
   # 在 publish 时替换为 dist。
+  #
+  # 为什么没有 Node 20 档（2026-09-16 回归教训，勿再改宽）：
+  # 开发工具链基线为 Node 22——packageManager 锁定的 pnpm 11 声明 engines >=22.13，
+  # 在 Node 20 下 setup-node 的 cache: pnpm 解析 store 路径即失败（aebd1b9 实证），
+  # 且部分二进制 devDeps 同样仅支持 Node 22。engines ">=20" 是库运行时的消费端
+  # 兼容承诺，其守卫不是 CI 矩阵，而是：产物 ES2022 目标 + 各包 engines 字段 +
+  # check:artifact 的 attw node16 档（quality 作业）。
+  # 本矩阵由 check:workspace 断言⑨锁定：改回多档即红。
   ci:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # 开发工具链（pnpm 11 + 二进制 devDeps）基线为 Node 22；
-        # engines ">=20" 是库运行时的消费端兼容承诺，产物为 ES2022——20 档验证消费端承诺。
-        node-version: [20, 22]
+        node-version: [22]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
@@ -74,7 +80,7 @@ jobs:
       - name: Info-leak scan (internal refs / identities / credential email)
         run: pnpm check:leaks
 
-      - name: Docs bilingual gate (all docs zh+en, Chinese first)
+      - name: Docs language gate (Chinese single-source)
         run: pnpm check:docs
 
       - name: Dead code check (unused exports / files / deps)

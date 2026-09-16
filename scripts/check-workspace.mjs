@@ -189,6 +189,16 @@ if (versions.size > 1) fail(`锁步版本破坏: ${[...versions].join(" / ")}—
     fail("ci.yml 缺少 permissions: contents: read 最小权限声明");
 }
 
+// ⑨ CI 矩阵单档锁：node-version 必须是 [22]（2026-09-16 实证回归锁）——
+//    pnpm 11（packageManager 锁定）engines >=22.13，Node 20 档在 setup-node 的
+//    cache: pnpm 解析 store 路径时即失败；多档矩阵改宽即红，防「20 档验证消费端
+//    承诺」式好心回归（消费端承诺由 ES2022 产物 + engines 字段 + attw 守）。
+{
+  const ci = readFileSync(join(root, ".github/workflows/ci.yml"), "utf-8");
+  if (!/^[ \t]*node-version: \[22\]$/m.test(ci))
+    fail("ci.yml 矩阵必须为单档 node-version: [22]（pnpm 11 不支持更低的 Node，见 ci.yml 注释）");
+}
+
 if (errors.length > 0) {
   console.error(`check:workspace 失败（${errors.length} 处）:`);
   for (const e of errors) console.error(`  ✗ ${e}`);
