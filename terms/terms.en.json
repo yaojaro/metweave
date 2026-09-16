@@ -2024,7 +2024,7 @@
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
-   "text": "worn trend segment (change indicator lost; gradual vs temporary indistinguishable)",
+   "text": "trend segment with missing change indicator (gradual vs temporary indistinguishable)",
    "usage": [
     "packages/render/src/card.ts#LOCALE"
    ]
@@ -2038,7 +2038,7 @@
      "clause": "§15.14.3 (FM from / TL until / AT at)"
     }
    ],
-   "text": "(text) => {\n        const m = /^(AT|TL|FM)(\\d{2})(\\d{2})$/.exec(text);\n        if (m === null) return `expected at ${text}`;\n        const hm = `${m[2]}:${m[3]}`;\n        return m[1] === \"TL\" ? `until ${hm}` : m[1] === \"FM\" ? `from ${hm}` : `at ${hm}`;\n      }",
+   "text": "(text) => {\n        const slash = /^(\\d{2})(\\d{2})\\/(\\d{2})(\\d{2})$/.exec(text);\n        if (slash !== null) {\n          return `from day ${slash[1]} ${slash[2]}:00 to day ${slash[3]} ${slash[4]}:00`;\n        }\n        const m = /^(AT|TL|FM)(\\d{2})(\\d{2})$/.exec(text);\n        if (m === null) return `expected at ${text}`;\n        const hm = `${m[2]}:${m[3]}`;\n        return m[1] === \"TL\" ? `until ${hm}` : m[1] === \"FM\" ? `from ${hm}` : `at ${hm}`;\n      }",
    "usage": [
     "packages/render/src/card.ts#LOCALE"
    ]

@@ -237,7 +237,7 @@
      "clause": "附录六 说明 1（机场特殊天气报告）"
     }
    ],
-   "text": "特殊报告",
+   "text": "特殊天气报告",
    "usage": [
     "packages/render/src/card.ts#LOCALE"
    ]
@@ -2369,7 +2369,7 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "磨损趋势段（指示组缺失，渐变/短时不可辨）",
+   "text": "变化趋势段（指示组缺失，渐变/短时不可辨）",
    "usage": [
     "packages/render/src/card.ts#LOCALE"
    ]
@@ -2388,7 +2388,7 @@
      "clause": "附录六（变化时段：从/至/在，FMnnnn 和/或 TLnnnn 或 ATnnnn）"
     }
    ],
-   "text": "(text) => {\n        const m = /^(AT|TL|FM)(\\d{2})(\\d{2})$/.exec(text);\n        if (m === null) return `预计时刻 ${text}`;\n        const hm = `${m[2]}:${m[3]}`;\n        return m[1] === \"TL\" ? `持续至 ${hm}` : m[1] === \"FM\" ? `自 ${hm} 起` : `预计时刻 ${hm}`;\n      }",
+   "text": "(text) => {\n        const slash = /^(\\d{2})(\\d{2})\\/(\\d{2})(\\d{2})$/.exec(text);\n        if (slash !== null) {\n          return `自 ${slash[1]} 日 ${slash[2]}:00 至 ${slash[3]} 日 ${slash[4]}:00`;\n        }\n        const m = /^(AT|TL|FM)(\\d{2})(\\d{2})$/.exec(text);\n        if (m === null) return `预计时刻 ${text}`;\n        const hm = `${m[2]}:${m[3]}`;\n        return m[1] === \"TL\" ? `持续至 ${hm}` : m[1] === \"FM\" ? `自 ${hm} 起` : `预计时刻 ${hm}`;\n      }",
    "usage": [
     "packages/render/src/card.ts#LOCALE"
    ]
@@ -3014,7 +3014,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 224
+   "line": 234
   },
   "leaflet.msg02": {
    "kind": "product",
@@ -3030,7 +3030,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 240
+   "line": 250
   },
   "leaflet.msg03": {
    "kind": "product",
@@ -3046,7 +3046,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 324
+   "line": 337
   },
   "leaflet.msg04": {
    "kind": "product",
@@ -3062,7 +3062,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 333
+   "line": 346
   },
   "leaflet.msg05": {
    "kind": "product",
@@ -3078,25 +3078,9 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 360
+   "line": 374
   },
   "sources.msg01": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "s city-level ones.\n * 站点元数据（联表用）：坐标为权威定位源，覆盖源站的城市级粗坐标。\n */\nexport interface StationRef {\n  /** 站名（ICAO） */\n  icao: string;\n  /** 纬度（WGS-84） */\n  lat: number;\n  /** 经度（WGS-84） */\n  lon: number;\n  /** 站点名称（进 tooltip 标题） */\n  name?: string;\n}\n\n/**\n * Per-row failure detail (the onUnparseable callback argument): one observation row failed to parse wholesale (missing station/time etc.).\n * 逐行容错的失败详情（onUnparseable 回调入参）：一行观测报文解析整体失败（站名/时组缺失等）。\n * `code` is the machine-readable failure code (MetarParseError",
-   "usage": [
-    "packages/metweave/src/sources.ts"
-   ],
-   "zhOnly": true,
-   "line": 45
-  },
-  "sources.msg02": {
    "kind": "product",
    "refs": [
     {
@@ -3110,9 +3094,9 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 157
+   "line": 162
   },
-  "sources.msg03": {
+  "sources.msg02": {
    "kind": "product",
    "refs": [
     {
@@ -3126,9 +3110,9 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 175
+   "line": 180
   },
-  "sources.msg04": {
+  "sources.msg03": {
    "kind": "product",
    "refs": [
     {
@@ -3142,9 +3126,9 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 197
+   "line": 202
   },
-  "sources.msg05": {
+  "sources.msg04": {
    "kind": "product",
    "refs": [
     {
@@ -3158,9 +3142,9 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 210
+   "line": 215
   },
-  "sources.msg06": {
+  "sources.msg05": {
    "kind": "product",
    "refs": [
     {
@@ -3174,9 +3158,9 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 218
+   "line": 223
   },
-  "sources.msg07": {
+  "sources.msg06": {
    "kind": "product",
    "refs": [
     {
@@ -3190,9 +3174,9 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 226
+   "line": 231
   },
-  "sources.msg08": {
+  "sources.msg07": {
    "kind": "product",
    "refs": [
     {
@@ -3206,7 +3190,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 283
+   "line": 288
   },
   "parser.msg001": {
    "kind": "product",
@@ -3222,7 +3206,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 650
+   "line": 672
   },
   "parser.msg002": {
    "kind": "product",
@@ -3238,7 +3222,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 676
+   "line": 698
   },
   "parser.msg003": {
    "kind": "product",
@@ -3254,7 +3238,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 737
+   "line": 759
   },
   "parser.msg004": {
    "kind": "product",
@@ -3270,25 +3254,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 754
+   "line": 776
   },
   "parser.msg005": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": " 十位 / T 个位，负值加 M），官方示例含补零（01/M12、\n * 00/M00），任何规范版本无一位数形态。两侧 \\d{1,2} 曾让裸分数 token（VIS 词丢失的 1/2、2/1——\n * 上游脏输入）被误判为温露组：降序分数捏造假值且完全静默，升序触发误导性温露倒挂告警\n * （2026-09-14 复评收紧）；不匹配即落 unknown-token 出声，原码经 span 回溯。\n * The regex requires the `/` separator — a bare \"//\" is the weather missing group (see the body loop) and must not be swallowed here.\n * 正则必须有 `/` 分隔——裸 `//` 是天气缺测组（见正文循环），不得被本组吞掉。\n * Exported for direct shape assertions in regression tests (red line: \"//\" must not match; \"1/2\"/\"2/1\" must not match either).\n * 导出供回归测试直接对形态断言（红线：对 \"//\" 与裸分数均不得匹配）。\n */\nexport const TEMP_DEW_PATTERN = /^(M?\\d{2}|\\/\\/)\\/(M?\\d{2}|\\/\\/)$/;\n\n/** 温度/露点组：恒为 dd/dd 形态（M = 负；// = 缺测 → null，调用方补告警）。 */\nfunction parseTempDewToken(t: Token): {\n  temperature: TemperatureReading | null;\n  dewpoint: TemperatureReading | null;\n  span: Span;\n} | null {\n  const read = (raw: string | undefined): TemperatureReading | null => {\n    // undefined = 第二组整体缺失（FMH-1 12.6.10 露点缺测形态 24/）；\"//\" = 显式缺测——\n    // 两者同为 null，但 missing-expected 文案由调用方按形态区分\n    if (raw === undefined || raw === \"//\") return null;\n    const n = raw.startsWith(\"M\") ? -Number.parseInt(raw.slice(1), 10) : Number.parseInt(raw, 10);\n    // −0 归一（M00 → 0）：负零序列化变形（JSON 出 -0），消费方 Object.is 判别出边角差异\n    const celsius = n === 0 ? 0 : n;\n    return { celsius, span: spanOf(t) };\n  };\n  const m = TEMP_DEW_PATTERN.exec(t.text);\n  if (m === null) {\n    // FMH-1 12.6.10 露点缺测形态「24/」（第二组整体省略，同恒两位）——裸 // 与 /// 仍不得匹配\n    const trailing = /^(M?\\d{2})\\/$/.exec(t.text);\n    if (trailing === null) return null;\n    return { temperature: read(trailing[1]), dewpoint: null, span: spanOf(t) };\n  }\n  return { temperature: read(m[1]), dewpoint: read(m[2]), span: spanOf(t) };\n}\n\nfunction beyondRangeOf(flag: string | undefined): \"above\" | \"below\" | undefined {\n  if (flag === \"P\") return \"above\";\n  if (flag === \"M\") return \"below\";\n  return undefined;\n}\n\n/** RVR 组：R07R/1800V2200FT / R36/0500V0800D / P·M 超界 / 斜杠趋势（R13/3500FT/N、R07/P6000FT/U）。\n *  R/SNOCLO 与 R10L/SNOCLO 属跑道状态语义（15.13.6.1），由 parseRunwayStateToken 收口。 */\nfunction parseRvrToken(t: Token): RunwayVisualRange | null {\n  // 趋势后缀双形态：无斜杠（0500V0800D，WMO）与斜杠（3500FT/N，FAA/加式——FT 单位标记后带 /D //N //U）\n  const m = /^R(\\d{2}[RLC]?)\\/(P|M)?(\\d{4})(?:V(P|M)?(\\d{4}))?(FT)?(?:\\/([DNU])|([DNU]))?$/.exec(\n    t.text,\n  );\n  if (m === null) return null;\n  const minRaw = m[3] ?? \"0\";\n  const maxRaw = m[5];\n  const trendRaw = m[7] ?? m[8];\n  return {\n    runway: m[1] ?? \"\",\n    value: maxRaw === undefined ? Number.parseInt(minRaw, 10) : undefined,\n    min: maxRaw !== undefined ? Number.parseInt(minRaw, 10) : undefined,\n    max: maxRaw !== undefined ? Number.parseInt(maxRaw, 10) : undefined,\n    beyondRange: beyondRangeOf(m[2] ?? m[4]),\n    unit: m[6] === \"FT\" ? \"ft\" : \"m\",\n    trend:\n      trendRaw === \"U\"\n        ? \"up\"\n        : trendRaw === \"D\"\n          ? \"down\"\n          : trendRaw === \"N\"\n            ? \"no-change\"\n            : undefined,\n    span: spanOf(t),\n  };\n}\n\n/** 摩擦两位电码（15.13.6.1 表 0366）解码：01–90 → 摩擦系数 0.01–0.90；91–95 → 制动作用五档；\n *  99 → unreliable；// 或 96–98（电码表未用）→ 两字段皆 undefined（原码经 span 回溯）。 */\nfunction parseFrictionCode(\n  code: string | undefined,\n): Pick<RunwayStateGroup, \"frictionCoefficient\" | \"brakingAction\"> {\n  if (code === undefined || !/^\\d{2}$/.test(code)) return {};\n  const f = Number.parseInt(code, 10);\n  if (f <= 90) return { frictionCoefficient: f / 100 };\n  if (f >= 91 && f <= 95)\n    return {\n      brakingAction: ([\"poor\", \"medium-poor\", \"medium\", \"medium-good\", \"good\"] as const)[f - 91],\n    };\n  if (f === 99) return { brakingAction: \"unreliable\" };\n  return {};\n}\n\n/** 跑道状态组三形态（WMO 15.13.6）：①六位状态电码（R21/490160：沉积/覆盖/深度/摩擦，位缺测 /）；\n *  ②CLRD 清除家族（R07L/CLRD// 标准、CLRD62 俄区、CLRD/// 非标容忍）；③SNOCLO 关闭（R/SNOCLO 全机场、R10L/SNOCLO 逐跑道）。\n *  覆盖位非法电码（表 0519 外数字）不静默留值：该位判缺测 + findings 交调用方落 invalid-format 告警。 */\nfunction parseRunwayStateToken(\n  t: Token,\n): { group: RunwayStateGroup; findings: readonly { message: string; span: Span }[] } | null {\n  // ③ SNOCLO（15.13.6.1）：跑道因雪/冰/清雪不可用\n  const snoclo = /^R(\\d{2}[RLC]?)?\\/SNOCLO$/.exec(t.text);\n  if (snoclo !== null) {\n    return {\n      group: { runway: snoclo[1] ?? \"\", closed: true, cleared: false, span: spanOf(t) },\n      findings: [],\n    };\n  }\n  // ② CLRD 家族\n  const clrd = /^R(\\d{2}[RLC]?)\\/CLRD(\\d{2}|\\/\\/|\\/\\/\\/)?$/.exec(t.text);\n  if (clrd !== null) {\n    return {\n      group: {\n        runway: clrd[1] ?? \"\",\n        cleared: true,\n        ...parseFrictionCode(clrd[2]),\n        span: spanOf(t),\n      },\n      findings: [],\n    };\n  }\n  // ① 六位状态电码：沉积物类型 1 位 + 覆盖范围 1 位 + 深度 2 位 + 摩擦 2 位（各可 / 缺报）\n  const num = /^R(\\d{2}[RLC]?)\\/(\\d|\\/)(\\d|\\/)(\\d{2}|\\/\\/)(\\d{2}|\\/\\/)$/.exec(t.text);\n  if (num === null) return null;\n  const depthCode = num[4] ?? \"\";\n  // 深度解码（15.13.6.1 表 1079）：00–90 = 毫米（00 即 <1mm 记 0）；91 未用判缺测；92–98 = 10–40cm 段记下限；\n  // 99 = 跑道不可用（同 SNOCLO 语义 → closed，深度不落值）\n  const depthNum = /^\\d{2}$/.test(depthCode) ? Number.parseInt(depthCode, 10) : null;\n  const depth =\n    depthNum === null\n      ? null\n      : depthNum <= 90\n        ? depthNum\n        : depthNum === 91\n          ? null\n          : depthNum === 99\n            ? null\n            : (depthNum - 90) * 50;\n  // 覆盖位电码合法性（15.13.6.1 表 0519）：表内仅 1/2/5/9 与 /——表外数字（0/3/4/6/7/8）为非法电码，\n  // 按三态纪律判缺测（null）+ invalid-format 告警，绝不把表外值留在 IR（tgftp 实弹 R24/000062 命中位 2 的 0）\n  const coverageCode = num[3] ?? \"/\";\n  const coverageIllegal = coverageCode !== \"/\" && !\"1259\".includes(coverageCode);\n  const findings: { message: string; span: Span }[] = coverageIllegal\n    ? [\n        {\n          message: `跑道状态覆盖位电码非法（${t.text} 覆盖位 ${coverageCode}——WMO 表 0519 仅用 1/2/5/9 与 /）——该位判缺测，原码经 span 回溯`,\n          span: spanOf(t),\n        },\n      ]\n    : [];\n  return {\n    group: {\n      runway: num[1] ?? \"\",\n      closed: depthNum === 99 || undefined,\n      cleared: false,\n      deposit: num[2] === \"/\" ? null : Number(num[2]),\n      coverage: coverageCode === \"/\" || coverageIllegal ? null : Number(coverageCode),\n      depth,\n      ...parseFrictionCode(num[5]),\n      span: spanOf(t),\n    },\n    findings,\n  };\n}\n\n// ---------------------------------------------------------------- 主入口\n\n/**\n * Parse one METAR/SPECI report (tolerant mode) into the IR — the package",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 793
-  },
-  "parser.msg006": {
    "kind": "product",
    "refs": [
     {
@@ -3302,9 +3270,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 976
+   "line": 998
   },
-  "parser.msg007": {
+  "parser.msg006": {
    "kind": "product",
    "refs": [
     {
@@ -3318,9 +3286,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 984
+   "line": 1006
   },
-  "parser.msg008": {
+  "parser.msg007": {
    "kind": "product",
    "refs": [
     {
@@ -3334,9 +3302,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1004
+   "line": 1026
   },
-  "parser.msg009": {
+  "parser.msg008": {
    "kind": "product",
    "refs": [
     {
@@ -3350,9 +3318,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1038
+   "line": 1060
   },
-  "parser.msg010": {
+  "parser.msg009": {
    "kind": "product",
    "refs": [
     {
@@ -3366,9 +3334,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1058
+   "line": 1080
   },
-  "parser.msg011": {
+  "parser.msg010": {
    "kind": "product",
    "refs": [
     {
@@ -3382,9 +3350,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1069
+   "line": 1091
   },
-  "parser.msg012": {
+  "parser.msg011": {
    "kind": "product",
    "refs": [
     {
@@ -3398,9 +3366,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1083
+   "line": 1105
   },
-  "parser.msg013": {
+  "parser.msg012": {
    "kind": "product",
    "refs": [
     {
@@ -3414,9 +3382,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1150
+   "line": 1172
   },
-  "parser.msg014": {
+  "parser.msg013": {
    "kind": "product",
    "refs": [
     {
@@ -3430,9 +3398,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1168
+   "line": 1190
   },
-  "parser.msg015": {
+  "parser.msg014": {
    "kind": "product",
    "refs": [
     {
@@ -3446,9 +3414,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1173
+   "line": 1195
   },
-  "parser.msg016": {
+  "parser.msg015": {
    "kind": "product",
    "refs": [
     {
@@ -3462,9 +3430,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1193
+   "line": 1215
   },
-  "parser.msg017": {
+  "parser.msg016": {
    "kind": "product",
    "refs": [
     {
@@ -3478,9 +3446,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1201
+   "line": 1223
   },
-  "parser.msg018": {
+  "parser.msg017": {
    "kind": "product",
    "refs": [
     {
@@ -3494,9 +3462,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1236
+   "line": 1258
   },
-  "parser.msg019": {
+  "parser.msg018": {
    "kind": "product",
    "refs": [
     {
@@ -3510,9 +3478,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1251
+   "line": 1273
   },
-  "parser.msg020": {
+  "parser.msg019": {
    "kind": "product",
    "refs": [
     {
@@ -3526,9 +3494,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1260
+   "line": 1282
   },
-  "parser.msg021": {
+  "parser.msg020": {
    "kind": "product",
    "refs": [
     {
@@ -3542,9 +3510,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1283
+   "line": 1305
   },
-  "parser.msg022": {
+  "parser.msg021": {
    "kind": "product",
    "refs": [
     {
@@ -3558,7 +3526,23 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1375
+   "line": 1399
+  },
+  "parser.msg022": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "趋势时段词缺指示组（${text}——§15.14.3 时段词须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨",
+   "usage": [
+    "packages/parser/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 1420
   },
   "parser.msg023": {
    "kind": "product",
@@ -3569,12 +3553,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "趋势时段词缺指示组（${text}——§15.14.3 时段词须随 BECMG/TEMPO 出现）——按磨损趋势段收下，指示组类型不可辨",
+   "text": "趋势时段词缺指示组（${text}——ICAO Annex 3 模板趋势时段须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨",
    "usage": [
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1396
+   "line": 1445
   },
   "parser.msg024": {
    "kind": "product",
@@ -3590,7 +3574,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1410
+   "line": 1458
   },
   "parser.msg025": {
    "kind": "product",
@@ -3606,7 +3590,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1435
+   "line": 1483
   },
   "parser.msg026": {
    "kind": "product",
@@ -3622,7 +3606,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1444
+   "line": 1492
   },
   "parser.msg027": {
    "kind": "product",
@@ -3638,7 +3622,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1445
+   "line": 1493
   },
   "parser.msg028": {
    "kind": "product",
@@ -3654,7 +3638,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1468
+   "line": 1516
   },
   "parser.msg029": {
    "kind": "product",
@@ -3670,7 +3654,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1476
+   "line": 1524
   },
   "parser.msg030": {
    "kind": "product",
@@ -3686,7 +3670,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1494
+   "line": 1542
   },
   "parser.msg031": {
    "kind": "product",
@@ -3702,7 +3686,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1503
+   "line": 1551
   },
   "parser.msg032": {
    "kind": "product",
@@ -3718,7 +3702,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1526
+   "line": 1574
   },
   "parser.msg033": {
    "kind": "product",
@@ -3734,7 +3718,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1554
+   "line": 1602
   },
   "parser.msg034": {
    "kind": "product",
@@ -3750,7 +3734,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1561
+   "line": 1609
   },
   "parser.msg035": {
    "kind": "product",
@@ -3766,7 +3750,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1569
+   "line": 1617
   },
   "parser.msg036": {
    "kind": "product",
@@ -3782,7 +3766,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1609
+   "line": 1657
   },
   "parser.msg037": {
    "kind": "product",
@@ -3798,7 +3782,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1617
+   "line": 1665
   },
   "parser.msg038": {
    "kind": "product",
@@ -3814,7 +3798,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1637
+   "line": 1685
   },
   "parser.msg039": {
    "kind": "product",
@@ -3830,7 +3814,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1671
+   "line": 1719
   },
   "parser.msg040": {
    "kind": "product",
@@ -3846,7 +3830,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1678
+   "line": 1726
   },
   "parser.msg041": {
    "kind": "product",
@@ -3862,7 +3846,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1739
+   "line": 1787
   },
   "parser.msg042": {
    "kind": "product",
@@ -3878,7 +3862,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1750
+   "line": 1798
   },
   "parser.msg043": {
    "kind": "product",
@@ -3894,7 +3878,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1760
+   "line": 1808
   },
   "parser.msg044": {
    "kind": "product",
@@ -3910,7 +3894,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1761
+   "line": 1809
   },
   "parser.msg045": {
    "kind": "product",
@@ -3926,7 +3910,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1775
+   "line": 1823
   },
   "parser.msg046": {
    "kind": "product",
@@ -3942,7 +3926,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1796
+   "line": 1844
   },
   "parser.msg047": {
    "kind": "product",
@@ -3958,7 +3942,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1804
+   "line": 1852
   },
   "parser.msg048": {
    "kind": "product",
@@ -3974,7 +3958,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1812
+   "line": 1860
   },
   "parser.msg049": {
    "kind": "product",
@@ -3990,7 +3974,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1844
+   "line": 1892
   },
   "parser.msg050": {
    "kind": "product",
@@ -4006,7 +3990,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1845
+   "line": 1893
   },
   "parser.msg051": {
    "kind": "product",
@@ -4022,7 +4006,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1874
+   "line": 1922
   },
   "parser.msg052": {
    "kind": "product",
@@ -4038,7 +4022,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1897
+   "line": 1945
   },
   "parser.msg053": {
    "kind": "product",
@@ -4054,7 +4038,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1910
+   "line": 1958
   },
   "parser.msg054": {
    "kind": "product",
@@ -4070,7 +4054,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1911
+   "line": 1959
   },
   "parser.msg055": {
    "kind": "product",
@@ -4086,7 +4070,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1925
+   "line": 1973
   },
   "parser.msg056": {
    "kind": "product",
@@ -4102,7 +4086,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1943
+   "line": 1991
   },
   "parser.msg057": {
    "kind": "product",
@@ -4118,7 +4102,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1960
+   "line": 2008
   },
   "parser.msg058": {
    "kind": "product",
@@ -4134,7 +4118,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1996
+   "line": 2044
   },
   "parser.msg059": {
    "kind": "product",
@@ -4150,7 +4134,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2023
+   "line": 2071
   },
   "parser.msg060": {
    "kind": "product",
@@ -4166,7 +4150,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2033
+   "line": 2081
   },
   "parser.msg061": {
    "kind": "product",
@@ -4182,7 +4166,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2041
+   "line": 2089
   },
   "parser.msg062": {
    "kind": "product",
@@ -4198,7 +4182,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2137
+   "line": 2185
   }
  }
 }

@@ -7,10 +7,10 @@ import { addMetarLayer } from "./index";
 const report = parse("METAR ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG");
 
 describe("addMetarLayer 冒烟（真实 leaflet + happy-dom）", () => {
-  it("marker 数量、tooltip 文案、弹窗内报文卡片", () => {
+  it("marker 数量、tooltip 文案、弹窗内报文卡片", async () => {
     document.body.innerHTML = '<div id="map"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(map, [
+    const group = await addMetarLayer(map, [
       { report, position: [40.0, 116.6], title: "ZBAA 北京" },
       { report, position: [31.2, 121.5] },
     ]);
@@ -41,21 +41,21 @@ describe("addMetarLayer 冒烟（真实 leaflet + happy-dom）", () => {
     map.remove();
   });
 
-  it("popup:false 时不绑定弹窗", () => {
+  it("popup:false 时不绑定弹窗", async () => {
     document.body.innerHTML = '<div id="map"></div>';
     const map = L.map("map");
-    const group = addMetarLayer(map, [{ report, position: [40, 116] }], { popup: false });
+    const group = await addMetarLayer(map, [{ report, position: [40, 116] }], { popup: false });
     const first = group.getLayers()[0];
     if (!(first instanceof L.Marker)) throw new Error("图层成员应为 Marker");
     expect(first.getPopup()).toBeUndefined();
     map.remove();
   });
 
-  it("title 注入面：恶意串按字面文本渲染——非 HTML 路径，不产生元素节点", () => {
+  it("title 注入面：恶意串按字面文本渲染——非 HTML 路径，不产生元素节点", async () => {
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
     const evil = '<img src=x onerror="alert(1)"><script>alert(2)<\u002fscript>';
-    const group = addMetarLayer(map, [{ report, position: [40, 116], title: evil }]);
+    const group = await addMetarLayer(map, [{ report, position: [40, 116], title: evil }]);
     const marker = group.getLayers()[0];
     if (!(marker instanceof L.Marker)) throw new Error("图层成员应为 Marker");
 
@@ -70,10 +70,10 @@ describe("addMetarLayer 冒烟（真实 leaflet + happy-dom）", () => {
 });
 
 describe("A 批：marker 可访问名称（WCAG 4.1.2）", () => {
-  it("marker 图标携带 alt=站点名——title 优先、缺省回落 IR 站名（role=button 获名）", () => {
+  it("marker 图标携带 alt=站点名——title 优先、缺省回落 IR 站名（role=button 获名）", async () => {
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(map, [
+    const group = await addMetarLayer(map, [
       { report, position: [40.0, 116.6], title: "ZBAA 北京" },
       { report, position: [31.2, 121.5] },
     ]);
@@ -121,10 +121,10 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     },
   ];
 
-  it("四档判据落色（unknown/poor/caution/good 圆点 divIcon）——TS 好能见度不再绿、CB 红、阵风升档", () => {
+  it("四档判据落色（unknown/poor/caution/good 圆点 divIcon）——TS 好能见度不再绿、CB 红、阵风升档", async () => {
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(
+    const group = await addMetarLayer(
       map,
       tierCases.map((c) => ({ report: parse(c.raw), position: [40, 116] })),
       { conditionColors: true },
@@ -140,10 +140,10 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     map.remove();
   });
 
-  it("good 判据回归锁：CAVOK 与好天仍绿；缺测单要素不误升灰（部分缺测按可得要素判）", () => {
+  it("good 判据回归锁：CAVOK 与好天仍绿；缺测单要素不误升灰（部分缺测按可得要素判）", async () => {
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(
+    const group = await addMetarLayer(
       map,
       [
         { report: parse("ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG"), position: [40, 116] },
@@ -164,10 +164,10 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     map.remove();
   });
 
-  it("aria-label 追加档位词（zh：站名 · 天气好/差；en：Weather poor）——a11y 1.4.1 颜色不只靠色", () => {
+  it("aria-label 追加档位词（zh：站名 · 天气好/差；en：Weather poor）——a11y 1.4.1 颜色不只靠色", async () => {
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(
+    const group = await addMetarLayer(
       map,
       [
         {
@@ -192,7 +192,7 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     expect(labels[1]).toBe("ZGGG 广州 · 天气差");
     expect(labels[2]).toBe("ZBAA · 天气不明");
     // en：档位词随 card 选项的 locale（双语）
-    const enGroup = addMetarLayer(
+    const enGroup = await addMetarLayer(
       map,
       [
         {
@@ -211,10 +211,10 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     map.remove();
   });
 
-  it("着色圆点保持可访问名称（role=img + aria-label=站名+档位，divIcon 无 img 不丢名）", () => {
+  it("着色圆点保持可访问名称（role=img + aria-label=站名+档位，divIcon 无 img 不丢名）", async () => {
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(
+    const group = await addMetarLayer(
       map,
       [
         {
@@ -230,7 +230,7 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     const dot = marker.getElement()?.querySelector(".mw-dot");
     expect(dot?.getAttribute("role")).toBe("img");
     // 恶意 title 不产生元素节点（HTML 转义）
-    const evil = addMetarLayer(
+    const evil = await addMetarLayer(
       map,
       [{ report, position: [41, 117], title: '<img src=x onerror="alert(1)">' }],
       { conditionColors: true },
@@ -241,10 +241,10 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     map.remove();
   });
 
-  it("tooltip 追加要素摘要行：2500 m +TSRA BKN030CB（vis/天气/最差云）", () => {
+  it("tooltip 追加要素摘要行：2500 m +TSRA BKN030CB（vis/天气/最差云）", async () => {
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(
+    const group = await addMetarLayer(
       map,
       [
         {
@@ -264,10 +264,10 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     map.remove();
   });
 
-  it("tooltip 摘要：NIL 站显示「缺报（NIL，WMO＝missed report）」、关键组全缺测站显示「数据缺测」（不再是空摘要行）", () => {
+  it("tooltip 摘要：NIL 站显示「缺报（NIL，WMO＝missed report）」、关键组全缺测站显示「数据缺测」（不再是空摘要行）", async () => {
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(
+    const group = await addMetarLayer(
       map,
       [
         { report: parse("METAR ZBAA 120300Z NIL="), position: [40, 116], title: "ZBAA" },
@@ -293,10 +293,10 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     map.remove();
   });
 
-  it("conditionColors 缺省 false：保持默认图钉（无圆点、无摘要行为回归）", () => {
+  it("conditionColors 缺省 false：保持默认图钉（无圆点、无摘要行为回归）", async () => {
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(map, [{ report, position: [40, 116] }]);
+    const group = await addMetarLayer(map, [{ report, position: [40, 116] }]);
     const marker = group.getLayers()[0];
     if (!(marker instanceof L.Marker)) throw new Error("图层成员应为 Marker");
     expect(marker.getElement()?.querySelector(".mw-dot")).toBeNull();
@@ -306,20 +306,20 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
 });
 
 describe("C13：popup 体验（maxWidth / 焦点 / Escape / 触屏双浮层）", () => {
-  it("popup maxWidth 420（卡片设计宽不再被 300 压）", () => {
+  it("popup maxWidth 420（卡片设计宽不再被 300 压）", async () => {
     document.body.innerHTML = '<div id="map" style="width: 600px; height: 400px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(map, [{ report, position: [40, 116] }]);
+    const group = await addMetarLayer(map, [{ report, position: [40, 116] }]);
     const marker = group.getLayers()[0];
     if (!(marker instanceof L.Marker)) throw new Error("图层成员应为 Marker");
     expect(marker.getPopup()?.options.maxWidth).toBe(420);
     map.remove();
   });
 
-  it("Escape 关闭已开弹窗（地图容器键盘路径）", () => {
+  it("Escape 关闭已开弹窗（地图容器键盘路径）", async () => {
     document.body.innerHTML = '<div id="map" style="width: 600px; height: 400px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(map, [{ report, position: [40, 116] }]);
+    const group = await addMetarLayer(map, [{ report, position: [40, 116] }]);
     const marker = group.getLayers()[0];
     if (!(marker instanceof L.Marker)) throw new Error("图层成员应为 Marker");
     marker.openPopup();
@@ -331,10 +331,10 @@ describe("C13：popup 体验（maxWidth / 焦点 / Escape / 触屏双浮层）",
     map.remove();
   });
 
-  it("popup 打开：焦点移入关闭按钮（首个可聚焦元素）并收起 tooltip（触屏双浮层消除）", () => {
+  it("popup 打开：焦点移入关闭按钮（首个可聚焦元素）并收起 tooltip（触屏双浮层消除）", async () => {
     document.body.innerHTML = '<div id="map" style="width: 600px; height: 400px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(map, [{ report, position: [40, 116], title: "ZBAA" }]);
+    const group = await addMetarLayer(map, [{ report, position: [40, 116], title: "ZBAA" }]);
     const marker = group.getLayers()[0];
     if (!(marker instanceof L.Marker)) throw new Error("图层成员应为 Marker");
     marker.openTooltip();
@@ -348,12 +348,12 @@ describe("C13：popup 体验（maxWidth / 焦点 / Escape / 触屏双浮层）",
 });
 
 describe("条件色注入安全锁（前导引号载荷——转义被删时必红）", () => {
-  it('divIcon aria-label 上下文："> 逃逸载荷不产生任何元素与事件属性，aria-label 字面等于原文', () => {
+  it('divIcon aria-label 上下文："> 逃逸载荷不产生任何元素与事件属性，aria-label 字面等于原文', async () => {
     const evil = '"><img src=x onerror=alert(1)><svg onload=alert(2)>';
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const cardiReport = parse("ZBAA 120000Z 36004MPS 9999 FEW030 18/09 Q1019");
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
-    addMetarLayer(map, [{ report: cardiReport, position: [40, 116], title: evil }], {
+    await addMetarLayer(map, [{ report: cardiReport, position: [40, 116], title: evil }], {
       conditionColors: true,
     });
     const icons = document.querySelectorAll(".mw-cond-icon");
@@ -374,13 +374,17 @@ describe("条件色注入安全锁（前导引号载荷——转义被删时必�
 // ---------------------------------------------------------------- 五角色评测修复批（2026-09-15）
 
 describe("addMetarLayer 顶层 locale 速记与未知选项校验", () => {
-  it("顶层 locale:'en'——tooltip 档位词与弹窗卡片全英文（此前顶层 locale 被静默忽略）", () => {
+  it("顶层 locale:'en'——tooltip 档位词与弹窗卡片全英文（此前顶层 locale 被静默忽略）", async () => {
     document.body.innerHTML = '<div id="map-locale-shorthand"></div>';
     const map = L.map("map-locale-shorthand", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(map, [{ report, position: [40.0, 116.6], title: "ZBAA Beijing" }], {
-      locale: "en",
-      conditionColors: true,
-    });
+    const group = await addMetarLayer(
+      map,
+      [{ report, position: [40.0, 116.6], title: "ZBAA Beijing" }],
+      {
+        locale: "en",
+        conditionColors: true,
+      },
+    );
     const marker = group.getLayers()[0] as L.Marker;
     // 档位词随速记切英文（CAVOK 报文 → good）
     const iconHost = marker.getElement() as HTMLElement;
@@ -394,10 +398,10 @@ describe("addMetarLayer 顶层 locale 速记与未知选项校验", () => {
     map.remove();
   });
 
-  it("card.locale 优先于顶层速记；未知选项运行时抛错", () => {
+  it("card.locale 优先于顶层速记；未知选项运行时抛错", async () => {
     document.body.innerHTML = '<div id="map-locale-precedence"></div>';
     const map = L.map("map-locale-precedence", { center: [35.5, 105], zoom: 4 });
-    const group = addMetarLayer(map, [{ report, position: [40.0, 116.6] }], {
+    const group = await addMetarLayer(map, [{ report, position: [40.0, 116.6] }], {
       locale: "en",
       card: { locale: "zh" },
     });
@@ -409,7 +413,9 @@ describe("addMetarLayer 顶层 locale 速记与未知选项校验", () => {
     document.body.innerHTML = '<div id="map-bad-option"></div>';
     const map2 = L.map("map-bad-option", { center: [35.5, 105], zoom: 4 });
     const bad = { colour: true } as unknown as Parameters<typeof addMetarLayer>[2];
-    expect(() => addMetarLayer(map2, [{ report, position: [40.0, 116.6] }], bad)).toThrow(/colour/);
+    await expect(addMetarLayer(map2, [{ report, position: [40.0, 116.6] }], bad)).rejects.toThrow(
+      /colour/,
+    );
     map2.remove();
   });
 });

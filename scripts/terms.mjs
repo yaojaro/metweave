@@ -177,20 +177,24 @@ function extractConst(file, constName, scope = {}) {
   return vm.runInNewContext(`(${initText})`, scope);
 }
 
-/** 从源码里抽取含 CJK 的字符串字面量（双引号/反引号，跳过注释行） */
+/** 从源码里抽取含 CJK 的字符串字面量（双引号/反引号；撇号等注释内引号不再误收） */
 function extractCjkLiterals(file) {
   const src = readFileSync(path.join(root, file), "utf8");
   const out = [];
+  // 块注释区间表：匹配起点落在 /* */ 内的「字符串」是注释文本而非代码字面量
+  //（2026-09-16 实测事故：注释里 source's 的撇号被当引号起配，把整段接口注释吞成文案入册）
+  const commentRanges = [];
+  const commentRe = /\/\*[\s\S]*?\*\//g;
+  let cm;
+  while ((cm = commentRe.exec(src))) commentRanges.push([cm.index, cm.index + cm[0].length]);
+  const inComment = (idx) => commentRanges.some(([s, e]) => idx > s && idx < e);
   const re = /(["'`])((?:\\.|(?!\1)[^\\])*?)\1/gs;
   let m;
   while ((m = re.exec(src))) {
+    if (inComment(m.index)) continue;
     const line = src.slice(0, m.index).split("\n").length;
     const raw = m[2];
     if (!/[一-龥]/.test(raw)) continue;
-    const before = src.slice(Math.max(0, m.index - 200), m.index);
-    if (/(\/\/|\/\*|\*)\s*$/.test(before.trimEnd()) && !raw.includes("${")) {
-      // 行尾紧邻注释符且非模板：大概率是注释内引号，仍保守收进（宁可多收不可漏收）
-    }
     out.push({ text: raw, line });
   }
   return out;

@@ -128,7 +128,7 @@ const report = async (): Promise<void> => {
     onUnparseable: (failure) => skipped.push(failure.station),
   });
   map.removeLayer(pendingLayer);
-  const group = addMetarLayer(map, items, { card: { raw: true }, conditionColors: true });
+  const group = await addMetarLayer(map, items, { card: { raw: true }, conditionColors: true });
   const updatedClock = new Date().toISOString().slice(11, 16);
   setStatus(
     `已更新 ${items.length} 站 · ${updatedClock} UTC${skipped.length > 0 ? ` · ${skipped.length} 站跳过` : ""}`,

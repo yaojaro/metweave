@@ -81,11 +81,12 @@
     "tsno": "TSNO：雷暴传感器不工作（美网高频；探测不可用 ≠ 无雷暴）",
     "qbb-cloud-base": "QBB 俄区国家组：云底高度（米，3 位直读）——字母组形似 began/ended 家族的误吞雷",
     "txtn-forecast": "TAF 温度预告组 TX/TN 混入 METAR 通路（ICAO Annex 3 附录五：TX25/0907Z = 最高 25°C、09 日 07Z 到达）——IEM 归档实弹 26 次，中国区 TAF 行混入",
-    "trend-bare-period": "裸趋势时段词（指示组整组丢失，如 Q1009 TL0730 …）——IEM 归档实弹 128 次；按磨损趋势段收下（kind unspecified），防趋势要素散落正文",
+    "trend-bare-period": "裸趋势时段词（指示组整组丢失，如 Q1009 TL0730 …）——IEM 归档实弹 128 次；按指示组缺失的趋势段收下（kind unspecified），防趋势要素散落正文",
     "trend-fused-indicator": "趋势指示组与时段词粘连（BECMGTL0350——丢空格传输磨损）——IEM 归档实弹 10 次，宽容拆分",
     "ws-std-designator": "风切变组标准形态 WS Rdd（ICAO/WMO 模板 WS RDRDR，如 WS R15）——IEM 归档实弹 544 次、近月主流形态，零告警一等认组",
     "rvr-solidi-missing": "RVR 值位全斜杠缺测（R35///// = 分离符 + 四位值位；R10//// 四位为磨损短段）——tgftp/IEM 实弹",
-    "runway-coverage-illegal": "跑道状态覆盖位非法电码（表 0519 外数字，如 R24/000062 位 2 的 0）——该位判缺测 + invalid-format 告警"
+    "runway-coverage-illegal": "跑道状态覆盖位非法电码（表 0519 外数字，如 R24/000062 位 2 的 0）——该位判缺测 + invalid-format 告警",
+    "trend-period-slash": "趋势时段的 ICAO 斜杠形态（TEMPO 1616/1618——ICAO Annex 3 模板 / 中国民航主流编法）。2026-09-16 五方实测评测发现的解析缺口：此前不识别导致趋势内容散落正文（正文能见度被 last-wins 顶掉）。现按趋势段收口；缺指示组的裸斜杠按 kind unspecified 收下并出声。实弹补采后回写（现暂为 synth 构造）。"
   },
   "fixtures": [
     {
@@ -2099,7 +2100,7 @@
       "source": "iem",
       "obsTime": null,
       "traps": ["trend-bare-period"],
-      "note": "裸趋势时段词（指示组 BECMG/TEMPO 整组丢失）：IEM 归档实弹 128 次；TL0730 引导磨损趋势段收为 kind unspecified——同时防趋势风组 11005MPS 以 last-wins 覆盖正文真风组 02004MPS"
+      "note": "裸趋势时段词（指示组 BECMG/TEMPO 整组丢失）：IEM 归档实弹 128 次；TL0730 引导的指示组缺失趋势段收为 kind unspecified——同时防趋势风组 11005MPS 以 last-wins 覆盖正文真风组 02004MPS"
     },
     {
       "id": "target-fused-trend-zbaa",
@@ -2145,7 +2146,34 @@
       "obsTime": "2026-09-12T09:30:00Z",
       "traps": ["runway-coverage-illegal"],
       "note": "跑道状态覆盖位非法电码（R24/000062 位 2 = 0，WMO 表 0519 仅 1/2/5/9 与 /）：tgftp cycle 实弹 2 站次；沉积 0（干燥）合法保留、覆盖位判缺测 + invalid-format"
+    },
+    {
+      "id": "synth-trend-slash-tempo",
+      "raw": "ZBAA 121200Z 32005KT 9999 FEW030 18/09 Q1013 TEMPO 1616/1618 3000 TSRA BKN020CB",
+      "station": "ZBAA",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["trend-period-slash"],
+      "note": "构造形态（实弹待补采）：TEMPO + 斜杠时段 + 趋势要素四族——回归锁断言正文能见度 9999 不被趋势 3000 顶掉、TSRA/BKN020CB 关进趋势段、无假矛盾告警"
+    },
+    {
+      "id": "synth-trend-slash-becmg-cavok",
+      "raw": "ZSPD 160600Z 18003MPS 9999 SCT025 24/19 Q1010 BECMG 1606/1608 04004MPS CAVOK",
+      "station": "ZSPD",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["trend-period-slash"],
+      "note": "构造形态（实弹待补采）：BECMG + 斜杠时段 + 趋势内 CAVOK——断言趋势 CAVOK 与正文 SCT025 不出假矛盾、正文组原位"
+    },
+    {
+      "id": "synth-trend-slash-bare",
+      "raw": "ZSFZ 161500Z 09005MPS 8000 -RA BKN010 OVC025 17/14 Q1012 1618/1620 3000 TSRA",
+      "station": "ZSFZ",
+      "source": "synth",
+      "obsTime": null,
+      "traps": ["trend-period-slash"],
+      "note": "构造形态（实弹待补采）：裸斜杠时段（指示组缺失）——kind unspecified 收段并出 invalid-format 告警，正文能见度 8000 不受牵连"
     }
   ],
-  "count": 167
+  "count": 170
 }

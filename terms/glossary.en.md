@@ -241,8 +241,12 @@
 | card.trendNote.nosig | no significant change expected | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.15 (NOSIG = no significant change) |
 | card.trendNote.becmg | gradual change | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.4 (BECMG) |
 | card.trendNote.tempo | temporary fluctuations | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.5 (TEMPO temporary fluctuations) |
-| card.trendNote.unspecified | worn trend segment (change indicator lost; gradual vs temporary indistinguishable) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.trendNote.unspecified | trend segment with missing change indicator (gradual vs temporary indistinguishable) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
 | card.trendNote.periodAt | (text) => {
+        const slash = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(text);
+        if (slash !== null) {
+          return `from day ${slash[1]} ${slash[2]}:00 to day ${slash[3]} ${slash[4]}:00`;
+        }
         const m = /^(AT\|TL\|FM)(\d{2})(\d{2})$/.exec(text);
         if (m === null) return `expected at ${text}`;
         const hm = `${m[2]}:${m[3]}`;

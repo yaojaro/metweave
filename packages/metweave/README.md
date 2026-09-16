@@ -25,7 +25,7 @@ L.tileLayer(
   `https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TDT_KEY}`,
   { subdomains: ["0", "1", "2", "3", "4", "5", "6", "7"], attribution: "底图 © 天地图" },
 ).addTo(map);
-addMetarLayer(map, await getMetarReports(), { conditionColors: true });
+await addMetarLayer(map, await getMetarReports(), { conditionColors: true });
 ```
 
 本包再导出 `@metweave/core` / `parser` / `render`（整条管道一个入口，含 `toValues` 与机读错误类）；`metweave/sources` 提供取数 helper。文档与完整示例见[主仓库](https://github.com/yaojaro/metweave)。

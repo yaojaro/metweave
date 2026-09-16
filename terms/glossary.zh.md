@@ -35,7 +35,7 @@
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| card.badge.speci | 特殊报告 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.1 模板注 (1)（aerodrome special meteorological report）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六 说明 1（机场特殊天气报告） |
+| card.badge.speci | 特殊天气报告 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.1 模板注 (1)（aerodrome special meteorological report）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六 说明 1（机场特殊天气报告） |
 | card.badge.metar | 例行报告 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.1 模板注 (1)（aerodrome routine meteorological report）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六 说明 1（机场例行天气报告） |
 | card.badge.corrected | 更正报 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.1 模板注 (2)（COR for corrected reports）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六（METAR COR 更正报） |
 | card.badge.auto | 自动观测 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.4（Code word AUTO）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六（自动或缺省报告标志） |
@@ -241,8 +241,12 @@
 | card.trendNote.nosig | 无重要变化 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.15（NOSIG = no significant change） |
 | card.trendNote.becmg | 渐变（逐步转变） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.4（BECMG）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六（渐变 BECMG） |
 | card.trendNote.tempo | 短时波动（临时性变化） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.5（TEMPO temporary fluctuations）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六（短时 TEMPO） |
-| card.trendNote.unspecified | 磨损趋势段（指示组缺失，渐变/短时不可辨） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.trendNote.unspecified | 变化趋势段（指示组缺失，渐变/短时不可辨） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 | card.trendNote.periodAt | (text) => {
+        const slash = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(text);
+        if (slash !== null) {
+          return `自 ${slash[1]} 日 ${slash[2]}:00 至 ${slash[3]} 日 ${slash[4]}:00`;
+        }
         const m = /^(AT\|TL\|FM)(\d{2})(\d{2})$/.exec(text);
         if (m === null) return `预计时刻 ${text}`;
         const hm = `${m[2]}:${m[3]}`;
@@ -357,66 +361,43 @@
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg01 | s city-level ones.
- * 站点元数据（联表用）：坐标为权威定位源，覆盖源站的城市级粗坐标。
- */
-export interface StationRef {
-  /** 站名（ICAO） */
-  icao: string;
-  /** 纬度（WGS-84） */
-  lat: number;
-  /** 经度（WGS-84） */
-  lon: number;
-  /** 站点名称（进 tooltip 标题） */
-  name?: string;
-}
-
-/**
- * Per-row failure detail (the onUnparseable callback argument): one observation row failed to parse wholesale (missing station/time etc.).
- * 逐行容错的失败详情（onUnparseable 回调入参）：一行观测报文解析整体失败（站名/时组缺失等）。
- * `code` is the machine-readable failure code (MetarParseError | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg01 | IEM 请求超时（>${options.timeoutMs}ms，network=${network}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg02（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg02 | IEM 请求超时（>${options.timeoutMs}ms，network=${network}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg02 | 网络请求失败（源：IEM，network=${network}）：请检查网络连通性后重试（${reason}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg03（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg03 | 网络请求失败（源：IEM，network=${network}）：请检查网络连通性后重试（${reason}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg03 | IEM 响应不是合法 JSON（可能被代理/防火墙拦截，network=${network}）：${reason} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg04（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg04 | IEM 响应不是合法 JSON（可能被代理/防火墙拦截，network=${network}）：${reason} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg04 | IEM 响应异常：缺少 data 数组（network=${network}，schema 不符） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg05（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg05 | IEM 响应异常：缺少 data 数组（network=${network}，schema 不符） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg05 | IEM 响应异常：data 存在 station/raw 非字符串的记录（network=${network}，schema 不符） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg06（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg06 | IEM 响应异常：data 存在 station/raw 非字符串的记录（network=${network}，schema 不符） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg06 | IEM 返回空数据（network=${network}）——请核对 IEM 网络名（如 CN__ASOS/RU__ASOS，参考 https://mesonet.agron.iastate.edu/sites/networks.php） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg07（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg07 | IEM 返回空数据（network=${network}）——请核对 IEM 网络名（如 CN__ASOS/RU__ASOS，参考 https://mesonet.agron.iastate.edu/sites/networks.php） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-
-## sources.msg08（1 条）
-
-| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
-|---|---|---|---|---|
-| sources.msg08 | 报文解析失败 ${failures.length} 条（network=${network}）——${failures.slice(0, 3).join("；")}${failures.length > 3 ? "……" : ""} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg07 | 报文解析失败 ${failures.length} 条（network=${network}）——${failures.slice(0, 3).join("；")}${failures.length > 3 ? "……" : ""} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg001（1 条）
 
@@ -446,277 +427,115 @@ export interface StationRef {
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg005 |  十位 / T 个位，负值加 M），官方示例含补零（01/M12、
- * 00/M00），任何规范版本无一位数形态。两侧 \d{1,2} 曾让裸分数 token（VIS 词丢失的 1/2、2/1——
- * 上游脏输入）被误判为温露组：降序分数捏造假值且完全静默，升序触发误导性温露倒挂告警
- * （2026-09-14 复评收紧）；不匹配即落 unknown-token 出声，原码经 span 回溯。
- * The regex requires the `/` separator — a bare "//" is the weather missing group (see the body loop) and must not be swallowed here.
- * 正则必须有 `/` 分隔——裸 `//` 是天气缺测组（见正文循环），不得被本组吞掉。
- * Exported for direct shape assertions in regression tests (red line: "//" must not match; "1/2"/"2/1" must not match either).
- * 导出供回归测试直接对形态断言（红线：对 "//" 与裸分数均不得匹配）。
- */
-export const TEMP_DEW_PATTERN = /^(M?\d{2}\|\/\/)\/(M?\d{2}\|\/\/)$/;
-
-/** 温度/露点组：恒为 dd/dd 形态（M = 负；// = 缺测 → null，调用方补告警）。 */
-function parseTempDewToken(t: Token): {
-  temperature: TemperatureReading \| null;
-  dewpoint: TemperatureReading \| null;
-  span: Span;
-} \| null {
-  const read = (raw: string \| undefined): TemperatureReading \| null => {
-    // undefined = 第二组整体缺失（FMH-1 12.6.10 露点缺测形态 24/）；"//" = 显式缺测——
-    // 两者同为 null，但 missing-expected 文案由调用方按形态区分
-    if (raw === undefined \|\| raw === "//") return null;
-    const n = raw.startsWith("M") ? -Number.parseInt(raw.slice(1), 10) : Number.parseInt(raw, 10);
-    // −0 归一（M00 → 0）：负零序列化变形（JSON 出 -0），消费方 Object.is 判别出边角差异
-    const celsius = n === 0 ? 0 : n;
-    return { celsius, span: spanOf(t) };
-  };
-  const m = TEMP_DEW_PATTERN.exec(t.text);
-  if (m === null) {
-    // FMH-1 12.6.10 露点缺测形态「24/」（第二组整体省略，同恒两位）——裸 // 与 /// 仍不得匹配
-    const trailing = /^(M?\d{2})\/$/.exec(t.text);
-    if (trailing === null) return null;
-    return { temperature: read(trailing[1]), dewpoint: null, span: spanOf(t) };
-  }
-  return { temperature: read(m[1]), dewpoint: read(m[2]), span: spanOf(t) };
-}
-
-function beyondRangeOf(flag: string \| undefined): "above" \| "below" \| undefined {
-  if (flag === "P") return "above";
-  if (flag === "M") return "below";
-  return undefined;
-}
-
-/** RVR 组：R07R/1800V2200FT / R36/0500V0800D / P·M 超界 / 斜杠趋势（R13/3500FT/N、R07/P6000FT/U）。
- *  R/SNOCLO 与 R10L/SNOCLO 属跑道状态语义（15.13.6.1），由 parseRunwayStateToken 收口。 */
-function parseRvrToken(t: Token): RunwayVisualRange \| null {
-  // 趋势后缀双形态：无斜杠（0500V0800D，WMO）与斜杠（3500FT/N，FAA/加式——FT 单位标记后带 /D //N //U）
-  const m = /^R(\d{2}[RLC]?)\/(P\|M)?(\d{4})(?:V(P\|M)?(\d{4}))?(FT)?(?:\/([DNU])\|([DNU]))?$/.exec(
-    t.text,
-  );
-  if (m === null) return null;
-  const minRaw = m[3] ?? "0";
-  const maxRaw = m[5];
-  const trendRaw = m[7] ?? m[8];
-  return {
-    runway: m[1] ?? "",
-    value: maxRaw === undefined ? Number.parseInt(minRaw, 10) : undefined,
-    min: maxRaw !== undefined ? Number.parseInt(minRaw, 10) : undefined,
-    max: maxRaw !== undefined ? Number.parseInt(maxRaw, 10) : undefined,
-    beyondRange: beyondRangeOf(m[2] ?? m[4]),
-    unit: m[6] === "FT" ? "ft" : "m",
-    trend:
-      trendRaw === "U"
-        ? "up"
-        : trendRaw === "D"
-          ? "down"
-          : trendRaw === "N"
-            ? "no-change"
-            : undefined,
-    span: spanOf(t),
-  };
-}
-
-/** 摩擦两位电码（15.13.6.1 表 0366）解码：01–90 → 摩擦系数 0.01–0.90；91–95 → 制动作用五档；
- *  99 → unreliable；// 或 96–98（电码表未用）→ 两字段皆 undefined（原码经 span 回溯）。 */
-function parseFrictionCode(
-  code: string \| undefined,
-): Pick<RunwayStateGroup, "frictionCoefficient" \| "brakingAction"> {
-  if (code === undefined \|\| !/^\d{2}$/.test(code)) return {};
-  const f = Number.parseInt(code, 10);
-  if (f <= 90) return { frictionCoefficient: f / 100 };
-  if (f >= 91 && f <= 95)
-    return {
-      brakingAction: (["poor", "medium-poor", "medium", "medium-good", "good"] as const)[f - 91],
-    };
-  if (f === 99) return { brakingAction: "unreliable" };
-  return {};
-}
-
-/** 跑道状态组三形态（WMO 15.13.6）：①六位状态电码（R21/490160：沉积/覆盖/深度/摩擦，位缺测 /）；
- *  ②CLRD 清除家族（R07L/CLRD// 标准、CLRD62 俄区、CLRD/// 非标容忍）；③SNOCLO 关闭（R/SNOCLO 全机场、R10L/SNOCLO 逐跑道）。
- *  覆盖位非法电码（表 0519 外数字）不静默留值：该位判缺测 + findings 交调用方落 invalid-format 告警。 */
-function parseRunwayStateToken(
-  t: Token,
-): { group: RunwayStateGroup; findings: readonly { message: string; span: Span }[] } \| null {
-  // ③ SNOCLO（15.13.6.1）：跑道因雪/冰/清雪不可用
-  const snoclo = /^R(\d{2}[RLC]?)?\/SNOCLO$/.exec(t.text);
-  if (snoclo !== null) {
-    return {
-      group: { runway: snoclo[1] ?? "", closed: true, cleared: false, span: spanOf(t) },
-      findings: [],
-    };
-  }
-  // ② CLRD 家族
-  const clrd = /^R(\d{2}[RLC]?)\/CLRD(\d{2}\|\/\/\|\/\/\/)?$/.exec(t.text);
-  if (clrd !== null) {
-    return {
-      group: {
-        runway: clrd[1] ?? "",
-        cleared: true,
-        ...parseFrictionCode(clrd[2]),
-        span: spanOf(t),
-      },
-      findings: [],
-    };
-  }
-  // ① 六位状态电码：沉积物类型 1 位 + 覆盖范围 1 位 + 深度 2 位 + 摩擦 2 位（各可 / 缺报）
-  const num = /^R(\d{2}[RLC]?)\/(\d\|\/)(\d\|\/)(\d{2}\|\/\/)(\d{2}\|\/\/)$/.exec(t.text);
-  if (num === null) return null;
-  const depthCode = num[4] ?? "";
-  // 深度解码（15.13.6.1 表 1079）：00–90 = 毫米（00 即 <1mm 记 0）；91 未用判缺测；92–98 = 10–40cm 段记下限；
-  // 99 = 跑道不可用（同 SNOCLO 语义 → closed，深度不落值）
-  const depthNum = /^\d{2}$/.test(depthCode) ? Number.parseInt(depthCode, 10) : null;
-  const depth =
-    depthNum === null
-      ? null
-      : depthNum <= 90
-        ? depthNum
-        : depthNum === 91
-          ? null
-          : depthNum === 99
-            ? null
-            : (depthNum - 90) * 50;
-  // 覆盖位电码合法性（15.13.6.1 表 0519）：表内仅 1/2/5/9 与 /——表外数字（0/3/4/6/7/8）为非法电码，
-  // 按三态纪律判缺测（null）+ invalid-format 告警，绝不把表外值留在 IR（tgftp 实弹 R24/000062 命中位 2 的 0）
-  const coverageCode = num[3] ?? "/";
-  const coverageIllegal = coverageCode !== "/" && !"1259".includes(coverageCode);
-  const findings: { message: string; span: Span }[] = coverageIllegal
-    ? [
-        {
-          message: `跑道状态覆盖位电码非法（${t.text} 覆盖位 ${coverageCode}——WMO 表 0519 仅用 1/2/5/9 与 /）——该位判缺测，原码经 span 回溯`,
-          span: spanOf(t),
-        },
-      ]
-    : [];
-  return {
-    group: {
-      runway: num[1] ?? "",
-      closed: depthNum === 99 \|\| undefined,
-      cleared: false,
-      deposit: num[2] === "/" ? null : Number(num[2]),
-      coverage: coverageCode === "/" \|\| coverageIllegal ? null : Number(coverageCode),
-      depth,
-      ...parseFrictionCode(num[5]),
-      span: spanOf(t),
-    },
-    findings,
-  };
-}
-
-// ---------------------------------------------------------------- 主入口
-
-/**
- * Parse one METAR/SPECI report (tolerant mode) into the IR — the package | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg005 | parse 需要一个 METAR/SPECI 报文字符串，收到 ${raw === null ? "null" : typeof raw} | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg006（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg006 | parse 需要一个 METAR/SPECI 报文字符串，收到 ${raw === null ? "null" : typeof raw} | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg006 | strict 模式尚未实现（v0.1 仅 tolerant）——请省略 mode 或显式传 'tolerant' | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg007（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg007 | strict 模式尚未实现（v0.1 仅 tolerant）——请省略 mode 或显式传 'tolerant' | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg007 | 输入 token 数超上限（${tokens.length} > ${TOKEN_COUNT_LIMIT}）——按异常输入标记，解析照常完整，原文经 raw 保真 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg008（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg008 | 输入 token 数超上限（${tokens.length} > ${TOKEN_COUNT_LIMIT}）——按异常输入标记，解析照常完整，原文经 raw 保真 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg008 | 无法识别站名组——输入不是 METAR/SPECI 报文（${stTok?.text ?? "空输入"}） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg009（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg009 | 无法识别站名组——输入不是 METAR/SPECI 报文（${stTok?.text ?? "空输入"}） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg009 | 更正标记槽位漂移（${driftTok.text} 出现在站名后/时组前——已消费并置更正标志） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg010（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg010 | 更正标记槽位漂移（${driftTok.text} 出现在站名后/时组前——已消费并置更正标志） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg010 | 无法识别时组——输入不是完整的 METAR/SPECI 报文（${tmTok?.text ?? "时组缺失"}） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg011（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg011 | 无法识别时组——输入不是完整的 METAR/SPECI 报文（${tmTok?.text ?? "时组缺失"}） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg011 | 时组数值越界（${tmTok.text}：须日 01–31 / 时 00–23 / 分 00–59）——输入不是完整的 METAR/SPECI 报文 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg012（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg012 | 时组数值越界（${tmTok.text}：须日 01–31 / 时 00–23 / 分 00–59）——输入不是完整的 METAR/SPECI 报文 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg012 | 气压组 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg013（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg013 | 气压组 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg013 | （原${label}） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg014（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg014 | （原${label}） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg014 | 重复${label}（前值 ${prevText}，后值 ${newText}）——报文只应有一组${label}，以末组为准，前值经原文回溯 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg015（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg015 | 重复${label}（前值 ${prevText}，后值 ${newText}）——报文只应有一组${label}，以末组为准，前值经原文回溯 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg015 | 趋势段收口于 R 组（${bt}——RVR/跑道状态不属趋势要素，按正文组处理，趋势语境存疑） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg016（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg016 | 趋势段收口于 R 组（${bt}——RVR/跑道状态不属趋势要素，按正文组处理，趋势语境存疑） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg016 | 趋势段收口于非趋势组（${bt}——不属趋势要素族，交回正文认组，趋势语境存疑） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg017（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg017 | 趋势段收口于非趋势组（${bt}——不属趋势要素族，交回正文认组，趋势语境存疑） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg017 | CAVOK 与${whenLabel}能见度组矛盾（${visRaw}，CAVOK 语义要求 ≥10km）——让位照旧，报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg018（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg018 | CAVOK 与${whenLabel}能见度组矛盾（${visRaw}，CAVOK 语义要求 ≥10km）——让位照旧，报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg018 | CAVOK 与${whenLabel}天气组矛盾（${wxRaw}，CAVOK 语义要求无重要天气）——让位照旧，报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg019（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg019 | CAVOK 与${whenLabel}天气组矛盾（${wxRaw}，CAVOK 语义要求无重要天气）——让位照旧，报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg019 | CAVOK 与${whenLabel}RVR 组矛盾（${rvrRaw}——AP-117 第 140 条：CAVOK 代替能见度、跑道视程、现在天气和云）——让位照旧，报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg020（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg020 | CAVOK 与${whenLabel}RVR 组矛盾（${rvrRaw}——AP-117 第 140 条：CAVOK 代替能见度、跑道视程、现在天气和云）——让位照旧，报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg020 | CAVOK 与${whenLabel}云组矛盾（${cloudRaw}，CAVOK 语义要求 5000ft 以下无云且无 CB/TCU）——让位照旧，报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg021（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg021 | CAVOK 与${whenLabel}云组矛盾（${cloudRaw}，CAVOK 语义要求 5000ft 以下无云且无 CB/TCU）——让位照旧，报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg021 | 趋势指示组与时段词粘连（${text}——传输磨损丢空格，BECMG/TEMPO 与 AT/TL/FM 时段语义完整可恢复） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg022（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg022 | 趋势指示组与时段词粘连（${text}——传输磨损丢空格，BECMG/TEMPO 与 AT/TL/FM 时段语义完整可恢复） | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg022 | 趋势时段词缺指示组（${text}——§15.14.3 时段词须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg023（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg023 | 趋势时段词缺指示组（${text}——§15.14.3 时段词须随 BECMG/TEMPO 出现）——按磨损趋势段收下，指示组类型不可辨 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg023 | 趋势时段词缺指示组（${text}——ICAO Annex 3 模板趋势时段须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg024（1 条）
 

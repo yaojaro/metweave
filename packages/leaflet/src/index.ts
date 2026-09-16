@@ -6,10 +6,19 @@
  * 兼容契约 = Leaflet overlay 能力：底图瓦片是宿主侧一行 L.tileLayer 配置，本包不做任何绑定，
  * 也不推荐或代理任何底图服务——底图由使用者按自己的授权自行选择。
  */
-import * as L from "leaflet";
+import type * as Leaflet from "leaflet";
 import type { CloudElement, MetarReport, WeatherGroup } from "@metweave/core";
 import { toValues } from "@metweave/core";
 import { renderCard } from "@metweave/render";
+
+/**
+ * leaflet 惰性装载：import 本包时不再静态加载 leaflet——peer 库是浏览器专属实现，
+ * 顶层静态 import 会让 Node/SSR 的模块图在求值期即崩（window is not defined，
+ * 2026-09-16 五方实测评测实锤：ESM/CJS 双格式 import 均炸）。改为首次 addMetarLayer
+ * 调用时动态 import 并缓存；类型面仍由顶层 import type 提供，宿主类型检查零影响。
+ */
+let leafletModule: Promise<typeof import("leaflet")> | undefined;
+const loadLeaflet = (): Promise<typeof import("leaflet")> => (leafletModule ??= import("leaflet"));
 
 /**
  * One station on the map: parsed report IR + WGS-84 position + optional tooltip title.
@@ -301,7 +310,7 @@ function tooltipContent(
 }
 
 /** Escape 关闭已开弹窗的监听只挂一次/地图（多图层叠加不重复绑定） */
-const escapeBoundMaps = new WeakSet<L.Map>();
+const escapeBoundMaps = new WeakSet<Leaflet.Map>();
 
 /**
  * Put a set of report stations onto a Leaflet map: markers + tooltips + card popups. Returns a removable layer group.
@@ -309,13 +318,16 @@ const escapeBoundMaps = new WeakSet<L.Map>();
  * @param map - A Leaflet map instance. Leaflet 地图实例。
  * @param items - Stations to plot (report + position + title). 待上图的站点列表。
  * @param options - See AddMetarLayerOptions. 见 AddMetarLayerOptions。
+ *
+ * 异步（v0.2 起为 Promise）：leaflet 由首次调用时动态装载——本包可在任何模块图（含 Node/SSR
+ * 预渲染流水线）中 import 而不触雷，代价是上图动作需 await。
  */
 
-export function addMetarLayer(
-  map: L.Map,
+export async function addMetarLayer(
+  map: Leaflet.Map,
   items: readonly MetarLayerItem[],
   options: AddMetarLayerOptions = {},
-): L.LayerGroup {
+): Promise<Leaflet.LayerGroup> {
   // 未知选项运行时抛错：拼写错误的选项被静默忽略 = 显示语言/行为悄悄不符预期（2026-09-15
   // 五角色评测实测：顶层 locale 此前被静默忽略，popup 整卡仍中文）。中文提示 = v0.1 message 语言契约。
   for (const key of Object.keys(options)) {
@@ -332,11 +344,12 @@ export function addMetarLayer(
     const bad: string = locale;
     throw new Error(`addMetarLayer 的 locale 选项值 "${bad}" 不受支持（可用："zh" | "en"）`);
   }
+  const L = await loadLeaflet();
   const group = L.layerGroup();
   for (const item of items) {
     const name = item.title ?? item.report.station;
     // alt 写入图标 img 的 alt 属性：marker 在读屏下 role=button，可访问名称 = 站名（WCAG 4.1.2）
-    let marker: L.Marker;
+    let marker: Leaflet.Marker;
     if (options.conditionColors === true) {
       // 圆点 divIcon 无 img——alt 失效，改以 role=img + aria-label 保住可访问名称（内容经 HTML 转义）；
       // aria-label 追加档位词（a11y 1.4.1：档位不只靠颜色传达；语言随 card.locale，缺省中文）

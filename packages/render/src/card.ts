@@ -271,7 +271,7 @@ interface LocaleTable {
     nosig: string;
     becmg: string;
     tempo: string;
-    /** 磨损趋势段（时段词在位、指示组传输丢失，kind 'unspecified'） */
+    /** 指示组缺失的趋势段（时段词在位、指示组传输丢失，kind 'unspecified'） */
     unspecified: string;
     /** 时段词 → 具体时间点（HHMM 折 HH:MM；AT/TL/FM 指示语义由前导词表达，不再重复原词） */
     periodAt: (text: string) => string;
@@ -349,7 +349,7 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
       windShear: "风切变",
     },
     badge: {
-      speci: "特殊报告",
+      speci: "特殊天气报告",
       metar: "例行报告",
       corrected: "更正报",
       auto: "自动观测",
@@ -505,9 +505,15 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
       nosig: "无重要变化",
       becmg: "渐变（逐步转变）",
       tempo: "短时波动（临时性变化）",
-      unspecified: "磨损趋势段（指示组缺失，渐变/短时不可辨）",
-      // HHMM 折 HH:MM 出具体时间点（时段词已在解析面锁定 AT/TL/FM+4 位，形状不符回退原词防捏造）
+      unspecified: "变化趋势段（指示组缺失，渐变/短时不可辨）",
+      // 时段词双形态：AT/TL/FM+HHMM 折 HH:MM 出具体时间点；斜杠 DDHH/DDHH（ICAO Annex 3 模板/
+      // 中国民航主流编法）折「自 X 日 X 时至 X 日 X 时」——形状不符回退原词防捏造。
+      // 注意：本对象的字符串由 scripts/terms.mjs 以 vm 求值抽取，函数体须保持纯 JS（禁 TS 语法）
       periodAt: (text) => {
+        const slash = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(text);
+        if (slash !== null) {
+          return `自 ${slash[1]} 日 ${slash[2]}:00 至 ${slash[3]} 日 ${slash[4]}:00`;
+        }
         const m = /^(AT|TL|FM)(\d{2})(\d{2})$/.exec(text);
         if (m === null) return `预计时刻 ${text}`;
         const hm = `${m[2]}:${m[3]}`;
@@ -733,9 +739,15 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
       becmg: "gradual change",
       tempo: "temporary fluctuations",
       unspecified:
-        "worn trend segment (change indicator lost; gradual vs temporary indistinguishable)",
-      // HHMM → HH:MM (the AT/TL/FM indicator semantics are carried by the leading words, never repeated verbatim)
+        "trend segment with missing change indicator (gradual vs temporary indistinguishable)",
+      // HHMM → HH:MM; slash DDHH/DDHH (ICAO Annex 3 template) → "from day X HH:00 to day Y HH:00"
+      // (the AT/TL/FM indicator semantics are carried by the leading words, never repeated verbatim;
+      // keep function bodies plain JS — scripts/terms.mjs evaluates this object with node:vm)
       periodAt: (text) => {
+        const slash = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(text);
+        if (slash !== null) {
+          return `from day ${slash[1]} ${slash[2]}:00 to day ${slash[3]} ${slash[4]}:00`;
+        }
         const m = /^(AT|TL|FM)(\d{2})(\d{2})$/.exec(text);
         if (m === null) return `expected at ${text}`;
         const hm = `${m[2]}:${m[3]}`;
@@ -1039,6 +1051,8 @@ const CARD_CSS = `
 .mw-warnings { margin: 8px 0 0; padding: 0; list-style: none; }
 .mw-warnings li { font-size: 12px; color: #7a4d0b; }
 .mw-warnings li.mw-info { color: #6b7785; }
+.mw-warnings li.mw-warning { color: #7a4d0b; }
+.mw-warnings li.mw-error { color: #b3261e; font-weight: 600; }
 `;
 
 function ensureStyle(): void {
@@ -1708,7 +1722,12 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
   if (report.warnings.length > 0) {
     const list = el("ul", "mw-warnings");
     for (const w of report.warnings) {
-      const li = el("li", w.severity === "info" ? "mw-info" : undefined);
+      // 严重度 class 钩子（mw-info/mw-warning/mw-error）：下游 CSS 按 severity 分流的挂点
+      //（2026-09-16 五方评测反馈：此前仅 info 有钩子，warning/error 无法定向着色）
+      const li = el(
+        "li",
+        w.severity === "info" ? "mw-info" : w.severity === "warning" ? "mw-warning" : "mw-error",
+      );
       li.textContent = `${w.severity === "info" ? "ℹ" : "⚠"} ${T.warningText(w.code, w.message, rawSlice(w.span))}`;
       list.append(li);
     }

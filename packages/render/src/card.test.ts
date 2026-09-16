@@ -143,9 +143,9 @@ describe("renderCard", () => {
       parse("SPECI OMDB 080801Z COR 28010KT CAVOK 42/17 Q1006", { kind: "speci" }),
     );
     const badges = [...card.querySelectorAll(".mw-badge")].map((b) => b.textContent);
-    expect(badges).toContain("特殊报告");
+    expect(badges).toContain("特殊天气报告");
     expect(badges).toContain("更正报");
-    // 复评命中：SPECI 卡片曾无条件双挂「例行报告」+「特殊报告」
+    // 复评命中：SPECI 卡片曾无条件双挂「例行报告」+「特殊报告」（现文案为「特殊天气报告」）
     expect(badges).not.toContain("例行报告");
   });
 
@@ -1556,5 +1556,23 @@ describe("renderCard 云底单位（heightUnit / en 缺省英尺）与未知选�
     expect(() => renderCard(parse(BKN), { locale: "jp" } as unknown as RenderCardOptions)).toThrow(
       /locale/,
     );
+  });
+});
+
+describe("renderCard 严重度钩子与斜杠时段展示（2026-09-16 五方评测反馈回归锁）", () => {
+  it("告警 li 按严重度携带 mw-info / mw-warning class（下游 CSS 分流挂点）", () => {
+    const r = parse("ZSSS 120900Z 00000KT /////KT BKN/// 15/12 Q10054");
+    const card = renderCard(r, { raw: true });
+    expect(card.querySelector(".mw-warnings li.mw-warning")).not.toBeNull();
+  });
+
+  it("斜杠时段（DDHH/DDHH）趋势行展示「自 X 日 X 时至 X 日 X 时」；en 为 from/to", () => {
+    const r = parse(
+      "ZBAA 121200Z 32005KT 9999 FEW030 18/09 Q1013 TEMPO 1616/1618 3000 TSRA BKN020CB",
+    );
+    const zh = renderCard(r, { locale: "zh" });
+    expect(zh.textContent).toContain("自 16 日 16:00 至 16 日 18:00");
+    const en = renderCard(r, { locale: "en" });
+    expect(en.textContent).toContain("from day 16 16:00 to day 16 18:00");
   });
 });

@@ -1,8 +1,9 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  // 双入口：主入口 + sources 取数子路径（exports "./sources" 的发布面来源）
-  entry: ["src/index.ts", "src/sources.ts"],
+  // 三入口：主入口 + sources 取数子路径 + stations-cn 中国站元数据子路径
+  //（exports 各子路径的发布面来源）
+  entry: ["src/index.ts", "src/sources.ts", "src/stations-cn.ts"],
   format: ["esm", "cjs"],
   dts: true,
   sourcemap: true,

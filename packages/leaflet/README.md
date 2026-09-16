@@ -6,6 +6,7 @@ metweave 的 Leaflet 适配器：报文卡片上图——marker、tooltip 与卡
 
 ```bash
 npm install @metweave/leaflet leaflet
+# TypeScript 用户另装类型：npm install -D @types/leaflet
 ```
 
 ### 最小示例
@@ -13,6 +14,8 @@ npm install @metweave/leaflet leaflet
 ```ts
 import { addMetarLayer } from "@metweave/leaflet";
 ```
+
+`addMetarLayer` 是异步函数（返回 `Promise<LayerGroup>`）：leaflet 由首次调用时动态装载，import 本包不会在 Node/SSR 模块图里触发 `window` 求值错误，上图动作需 `await`。
 
 底图瓦片仍是宿主侧一行 `L.tileLayer` 配置——本包不绑定任何底图。其他地图库（MapLibre 等）的适配器在路线图上。文档与端到端示例见[主仓库](https://github.com/yaojaro/metweave)。
 

@@ -85,6 +85,11 @@ export interface GetMetarReportsOptions extends GetMetarsOptions {
    * 不传时任一失败仍聚合抛出（默认行为不变，全有或全无）。
    */
   onUnparseable?: (failure: UnparseableReport) => void;
+  /**
+   * 紧凑模式：parse 产物剥除全部 span 字段（存储体积约 -32%，入库供屏场景推荐）；
+   * 缺省 undefined = 完整模式（span 在位，原文回溯用）。
+   */
+  spans?: false;
 }
 
 /**
@@ -247,7 +252,7 @@ export async function getMetarReports(
   network = "CN__ASOS",
   options: GetMetarReportsOptions = {},
 ): Promise<MetarReportItem[]> {
-  const { stations, onUnparseable, ...fetchOptions } = options;
+  const { stations, onUnparseable, spans, ...fetchOptions } = options;
   const table = new Map((stations ?? []).map((s) => [s.icao, s] as const));
   const observations = await getMetars(network, fetchOptions);
   const items: MetarReportItem[] = [];
@@ -259,7 +264,7 @@ export async function getMetarReports(
     if (lat === null || lon === null) continue;
     try {
       items.push({
-        report: parse(obs.raw),
+        report: parse(obs.raw, spans === false ? { spans: false } : undefined),
         position: [lat, lon],
         title: `${obs.station}${station?.name ? ` ${station.name}` : ""}`,
       });

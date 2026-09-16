@@ -123,4 +123,31 @@ await writeFile(
   new URL("../examples/stations.json", import.meta.url),
   `${JSON.stringify(payload, null, 2)}\n`,
 );
-console.log(`已写出 ${stations.length} 站 → examples/stations.json`);
+
+// 双写产物之二：伞包子路径 `metweave/stations-cn` 的数据文件（npm 分发面——
+// 让「精确站名/坐标联表」开箱即用，不再要求用户去仓库翻 examples/stations.json）。
+// 本脚本是该文件唯一写入口（2026-09-16 起）；两份产物同源同批，勿手改任一份。
+const dataTs = `/**
+ * 由 \\\`pnpm gen:stations\\\` 机械再生——单一来源 = aviationweather.gov/api/data/metar 一次拉取
+ * （采集纪律与字段口径见 scripts/generate-stations.mjs）；请勿手改。
+ * 生成时刻：${payload.generatedAt}
+ */
+
+export interface CnStationRaw {
+  icao: string;
+  name: string;
+  lat: number;
+  lon: number;
+  elevM: number;
+}
+
+export const CN_STATIONS_SOURCE = ${JSON.stringify(payload.source)};
+
+export const CN_STATIONS_GENERATED_AT = ${JSON.stringify(payload.generatedAt)};
+
+export const CN_STATIONS_DATA: readonly CnStationRaw[] = ${JSON.stringify(stations, null, 2)};
+`;
+await writeFile(new URL("../packages/metweave/src/stations-cn.data.ts", import.meta.url), dataTs);
+console.log(
+  `已写出 ${stations.length} 站 → examples/stations.json + packages/metweave/src/stations-cn.data.ts`,
+);

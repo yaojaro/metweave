@@ -28,14 +28,17 @@ TypeScript 工具链：解析 → 标准化 → 渲染
 气象报文的解析层已经有很多优秀的开源库（avwx、MetPy……）。metweave 不重复造这些轮子——真正的缺口在解析之后：今天要把一张 METAR 报文卡片或一层格点填色画到地图上，你仍然要在格式转换、互不相干的渲染插件和自写胶水代码之间挣扎。气象前端缺的不是又一个图层库，而是把**解析 → 标准化 → 渲染**连成一条完整链路的那一层。metweave 想做的，就是这一层。
 
 - 解析侧的纪律是**不静默**：看不懂的组进 `warnings[]`（带原文位置），缺测电码（`//`、`////`、`/////KT`、`BKN///`）显式建模为三态，绝不丢弃、绝不捏造值。
-- 失败有稳定契约：解析/取数失败抛 `MetarParseError` / `MetarSourceError`，`code` 字段只增不改，消费方按 code 分流。**`message` 默认中文**（v0.1 主受众）——英文文案用 `@metweave/core` 导出的 `EN_MESSAGES[code]` 查表，全部错误码清单见 [docs/error-codes.md](docs/error-codes.md)。
+- 失败有稳定契约：解析/取数失败抛 `MetarParseError` / `MetarSourceError`，`code` 字段只增不改，消费方按 code 分流。**`message` 默认中文**（v0.1 主受众）——英文文案用 `@metweave/core` 导出的 `EN_MESSAGES[code]` 查表，全部错误码清单见 [docs/error-codes.md](docs/error-codes.md)。日志采集提示：错误对象的机读明细在 `raw` 字段（如批量失败的逐站汇总），`message` 是给人看的中文——只采 message 会丢明细。
 - 英文展示现成可用：卡片与地图图层传 `locale: "en"` 整卡切换——`renderCard(report, { locale: "en" })` 或 `addMetarLayer(map, items, { locale: "en" })`（速记等价 `card.locale`，卡片/悬停/读屏档位词一并切换）；告警按 code 映射英文模板。云底/垂直能见度的正面单位随语言：中文米（民航口径）、英文英尺（报文原生编码），`heightUnit` 选项可显式覆盖。
 
 ### 安装
 
-> **五包尚未发布 npm**（发布前 `npm install metweave` 会 404）——当前请用**方式一（源码编译）**；方式二在 npm 发布后即可用，发布状态以 [npmjs.com/package/metweave](https://www.npmjs.com/package/metweave) 是否存在为准。
+```bash
+npm install metweave @metweave/leaflet leaflet
+# TypeScript 用户另装类型：npm install -D @types/leaflet
+```
 
-**方式一：从源码编译（当前可用）**
+**从源码编译**（参与开发或需改源码时）：
 
 ```bash
 git clone https://github.com/yaojaro/metweave.git
@@ -49,20 +52,13 @@ cd 你的项目 && npm install ~/metweave/dist-pkg/metweave-*.tgz leaflet
 
 > 团队协作提示：tgz 方式会把 `file:` 路径写进 package.json（路径移动即断）——建议把五个 tgz 提交到内网 registry、随仓 vendored，或统一放在仓库内的固定相对路径再安装。
 
-**方式二：从 npm 安装（发布后可用）**
-
-```bash
-npm install metweave @metweave/leaflet leaflet
-# TypeScript 用户另装类型：npm install -D @types/leaflet
-```
-
 ### 快速开始：底图自备，几行代码上图
 
 以下示例运行在浏览器项目（Vite/webpack）；Node 环境先看下方「Node 里的三十秒」。
 
-**底图用天地图，需要你自己的 key**——天地图服务条款要求按应用申请 key，所以本项目不自带、也不代发。到 <https://console.tianditu.gov.cn/> 申请「浏览器端」类型的 tk，放进环境变量（Vite 项目写 `.env.local` 的 `VITE_TIANDITU_KEY`）：**不要把 key 写进代码，也不要用 URL 参数传**——key 一旦进地址栏，就会留在浏览器历史、Referer 头与中间层日志里。
+**底图用天地图，需要你自己的 key**——天地图服务条款要求按应用申请 key，所以本项目不自带、也不代发。到 <https://console.tianditu.gov.cn/> 申请「浏览器端」类型的 tk，放进环境变量（Vite 项目写 `.env.local` 的 `VITE_TIANDITU_KEY`）：**不要把 key 写进代码，也不要用 URL 参数传**——key 一旦进地址栏，就会留在浏览器历史、Referer 头与中间层日志里。**没配置 key 时会看到什么**：天地图对无 key 请求返回拦截页而非瓦片，表现是地图区域空白、控制台出现非图片响应——metweave 不会静默替换成其他底图源；国内无免 key 的公开瓦片可用（OSM 国内不可达），**申请 key 是地图环节的硬前置**（官方示例在无 key 时会就地提示配置方式）。
 
-HTML 里放一个地图容器：`<div id="map" style="height: 420px"></div>`，然后（用 `npm create vite` 新建的项目，先删掉模板自带的演示文件与引用——`counter.js` / `style.css`，新版模板还有 `assets/` 下的图片等，避免样式互相干扰）：
+HTML 里放一个地图容器：`<div id="map" style="height: 420px"></div>`，然后（用 `npm create vite` 新建的项目，先删掉模板自带的演示文件与引用——`counter.js` / `style.css`，新版模板还有 `assets/` 下的图片等，避免样式互相干扰）。**Vue 项目注意**：示例的顶层 `await` 在 Vue3 `<script setup>` 中需要外层 `<Suspense>` 包裹，否则页面空白——或者改用 `.then()` 风格调用：
 
 ```ts
 import * as L from "leaflet";
@@ -76,7 +72,7 @@ L.tileLayer(
   `https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${tk}`,
   { subdomains: ["0", "1", "2", "3", "4", "5", "6", "7"], attribution: "底图 © 天地图" },
 ).addTo(map);
-addMetarLayer(map, await getMetarReports(), { conditionColors: true });
+await addMetarLayer(map, await getMetarReports(), { conditionColors: true });
 ```
 
 - **底图与 metweave 解耦**：上面这行 `L.tileLayer(...)` 只是底图来源，换成任意你已获授权的瓦片源即可——metweave 不绑定任何底图厂商，也不代你取得底图许可。含中文注记层的完整两层写法见 [`examples/src/basemaps.ts`](examples/src/basemaps.ts)。
@@ -133,7 +129,7 @@ console.table(
 | 趋势        | `v.trends`（`kind`/`period`/`raw`）                                               | NOSIG/BECMG/TEMPO                                                           |
 | 告警        | `report.warnings`（`code`/`severity`/`span`/`message`）                           | 恒存在；按 `code` 分流，全部码见 [docs/error-codes.md](docs/error-codes.md) |
 
-> 表格首列现在还是 ICAO 四字码——因为缺省没传站点元数据。照 [`examples/stations.json`](examples/stations.json) 的结构把站名/坐标传给 `getMetarReports("CN__ASOS", { stations })`，`title` 就会变成「四字码 + 站名」。
+> 表格首列现在还是 ICAO 四字码——因为缺省没传站点元数据。**中国 39 站的精确元数据已随包自带**：`import { CN_STATIONS } from "metweave/stations-cn"` 后传给 `getMetarReports("CN__ASOS", { stations: CN_STATIONS })`，`title` 就会变成「四字码 + 站名」、坐标换为精确机场位（数据来源 aviationweather.gov，`pnpm gen:stations` 可再生；自建联表可照 [`examples/stations.json`](examples/stations.json) 的结构）。
 
 ### 数据源与风险披露
 
@@ -146,7 +142,7 @@ metweave 的取数通路面向公开数据源，适合**态势感知、原型与
 
 ### 规范遵循与数据验证
 
-解析器以六套规范**原文**为编码基准，METAR/SPECI 编码面 105 条条款已逐条做过符合性审计（逐条的规范出处、实现位置与回归锁见 [docs/compliance.md](docs/compliance.md) 审计矩阵），未满足项零容忍修复：
+解析器以六套规范**原文**为编码基准，METAR/SPECI 编码面 106 条条款已逐条做过符合性审计（逐条的规范出处、实现位置与回归锁见 [docs/compliance.md](docs/compliance.md) 审计矩阵），未满足项零容忍修复：
 
 | 规范                                                                      | 在本库中的用途               |
 | ------------------------------------------------------------------------- | ---------------------------- |

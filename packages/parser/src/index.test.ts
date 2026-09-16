@@ -1166,7 +1166,51 @@ describe("下阶段：QBB 俄区云底高度组（began-ended 误吞修正）", 
   });
 });
 
-describe("IEM 形态长尾第二批：TX/TN 组、磨损趋势段、WS 缺词、RVR 全斜杠", () => {
+describe("趋势斜杠时段（DDHH/DDHH——ICAO Annex 3 模板 / 中国民航主流编法；2026-09-16 五方实测评测 P0 回归锁）", () => {
+  it("TEMPO 1616/1618 3000 TSRA BKN020CB：趋势内容关进趋势段，正文能见度不再被 last-wins 顶掉", () => {
+    const r = parse(
+      "ZBAA 121200Z 32005KT 9999 FEW030 18/09 Q1013 TEMPO 1616/1618 3000 TSRA BKN020CB",
+    );
+    expect(r.trends).toHaveLength(1);
+    const tr = r.trends[0];
+    expect(tr?.kind).toBe("tempo");
+    expect(tr?.period?.text).toBe("1616/1618");
+    expect(tr?.elements?.visibility?.value).toBe(3000);
+    expect(tr?.elements?.weather?.[0]?.phenomena).toContain("RA");
+    const trendCloud0 = tr?.elements?.clouds?.elements[0];
+    expect(trendCloud0?.kind === "layer" ? trendCloud0.amount : undefined).toBe("BKN");
+    // 正文四组各归其位（修复前：正文能见度被趋势 3000 顶掉、TSRA/BKN020CB 污染正文）
+    expect(r.visibility?.kind).toBe("value");
+    expect(r.weather).toBeUndefined();
+    expect(r.clouds?.elements).toHaveLength(1);
+    expect(r.warnings.some((w) => w.code === "cross-check-conflict")).toBe(false);
+  });
+
+  it("BECMG 1606/1608 04004MPS CAVOK：趋势 CAVOK 不与正文云组出假矛盾", () => {
+    const r = parse("ZSPD 160600Z 18003MPS 9999 SCT025 24/19 Q1010 BECMG 1606/1608 04004MPS CAVOK");
+    expect(r.trends[0]?.kind).toBe("becmg");
+    expect(r.trends[0]?.period?.text).toBe("1606/1608");
+    expect(r.trends[0]?.elements?.cavok).toBeDefined();
+    expect(r.trends[0]?.elements?.wind?.speed.value).toBe(4);
+    // 正文原位 + 假矛盾不出声（修复前：趋势 CAVOK 与正文 SCT025 出 cross-check-conflict）
+    const bodyCloud0 = r.clouds?.elements?.[0];
+    expect(bodyCloud0?.kind === "layer" ? bodyCloud0.amount : undefined).toBe("SCT");
+    expect(r.warnings).toHaveLength(0);
+  });
+
+  it("裸斜杠时段（指示组缺失）：kind unspecified 收段出声，正文不受牵连", () => {
+    const r = parse("ZSFZ 161500Z 09005MPS 8000 -RA BKN010 OVC025 17/14 Q1012 1618/1620 3000 TSRA");
+    expect(r.trends).toHaveLength(1);
+    expect(r.trends[0]?.kind).toBe("unspecified");
+    expect(r.trends[0]?.period?.text).toBe("1618/1620");
+    expect(r.trends[0]?.elements?.visibility?.value).toBe(3000);
+    expect(unwrap(r.visibility)?.value).toBe(8000);
+    const warn = r.warnings.find((w) => w.code === "invalid-format");
+    expect(warn?.severity).toBe("warning");
+  });
+});
+
+describe("IEM 形态长尾第二批：TX/TN 组、指示组缺失趋势段、WS 缺词、RVR 全斜杠", () => {
   it("TX/TN 温度预告组（TAF 混入通路，ICAO Annex 3 附录五）：认组进 remarks temperature-forecast，不再 unknown", () => {
     const r = parse(fx("target-txtn-zhhh").raw);
     const tx = r.remarks.find((m) => m.raw === "TX25/0907Z");
@@ -1180,12 +1224,27 @@ describe("IEM 形态长尾第二批：TX/TN 组、磨损趋势段、WS 缺词、
       neg.remarks.some((m) => m.kind === "temperature-forecast" && m.raw === "TXM05/1809Z"),
     ).toBe(true);
     // 正文主体不受牵连：风/能见度/温露/QNH 各归其位
-    expect(unwrap(r.wind)?.speed.value).toBe(3);
-    expect(unwrap(r.visibility)?.value).toBe(6000);
+    // 斜杠时段行（0906/1006，ICAO Annex 3 / 中国民航口径，2026-09-16 起按趋势段收口）：
+    // 趋势内容（风 20003MPS / 能见度 6000）关进趋势段，正文风/能见度不再被牵连
+    expect(unwrap(r.wind)).toBeUndefined();
+    expect(r.trends).toHaveLength(1);
+    expect(r.trends[0]?.kind).toBe("unspecified");
+    expect(r.trends[0]?.period?.text).toBe("0906/1006");
+    expect(r.trends[0]?.elements?.wind?.speed.value).toBe(3);
+    expect(r.trends[0]?.elements?.visibility?.value).toBe(6000);
+    // TX/TN 仍在 remarks（趋势收组封闭清单把 TX/TN 交回正文认组）
+    expect(r.remarks.some((m) => m.kind === "temperature-forecast" && m.raw === "TN16/0922Z")).toBe(
+      true,
+    );
     expect(r.altimeter).toBeUndefined(); // 本行无 QNH
+    // 粘连变体（TEMPO1616/1618）与裸斜杠变体同族收口（无指示组 → kind unspecified 出声）
+    const fused = parse("ZBAA 121200Z 32005KT 9999 FEW030 18/09 Q1013 TEMPO1616/1618 3000 TSRA");
+    expect(fused.trends).toHaveLength(1);
+    expect(fused.trends[0]?.period?.text).toBe("1616/1618");
+    expect(fused.trends[0]?.elements?.visibility?.value).toBe(3000);
   });
 
-  it("裸趋势时段词（缺指示组）：收为 kind unspecified 磨损趋势段，趋势风组不再以 last-wins 覆盖正文风组", () => {
+  it("裸趋势时段词（缺指示组）：收为 kind unspecified 指示组缺失趋势段，趋势风组不再以 last-wins 覆盖正文风组", () => {
     const r = parse(fx("target-bareperiod-zsam").raw);
     expect(r.trends).toHaveLength(1);
     expect(r.trends[0]?.kind).toBe("unspecified");

@@ -36,6 +36,28 @@ import type {
 } from "@metweave/core";
 import { MetarParseError } from "@metweave/core";
 
+// IR 类型就近供给：本包 API 的返回/告警类型即 core 的 IR 类型（唯一来源在 core，此处仅转发）——
+// 免去消费方猜测「parse 的返回类型去哪 import」（2026-09-16 五方实测评测反馈）
+export type {
+  AltimeterReading,
+  CloudCondition,
+  CloudElement,
+  MetarReport,
+  Observed,
+  ParseWarning,
+  ReportKind,
+  RunwayStateGroup,
+  RunwayVisualRange,
+  Span,
+  TemperatureReading,
+  TrendElements,
+  TrendGroup,
+  TrendKind,
+  VisibilityGroup,
+  WeatherGroup,
+  WindGroup,
+} from "@metweave/core";
+
 interface Token {
   readonly text: string;
   readonly start: number;
@@ -1317,7 +1339,9 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
       if (
         kindText !== "NOSIG" &&
         periodTok !== undefined &&
-        /^(AT|FM|TL)\d{4}$/.test(periodTok.text)
+        // 时段词双形态：AT/TL/FM+DDHH（WMO 306 FM15 §15.14.3）与 DDHH/DDHH 斜杠时段
+        //（ICAO Annex 3 模板 / 中国民航主流编法，2026-09-16 五方实测评测发现的缺失形态）
+        (/^(?:AT|FM|TL)\d{4}$/.test(periodTok.text) || /^\d{4}\/\d{4}$/.test(periodTok.text))
       ) {
         period = { text: periodTok.text, span: spanOf(periodTok) };
         collected.push(periodTok);
@@ -1340,7 +1364,7 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
       continue;
     }
 
-    // 磨损趋势段两形态（WMO 306 FM15 §15.14.3 时段词 AT/TL/FM 不得脱离指示组）：
+    // 指示组缺失趋势段两形态——传输磨损所致（WMO 306 FM15 §15.14.3 时段词 AT/TL/FM 不得脱离指示组）：
     // ①粘连——指示组与时段词丢空格（BECMGTL0350，IEM 归档实弹 10 次）：宽容拆分，语义完整可恢复；
     // ②裸时段词——指示组整组丢失（Q1009 TL0730 …，IEM 归档实弹 128 次）：按 kind 'unspecified'
     //   收段（要素组不再散落正文——尤其防趋势风组以 last-wins 覆盖正文真风组），告警标注指示组不可辨。
@@ -1351,7 +1375,7 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
       text.startsWith("BECMG") ||
       text.startsWith("TEMPO")
     ) {
-      const fused = /^(BECMG|TEMPO)(AT|TL|FM)\d{4}$/.exec(text);
+      const fused = /^(BECMG|TEMPO)((?:AT|TL|FM)\d{4}|\d{4}\/\d{4})$/.exec(text);
       if (fused !== null) {
         const indicator = fused[1] ?? "";
         const collected: Token[] = [t];
@@ -1393,11 +1417,36 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
         warnings.push({
           code: "invalid-format",
           severity: "warning",
-          message: `趋势时段词缺指示组（${text}——§15.14.3 时段词须随 BECMG/TEMPO 出现）——按磨损趋势段收下，指示组类型不可辨`,
+          message: `趋势时段词缺指示组（${text}——§15.14.3 时段词须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨`,
           span: spanOf(t),
         });
         continue;
       }
+    }
+    // 裸斜杠时段词（1616/1618——ICAO Annex 3 模板 / 中国民航主流趋势时段编法，指示组缺失）：
+    // 与 AT/TL/FM 裸词同纪律——kind 'unspecified' 收段出声，要素组不再散落正文
+    //（2026-09-16 五方实测评测发现：此前该形态散落正文，趋势能见度以 last-wins 顶掉正文能见度）。
+    // 前置守卫（长度 9 + 第 5 字符为斜杠）保正文热路径不为逐 token 正则付费
+    if (text.length === 9 && text.charCodeAt(4) === 47 && /^\d{4}\/\d{4}$/.test(text)) {
+      const collected: Token[] = [t];
+      i += 1;
+      collectTrendTokens(collected);
+      trendCloseWarning();
+      const bareElements = structureTrendElements(collected, 1);
+      trends.push({
+        kind: "unspecified",
+        period: { text, span: spanOf(t) },
+        ...(bareElements !== undefined ? { elements: bareElements } : {}),
+        raw: collected.map((c) => c.text).join(" "),
+        span: joinSpan(collected),
+      });
+      warnings.push({
+        code: "invalid-format",
+        severity: "warning",
+        message: `趋势时段词缺指示组（${text}——ICAO Annex 3 模板趋势时段须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨`,
+        span: spanOf(t),
+      });
+      continue;
     }
 
     if (text === "CAVOK") {
