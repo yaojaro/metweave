@@ -19,9 +19,7 @@ TypeScript 工具链：解析 → 标准化 → 渲染
 
 > **30 秒认识 METAR**：METAR 是机场每小时（部分机场每半小时）发布的一行天气观测电码——`ZSPD 120330Z 04004MPS 9999 SCT033 27/18 Q1020 NOSIG` 依次是站名、时间（UTC）、风、能见度、云、温度/露点、气压、趋势。metweave 做的事，就是把这一行变成结构化数据和界面。
 
-![中国自动地面观测站网（ASOS）实况上图](docs/screenshots/01-tianditu-default.png)
-
-![站点卡片与 RAW 对照](docs/screenshots/04-yangtze-zoom-card.png)
+![metweave 实况演示：全国机场实况上图（条件色圆点扫视）→ 推近长三角 → 悬停站点出气泡（含 CAVOK 短译）→ 点击打开实况卡片（观测龄期、人话要素与原文电码对照）](docs/screenshots/00-demo-overview.gif)
 
 ### 为什么是 metweave
 
