@@ -94,15 +94,17 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     // good（绿）：好天与 CAVOK
     { raw: "ZGGG 120000Z 27008KT 9999 SCT030 26/22 Q1009", tier: "good", color: "#3aa657" },
     { raw: "ZGGG 120000Z 27008KT CAVOK 26/22 Q1009", tier: "good", color: "#3aa657" },
-    // caution（琥珀）：能见度 1500–4800 / 云底 1000–3000 / 降水族 / 阵风 15–25 m/s
+    // caution（琥珀）：能见度 1500–5000（国内口径）/ 云底 1000–3000 / 降水族 / 阵风 15–25 m/s
     { raw: "ZGGG 120000Z 27008KT 3000 SCT030 26/22 Q1009", tier: "caution", color: "#e0a13c" },
+    { raw: "ZGGG 120000Z 27008KT 4900 SCT030 26/22 Q1009", tier: "caution", color: "#e0a13c" },
     { raw: "ZGGG 120000Z 27008KT 9999 BKN020 26/22 Q1009", tier: "caution", color: "#e0a13c" },
     { raw: "ZGGG 120000Z 27008KT 9999 -RA SCT030 26/22 Q1009", tier: "caution", color: "#e0a13c" },
     { raw: "ZGGG 120000Z 27008G40KT 9999 SCT030 26/22 Q1009", tier: "caution", color: "#e0a13c" },
-    // poor（红）：能见度 <1500 / 云底 <1000 / TS 族好能见度 / GR / CB / + 显著降水 / 阵风 ≥25 m/s / 跑道关闭
+    // poor（红）：能见度 <1500 / 云底 <1000 / TS 族好能见度 / GR / FZ 冻降水族 / CB / + 显著降水 / 阵风 ≥25 m/s / 跑道关闭
     { raw: "ZGGG 120000Z 27008KT 0800 BKN030 26/22 Q1009", tier: "poor", color: "#d05656" },
     { raw: "ZGGG 120000Z 27008KT 9999 BKN005 26/22 Q1009", tier: "poor", color: "#d05656" },
     { raw: "ZGGG 120000Z 27008KT 9999 TSRA SCT030 26/22 Q1009", tier: "poor", color: "#d05656" },
+    { raw: "ZGGG 120000Z 27008KT 9999 FZRA SCT030 26/22 Q1009", tier: "poor", color: "#d05656" },
     { raw: "ZGGG 120000Z 27008KT 9999 GR SCT030 26/22 Q1009", tier: "poor", color: "#d05656" },
     { raw: "ZGGG 120000Z 27008KT 9999 SCT030CB 26/22 Q1009", tier: "poor", color: "#d05656" },
     { raw: "ZGGG 120000Z 27008KT 9999 +SHRA SCT030 26/22 Q1009", tier: "poor", color: "#d05656" },

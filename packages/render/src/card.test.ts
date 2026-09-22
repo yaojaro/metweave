@@ -571,6 +571,15 @@ describe("C3：危险项视觉突出 + 行序对齐电码判读序", () => {
     expect(visRow?.classList.contains("mw-caution")).toBe(true);
   });
 
+  it("冻降水升红（2026-09-22 运行视角评审）：FZRA 天气行加 mw-danger", () => {
+    const card = renderCard(parse("ZGGG 120000Z 27008KT 9999 FZRA SCT030 26/22 Q1009"));
+    const weatherRow = [...card.querySelectorAll("dd")].find((d) =>
+      d.textContent?.includes("冻雨"),
+    );
+    expect(weatherRow?.querySelector("span.mw-danger")).toBeDefined();
+    expect(weatherRow?.querySelector("span.mw-caution")).toBeNull();
+  });
+
   it("样式表锁定新对比度色值：dashed #7f8c9a 在位、旧 dashed #b6c2ce 消失（防回退）", () => {
     renderCard(parse(RAW)); // 触发样式注入
     const css = document.getElementById("mw-card-style")?.textContent ?? "";

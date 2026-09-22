@@ -130,10 +130,10 @@ const toMps = (value: number, unit: "kt" | "mps" | "kmh"): number =>
  * 阈值由本库拟定，**不对应也不代表任何官方飞行天气分类；本库不提供飞行规则判定**（本期无此功能）。
  * 仅供「一眼扫视哪些站值得注意」，不得作为任何运行判据：
  * - unknown（灰）= NIL（台站无观测）或关键组全缺测（能见度与云均缺测且天气缺测/无——按可得要素无从判读）
- * - poor（红）= 能见度 < 1500 m，或云底 < 1000 ft，或天气含 TS 族（任何雷暴，含 VC 邻近）
- *   或现象含 GR/VA，或 + 强度显著降水，或阵风 ≥ 25 m/s，或云组含 CB/TCU，或跑道关闭
- * - caution（琥珀）= 能见度 1500–4800 m，或云底 1000–3000 ft，或任何降水族（RA/SN 等），
- *   或 FZ 族（结冰），或阵风 15–25 m/s
+ * - poor（红）= 能见度 < 1500 m，或 BKN/OVC 云层（含垂直能见度）云底 < 1000 ft，或天气含 TS 族（任何雷暴，含 VC 邻近）
+ *   或现象含 GR/VA，或冻降水（FZ 描述符族，冻雨/冻毛毛雨），或 + 强度显著降水，或阵风 ≥ 25 m/s，或云组含 CB/TCU，或跑道关闭
+ * - caution（琥珀）= 能见度 1500–5000 m（能见度分档取国内通行 1500/5000 m 口径），或 BKN/OVC 云底 1000–3000 ft，或任何降水族（RA/SN 等），
+ *   或 FZ 描述符以外的结冰现象，或阵风 15–25 m/s
  * - good（绿）= 其余（含 CAVOK）
  * 缺测要素不参与限制（按可得要素判，见 conditionOf 内 unknown 判据的例外）；阈值细则随口径审定后修订。
  */
@@ -173,10 +173,11 @@ function conditionOf(report: MetarReport): ConditionTier {
   for (const g of v.weather ?? []) {
     const thunderstorm = g.descriptor === "TS"; // TS 族：任何雷暴（含 VCTS 邻近雷暴）
     const hailOrAsh = g.phenomena.includes("GR") || g.phenomena.includes("VA");
+    const freezing = g.descriptor === "FZ"; // 冻降水族（FZRA/FZDZ 等）——危害与雷暴同级，2026-09-22 运行视角评审升红
     const heavyPrecip =
       g.intensity === "+" &&
       (g.descriptor === "SH" || g.phenomena.some((p) => PRECIP_PHENOMENA.has(p)));
-    if (thunderstorm || hailOrAsh || heavyPrecip) return "poor";
+    if (thunderstorm || hailOrAsh || freezing || heavyPrecip) return "poor";
   }
   const gust = v.wind?.gust;
   if (gust !== undefined && toMps(gust.value, gust.unit) >= 25) return "poor";
@@ -190,13 +191,12 @@ function conditionOf(report: MetarReport): ConditionTier {
   // —— caution 判据（任一命中即琥珀）
   if (vis !== undefined) {
     const visMeters = vis.unit === "m" ? vis.value : vis.value * 1609.344;
-    if (visMeters < 4800) return "caution";
+    if (visMeters < 5000) return "caution";
   }
   if (ceiling < 3000) return "caution";
   for (const g of v.weather ?? []) {
-    const freezing = g.descriptor === "FZ";
     const precip = g.phenomena.some((p) => PRECIP_PHENOMENA.has(p));
-    if (freezing || precip) return "caution";
+    if (precip) return "caution";
   }
   if (gust !== undefined && toMps(gust.value, gust.unit) >= 15) return "caution";
   return "good";

@@ -870,14 +870,17 @@ const PRECIP_PHENOMENA: ReadonlySet<WeatherPhenomenon> = new Set([
  * 危险值分级（值着色口径，本库自拟，初稿待审）：
  * 只是「一眼扫视哪些组更值得注意」的显示层启发式，阈值由本库拟定——
  * **不对应、也不代表任何官方飞行天气分类；本库不提供也不承诺飞行规则判定**（本期无此功能）：
- * - danger（红系 mw-danger）：天气描述符含 TS（雷暴）或现象含 GR（冰雹）或强度 +（强）；
+ * - danger（红系 mw-danger）：天气描述符含 TS（雷暴）或 FZ（冻降水族，2026-09-22 运行视角评审升红）或现象含 GR（冰雹）或强度 +（强）；
  *   云层含 CB/TCU（对流云）；能见度 < 1500 m；RVR < 800 m；跑道关闭。
- * - caution（橙系 mw-caution）：降水类现象（RA/SN/SG/PL/GS/IC/DZ/UP）或 FZ 描述符（结冰族）；
- *   能见度 1500–4800 m。
+ * - caution（橙系 mw-caution）：降水类现象（RA/SN/SG/PL/GS/IC/DZ/UP）；
+ *   能见度 1500–5000 m（能见度分档取国内通行 1500/5000 m 口径）。
  * 阈值与分级细则随术语表版本审定后修订。
  */
 const isDangerWeather = (g: WeatherGroup): boolean =>
-  g.descriptor === "TS" || g.phenomena.includes("GR") || g.intensity === "+";
+  g.descriptor === "TS" ||
+  g.descriptor === "FZ" ||
+  g.phenomena.includes("GR") ||
+  g.intensity === "+";
 
 const isCautionWeather = (g: WeatherGroup): boolean =>
   !isDangerWeather(g) &&
@@ -910,7 +913,7 @@ const visibilityTone = (vis: {
 }): "mw-danger" | "mw-caution" | undefined => {
   const meters = visibilityMeters(vis);
   if (meters < 1500) return "mw-danger";
-  if (meters < 4800) return "mw-caution";
+  if (meters < 5000) return "mw-caution";
   return undefined;
 };
 
