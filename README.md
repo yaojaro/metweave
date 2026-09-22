@@ -78,7 +78,7 @@ await addMetarLayer(map, await getMetarReports(), { conditionColors: true });
 - **为什么示例默认开 `conditionColors: true`（条件色圆点模式）**：Leaflet 默认图钉的图标 URL 在打包器（Vite/webpack 等）下会 404（图标路径按 CSS 推断，会被打散），而圆点模式纯 CSS 绘制、无图标资源，默认就不踩坑。若你偏好默认图钉，补一行固定图标 URL 即可：`L.Icon.Default.mergeOptions({ iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png" })`。
 
 - 缺省拉取中国 ASOS 网（ASOS＝Automated Surface Observing System，自动地面观测站网；39 站）整网实况；换网传 IEM 网名——国家网 = ISO 国家码 + `__ASOS`（如 `DE__ASOS`、`RU__ASOS`），美国州网为单下划线（`IA_ASOS` / `CO_ASOS`），完整清单见 [IEM](https://mesonet.agron.iastate.edu/sites/networks.php)。
-- 站点定位与坐标系：IEM 自带的中国站坐标为城市级粗定位（与 WGS-84，即 GPS 所用坐标系，存在城市级误差）——放大视图请以机场实际位置为准；严肃场景请用 `stations` 参数传站点元数据精确联表（「联表」＝按 ICAO 四字码把报文和你的站点元数据表对号入座，做法可抄 [`examples/stations.json`](examples/stations.json)）。
+- 站点定位与坐标系：IEM 自带的中国站坐标为城市级粗定位（与 WGS-84，即 GPS 所用坐标系，存在城市级误差）——放大视图请以机场实际位置为准；严肃场景请用 `stations` 参数传站点元数据精确联表（「联表」＝按 ICAO 四字码把报文和你的站点元数据表对号入座，做法可抄 [`examples/stations.json`](examples/stations.json)）。另注：高德/腾讯等 GCJ-02 系底图（俗称「火星坐标」）与 WGS-84 站点坐标叠加存在数百米偏移（放大后站点会偏离机场实际位置）——换用此类底图时是否做坐标校正由你决定，metweave 不内置偏移校正。
 - 完整可跑示例（站点元数据定位、RAW 对照卡片）见 [`examples/`](examples/)，`pnpm install && pnpm --filter metweave-examples dev` 一条命令起 demo（同样需要自备天地图 key）。
 
 ### Node 里的三十秒
