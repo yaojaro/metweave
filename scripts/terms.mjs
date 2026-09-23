@@ -14,7 +14,7 @@
  *                                         （不一致=改动未经术语表入册）、zh/en key
  *                                         对齐、规范代号可解析、清单与源一致
  *
- * 抽取面（v1）：render/card.ts#LOCALE、leaflet/index.ts#TIER_WORDS、
+ * 抽取面（v1）：render/card.ts#LOCALE（词表常量在 render/gloss.ts，经作用域注入求值）、leaflet/index.ts#TIER_WORDS、
  * core/errors.ts#EN_MESSAGES、sources.ts 与 parser/index.ts 的 CJK 字符串字面量。
  * card.ts 内联拼装模板（龄期/日期/云底折米等）以 kind=template 在册，不参与自动比对。
  */
@@ -215,8 +215,14 @@ function harvest() {
   const en = {};
   // LOCALE 引用模块级 DECODE_CITES（转换说明气泡的规范依据行，单一来源）——先取后者再入作用域
   const decodeCites = extractConst("packages/render/src/card.ts", "DECODE_CITES");
+  // LOCALE 另引用 gloss.ts 的共享词表常量（wind/cloud/wx/CAVOK 短译单一来源）——同 DECODE_CITES 先例入作用域
+  const glossScope = {};
+  for (const name of ["WIND_GLOSS", "CLOUD_GLOSS", "WX_GLOSS", "CAVOK_SHORT"]) {
+    glossScope[name] = extractConst("packages/render/src/gloss.ts", name);
+  }
   const cardLocale = extractConst("packages/render/src/card.ts", "LOCALE", {
     DECODE_CITES: decodeCites,
+    ...glossScope,
   });
   const zhFlat = flatten(cardLocale.zh, "card", {});
   const enFlat = flatten(cardLocale.en, "card", {});

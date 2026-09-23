@@ -154,13 +154,13 @@
 | card.wx.thunderstorm | 雷暴 | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · 4678 表（TS）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录十五（TS 雷暴及组合规则） |
 | card.wx.thunderstormWith | (phenom) => `雷暴伴${phenom}` | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · 4678 表（TS 与降水组合）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录十五 注 10（TS 与 RA/SN/GS/GR/UP 组合） |
 | card.wx.descCompose | (descriptor, phenom) =>
-        descriptor === "阵性"
-          ? phenom === ""
-            ? "阵性降水（类型不可辨）"
-            : `阵${phenom}`
-          : phenom === ""
-            ? descriptor
-            : `${descriptor}${phenom}` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+      descriptor === "阵性"
+        ? phenom === ""
+          ? "阵性降水（类型不可辨）"
+          : `阵${phenom}`
+        : phenom === ""
+          ? descriptor
+          : `${descriptor}${phenom}` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 | card.wx.join | 、 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 | card.wx.joinParts |  | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 | card.wx.hazard | （飞行威胁大） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |

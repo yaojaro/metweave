@@ -1754,7 +1754,7 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "(descriptor, phenom) =>\n        descriptor === \"阵性\"\n          ? phenom === \"\"\n            ? \"阵性降水（类型不可辨）\"\n            : `阵${phenom}`\n          : phenom === \"\"\n            ? descriptor\n            : `${descriptor}${phenom}`",
+   "text": "(descriptor, phenom) =>\n      descriptor === \"阵性\"\n        ? phenom === \"\"\n          ? \"阵性降水（类型不可辨）\"\n          : `阵${phenom}`\n        : phenom === \"\"\n          ? descriptor\n          : `${descriptor}${phenom}`",
    "usage": [
     "packages/render/src/card.ts#LOCALE"
    ]
@@ -3158,7 +3158,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 155
+   "line": 156
   },
   "parser.msg002": {
    "kind": "product",
@@ -3174,7 +3174,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 382
+   "line": 383
   },
   "parser.msg003": {
    "kind": "product",
@@ -3190,7 +3190,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 433
+   "line": 434
   },
   "parser.msg004": {
    "kind": "product",
@@ -3206,7 +3206,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 535
+   "line": 536
   },
   "parser.msg005": {
    "kind": "product",
@@ -3222,7 +3222,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 607
+   "line": 608
   },
   "parser.msg006": {
    "kind": "product",
@@ -3238,7 +3238,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 632
+   "line": 633
   },
   "parser.msg007": {
    "kind": "product",
@@ -3254,7 +3254,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 774
+   "line": 775
   },
   "parser.msg008": {
    "kind": "product",
@@ -3270,7 +3270,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 792
+   "line": 793
   },
   "parser.msg009": {
    "kind": "product",
@@ -3286,7 +3286,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 806
+   "line": 807
   },
   "parser.msg010": {
    "kind": "product",
@@ -3302,7 +3302,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 814
+   "line": 815
   }
  }
 }

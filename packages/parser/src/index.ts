@@ -63,12 +63,13 @@ export type {
 export { parseTaf, tafDurationHours, tryParseTaf } from "./taf";
 export type { TryParseTafResult } from "./taf";
 // TAF 时间线展开器（v0.2 批 2.3 起）：五步算法的派生层（B4–B7）
-export { expandTaf } from "./expand";
+export { expandTaf, tafSegments } from "./expand";
 export type {
   TafExpandAt,
   TafExpansion,
   TafMonthAnchor,
   TafResolvedConditions,
+  TafSegmentRow,
   TafTempoOverlay,
 } from "./expand";
 import {

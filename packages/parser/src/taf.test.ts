@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MetarParseError } from "@metweave/core";
 import { parse } from "./index";
-import { expandTaf } from "./expand";
+import { expandTaf, tafSegments } from "./expand";
 import { parseTaf, tafDurationHours, tryParseTaf } from "./taf";
 import tafFixtures from "./__fixtures__/taf.json";
 
@@ -654,3 +654,59 @@ function rawSlice(raw: string, span: { start: number; end: number } | undefined)
   if (span === undefined) return "";
   return raw.slice(span.start, span.end);
 }
+
+describe("TAF 分段视图 tafSegments（渲染层②数据面，owner 9/23 指令「按拆分时间段给具体天气」）", () => {
+  it("aw 实证（ZGSZ 30h 报）：基况/TEMPO 挂载/BECMG 过渡带/BECMG 转变后四行按时间升序，行值=段中点展开", () => {
+    const r = parseTaf(
+      "TAF ZGSZ 230303Z 2306/2412 21004MPS 8000 BKN040 TX32/2306Z TX32/2406Z TN27/2322Z TEMPO 2306/2309 TSRA FEW020CB BKN040 BECMG 2310/2312 10004MPS=",
+    );
+    const rows = tafSegments(r);
+    expect(rows.map((x) => x.kind)).toEqual(["base", "TEMPO", "BECMG", "BECMG"]);
+    expect(rows.map((x) => x.uncertain)).toEqual([false, false, true, false]);
+    // 窗口：基况到首变化点窗终、末段到有效期止
+    expect([rows[0]?.from.hour, rows[0]?.to.day, rows[0]?.to.hour]).toEqual([6, 23, 12]);
+    expect([rows[1]?.from.hour, rows[1]?.to.hour]).toEqual([6, 9]);
+    expect([rows[2]?.from.hour, rows[2]?.to.hour]).toEqual([10, 12]);
+    expect([rows[3]?.from.hour, rows[3]?.to.day, rows[3]?.to.hour]).toEqual([12, 24, 12]);
+    // 行值：基况=四要素；过渡带=转变前（210 风）；转变后=新风 + 未列要素回溯（8000/BKN040）
+    expect(rows[0]?.conditions.wind?.direction).toBe(210);
+    expect(rows[0]?.conditions.visibility?.value).toBe(8000);
+    expect(rows[0]?.conditions.clouds?.elements[0]?.kind).toBe("layer");
+    expect(rows[2]?.conditions.wind?.direction).toBe(210);
+    expect(rows[3]?.conditions.wind?.direction).toBe(100);
+    expect(rows[3]?.conditions.visibility?.value).toBe(8000);
+    expect(rows[3]?.conditions.clouds?.elements[0]?.heightFt.value).toBe(4000);
+    // 挂载行：组内所列要素（TSRA + FEW020CB BKN040），主导段值随行（context）
+    const ov = rows[1]?.overlay?.conditions;
+    expect(ov?.weather[0]?.descriptor).toBe("TS");
+    const cb = ov?.clouds?.elements.find((x) => x.kind === "layer" && x.convective === "CB");
+    expect(cb).toBeDefined(); // FEW020CB＝单层少云挂 CB
+    expect(rows[1]?.conditions.wind?.direction).toBe(210);
+    expect(rows[1]?.sourceIndex).toBe(0);
+  });
+
+  it("FM 硬切分段（B4）：base 到 FM 时刻止、FM 段到有效期止；跨月回绕显示序折回小日号", () => {
+    const r = parseTaf("TAF ZBAA 010340Z 0106/0206 17004MPS 9999 SCT030 FM0900 00000MPS=");
+    const rows = tafSegments(r);
+    expect(rows.map((x) => x.kind)).toEqual(["base", "FM"]);
+    expect([rows[0]?.to.day, rows[0]?.to.hour]).toEqual([1, 9]);
+    expect(rows[1]?.conditions.wind?.speed.value).toBe(0); // 静风（00000MPS）
+    expect(rows[1]?.conditions.visibility).toBeUndefined(); // FM 硬分页：未列要素不回溯基况（B4）
+    expect(rows[1]?.sourceIndex).toBe(0);
+    // 跨月：锚 30 天、有效期 3006/0106 → 末窗显示日折回 01
+    const wrap = parseTaf("TAF ZPPP 302230Z 3006/0106 04009MPS 6000=");
+    const w = tafSegments(wrap, { daysIn: 30 });
+    expect(w).toHaveLength(1);
+    expect(w[0]?.from.day).toBe(30);
+    expect(w[0]?.to.day).toBe(1);
+  });
+
+  it("无变化组报文：单基况行覆盖全窗（中点展开）；NIL/无有效期即报错", () => {
+    const rows = tafSegments(parseTaf("TAF ZBAA 230301Z 2306/2412 18004MPS 3500 BR NSC="));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.kind).toBe("base");
+    expect(rows[0]?.conditions.visibility?.value).toBe(3500);
+    expect(rows[0]?.conditions.clouds?.clear?.code).toBe("NSC");
+    expect(() => tafSegments(parseTaf("TAF ZSAM NIL="))).toThrow("无可分段");
+  });
+});

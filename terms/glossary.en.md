@@ -154,13 +154,13 @@
 | card.wx.thunderstorm | thunderstorm | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (TS) |
 | card.wx.thunderstormWith | (phenom) => `thunderstorm with ${phenom}` | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (TS combined with precipitation) |
 | card.wx.descCompose | (descriptor, phenom) =>
-        descriptor === "showers"
-          ? phenom === ""
-            ? "showers (type indistinguishable)"
-            : `${phenom} showers`
-          : phenom === ""
-            ? descriptor
-            : `${descriptor} ${phenom}` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+      descriptor === "showers"
+        ? phenom === ""
+          ? "showers (type indistinguishable)"
+          : `${phenom} showers`
+        : phenom === ""
+          ? descriptor
+          : `${descriptor} ${phenom}` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
 | card.wx.join |  and  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
 | card.wx.joinParts |   | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
 | card.wx.hazard |  (major flight hazard) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |

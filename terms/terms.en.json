@@ -1429,7 +1429,7 @@
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
-   "text": "(descriptor, phenom) =>\n        descriptor === \"showers\"\n          ? phenom === \"\"\n            ? \"showers (type indistinguishable)\"\n            : `${phenom} showers`\n          : phenom === \"\"\n            ? descriptor\n            : `${descriptor} ${phenom}`",
+   "text": "(descriptor, phenom) =>\n      descriptor === \"showers\"\n        ? phenom === \"\"\n          ? \"showers (type indistinguishable)\"\n          : `${phenom} showers`\n        : phenom === \"\"\n          ? descriptor\n          : `${descriptor} ${phenom}`",
    "usage": [
     "packages/render/src/card.ts#LOCALE"
    ]

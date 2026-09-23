@@ -1621,15 +1621,62 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(tempo?.style.left).toBe("6.666666666666667%");
   });
 
-  it("TX/TN 标记与气温行（负值 M 前缀）；变化组清单含要素紧凑摘要", () => {
+  it("TX/TN 标记与气温行（负值 M 前缀）", () => {
     const card = renderTafCard(parseTaf(golden));
     expect(card.querySelectorAll(".mw-taf-txtn").length).toBe(3); // TX02 + TNM02 + TNM04
     const text = card.textContent ?? "";
     expect(text).toContain("最高 2°C");
     expect(text).toContain("最低 -2°C");
+  });
+
+  it("分段天气明细：基况/TEMPO/渐变中/转变后逐段人话，电码入悬停（专业/小白双受众）", () => {
+    const card = renderTafCard(parseTaf(golden));
+    const rows = Array.from(card.querySelectorAll(".mw-taf-period"));
+    expect(card.textContent).toContain("分段天气");
+    // 1 基况 + 1 TEMPO + 3×(渐变中+转变后) = 8 段
+    expect(rows.length).toBe(8);
+    const chips = rows.map((r) => r.querySelector(".mw-taf-k")?.textContent ?? "");
+    expect(chips).toEqual([
+      "基况",
+      "间歇",
+      "渐变中",
+      "转变后",
+      "渐变中",
+      "转变后",
+      "渐变中",
+      "转变后",
+    ]);
+    const text = card.textContent ?? "";
+    // 人话：TEMPO 发作态（2500 m 小阵雨夹雪轻雾）/ 过渡带「转为」+ 不确定注 / 未列要素回溯
     expect(text).toContain("2500 m");
-    expect(text).toContain("-SHRASN");
-    expect(text).toContain("04004MPS");
+    expect(text).toContain("小阵雨、雪");
+    expect(text).toContain("转为：2000 m");
+    expect(text).toContain("转变时刻不确定");
+    // 电码走悬停/读屏（沿 METAR 卡口径：主表人话、原码悬停）：基况段=展开电码，TEMPO 段附组原文
+    expect(rows[0]?.getAttribute("title") ?? "").toContain("04009G16MPS");
+    expect(rows[0]?.getAttribute("title") ?? "").toContain("9999");
+    expect(rows[1]?.getAttribute("title") ?? "").toContain("2500 -SHRASN BR");
+    expect(rows[0]?.getAttribute("aria-label")).toBe(rows[0]?.getAttribute("title"));
+  });
+
+  it("分段人话与 METAR 卡同源（gloss 词表单一来源）：TSRA 两卡同短语、无变化组报文也给基况行", () => {
+    const tafCard = renderTafCard(
+      parseTaf(
+        "TAF ZGSZ 230303Z 2306/2412 21004MPS 8000 BKN040 TEMPO 2306/2309 TSRA FEW020CB BKN040=",
+      ),
+    );
+    expect(tafCard.textContent).toContain("雷暴伴雨（飞行威胁大）");
+    const metarCard = renderCard(
+      parse("METAR ZGSZ 230300Z 21004MPS 8000 TSRA FEW020CB BKN040 27/22 Q1010="),
+    );
+    expect(metarCard.textContent).toContain("雷暴伴雨");
+    // 无变化组：单基况行 + 具体天气（9999 → ≥10 km）
+    const plain = renderTafCard(parseTaf("TAF ZBAA 230301Z 2306/2412 18004MPS 3500 BR NSC="));
+    const rows = plain.querySelectorAll(".mw-taf-period");
+    expect(rows.length).toBe(1);
+    expect(rows[0]?.textContent).toContain("3500 m");
+    expect(rows[0]?.textContent).toContain("轻雾");
+    expect(rows[0]?.textContent).toContain("无显著云");
   });
 
   it("AMD/COR 标志、NIL 最小卡、en locale 与 RAW 对照", () => {
