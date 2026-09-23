@@ -625,6 +625,34 @@ it("复测修复锁 N1/N2/N5：键盘拖滑杆不抢焦、弹窗置顶提示随�
   map.remove();
 });
 
+it("复测修复：出窗灰态（超有效期＝unknown 灰点+「已过期」提示）与滑杆端点标注", async () => {
+  const raw = "TAF ZBAA 010340Z 0106/0206 17004MPS 9999 SCT030 BECMG 0110/0111 1200 -SN OVC008=";
+  const items = [{ report: parseTaf(raw), position: [40, 116] as [number, number] }];
+  const map = freshMap();
+  const g = await addTafLayer(map, items, { at: { day: 1, hour: 8, minute: 0 } });
+  const dotOf = (): string | undefined =>
+    (g.getLayers()[0] as L.Marker).getElement()?.querySelector(".mw-dot")?.className;
+  expect(dotOf()).toContain("mw-dot-good");
+  // 窗后：03日 → 灰 unknown + tooltip 已过期
+  await setTafLayerTime(map, g, items, { at: { day: 3, hour: 0, minute: 0 } });
+  expect(dotOf()).toContain("mw-dot-unknown");
+  const marker = g.getLayers()[0] as L.Marker;
+  marker.openTooltip();
+  const tip1 = marker.getTooltip()?.getContent();
+  expect((tip1 instanceof HTMLElement ? tip1.textContent : "") ?? "").toContain("预报已过期");
+  // 窗前：0105 → 「未生效」
+  await setTafLayerTime(map, g, items, { at: { day: 1, hour: 5, minute: 0 } });
+  const tip2 = marker.getTooltip()?.getContent();
+  expect((tip2 instanceof HTMLElement ? tip2.textContent : "") ?? "").toContain("预报尚未生效");
+  // 滑杆端点标注（小白#11）：两端时刻+京时
+  const ctrl = createTafTimeControl(map, { layer: g, items });
+  const ticks = Array.from(ctrl.querySelectorAll("div")).find((d) => d.children.length === 2);
+  expect(ticks?.textContent ?? "").toContain("01日 06:00Z");
+  expect(ticks?.textContent ?? "").toContain("（京01日14:00）");
+  expect(ticks?.textContent ?? "").toContain("02日 06:00Z");
+  map.remove();
+});
+
 it("层③竞态回归：同步连拨两次不叠点（clearLayers 与 populate 之间的 await 窗口），末次拨动生效", async () => {
   const raw = "TAF ZBAA 010340Z 0106/0206 17004MPS 9999 SCT030 BECMG 0110/0111 1200 -SN OVC008=";
   const items = [{ report: parseTaf(raw), position: [40, 116] as [number, number] }];
