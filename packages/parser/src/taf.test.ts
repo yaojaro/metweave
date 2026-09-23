@@ -40,7 +40,7 @@ describe("TAF 批 1 骨架：电头与有效期（清单 A4）", () => {
     for (const f of file.fixtures) {
       expect(f.raw.startsWith("TAF")).toBe(true);
       expect(f.station).toMatch(/^[A-Z0-9]{4}$/);
-      if (f.source === "ogimet") expect(f.hash).toMatch(/^[0-9a-f]{12}$/);
+      if (f.source === "ogimet" || f.source === "aw") expect(f.hash).toMatch(/^[0-9a-f]{12}$/);
     }
   });
 
@@ -103,10 +103,10 @@ describe("TAF 批 1 骨架：电头与有效期（清单 A4）", () => {
     expectThrows("TAF 7STATION 010340Z 0106/0206=", "missing-station");
   });
 
-  it("批 1 正文未接管：正文 token 一律 unknown-token（info）出声且带 span——终止符 = 贴末组为其一 token", () => {
+  it("批 1 正文未接管：正文 token 一律 unknown-token（info）出声且带 span（终止符已剥离不进结构）", () => {
     const raw = "TAF ZBAA 010340Z 0106/0206 17004MPS=";
     const r = parseTaf(raw);
-    const tailTokens = ["17004MPS="];
+    const tailTokens = ["17004MPS"];
     expect(r.warnings).toHaveLength(tailTokens.length);
     for (const [idx, text] of tailTokens.entries()) {
       expect(r.warnings[idx]).toMatchObject({ code: "unknown-token", severity: "info" });
@@ -134,6 +134,41 @@ describe("TAF 批 1 骨架：电头与有效期（清单 A4）", () => {
     const bad = tryParseTaf("TAF ZBAA 010340Z");
     expect(bad.ok).toBe(false);
     if (!bad.ok) expect(bad.error.code).toBe("missing-validity");
+  });
+});
+
+describe("TAF 批 1.2：传输层终止符 = 剥离（清单 A1★）", () => {
+  it("双通道等价：ogimet 带 = 与去 = 后解析结果除 raw 外逐字段一致", () => {
+    const f = fx("ogimet-plain-zbaa-20090801");
+    const withEq = parseTaf(f.raw);
+    const withoutEq = parseTaf(f.raw.replace(/=+$/, ""));
+    const { raw: _w, ...withRest } = withEq;
+    const { raw: _o, ...withoutRest } = withoutEq;
+    expect(withRest).toEqual(withoutRest);
+    expect(withEq.raw).toBe(f.raw);
+  });
+
+  it("两种真实形态等价：贴末组（6000=）与独立 token（6000 =）", () => {
+    const attached = parseTaf("TAF ZBAA 010340Z 0106/0206 6000=");
+    const separate = parseTaf("TAF ZBAA 010340Z 0106/0206 6000 =");
+    const { raw: _a, ...a } = attached;
+    const { raw: _s, ...s } = separate;
+    expect(a).toEqual(s);
+  });
+
+  it("aw 实证（aviationweather 通道本无 =）：解析成功且尾 token 不含终止符", () => {
+    const f = fx("aw-amd-zgsz-20260910");
+    const r = parseTaf(f.raw);
+    expect(r.flags.amended).toBe(true);
+    expect(r.validity).toMatchObject({ startDay: 10, startHour: 6, endDay: 11, endHour: 12 });
+    expect(JSON.stringify(r.warnings)).not.toContain('"="');
+  });
+
+  it("中串 = 属传输磨损非终止符：不剥，随所在 token 出声", () => {
+    const r = parseTaf("TAF ZBAA 010340Z 0106/0206 AAA=BBB=");
+    const texts = r.warnings.filter((w) => w.code === "unknown-token");
+    expect(texts).toHaveLength(1);
+    expect(texts[0]?.message).toContain("AAA=BBB");
   });
 });
 

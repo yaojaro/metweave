@@ -3,9 +3,9 @@
  * The TAF parsing layer (FM 51): header + validity skeleton.
  *
  * 批 1 范围：电头 token 序列（清单 A4——TAF 词可省（剥词源同理）、AMD/COR 不写死槽位、
- * COR 时组后位）、发布时组 ddHHMMZ、有效期组 ddHH/ddHH（止时 24 = 午夜合法特例）。
- * 正文 token 暂一律 unknown-token 出声（不静默纪律），基况段（1.5）、NIL/CNL（1.3）、
- * AAA/CCA 容错（1.4）、变化组与气温组（批 2/3）随后逐组接管。
+ * COR 时组后位）、发布时组 ddHHMMZ、有效期组 ddHH/ddHH（止时 24 = 午夜合法特例）、
+ * 传输层终止符 `=` 剥离（A1）。正文 token 暂一律 unknown-token 出声（不静默纪律），
+ * 基况段（1.5）、NIL/CNL（1.3）、AAA/CCA 容错（1.4）、变化组与气温组（批 2/3）随后逐组接管。
  * 纪律与 METAR 侧同源：不静默、span 保真、错误码只增不改（ParseError 别名自 v0.2 起）。
  */
 import { MetarParseError } from "@metweave/core";
@@ -41,8 +41,11 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
   const compact = options?.spans === false;
   const compactIfEnabled = <T>(node: T): T => (compact ? compactNode(node) : node);
 
-  // 批 1 不做传输层处理——终止符 `=` 剥离属 A1（1.2），当前作为正文 token 出声
-  const tokens = tokenize(raw);
+  // —— 传输层终止符（A1★）：中国站/AFTN 通道报尾带 `=`、tgftp 与 aviationweather 通道不带——
+  // 传输层惯例而非报文结构，剥离后不进 IR（span 只到末组电码；report.raw 仍原文保真）。
+  // 只剥报尾（含贴末组 `6000=` 与独立 `=` 两种真实形态）；中串 `=` 属传输磨损而非终止符，不剥。
+  const body = raw.replace(/[=\s]+$/, "");
+  const tokens = tokenize(body);
   const warnings: ParseWarning[] = [];
   let i = 0;
   const peek = (ahead = 0): Token | undefined => tokens[i + ahead];

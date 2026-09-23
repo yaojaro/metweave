@@ -1,6 +1,6 @@
 {
   "schema": "metweave-taf-fixtures/1",
-  "count": 3,
+  "count": 4,
   "fixtures": [
     {
       "id": "ogimet-plain-zbaa-20090801",
@@ -31,6 +31,16 @@
       "hash": "bd117265bb3a",
       "traps": ["header-cor-type"],
       "note": "更正报（美式槽位：COR 在类型词位）；正文含 TX/TN 气温组（C6 批 3.4 语料预埋）与三条 BECMG"
+    },
+    {
+      "id": "aw-amd-zgsz-20260910",
+      "raw": "TAF AMD ZGSZ 100736Z 1006/1112 06004MPS 8000 SCT040 TX32/1006Z TX32/1106Z TN25/1022Z TEMPO 1008/1011 2500 SHRA FEW025CB BKN030",
+      "station": "ZGSZ",
+      "source": "aw",
+      "obsTime": "2026-09-10T07:36:00Z",
+      "hash": "2bf800782255",
+      "traps": ["header-amd", "no-trailing-equals", "30h-validity"],
+      "note": "30h TAF（1006/1112 跨日窗）；aviationweather.gov 通道无传输层终止符 =（与 ogimet 中国站通道对照）；2TX+1TN 气温组为 C6 批 3.4 语料预埋"
     }
   ]
 }
