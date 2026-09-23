@@ -818,8 +818,6 @@ async function populateTafLayer(
       const expansion = expandTaf(r, at, anchor);
       tier = conditionOf(asConditionInput(expansion.conditions, false));
       summary = summarizeTaf(expansion.conditions, locale);
-      const atText = `${String(at.day).padStart(2, "0")}日${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`;
-      notes.push(locale === "en" ? `Forecast for ${atText}` : `预报 ${atText} 时刻`);
       if (expansion.uncertain) {
         notes.push(
           locale === "en" ? "Transition band — timing uncertain" : "过渡带（变化时刻不确定）",
@@ -858,7 +856,8 @@ async function populateTafLayer(
 
     if (options.popup ?? true) {
       // 层②起弹窗换 renderTafCard（时间线条 + 变化组清单 + 气温行；展开时刻摘要行置于卡前）
-      const card = renderTafCard(r, { locale, raw: true }); // RAW 对照置底 + 行↔原文双向联动（owner 9/23 二轮）
+      // RAW 对照置底 + 行↔原文组级联动；at＝展开时刻入卡片「发布\|预报」双列行（owner 六轮）
+      const card = renderTafCard(r, noTimeline ? { locale, raw: true } : { locale, raw: true, at });
       if (notes.length > 0) {
         const lead = document.createElement("p");
         lead.style.margin = "0 0 4px";

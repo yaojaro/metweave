@@ -38,6 +38,8 @@ import {
 export interface RenderTafCardOptions {
   /** 显示语言，缺省中文 */
   locale?: "zh" | "en";
+  /** 展开时刻（地图层传入）：与发布时刻同排右列「预报 xx 时刻」（owner 六轮：一行左右两列） */
+  at?: TafExpandAt;
   /** 附带 RAW 对照行（原文保真） */
   raw?: boolean;
   /** 宿主附加类名 */
@@ -54,6 +56,8 @@ const LOCALE = {
     validity: "有效期",
     duration: (h: number): string => `${h} 小时`,
     issued: "发布",
+    atLabel: "预报",
+    atSuffix: "时刻",
     validityFrom: (day: string, hm: string): string => `自 ${day}日 ${hm}`,
     validityTo: (day: string, hm: string): string => `至 ${day}日 ${hm}`,
     validityZone: "UTC",
@@ -93,6 +97,8 @@ const LOCALE = {
     validity: "Validity",
     duration: (h: number): string => `${h} h`,
     issued: "Issued",
+    atLabel: "Forecast",
+    atSuffix: "",
     validityFrom: (day: string, hm: string): string => `from Day ${day}, ${hm}`,
     validityTo: (day: string, hm: string): string => `to Day ${day}, ${hm}`,
     validityZone: "UTC",
@@ -135,6 +141,7 @@ const STYLE_TEXT = `
   border-radius: 4px; padding: 1px 6px; }
 .mw-taf-flag { font-size: 11px; color: #8a5a00; background: #fdf3dd; border-radius: 4px; padding: 1px 6px; }
 .mw-taf-meta { color: #4a5560; font-size: 12px; margin: 1px 0; }
+.mw-taf-meta-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .mw-taf-raw { margin: 10px 0 0; padding: 8px; border-radius: 6px; background: #f6f8fa;
   font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   white-space: pre-wrap; word-break: break-all; }
@@ -194,6 +201,12 @@ const tempLine = (t: TafTemperatureGroup, L: LocaleTable): string =>
   `${t.extremum === "max" ? L.max(t.celsius) : L.min(t.celsius)}${t.at.day !== undefined ? ` @ ${String(t.at.day).padStart(2, "0")}日${String(t.at.hour).padStart(2, "0")}Z` : ` @ ${String(t.at.hour).padStart(2, "0")}Z`}`;
 
 // ---------------------------------------------------------------- 分段明细拼装（gloss 词表共用，与 METAR 卡同口径）
+
+/** 展开时刻文本（zh：23日00:00Z / en：23/00:00Z）——发布|预报 双列行右列用 */
+const fmtClockAt = (at: TafExpandAt, locale: "zh" | "en"): string =>
+  locale === "zh"
+    ? `${String(at.day).padStart(2, "0")}日${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`
+    : `${String(at.day).padStart(2, "0")}/${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`;
 
 /** 元信息时钟（整点补零）：06:00Z */
 const clockOf = (hour: number): string => `${String(hour).padStart(2, "0")}:00Z`;
@@ -480,15 +493,28 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     });
     self.addEventListener("mouseleave", clearHl);
   };
-  // 发布在前、有效期在后（owner 五轮：按报文语序 ddHHMMZ → ddHH/ddHH）
-  if (report.issueTime !== undefined) {
-    card.append(
-      el(
-        "p",
-        "mw-taf-meta",
-        `${t.issued} ${String(report.issueTime.day).padStart(2, "0")}日 ${String(report.issueTime.hour).padStart(2, "0")}:${String(report.issueTime.minute).padStart(2, "0")} Z`,
-      ),
-    );
+  // 发布在前、有效期在后（owner 五轮语序）；展开时刻在位时与发布同行左右两列（owner 六轮）
+  if (report.issueTime !== undefined || options.at !== undefined) {
+    const row = el("p", "mw-taf-meta mw-taf-meta-row");
+    if (report.issueTime !== undefined) {
+      row.append(
+        el(
+          "span",
+          undefined,
+          `${t.issued} ${String(report.issueTime.day).padStart(2, "0")}日 ${String(report.issueTime.hour).padStart(2, "0")}:${String(report.issueTime.minute).padStart(2, "0")} Z`,
+        ),
+      );
+    }
+    if (options.at !== undefined) {
+      row.append(
+        el(
+          "span",
+          undefined,
+          `${t.atLabel} ${fmtClockAt(options.at, locale)}${t.atSuffix !== "" ? ` ${t.atSuffix}` : ""}`.trim(),
+        ),
+      );
+    }
+    card.append(row);
   }
   // 有效期直说具体日期时间（不用 ddHH/ddHH 短码）：止时 24＝次日 00:00（B2 午夜特例的显示位换算）
   const endClock =

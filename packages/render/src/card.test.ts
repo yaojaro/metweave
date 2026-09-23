@@ -1607,6 +1607,20 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(text).toContain("30 小时"); // 2518→2624：(26-25)×24+(24-18)=30h（B2 止时 24 进算术）
   });
 
+  it("发布|预报双列行（owner 六轮）：at 在位时同行左右两列，at 缺席仅发布单行", () => {
+    const two = renderTafCard(parseTaf(golden), { at: { day: 25, hour: 21, minute: 0 } });
+    const row = two.querySelector(".mw-taf-meta-row");
+    expect(row).not.toBeNull();
+    const spans = Array.from(row?.querySelectorAll("span") ?? []);
+    expect(spans.length).toBe(2);
+    expect(spans[0]?.textContent).toContain("发布 25日 15:18");
+    expect(spans[1]?.textContent).toBe("预报 25日21:00Z 时刻");
+    const one = renderTafCard(parseTaf(golden));
+    expect(one.querySelectorAll(".mw-taf-meta-row span")).toHaveLength(1); // 无 at 仅发布单列
+    expect(one.textContent).toContain("发布 25日 15:18");
+    expect(one.textContent).not.toContain("预报 25日21:00Z");
+  });
+
   it("气温极值：置于分段上方，高温/低温分行（多组并列一行），负值 M 前缀", () => {
     const card = renderTafCard(parseTaf(golden));
     expect(card.querySelectorAll(".mw-taf-strip")).toHaveLength(0); // 四轮移除

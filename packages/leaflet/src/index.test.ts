@@ -522,7 +522,10 @@ it("层②：弹窗接 renderTafCard（分段明细 + RAW 联动），展开时�
   expect(popupEl.classList.contains("mw-taf-card")).toBe(true); // 卡即弹窗根,querySelector 不查自身
   expect(popupEl.querySelectorAll(".mw-taf-period").length).toBe(2); // 基况 + TEMPO（四轮后时间线条已移除）
   expect(popupEl.querySelector(".mw-taf-raw")).not.toBeNull(); // RAW 对照默认开
-  expect(popupEl.querySelector("p")?.textContent ?? "").toContain("预报 25日21:00Z");
+  // 六轮：展开时刻入卡片「发布|预报」双列行（首段 p＝TEMPO 摘要行）
+  const metaRow = popupEl.querySelector(".mw-taf-meta-row");
+  expect(metaRow?.textContent ?? "").toContain("发布 25日 15:18");
+  expect(metaRow?.textContent ?? "").toContain("预报 25日21:00Z");
   map.remove();
 });
 
