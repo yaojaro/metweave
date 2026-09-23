@@ -1,6 +1,6 @@
 {
   "name": "metweave",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Show live airport weather on a Leaflet map in ten lines — METAR parsing, report cards and map layers, straight from public sources.",
   "keywords": [
     "airport",

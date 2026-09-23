@@ -1,6 +1,6 @@
 {
   "name": "@metweave/leaflet",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Put parsed METAR/SPECI reports on a Leaflet map: markers, tooltips and report-card popups in one call — bring your own tiles.",
   "keywords": [
     "leaflet",

@@ -2,6 +2,31 @@
 
 本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，五个包锁步同版本发布。
 
+## [0.2.0] - 2026-09-23
+
+TAF（FM 51）解析层全量落地：解析 → 时间线展开的预报侧工具链，与 METAR 观测侧同入口同纪律。施工图＝W39 补全清单 24 条（A 结构层 4 / B 时间层 9 / C 要素层 8 / D 出题判卷纪律 3），★ 考核失分点 12 条全实证锁。
+
+### 新增
+
+- **`parseTaf` / `tryParseTaf`**（`@metweave/parser`）：电头 token 序列不写死槽位（TAF 词可省 / AMD·COR 任意相对序 / COR 时组后位，A4）；传输层终止符 `=` 剥离（A1，双通道双形态等价）；NIL 双形态（占时组位 `TAF ZSAM NIL=` / 占有效期位）与 CNL 占风组位（A2，cancelled 置位且有效期保留）；AAA/CCA 族仅容错（A3，824 万条 0 出现结论沿用）。
+- **基况段四要素 + CAVOK**：复用 METAR 组级共享层（groups.ts 机械迁出，零重写），组装语义沿 METAR（重复组 last-wins 出声、缺测不顶替在场值、三态 Observed、span 保真）。
+- **变化组结构化**（B4/B5 token 层 + B8/B9）：FM 硬时刻 GGgg、BECMG/TEMPO 带窗、PROB 独立与 PROB TEMPO 连用（组合违例出声）；中方四位短窗日归属回有效期起日（仅前向时对判窗防误吞）；解析层只收「组内所列要素」，继承语义不越权代判。
+- **`expandTaf` 时间线展开器**：五步算法（切段→挂载→绑段→合成→叠加）；FM 硬分页（此前一切作废）；BECMG 接棒 + 云例外（cloud-only BECMG 单层全重报）；过渡带显式 uncertain（B6，按前段值保守返回）；TEMPO 发作/间歇双态（B7，weather 整列替换、未列要素继承）；CAVOK 让位语义（回溯途中遇 CAVOK 其前未定要素作废）；B3 跨月回绕月锚。黄金基准＝taf-timeline §3 三例 13 时刻逐格断言。
+- **`tafDurationHours`**：有效期时长差值判别（B1，禁用发布钟点——03/09/15/21Z 与版本解耦）；止时 24 午夜特例（B2）；ogimet 八年分层 2054 条分布对拍 24h/30h 两制吻合，新发现 48h/54h 加长报真实长尾。
+- **气温组 TX/TN**（C6）：1–4 组交错、M 负值前缀、超 WMO 上限出声不丢弃；实码形态实证修正为 ddHHZ（另收编无日短形态 HHZ 方言）。
+- **天气白名单双层**（C5）：国际白名单为基，中国扩展层（弱档 `-` / BR / HZ）容错收下 + info 出声，拒收语义归 /validate。
+- **IR 类型族**（`@metweave/core`）：TafReport / TafValidityGroup / TafChangeGroup 族 / TafTemperatureGroup；错误码新增 `missing-validity` / `invalid-validity`（只增不改）；`ParseError` 报文中性别名。
+- **方言收编**（ogimet 分层抽样 312 条实测）：有效期无斜杠形态 `dddddd`（ZWWW 160024）、TX/TN 无日短形态、BECMG 短窗（B9 机制覆盖）——皆 tolerant 收下 + 出声。
+- **工程工具**：`replay:full` 全量回放对拍器（803 万行本地历史数据双版本逐报文指纹零漂移验证法沉淀）；fuzz 套件 TAF 池接线（5 万 + 5 万例零违例）；`corpus/taf` 语料回归仓（312/312 全解析成功、unknown-token 全语料仅 1 枚传输错拼）。
+
+### 变更
+
+- METAR 侧行为零变化：324 存量测试零改动全绿；803 万行冻结快照逐报文指纹全程零漂移（批 0→4 复核）。
+
+### 测试
+
+- 381 例全绿（v0.1.2 为 324，TAF 侧 +57）；夹具 11 条三源溯源（ogimet / aviationweather / 教材）。
+
 ## [0.1.2] - 2026-09-22
 
 着色判据的运行视角修订 + 文档补强。判据变更源自五角色试读评审（前端 / 签派员 / 大气科研 / 技术选型 / 气象爱好者）中签派员的专业复核意见。
