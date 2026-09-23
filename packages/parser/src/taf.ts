@@ -245,18 +245,29 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       warnings,
     });
   }
-  const v = vTok !== undefined ? VALIDITY_PATTERN.exec(vTok.text) : null;
-  if (vTok === undefined || v === null) {
+  const vStd = vTok !== undefined ? VALIDITY_PATTERN.exec(vTok.text) : null;
+  // 无斜杠方言形态 dddddd（ogimet 实证 ZWWW 160024＝16 日 00→24 同日窗；312 条抽样 1 例）：
+  // 日起止同日、起止时各两位——tolerant 收下 + invalid-format 出声（非 WMO 标准形）
+  let dialectValidity = false;
+  let gv: readonly (string | undefined)[] | null = vStd;
+  if (gv === null && vTok !== undefined) {
+    const d6 = /^(\d{2})(\d{2})(\d{2})$/.exec(vTok.text);
+    if (d6 !== null) {
+      gv = [d6[0], d6[1], d6[2], d6[1], d6[3]];
+      dialectValidity = true;
+    }
+  }
+  if (vTok === undefined || gv === null) {
     throw new MetarParseError(
       "missing-validity",
       raw,
       `无法识别有效期组——TAF 发布时组后须为 ddHH/ddHH（NIL 缺报除外）（${vTok?.text ?? "组缺失"}）`,
     );
   }
-  const startDay = Number(v[1]);
-  const startHour = Number(v[2]);
-  const endDay = Number(v[3]);
-  const endHour = Number(v[4]);
+  const startDay = Number(gv[1]);
+  const startHour = Number(gv[2]);
+  const endDay = Number(gv[3]);
+  const endHour = Number(gv[4]);
   if (
     startDay < 1 ||
     startDay > 31 ||
@@ -279,6 +290,14 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     raw: vTok.text,
     span: spanOf(vTok),
   };
+  if (dialectValidity) {
+    warnings.push({
+      code: "invalid-format",
+      severity: "info",
+      message: `有效期无斜杠方言形态（${vTok.text}＝同日起止）——已按 dddd/24 语义收下（非 WMO 标准形）`,
+      span: spanOf(vTok),
+    });
+  }
   i += 1;
 
   // —— A2★ CNL：占**风组位**（有效期之后）＝预报取消——有效期保留（发布与覆盖窗信息不丢），
@@ -448,13 +467,15 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     if (t === undefined) break;
     const text = t.text;
 
-    const txTn = /^(TX|TN)(M?\d{2})\/(\d{2})(\d{2})Z$/.exec(text);
+    const txTn = /^(TX|TN)(M?\d{2})\/(?:(\d{2})(\d{2})|(\d{2}))Z$/.exec(text);
     if (txTn !== null) {
       // C6★ 气温组：TX/TN 前缀 token、M 负值、1–4 组交错无固定序（跨基况/变化组分布照收）
       temperatures.push({
         extremum: txTn[1] === "TX" ? "max" : "min",
         celsius: Number(txTn[2]?.replace("M", "-")),
-        at: { day: Number(txTn[3]), hour: Number(txTn[4]) },
+        ...(txTn[3] !== undefined
+          ? { at: { day: Number(txTn[3]), hour: Number(txTn[4]) } }
+          : { at: { hour: Number(txTn[5]) } }),
         raw: text,
         span: spanOf(t),
       });

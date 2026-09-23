@@ -610,8 +610,8 @@ export interface TafTemperatureGroup {
   readonly extremum: "max" | "min";
   /** 摄氏度；M 前缀 → 负值（TNM02 → −2） */
   readonly celsius: number;
-  /** 达到时刻 ddHHZ（UTC，日+时——实码 4 位形态，全部实证样本一致；分位不编报） */
-  readonly at: { readonly day: number; readonly hour: number };
+  /** 达到时刻 ddHHZ（UTC，日+时）；ogimet 方言另有无日短形态 HHZ（TN25/23Z，312 条抽样 8 例）——日缺省由消费方在有效期语境内锚定 */
+  readonly at: { readonly day?: number; readonly hour: number };
   readonly raw: string;
   readonly span?: Span;
 }
