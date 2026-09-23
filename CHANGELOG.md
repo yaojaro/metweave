@@ -20,6 +20,7 @@ TAF（FM 51）解析层全量落地：解析 → 时间线展开的预报侧工�
 - **工程工具**：`replay:full` 全量回放对拍器（803 万行本地历史数据双版本逐报文指纹零漂移验证法沉淀）；fuzz 套件 TAF 池接线（5 万 + 5 万例零违例）；`corpus/taf` 语料回归仓（312/312 全解析成功、unknown-token 全语料仅 1 枚传输错拼）。
 - **TAF 渲染三件**（owner「渲染层继续」指令）：`addTafLayer`（`@metweave/leaflet`，预报当观测渲——TAF 展开结果投影喂 METAR 同一档位管线，TEMPO 发作/过渡带入提示，NIL/CNL 灰点口径对齐）；`renderTafCard`（`@metweave/render`，含按分钟比例的有效期时间线条：BECMG 渐变 / TEMPO 斜纹 / PROB 浅叠 / FM 竖线 / TX-TN 标记）；`setTafLayerTime` + `createTafTimeControl`（同实例原地重建的全图换时刻 + 零框架时间滑杆）。
 - **TAF 卡片分段天气明细**（owner 9/23 指令「按拆分时间段给具体天气、像 METAR 报一样具体、专业/小白双受众」）：`tafSegments`（`@metweave/parser`，主导段 / BECMG 过渡带 / TEMPO·PROB 挂载行按时间升序，行值＝段中点展开；与 `expandTaf` 共用切段规则单一来源）；`renderTafCard` 变化组电码清单升级为逐段「时间窗 + 类型徽 + 人话要素」，电码紧凑串走悬停/读屏（沿 METAR 卡主表人话、原码悬停口径）；`@metweave/render` 抽 `gloss.ts` 人话词表内核（wx / cloud / wind / CAVOK 短译与 METAR 卡共用单一真相，行为零变化）。
+- **TAF 卡二轮（owner 9/23 二轮反馈）**：分段行头加扫视色点（好/注意/差，判据与 METAR 卡行色同族并迁 `gloss.ts` 共用），行体改带标签要素条目（风/能见度/天气/云）；**RAW 对照 + 行↔原文双向联动**——已知组（有效期/基况各要素/变化组/气温组）在报文原文里逐组包 span，悬停分段行或原文片段两侧同时点亮，原文片悬停即给该组人话；leaflet TAF 弹窗默认开 RAW。
 
 ### 变更
 
