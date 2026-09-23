@@ -28,7 +28,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import readline from "node:readline";
 
@@ -202,21 +202,22 @@ async function processTxt(file, stats) {
 const collect = (p) => {
   const st = statSync(p);
   if (st.isFile()) return [p];
-  const out = [];
+  const files = [];
   const walk = (dir) => {
-    for (const e of readdirSync(dir).sort()) {
+    for (const e of readdirSync(dir).toSorted()) {
       const full = join(dir, e);
-      statSync(full).isDirectory() ? walk(full) : out.push(full);
+      if (statSync(full).isDirectory()) walk(full);
+      else files.push(full);
     }
   };
   walk(p);
-  return out;
+  return files;
 };
 
 const allFiles = positional
   .flatMap(collect)
   .filter((f) => /\.(jsonl|json|txt)$/.test(f))
-  .sort();
+  .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0)); // 显式字典序（路径排序，与 Array#sort 缺省一致）
 const mine = allFiles.filter((_, idx) => idx % shardCount === shardIdx);
 
 const perFile = {};
@@ -224,8 +225,11 @@ const grand = emptyStats();
 const t0 = Date.now();
 for (const f of mine) {
   const stats = emptyStats();
+  // 串行流式处理是刻意为之：数据集可达数 GB，Promise.all 并行开满会压爆内存（分片并行已由 --shard 承担）
+  // oxlint-disable-next-line no-await-in-loop
   if (f.endsWith(".jsonl")) await processJsonl(f, stats);
   else if (f.endsWith(".json")) processJson(f, stats);
+  // oxlint-disable-next-line no-await-in-loop
   else await processTxt(f, stats);
   perFile[f] = stats;
   for (const k of ["rows", "fed", "ok", "nil"]) grand[k] += stats[k];
