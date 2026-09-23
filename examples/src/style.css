@@ -268,3 +268,19 @@ body {
   color: #4a5560;
   font-variant-numeric: tabular-nums;
 }
+
+#taf-panel .p-legend {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: 8px;
+  font-weight: 400;
+}
+#taf-panel .p-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+#taf-panel .p-legend-item .p-dot {
+  width: 8px;
+  height: 8px;
+}

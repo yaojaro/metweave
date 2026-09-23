@@ -37,6 +37,12 @@ const mountPreviewCards = (): void => {
   for (const raw of samples) box.append(renderCard(parse(raw), { raw: true }));
   hint.append(box);
 };
+/** dd/hh → 京dd日HH时（+8，日回绕 31 折回——面板「下一变化」人话化用） */
+const ltHourOf = (d: number, h: number): string => {
+  const total = (d - 1) * 1440 + h * 60 + 480;
+  return `${String((Math.floor(total / 1440) % 31) + 1).padStart(2, "0")}日${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}时`;
+};
+
 if (!hasBasemap) mountPreviewCards();
 
 const panel = document.getElementById("panel");
@@ -278,14 +284,22 @@ const loadTaf = async (): Promise<void> => {
         const dot = ml instanceof L.Marker ? ml.getElement()?.querySelector(".mw-dot") : undefined;
         const tier = dot?.className.match(/mw-dot-(\w+)/)?.[1] ?? "unknown";
         const ch = it.report.changes[0];
-        const atText =
-          ch?.at !== undefined
-            ? `${String(ch.at.hour).padStart(2, "0")}${String(ch.at.minute).padStart(2, "0")}`
-            : "";
+        // 人话化窗口（复测小白#1/#面板）：ddHH/ddHH → dd日HH–HH时（京HH–HH时，+8）
+        const win = ch?.window;
+        const winText =
+          win !== undefined && /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.test(win.raw)
+            ? (() => {
+                const m = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(win.raw);
+                if (m === null) return win.raw;
+                const [, d1, h1, d2, h2] = m;
+                const sameDay = d1 === d2;
+                return `${d1}日${h1}${sameDay ? "–" : `时–${d2}日`}${h2}时（京${ltHourOf(Number(d1), Number(h1))}–${ltHourOf(Number(d2), Number(h2))}）`;
+              })()
+            : ch?.at !== undefined
+              ? `${String(ch.at.hour).padStart(2, "0")}:${String(ch.at.minute).padStart(2, "0")}Z`
+              : undefined;
         const next =
-          ch !== undefined
-            ? `${CHANGE_WORD[ch.kind] ?? ch.kind} ${ch.window?.raw ?? atText}`.trim()
-            : "—";
+          ch !== undefined ? `${CHANGE_WORD[ch.kind] ?? ch.kind} ${winText ?? ""}`.trim() : "—";
         return { it, tier, next };
       });
       rowsData.sort(
@@ -335,8 +349,27 @@ const loadTaf = async (): Promise<void> => {
         });
         body.append(tr);
       }
-      if (modeBar.panelTitle !== null)
-        modeBar.panelTitle.textContent = `站点预报 · ${rowsData.length} 站（按当前时刻档位排序）`;
+      if (modeBar.panelTitle !== null) {
+        modeBar.panelTitle.textContent = `站点预报 · ${rowsData.length} 站（按当前时刻状态排序）`;
+        const legend = document.createElement("span");
+        legend.className = "p-legend";
+        const legendItems: Array<[string, string]> = [
+          ["danger", "差"],
+          ["caution", "注意"],
+          ["good", "良好"],
+          ["unknown", "无数据"],
+        ];
+        for (const [key, word] of legendItems) {
+          const chip = document.createElement("span");
+          chip.className = "p-legend-item";
+          const dot = document.createElement("span");
+          dot.className = "p-dot";
+          dot.style.background = colors[key] ?? colors.unknown ?? "#94a3b8";
+          chip.append(dot, document.createTextNode(word));
+          legend.append(chip);
+        }
+        modeBar.panelTitle.append(legend);
+      }
     };
     const ctrl = createTafTimeControl(map, {
       layer: tafLayer,
