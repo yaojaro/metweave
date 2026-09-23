@@ -1759,6 +1759,9 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     );
     const text = card.textContent ?? "";
     expect(text).toContain("东北风 2 级（60° 3 mps）");
+    // G 阵风（评测签派 P2-3 样例覆盖：阵风直接关系侧风标准）
+    const g = renderTafCard(parseTaf("TAF ZBAA 230301Z 2306/2412 04009G16MPS 9999 SCT030="));
+    expect(g.textContent).toContain("（阵风 16）");
     expect(text).toContain("少云，云底约 900 米");
     expect(text).toContain("阴，云底约 1800 米"); // 1829 → 台阶化 1800，两层各一条
     const cloudItems = Array.from(card.querySelectorAll(".mw-taf-item")).filter(
