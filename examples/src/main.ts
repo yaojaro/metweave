@@ -186,6 +186,7 @@ let metarLayer: LeafletNS.LayerGroup | undefined;
 let tafLayer: LeafletNS.LayerGroup | undefined;
 let tafItems: readonly TafLayerItem[] | undefined;
 let listOpen = false;
+let refreshPanel: (() => void) | undefined; // TAF 载入后由 loadTaf 赋值（列表渲染入口，面板开关直呼）
 
 const setMode = (mode: "metar" | "taf"): void => {
   const active = mode === "taf";
@@ -267,6 +268,7 @@ const loadTaf = async (): Promise<void> => {
     };
     const renderPanel = (): void => {
       if (!listOpen || tafLayer === undefined || tafItems === undefined) return;
+      refreshPanel = renderPanel;
       const body = modeBar.panelBody;
       if (body === null) return;
       body.replaceChildren();
@@ -373,11 +375,7 @@ modeBar.metar?.addEventListener("click", () => {
 });
 modeBar.list?.addEventListener("click", () => {
   setListOpen(!listOpen);
-  if (listOpen) {
-    // 首开即渲染（此后滑杆/重开自动刷新）
-    const ev = new Event("input", { bubbles: true });
-    document.querySelector("#taf-time input")?.dispatchEvent(ev);
-  }
+  if (listOpen) refreshPanel?.(); // 首开即渲染（此后滑杆换时刻经 onTime 自动刷新）
 });
 
 // 实况层完成后留存引用，供模式切换（原 addMetarLayer 调用点捕获返回值）
