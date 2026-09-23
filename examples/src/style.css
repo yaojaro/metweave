@@ -284,3 +284,37 @@ body {
   width: 8px;
   height: 8px;
 }
+
+/* 地图角四档图例（复测签派 N4） */
+#map-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 800;
+  display: flex;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
+  color: #1c2733;
+}
+#map-legend[hidden] {
+  display: none;
+}
+#map-legend .lg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+#map-legend .lg-item i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
+}
