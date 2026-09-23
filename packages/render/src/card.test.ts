@@ -1660,27 +1660,48 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(rows[0]?.getAttribute("aria-label")).toBe(rows[0]?.getAttribute("title"));
   });
 
-  it("RAW 对照 + 行↔原文双向联动：已知组包 span，悬停任一侧两侧点亮；悬停原文=该组人话", () => {
+  it("RAW 对照（独立盒区置底、气温行在其上）+ 组级联动：悬停「天气」只点亮天气组片，反向亦然", () => {
     const card = renderTafCard(parseTaf(golden), { raw: true });
     const rawP = card.querySelector(".mw-taf-raw");
     expect(rawP).not.toBeNull();
     const segs = Array.from(card.querySelectorAll(".mw-taf-rawseg"));
-    // 有效期 1 + 基况 4（风/能见度/两云层）+ 变化组 4 + 气温 3 = 12 片
-    expect(segs.length).toBe(12);
-    expect(rawP?.textContent).toContain(golden.slice(0, 4)); // 原文保真（含未包裹的电头）
+    // 有效期 1 + 基况 4 + 变化组 4 整组 + 变化组内要素子片 9（TEMPO 3/BECMG1 3/BECMG2 1/BECMG3 2）+ 气温 3
+    expect(segs.length).toBe(21);
+    // 版式序：气温极值行在 RAW 之前（owner 三轮指令）
+    const children = Array.from(card.children);
+    const tempsAt = children.findIndex(
+      (c) => c.classList.contains("mw-taf-meta") && (c.textContent ?? "").includes("气温极值"),
+    );
+    const rawAt = children.findIndex((c) => c.classList.contains("mw-taf-raw"));
+    expect(tempsAt).toBeGreaterThanOrEqual(0);
+    expect(tempsAt).toBeLessThan(rawAt);
+    // 组级联动：TEMPO 行「天气」条目悬停 → 只点亮该组天气子片（-SHRASN/BR），不点亮基况风组
     const rows = Array.from(card.querySelectorAll(".mw-taf-period"));
-    // TEMPO 行（index 1）↔ 其原文组：悬停行 → 原文片点亮；悬停原文片 → 行点亮
-    const tempoSpan = segs.find((x) => (x.textContent ?? "").includes("SHRASN"));
-    expect(tempoSpan).toBeDefined();
-    rows[1]?.dispatchEvent(new MouseEvent("mouseenter"));
-    expect(tempoSpan?.classList.contains("mw-taf-hl")).toBe(true);
-    expect(rows[1]?.classList.contains("mw-taf-hl")).toBe(true);
-    rows[1]?.dispatchEvent(new MouseEvent("mouseleave"));
-    expect(tempoSpan?.classList.contains("mw-taf-hl")).toBe(false);
-    tempoSpan?.dispatchEvent(new MouseEvent("mouseenter"));
-    expect(rows[1]?.classList.contains("mw-taf-hl")).toBe(true);
-    // 悬停原文片的人话（title）= 该组翻译
-    expect(tempoSpan?.getAttribute("title") ?? "").toContain("2500 m");
+    const tempoWxItem = Array.from(rows[1]?.querySelectorAll(".mw-taf-item") ?? []).find(
+      (x) => (x.querySelector(".mw-taf-item-label")?.textContent ?? "") === "天气",
+    );
+    expect(tempoWxItem).toBeDefined();
+    const shrasn = segs.find((x) => (x.textContent ?? "") === "-SHRASN"); // 精确匹配子片（整组 span 文本也含 SHRASN）
+    const brInTempo = segs.filter((x) => (x.textContent ?? "") === "BR");
+    const baseWind = segs.find((x) => (x.textContent ?? "").startsWith("04009"));
+    expect(shrasn).toBeDefined();
+    expect(baseWind).toBeDefined();
+    tempoWxItem?.dispatchEvent(new MouseEvent("mouseenter"));
+    expect(shrasn?.classList.contains("mw-taf-hl")).toBe(true);
+    expect(brInTempo.every((x) => x.classList.contains("mw-taf-hl"))).toBe(false); // 基况 BR ≠ TEMPO 组内 BR，不串亮
+    expect(baseWind?.classList.contains("mw-taf-hl")).toBe(false);
+    tempoWxItem?.dispatchEvent(new MouseEvent("mouseleave"));
+    expect(shrasn?.classList.contains("mw-taf-hl")).toBe(false);
+    // 反向：悬停 -SHRASN 片 → 点亮 TEMPO 行「天气」条目
+    shrasn?.dispatchEvent(new MouseEvent("mouseenter"));
+    expect(tempoWxItem?.classList.contains("mw-taf-hl")).toBe(true);
+    shrasn?.dispatchEvent(new MouseEvent("mouseleave"));
+    // 行头悬停 → 该行全部片（整组+子片）点亮
+    const tempoGroup = segs.find((x) => (x.textContent ?? "").startsWith("TEMPO"));
+    rows[1]?.querySelector(".mw-taf-period-head")?.dispatchEvent(new MouseEvent("mouseenter"));
+    expect(tempoGroup?.classList.contains("mw-taf-hl")).toBe(true);
+    // 悬停原文片的人话（title）＝该组行文本
+    expect(shrasn?.getAttribute("title") ?? "").toContain("小阵雨、雪");
   });
 
   it("分段色点与要素标签（小白直观面）：TEMPO 雷雨行红点、基况行绿点，要素带标签", () => {
