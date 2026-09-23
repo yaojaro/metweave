@@ -509,7 +509,7 @@ describe("addTafLayer（v0.2 渲染层①）", () => {
   });
 });
 
-it("层②：弹窗接 renderTafCard（时间线条 + 变化组清单），展开时刻摘要行置顶", async () => {
+it("层②：弹窗接 renderTafCard（分段明细 + RAW 联动），展开时刻摘要行置顶", async () => {
   const map = freshMap();
   const raw =
     "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 BKN033 TEMPO 2520/2524 2500 -SHRASN BR=";
@@ -520,8 +520,8 @@ it("层②：弹窗接 renderTafCard（时间线条 + 变化组清单），展�
   if (!(marker instanceof L.Marker)) throw new Error("应为 Marker");
   const popupEl = marker.getPopup()?.getContent() as HTMLElement;
   expect(popupEl.classList.contains("mw-taf-card")).toBe(true); // 卡即弹窗根,querySelector 不查自身
-  expect(popupEl.querySelector(".mw-taf-strip")).not.toBeNull();
-  expect(popupEl.querySelector(".mw-taf-seg-tempo")).not.toBeNull();
+  expect(popupEl.querySelectorAll(".mw-taf-period").length).toBe(2); // 基况 + TEMPO（四轮后时间线条已移除）
+  expect(popupEl.querySelector(".mw-taf-raw")).not.toBeNull(); // RAW 对照默认开
   expect(popupEl.querySelector("p")?.textContent ?? "").toContain("预报 25日21:00Z");
   map.remove();
 });

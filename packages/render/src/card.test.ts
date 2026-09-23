@@ -1605,25 +1605,9 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(text).toContain("25日 15:18");
   });
 
-  it("时间线条：TEMPO 斜纹/BECMG 渐变分段按比例落位，aria-label 汇总各段", () => {
+  it("气温极值行（负值 M 前缀）——时间线 ▲▼ 标记随条带移除，极值时刻由文本行承载", () => {
     const card = renderTafCard(parseTaf(golden));
-    const strip = card.querySelector(".mw-taf-strip");
-    expect(strip).toBeDefined();
-    const tempos = strip?.querySelectorAll(".mw-taf-seg-tempo");
-    const becmgs = strip?.querySelectorAll(".mw-taf-seg-becmg");
-    expect(tempos?.length).toBe(1);
-    expect(becmgs?.length).toBe(3);
-    const aria = strip?.getAttribute("aria-label") ?? "";
-    expect(aria).toContain("2520/2524");
-    expect(aria).toContain("2605/2606");
-    // 比例抽查：总窗 2518→2624=30h；TEMPO 2520/2524 起点应为 (2/30)%≈6.7%
-    const tempo = tempos?.[0] as HTMLElement | undefined;
-    expect(tempo?.style.left).toBe("6.666666666666667%");
-  });
-
-  it("TX/TN 标记与气温行（负值 M 前缀）", () => {
-    const card = renderTafCard(parseTaf(golden));
-    expect(card.querySelectorAll(".mw-taf-txtn").length).toBe(3); // TX02 + TNM02 + TNM04
+    expect(card.querySelectorAll(".mw-taf-strip")).toHaveLength(0); // 四轮移除
     const text = card.textContent ?? "";
     expect(text).toContain("最高 2°C");
     expect(text).toContain("最低 -2°C");
@@ -1746,7 +1730,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(amd.querySelector(".mw-taf-flag")?.textContent).toContain("修订");
     const nil = renderTafCard(parseTaf("TAF ZSAM NIL="));
     expect(nil.textContent).toContain("缺报（NIL）");
-    expect(nil.querySelector(".mw-taf-strip")).toBeNull();
+    expect(nil.querySelector(".mw-taf-periods")).toBeNull();
     const en = renderTafCard(parseTaf(golden), { locale: "en", raw: true });
     expect(en.querySelector(".mw-taf-badge")?.textContent).toContain("Forecast");
     expect(en.textContent).toContain("30 h");
