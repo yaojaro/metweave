@@ -1585,3 +1585,62 @@ describe("renderCard 严重度钩子与斜杠时段展示（2026-09-16 五方评
     expect(en.textContent).toContain("from day 16 16:00 to day 16 18:00");
   });
 });
+
+// ---------------------------------------------------------------- TAF 卡片（渲染层②）
+
+import { renderTafCard } from "./taf-card";
+import { parseTaf } from "@metweave/parser";
+
+describe("renderTafCard（v0.2 渲染层②）", () => {
+  const golden =
+    "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 BKN033 TX02/2518Z TNM02/2523Z TNM04/2623Z TEMPO 2520/2524 2500 -SHRASN BR BECMG 2605/2606 2000 -SN BR BECMG 2609/2610 04004MPS BECMG 2611/2612 4000 BR=";
+
+  it("头行与元信息：站名/TAF 徽章/有效期+42h 时长/发布时刻", () => {
+    const card = renderTafCard(parseTaf(golden));
+    const text = card.textContent ?? "";
+    expect(card.querySelector("h2")?.textContent).toContain("ZPPP");
+    expect(card.querySelector(".mw-taf-badge")?.textContent).toContain("TAF");
+    expect(text).toContain("2518/2624");
+    expect(text).toContain("30 小时"); // 2518→2624：(26-25)×24+(24-18)=30h（B2 止时 24 进算术）
+    expect(text).toContain("25日 15:18");
+  });
+
+  it("时间线条：TEMPO 斜纹/BECMG 渐变分段按比例落位，aria-label 汇总各段", () => {
+    const card = renderTafCard(parseTaf(golden));
+    const strip = card.querySelector(".mw-taf-strip");
+    expect(strip).toBeDefined();
+    const tempos = strip?.querySelectorAll(".mw-taf-seg-tempo");
+    const becmgs = strip?.querySelectorAll(".mw-taf-seg-becmg");
+    expect(tempos?.length).toBe(1);
+    expect(becmgs?.length).toBe(3);
+    const aria = strip?.getAttribute("aria-label") ?? "";
+    expect(aria).toContain("2520/2524");
+    expect(aria).toContain("2605/2606");
+    // 比例抽查：总窗 2518→2624=30h；TEMPO 2520/2524 起点应为 (2/30)%≈6.7%
+    const tempo = tempos?.[0] as HTMLElement | undefined;
+    expect(tempo?.style.left).toBe("6.666666666666667%");
+  });
+
+  it("TX/TN 标记与气温行（负值 M 前缀）；变化组清单含要素紧凑摘要", () => {
+    const card = renderTafCard(parseTaf(golden));
+    expect(card.querySelectorAll(".mw-taf-txtn").length).toBe(3); // TX02 + TNM02 + TNM04
+    const text = card.textContent ?? "";
+    expect(text).toContain("最高 2°C");
+    expect(text).toContain("最低 -2°C");
+    expect(text).toContain("2500 m");
+    expect(text).toContain("-SHRASN");
+    expect(text).toContain("04004MPS");
+  });
+
+  it("AMD/COR 标志、NIL 最小卡、en locale 与 RAW 对照", () => {
+    const amd = renderTafCard(parseTaf("TAF AMD ZBAA 010340Z 0106/0206 17004MPS="));
+    expect(amd.querySelector(".mw-taf-flag")?.textContent).toContain("修订");
+    const nil = renderTafCard(parseTaf("TAF ZSAM NIL="));
+    expect(nil.textContent).toContain("缺报（NIL）");
+    expect(nil.querySelector(".mw-taf-strip")).toBeNull();
+    const en = renderTafCard(parseTaf(golden), { locale: "en", raw: true });
+    expect(en.querySelector(".mw-taf-badge")?.textContent).toContain("Forecast");
+    expect(en.textContent).toContain("30 h");
+    expect(en.querySelector(".mw-taf-raw")?.textContent).toContain(golden.slice(0, 20));
+  });
+});

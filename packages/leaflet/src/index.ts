@@ -18,7 +18,7 @@ import type {
   WindGroup,
 } from "@metweave/core";
 import { toValues, unwrap } from "@metweave/core";
-import { renderCard } from "@metweave/render";
+import { renderCard, renderTafCard } from "@metweave/render";
 import { expandTaf } from "@metweave/parser";
 import type {
   TafExpandAt,
@@ -609,22 +609,17 @@ export async function addTafLayer(
     marker.bindTooltip(tip);
 
     if (options.popup ?? true) {
-      const card = document.createElement("div");
-      card.className = "mw-taf-popup";
-      const line = (k: string, val: string): void => {
-        const p = document.createElement("p");
-        p.append(textCarrier(k), textCarrier(val));
-        p.style.margin = "2px 0";
-        card.append(p);
-      };
-      line(locale === "en" ? "Station: " : "站名：", name);
-      if (v !== undefined) {
-        line(locale === "en" ? "Validity: " : "有效期：", v.raw);
-      }
-      if (summary !== "") line(locale === "en" ? "Conditions: " : "预报值：", summary);
-      for (const n of notes) line("", n);
-      if (!noTimeline) {
-        line(locale === "en" ? "Change groups: " : "变化组：", String(r.changes.length));
+      // 层②起弹窗换 renderTafCard（时间线条 + 变化组清单 + 气温行；展开时刻摘要行置于卡前）
+      const card = renderTafCard(r, { locale });
+      if (notes.length > 0) {
+        const lead = document.createElement("p");
+        lead.style.margin = "0 0 4px";
+        lead.className = "mw-taf-meta";
+        for (const [i, n] of notes.entries()) {
+          if (i > 0) lead.append(document.createElement("br"));
+          lead.append(textCarrier(n));
+        }
+        card.prepend(lead);
       }
       marker.bindPopup(card, { maxWidth: 420 });
     }

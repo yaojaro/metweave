@@ -9,3 +9,4 @@
  * （零 DOM 依赖；WebGL 为风场粒子阶段的可选后端）。
  */
 export * from "./card";
+export * from "./taf-card";
