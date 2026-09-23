@@ -52,6 +52,21 @@ const isChangeBoundary = (text: string): boolean =>
   text.startsWith("TN");
 
 /**
+ * 有效期时长（小时）＝有效期组差值（清单 B1★）：`(止日−起日)×24 + (止时−起时)`，
+ * **只看有效期组，禁用发布钟点**（钟点 03/09/15/21Z 与版本解耦、代际切换——taf-tac §3.1 v1.2）。
+ * 止时 24（B2 午夜特例）自然进算术；起日 > 止日（B3 跨月回绕）按所跨月长度回绕天数——
+ * 有效期组不含月信息，缺省按 31 天（保守缺省），带月锚的精确回绕由展开层（B3）负责。
+ * 注意：wrapDaysInMonth 须 ≥ 起日（2 月锚 + 31 日组属不自洽输入，算术结果为负由调用方甄别）。
+ */
+export function tafDurationHours(validity: TafValidityGroup, wrapDaysInMonth = 31): number {
+  const dayDiff =
+    validity.endDay >= validity.startDay
+      ? validity.endDay - validity.startDay
+      : validity.endDay + wrapDaysInMonth - validity.startDay;
+  return dayDiff * 24 + (validity.endHour - validity.startHour);
+}
+
+/**
  * Parse one TAF report (tolerant mode) into the TAF IR — the forecast-side entry.
  * 解析单条 TAF 报文（tolerant）为预报侧 IR。
  * 整体失败（输入非字符串/无站名/无发布时组/时组或有效期越界/未实现模式）抛 MetarParseError

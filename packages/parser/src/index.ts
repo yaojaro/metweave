@@ -55,7 +55,7 @@ export type {
   WindGroup,
 } from "@metweave/core";
 // TAF 解析层（v0.2 批 1 起）：parseTaf / tryParseTaf 与其结果类型——与 parse 同入口供给
-export { parseTaf, tryParseTaf } from "./taf";
+export { parseTaf, tafDurationHours, tryParseTaf } from "./taf";
 export type { TryParseTafResult } from "./taf";
 import {
   TREND_KINDS,

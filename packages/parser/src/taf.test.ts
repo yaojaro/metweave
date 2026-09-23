@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MetarParseError } from "@metweave/core";
 import { parse } from "./index";
-import { parseTaf, tryParseTaf } from "./taf";
+import { parseTaf, tafDurationHours, tryParseTaf } from "./taf";
 import tafFixtures from "./__fixtures__/taf.json";
 
 interface TafFixture {
@@ -132,6 +132,32 @@ describe("TAF 批 1 骨架：电头与有效期（清单 A4）", () => {
     const bad = tryParseTaf("TAF ZBAA 010340Z");
     expect(bad.ok).toBe(false);
     if (!bad.ok) expect(bad.error.code).toBe("missing-validity");
+  });
+});
+
+/** 时长断言 helper：起有效期组 → tafDurationHours（wrap 可选月锚） */
+const dur = (raw: string, wrap?: number): number | undefined => {
+  const v = parseTaf(`TAF ZBAA 010340Z ${raw} 17004MPS=`).validity;
+  return v === undefined ? undefined : tafDurationHours(v, wrap);
+};
+
+describe("TAF 批 2.1：有效期时长差值算术（清单 B1★/B2/B3）", () => {
+  it("标准两制：24h 与 30h 判别只看有效期组差值（禁用发布钟点——v1.2 实证口径）", () => {
+    expect(dur("0106/0206")).toBe(24);
+    expect(dur("0306/0406")).toBe(24);
+    expect(dur("1006/1112")).toBe(30);
+    expect(dur("0306/0412")).toBe(30);
+  });
+
+  it("B2 止时 24＝午夜特例自然进算术；同日窗与 FC 型 9h", () => {
+    expect(dur("0106/0115")).toBe(9); // FC 型（同日 06→15）
+    expect(dur("0106/0224")).toBe(42); // 1 日 06Z → 2 日午夜（B2 编 24）
+  });
+
+  it("B3 跨月回绕：起日 > 止日按所跨月长度回绕（缺省 31，带月锚精确）", () => {
+    expect(dur("3106/0112")).toBe(30); // 31 日 06Z → 次月 1 日 12Z（31 天月）
+    expect(dur("3006/0106", 30)).toBe(24); // 30 天月锚：30 日 06Z → 次月 1 日 06Z
+    expect(dur("2806/0106", 28)).toBe(24); // 2 月（28 天）：28 日 06Z → 次月 1 日 06Z = 24h
   });
 });
 
