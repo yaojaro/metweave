@@ -152,6 +152,35 @@ describe("TAF 批 3.1：风单位随组（清单 C1★）", () => {
   });
 });
 
+describe("TAF 批 3.2：天气强度三档逐元素读（清单 C4★）", () => {
+  it("组合组逐元素读：-SHRASN＝弱阵性雨夹雪（-·SH·RA+SN）、-RASN＝弱雨夹雪、+SN＝大雪、无符号＝中", () => {
+    const r = parseTaf("TAF ZBAA 010340Z 0106/0206 9999 -SHRASN -RASN +SN SN=");
+    const groups = r.weather?.kind === "value" ? r.weather.value : [];
+    expect(groups).toHaveLength(4);
+    expect(groups[0]).toMatchObject({ intensity: "-", descriptor: "SH" });
+    expect([...(groups[0]?.phenomena ?? [])].sort()).toEqual(["RA", "SN"]);
+    expect(groups[1]).toMatchObject({ intensity: "-" });
+    expect([...(groups[1]?.phenomena ?? [])].sort()).toEqual(["RA", "SN"]);
+    expect(groups[2]).toMatchObject({ intensity: "+" });
+    expect(groups[2]?.phenomena).toEqual(["SN"]);
+    expect(groups[3]?.intensity).toBeUndefined();
+    expect(groups[3]?.phenomena).toEqual(["SN"]);
+  });
+
+  it("五/六轮考核失分点实证：黄金样本里的 -SN（小雪）/SN（中雪）/+SN（大雪）三档并存（ZYTL 教材版）", () => {
+    const r = parseTaf(fx("textbook-zytl-260848z-golden").raw);
+    const intensities = new Set<string>();
+    const collect = (list: readonly { intensity?: string }[] | undefined): void => {
+      for (const g of list ?? []) intensities.add(g.intensity ?? "none");
+    };
+    collect(r.weather?.kind === "value" ? r.weather.value : []);
+    for (const c of r.changes) collect(c.elements?.weather);
+    expect(intensities.has("-")).toBe(true);
+    expect(intensities.has("none")).toBe(true);
+    expect(intensities.has("+")).toBe(true);
+  });
+});
+
 /** 天气组紧凑串（黄金表断言用）：-SHRASN / BR / SN 形态 */
 const wx = (
   list:
