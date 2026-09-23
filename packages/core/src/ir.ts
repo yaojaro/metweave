@@ -557,6 +557,66 @@ export interface MetarReport {
   readonly warnings: readonly ParseWarning[];
 }
 
+// ---------------------------------------------------------------- TAF（FM 51，v0.2 批 1 起）
+
+/**
+ * TAF 有效期组 ddHH/ddHH：预报覆盖的时间窗（发布时组之后、基况组之前）。
+ * The TAF validity period ddHH/ddHH.
+ */
+export interface TafValidityGroup {
+  /** 起日 01–31（日期数值保真；跨月回绕与时长推导属展开层，解析层不做月历推断） */
+  readonly startDay: number;
+  /** 起时 00–23 */
+  readonly startHour: number;
+  /** 止日 01–31 */
+  readonly endDay: number;
+  /** 止时 00–24——24 = 预报终于午夜（WMO 51.8.1 Note 1 的合法特例，非越界） */
+  readonly endHour: number;
+  /** 原文保真（如 `0106/0206`） */
+  readonly raw: string;
+  readonly span?: Span;
+}
+
+/**
+ * The parsed TAF report — the forecast-side IR root, parallel to MetarReport (observation side).
+ * 解析后的 TAF 报文——预报侧 IR 根，与 MetarReport（观测侧）平行。
+ *
+ * v0.2 批 1 骨架范围：报头（电头/站名/发布时组/有效期）与告警面；基况段字段类型先行落位、
+ * 解析填充随后续批次（字段为 optional，additive 填充不破坏契约）；变化组（FM/BECMG/TEMPO/PROB）
+ * 与气温组（TX/TN）的字段随对应批次再入册。
+ */
+export interface TafReport {
+  readonly kind: "taf";
+  /** 原文保真（含传输层终止符 `=`——剥离属传输层惯例，解析层如实保留原文） */
+  readonly raw: string;
+  /** NIL 占**有效期组位** = 台站无预报（缺报凭据；与 METAR 侧 nil 同语义）。此时无 validity，正文组不解析 */
+  readonly nil?: boolean;
+  /** CNL 占**风组位** = 预报取消——有效期仍在（发布与覆盖窗信息保留），正文到此截断 */
+  readonly cancelled?: boolean;
+  /** 无站名组 = 整体解析失败，不是字段级三态 */
+  readonly station: string;
+  /** 发布时组 ddHHMMZ（UTC）；同 METAR：无时组 = 整体失败 */
+  readonly issueTime: ReportTime;
+  /** 有效期组；nil 时 undefined（NIL 占其位） */
+  readonly validity?: TafValidityGroup;
+  /** 正交标志位：AMD 修订（取代此前发布）与 COR 更正——修订 ≠ 更正，禁止合并成一个字段 */
+  readonly flags: {
+    readonly amended: boolean;
+    readonly corrected: boolean;
+  };
+  /** 基况段（有效期后、首个变化组前）——与 METAR 组类型同构（复用观测侧类型是 TAF 渲染/判据复用的根基） */
+  readonly wind?: Observed<WindGroup>;
+  readonly visibility?: Observed<VisibilityGroup>;
+  readonly weather?: Observed<readonly WeatherGroup[]>;
+  readonly clouds?: CloudCondition;
+  /** CAVOK 同 METAR 三关语义；此时 vis/weather/clouds 让位 */
+  readonly cavok: boolean;
+  readonly cavokSpan?: Span;
+  readonly remarks: readonly RemarkGroup[];
+  /** 永远存在，可为空数组 */
+  readonly warnings: readonly ParseWarning[];
+}
+
 // ---------------------------------------------------------------- 解析契约与语义工具
 
 /**
@@ -571,6 +631,17 @@ export interface ParseOptions {
   readonly kind?: ReportKind;
   /** 缺省 true；false = 紧凑模式：IR 不携带任何 span（JSON 体积约 -30%，批量入库/列存场景）。
    *  spans:false 时 RAW 对照等 span 消费方优雅降级（见本文件头部设计原则第 5 条） */
+  readonly spans?: boolean;
+}
+
+/**
+ * Options for `parseTaf`: tolerance mode and span carriage (kind is fixed 'taf' by report nature — no external override, unlike METAR's IEM-stripped feeds).
+ * parseTaf 的选项：容忍模式与 span 携带（类型位由报文本性固定为 'taf'，无外部注入场景——不同于 METAR 的 IEM 剥词源）。
+ */
+export interface TafParseOptions {
+  /** 同 ParseOptions.mode：v0.2 尚未实现 strict，显式传即 unsupported-mode 报错（不静默降级） */
+  readonly mode?: "tolerant" | "strict";
+  /** 同 ParseOptions.spans：false = 紧凑模式剥除全部 span */
   readonly spans?: boolean;
 }
 

@@ -1,0 +1,36 @@
+{
+  "schema": "metweave-taf-fixtures/1",
+  "count": 3,
+  "fixtures": [
+    {
+      "id": "ogimet-plain-zbaa-20090801",
+      "raw": "TAF ZBAA 010340Z 0106/0206 17004MPS 2400 BR OVC033 TEMPO 0110/0114 TSRA SCT033CB BKN033 TEMPO 0116/0120 -TSRA FEW033CB BKN033 BECMG 0122/0123 02004MPS 6000=",
+      "station": "ZBAA",
+      "source": "ogimet",
+      "obsTime": "2009-08-01T03:40:00Z",
+      "hash": "4a15bc7ffde8",
+      "traps": ["header-plain", "trailing-equals"],
+      "note": "例行 24h TAF：裸电头（无 AMD/COR）、止时 06 跨日窗、终止符 = 在位；批 1 骨架基准样本"
+    },
+    {
+      "id": "ogimet-amd-zbtj-20090806",
+      "raw": "TAF AMD ZBTJ 061937Z 0618/0718 09003MPS 2500 BR NSC TEMPO 0618/0624 -TSRA SCT030CB TEMPO 0706/0712 -TSRA SCT030CB=",
+      "station": "ZBTJ",
+      "source": "ogimet",
+      "obsTime": "2009-08-06T19:37:00Z",
+      "hash": "87662ad2beee",
+      "traps": ["header-amd"],
+      "note": "修订报：AMD 占类型词后位（WMO/ICAO 惯例形态）；TEMPO 窗跨日（0618/0624 → 0706/0712）"
+    },
+    {
+      "id": "ogimet-cor-type-zbaa-20090814",
+      "raw": "TAF COR ZBAA 140940Z 1412/1512 16004MPS 3500 HZ FEW040CB BECMG 1419/1420 36004MPS 2400 BR BECMG 1421/1422 1400 BECMG 1502/1503 16004MPS 2400 TX33/1507Z TN24/1421Z=",
+      "station": "ZBAA",
+      "source": "ogimet",
+      "obsTime": "2009-08-14T09:40:00Z",
+      "hash": "bd117265bb3a",
+      "traps": ["header-cor-type"],
+      "note": "更正报（美式槽位：COR 在类型词位）；正文含 TX/TN 气温组（C6 批 3.4 语料预埋）与三条 BECMG"
+    }
+  ]
+}

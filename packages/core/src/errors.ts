@@ -10,14 +10,16 @@
  */
 
 /**
- * The six whole-report parse failure codes (IR contract: non-string input / missing station / missing time / out-of-range time = whole-report failure, not field-level three states).
- * parse 整体失败的六路（IR 契约：输入非字符串/无站名/无时组/时组越界 = 整体失败，不是字段级三态）。
+ * The whole-report parse failure codes (METAR/SPECI + TAF) (IR contract: non-string input / missing station / missing time / out-of-range time = whole-report failure, not field-level three states).
+ * parse 整体失败的各路（METAR/SPECI 五路 + TAF 有效期两路）（IR 契约：输入非字符串/无站名/无时组/时组越界 = 整体失败，不是字段级三态）。
  */
 export type MetarParseErrorCode =
   | "invalid-input" /** 输入非字符串（parse(raw: string) 收到 null/数字等）——走稳定契约而非裸 Error，EN_MESSAGES 可查表 */
-  | "missing-station" /** 首个 token 不是四字符站名组（含空输入） */
+  | "missing-station" /** 首 token 不是四字符站名组（含空输入） */
   | "missing-time" /** 站名后无 ddHHMMZ 时组 */
   | "invalid-time" /** 时组在位但数值越界（日/时/分超范围）——值不可信，等同无效时组 */
+  | "missing-validity" /** TAF：发布时组后无 ddHH/ddHH 有效期组（NIL 除外——NIL 占该位属合法缺报，见 TafReport.nil） */
+  | "invalid-validity" /** TAF：有效期组在位但数值越界（日起 01–31、起时 00–23、止时 00–24——止时 24 为午夜合法特例） */
   | "unsupported-mode" /** mode:'strict' 在 v0.1 未实现（路线图项）——类型已预留，调用即明确报错而非静默降级 */
   /** 批量聚合解析失败（伞包 getMetarReports 缺省模式：任一行整体失败即聚合抛出）。
    *  注意 raw 字段语义在本 code 下的调整：承载汇总信息（网络名/失败条数/逐条站名与原因）而非单条报文原文——
@@ -25,8 +27,8 @@ export type MetarParseErrorCode =
   | "batch-parse-failed";
 
 /**
- * Whole-report parse failure for a METAR/SPECI report.
- * METAR/SPECI 报文整体解析失败。
+ * Whole-report parse failure for a METAR/SPECI/TAF report (TAF codes since v0.2; see the ParseError alias).
+ * METAR/SPECI/TAF 报文整体解析失败（TAF 两码自 v0.2；报文中性别名见 ParseError）。
  * The `raw` field keeps the input verbatim (failure samples can be stored for review without extra capture).
  * raw 字段保留输入原文（失败样本可直接落库复盘，无需额外捕获）。
  */
@@ -42,6 +44,14 @@ export class MetarParseError extends Error {
     this.raw = raw;
   }
 }
+
+/**
+ * Report-neutral alias for MetarParseError: the error family also covers TAF whole-report failures
+ * (codes `missing-validity` / `invalid-validity`) since v0.2 — the historical name is kept for contract stability.
+ * MetarParseError 的报文中性别名：v0.2 起错误族同时覆盖 TAF 整体失败（missing-validity / invalid-validity），
+ * 历史名保留以稳定契约（既有消费方 instanceof 不受影响）。
+ */
+export { MetarParseError as ParseError };
 
 /**
  * The five fetch failure codes for getMetars / getMetarReports.
@@ -77,9 +87,9 @@ export class MetarSourceError extends Error {
 }
 
 /**
- * English messages for every error code (parse 6 + source 5), for consumers that
+ * English messages for every error code (parse 8 + source 5), for consumers that
  * map `code` to their own UI copy.
- * 全部错误码的英文文案（parse 6 码 + source 5 码），供消费方按 code 映射自己的界面文案。
+ * 全部错误码的英文文案（parse 8 码 + source 5 码），供消费方按 code 映射自己的界面文案。
  *
  * Keyed by the stable machine-readable `code` (add-only contract); the bundled
  * Chinese `message` on each error remains the default narrative.
@@ -90,6 +100,9 @@ export const EN_MESSAGES: Record<MetarParseErrorCode | MetarSourceErrorCode, str
   "missing-station": "Not a METAR/SPECI report: station group missing or unrecognized",
   "missing-time": "Not a complete METAR/SPECI report: observation-time group missing",
   "invalid-time": "Observation-time group out of range (day 01–31 / hour 00–23 / minute 00–59)",
+  "missing-validity": "Not a complete TAF report: validity group ddHH/ddHH missing",
+  "invalid-validity":
+    "TAF validity group out of range (day 01–31 / start hour 00–23 / end hour 00–24)",
   "unsupported-mode": "Strict mode is not implemented in v0.1 — omit `mode` or pass 'tolerant'",
   "batch-parse-failed":
     "Some reports in the batch failed to parse entirely (see the summary for per-station reasons)",

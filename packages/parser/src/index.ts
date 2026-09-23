@@ -1,8 +1,9 @@
 /**
- * @metweave/parser — 解析层：METAR/SPECI（tolerant）→ IR。
- * The parsing layer: METAR/SPECI (tolerant mode) → IR.
+ * @metweave/parser — 解析层：METAR/SPECI（tolerant）→ IR；TAF（FM 51）自 v0.2 起同入口供给（./taf）。
+ * The parsing layer: METAR/SPECI (tolerant mode) → IR; TAF (FM 51) served from the same entry since v0.2 (./taf).
  *
  * v0.1 实现范围：METAR 正文 + 趋势组半结构化 + RMK 认组 + 跑道状态最小形。
+ * v0.2 批 1 起：TAF 电头与有效期骨架（基况段/变化组随后续批次），组级纯函数共享层在 ./groups。
  * 纪律：不静默——看不懂的 token 一律进 warnings[]（unknown-token，info 级），绝不丢弃；
  * 缺测电码（////、/////KT、//）与不可信值（5 位数 QNH）→ Observed missing + 告警；
  * 单位跟组走；一切产物携带原文 span。strict 模式预留给报文校验场景。
@@ -42,6 +43,9 @@ export type {
   RunwayStateGroup,
   RunwayVisualRange,
   Span,
+  TafParseOptions,
+  TafReport,
+  TafValidityGroup,
   TemperatureReading,
   TrendElements,
   TrendGroup,
@@ -50,6 +54,9 @@ export type {
   WeatherGroup,
   WindGroup,
 } from "@metweave/core";
+// TAF 解析层（v0.2 批 1 起）：parseTaf / tryParseTaf 与其结果类型——与 parse 同入口供给
+export { parseTaf, tryParseTaf } from "./taf";
+export type { TryParseTafResult } from "./taf";
 import {
   TREND_KINDS,
   VIS_V_RANGE,

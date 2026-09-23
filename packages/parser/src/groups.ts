@@ -35,7 +35,7 @@ export interface Token {
   readonly end: number;
 }
 
-export const PHENOMENA: readonly WeatherPhenomenon[] = [
+const PHENOMENA: readonly WeatherPhenomenon[] = [
   "DZ",
   "RA",
   "SN",
@@ -59,23 +59,14 @@ export const PHENOMENA: readonly WeatherPhenomenon[] = [
   "SS",
   "DS",
 ];
-export const DESCRIPTORS: readonly WeatherDescriptor[] = [
-  "MI",
-  "PR",
-  "BC",
-  "DR",
-  "BL",
-  "SH",
-  "TS",
-  "FZ",
-];
+const DESCRIPTORS: readonly WeatherDescriptor[] = ["MI", "PR", "BC", "DR", "BL", "SH", "TS", "FZ"];
 export const TREND_KINDS = new Set<string>(["NOSIG", "BECMG", "TEMPO"]);
 /** 趋势段拖词容忍集（无 typed 语义的磨损尾/连接词——收进 trend.raw 静默保真，不产生噪声）：
  *  语料实弹 VNKT 120930Z「NOSIG CB TO NE AND E」（观测员补记磨损尾）与既有回归锁契约
  *  （拖词不告警、原文留 raw）；含裸对流码 CB/TCU（无云量云高位的残缺云信息，无解码面）与
  *  16 方位词、TO/AND 连接词。与「交回正文恢复 typed 语义」的收窄主判据互补：
  *  有语义可恢复的（温露/QNH/$/WS/TX/TN/RVRNO）一律收口交回，纯噪声拖词保持原文静默。 */
-export const TREND_FILLER_WORDS = new Set([
+const TREND_FILLER_WORDS = new Set([
   "TO",
   "AND",
   "CB",
@@ -107,7 +98,7 @@ export const TREND_FILLER_WORDS = new Set([
  *  仍被静默吞进 trend.raw、typed 语义蒸发——RMK、Rxx/、$ 已是三次逃逸，补洞循环就此终结：
  *  判据反转为规范封闭清单，未来一切新正文分支自动获得「交回正文 + 出声」兜底。
  *  硬边界保留：RMK（含词身粘连 startsWith）与 R 组形态——R 组收口另有 trendCloseWarning 出声。 */
-export const isTrendCollectible = (t: Token, next: Token | undefined): boolean => {
+const isTrendCollectible = (t: Token, next: Token | undefined): boolean => {
   const text = t.text;
   // 段间切换与正文硬边界：下一个趋势指示组、RMK、R 组形态（Rxx/…、R/SNOCLO）一律收口
   if (TREND_KINDS.has(text) || text.startsWith("RMK")) return false;
@@ -129,25 +120,25 @@ export const isTrendCollectible = (t: Token, next: Token | undefined): boolean =
   if (CLOUD_LAYER_PATTERN.test(text) || VV_PATTERN.test(text) || isSkyClear(text)) return true;
   return false;
 };
-export const SKY_CLEAR_CODES: readonly SkyClearCode[] = ["SKC", "NSC", "NCD", "CLR"];
-export const CLOUD_AMOUNTS: readonly CloudAmount[] = ["FEW", "SCT", "BKN", "OVC"];
-export const SPEED_UNITS: readonly WindGroup["speed"]["unit"][] = ["kt", "mps", "kmh"];
+const SKY_CLEAR_CODES: readonly SkyClearCode[] = ["SKC", "NSC", "NCD", "CLR"];
+const CLOUD_AMOUNTS: readonly CloudAmount[] = ["FEW", "SCT", "BKN", "OVC"];
+const SPEED_UNITS: readonly WindGroup["speed"]["unit"][] = ["kt", "mps", "kmh"];
 /** QNH/A 物理可信范围：世界海平面气压极值 870（台风 Tip）–1083.8 hPa（蒙古高压 Agata 1968）——
  *  上界取 1084（极值之上即物理不可能，复评实弹 Q1087 由此拦截），下界 800 留裕量；
  *  A 组（inHg）按同区间镜像换算外圆整为 23.5–32.5（800 hPa ≈ 23.62、1084 ≈ 32.02）。
  *  越界 = 值不可信 → 判缺测 + value-out-of-range 告警（与 Q10054 位数超界同纪律，绝不静默留假值）。 */
-export const QNH_HPA_MIN = 800;
-export const QNH_HPA_MAX = 1084;
-export const ALT_INHG_MIN = 23.5;
-export const ALT_INHG_MAX = 32.5;
+const QNH_HPA_MIN = 800;
+const QNH_HPA_MAX = 1084;
+const ALT_INHG_MIN = 23.5;
+const ALT_INHG_MAX = 32.5;
 /** 温度物理可信范围：世界极值 +56.7°C（Death Valley 1913）/ −89.2°C（Vostok 1983），
  *  取 60/−90 留裕量（与 QNH 世界极值门同款纪律）——两位数模板空间内的物理不可能值
  *  （89/85 构造实弹）不可信判缺测，绝不静默留假值。 */
-export const TEMP_C_MIN = -90;
-export const TEMP_C_MAX = 60;
+const TEMP_C_MIN = -90;
+const TEMP_C_MAX = 60;
 /** LTG 尾随词表（FMH-1 雷电视词与方位）：放电类型 IC/CG/CC/CA、位置 OHD/ALQDS/DSNT/VCNTY 与 16 方位点。
  *  实弹（tgftp 全 cycle）LTG 后的方位词此前逐个散落成 unknown remarks（ALQDS/OHD/方位词一片）。 */
-export const LTG_TAIL_VOCAB = new Set([
+const LTG_TAIL_VOCAB = new Set([
   "IC",
   "CG",
   "CC",
@@ -239,13 +230,13 @@ export function maskOf(code: number): number {
   }
 }
 
-export const isPhenomenon = (s: string): s is WeatherPhenomenon => PHENOMENA.some((p) => p === s);
-export const isDescriptor = (s: string): s is WeatherDescriptor => DESCRIPTORS.some((p) => p === s);
-export const isCloudAmount = (s: string): s is CloudAmount => CLOUD_AMOUNTS.some((p) => p === s);
+const isPhenomenon = (s: string): s is WeatherPhenomenon => PHENOMENA.some((p) => p === s);
+const isDescriptor = (s: string): s is WeatherDescriptor => DESCRIPTORS.some((p) => p === s);
+const isCloudAmount = (s: string): s is CloudAmount => CLOUD_AMOUNTS.some((p) => p === s);
 export const isSkyClear = (s: string): s is SkyClearCode => SKY_CLEAR_CODES.some((p) => p === s);
-export const isSpeedUnit = (s: string): s is WindGroup["speed"]["unit"] =>
+const isSpeedUnit = (s: string): s is WindGroup["speed"]["unit"] =>
   SPEED_UNITS.some((p) => p === s);
-export const isConvective = (s: string): s is ConvectiveType => s === "CB" || s === "TCU";
+const isConvective = (s: string): s is ConvectiveType => s === "CB" || s === "TCU";
 
 export function tokenize(raw: string): Token[] {
   const tokens: Token[] = [];
@@ -260,9 +251,9 @@ export function tokenize(raw: string): Token[] {
 export const spanOf = (t: Token): Span => ({ start: t.start, end: t.end });
 
 /** 云层组形态（FEW023CB / /////01CB/// 缺测位形态）——正文循环与趋势段结构化共用一份正则防漂移 */
-export const CLOUD_LAYER_PATTERN = /^(FEW|SCT|BKN|OVC|\/\/\/)(\d{3}|\/\/\/)(CB|TCU)?(\/\/\/)?$/;
+const CLOUD_LAYER_PATTERN = /^(FEW|SCT|BKN|OVC|\/\/\/)(\d{3}|\/\/\/)(CB|TCU)?(\/\/\/)?$/;
 /** VV 组形态（VV / VV/// / VV002）——同上共用 */
-export const VV_PATTERN = /^VV(\/\/\/|\d{3})?$/;
+const VV_PATTERN = /^VV(\/\/\/|\d{3})?$/;
 
 /**
  * 趋势段内要素结构化（WMO 306 FM15 §15.14.2：风/能见度/天气/云四族 + 趋势专属 NSW（§15.14.13）与 CAVOK（§15.10）顶替）。
@@ -270,7 +261,7 @@ export const VV_PATTERN = /^VV(\/\/\/|\d{3})?$/;
  * 正文循环同款的 token 级解析函数直接复用（parseWindToken/parseVisibilityToken/parseWeatherBody），
  * 组形正则取共享常量。返回 undefined = 没有任何组被识别（如裸 NOSIG）。
  */
-export function structureTrendElements(
+function structureTrendElements(
   tokens: readonly Token[],
   start: number,
 ): TrendElements | undefined {
@@ -398,7 +389,7 @@ export function structureTrendElements(
   };
 }
 
-export function joinSpan(tokens: readonly Token[]): Span {
+function joinSpan(tokens: readonly Token[]): Span {
   const first = tokens[0];
   const last = tokens[tokens.length - 1];
   if (first === undefined || last === undefined) return { start: 0, end: 0 };
@@ -440,7 +431,7 @@ export function compactNode<T>(node: T): T {
  *  tolerant 纪律下仍按切解结果收下，由调用方追加 invalid-format 告警。
  *  bare = 描述符单独编报（无现象）——TS 恒合法；SH 仅在 VC 邻近语境内合法（VCSH，
  *  WMO 306 表 4678 注：机场附近有阵性降水但降水类型不可辨），由 parseWeatherBody 收口。 */
-export function splitWeatherToken(body: string): {
+function splitWeatherToken(body: string): {
   descriptor?: WeatherDescriptor;
   phenomena: readonly WeatherPhenomenon[];
   outOfOrder: boolean;
@@ -470,7 +461,7 @@ export function splitWeatherToken(body: string): {
  *  signWithVc = 强度符与 VC 并存（-VCTSRA 家族，NWS 自动站实弹）：4678 限定槽四选一
  *  （light −/moderate 无符/heavy +/vicinity VC）、FAA AIM 明文互斥——tolerant 纪律下按切解
  *  收下（强度+邻近+现象语义可无损恢复，与 RATS→outOfOrder 容忍同构），由调用方出声。 */
-export function parseWeatherBody(text: string): {
+function parseWeatherBody(text: string): {
   intensity?: "-" | "+";
   proximity: boolean;
   descriptor?: WeatherDescriptor;
@@ -522,7 +513,7 @@ export function parseWeatherBody(text: string): {
  *  漏斗云；加拿大差异版另有官方能见度判据 <5/16 SM）——表内形态照常收下、零告警；
  *  FMH-1 仅对降水族定义强度测定（美国实务不产 +DS），出处为 4678 电码表本身而非 FMH-1 容错。
  *  （2026-09-14 口径归位：旧注释称「+DS 由调用方出声」与实现不符——它本就是表内电码。） */
-export const PRECIP_PHENOMENA = new Set<WeatherPhenomenon>([
+const PRECIP_PHENOMENA = new Set<WeatherPhenomenon>([
   "RA",
   "SN",
   "SG",
@@ -532,7 +523,7 @@ export const PRECIP_PHENOMENA = new Set<WeatherPhenomenon>([
   "GS",
   "UP",
 ]);
-export function intensityAllowedFor(
+function intensityAllowedFor(
   intensity: "-" | "+",
   phenomena: readonly WeatherPhenomenon[],
 ): boolean {
@@ -830,7 +821,7 @@ export function parseTempDewToken(t: Token): {
   return { temperature: read(m[1]), dewpoint: read(m[2]), span: spanOf(t) };
 }
 
-export function beyondRangeOf(flag: string | undefined): "above" | "below" | undefined {
+function beyondRangeOf(flag: string | undefined): "above" | "below" | undefined {
   if (flag === "P") return "above";
   if (flag === "M") return "below";
   return undefined;
@@ -868,7 +859,7 @@ export function parseRvrToken(t: Token): RunwayVisualRange | null {
 
 /** 摩擦两位电码（15.13.6.1 表 0366）解码：01–90 → 摩擦系数 0.01–0.90；91–95 → 制动作用五档；
  *  99 → unreliable；// 或 96–98（电码表未用）→ 两字段皆 undefined（原码经 span 回溯）。 */
-export function parseFrictionCode(
+function parseFrictionCode(
   code: string | undefined,
 ): Pick<RunwayStateGroup, "frictionCoefficient" | "brakingAction"> {
   if (code === undefined || !/^\d{2}$/.test(code)) return {};
@@ -1207,7 +1198,7 @@ export function applyVisibilityToken(
 }
 
 /** 温度读数物理极值门（世界极值 ±裕量，与 QNH 世界极值门同款纪律）。 */
-export const tempOutOfRange = (r: TemperatureReading | null): boolean =>
+const tempOutOfRange = (r: TemperatureReading | null): boolean =>
   r !== null && (r.celsius < TEMP_C_MIN || r.celsius > TEMP_C_MAX);
 
 /** 温度/露点组落位（原正文循环温露分支内联块）：重复组告警、全缺测不顶替在场值、
