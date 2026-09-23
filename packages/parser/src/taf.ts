@@ -4,18 +4,52 @@
  *
  * 批 1 范围：电头 token 序列（清单 A4——TAF 词可省（剥词源同理）、AMD/COR 不写死槽位、
  * COR 时组后位）、发布时组 ddHHMMZ、有效期组 ddHH/ddHH（止时 24 = 午夜合法特例）、
- * 传输层终止符 `=` 剥离（A1）、NIL/CNL 位置判别（A2）、AAA/CCA 族仅容错（A3）。
- * 正文 token 暂一律 unknown-token 出声（不静默纪律），
- * 基况段（1.5）与变化组/气温组（批 2/3）随后逐组接管。
+ * 传输层终止符 `=` 剥离（A1）、NIL/CNL 位置判别（A2）、AAA/CCA 族仅容错（A3）、
+ * 基况段四要素 + CAVOK（复用 groups 共享件，组装语义沿 METAR）。
+ * 变化组与气温组（批 2/3.4）界后 token 暂一律 unknown-token 出声（不静默纪律）。
  * 纪律与 METAR 侧同源：不静默、span 保真、错误码只增不改（ParseError 别名自 v0.2 起）。
  */
 import { MetarParseError } from "@metweave/core";
-import type { ParseWarning, TafParseOptions, TafReport, TafValidityGroup } from "@metweave/core";
-import { compactNode, spanOf, tokenize, type Token } from "./groups";
+import type {
+  CloudCondition,
+  CloudElement,
+  ParseWarning,
+  SkyClearCode,
+  Span,
+  TafParseOptions,
+  TafReport,
+  TafValidityGroup,
+  WeatherGroup,
+} from "@metweave/core";
+import {
+  applyVisibilityToken,
+  cloudLayerElementOf,
+  compactNode,
+  isSkyClear,
+  observedWeatherOf,
+  parseVisibilityToken,
+  parseWindToken,
+  spanOf,
+  tokenize,
+  tryWeatherToken,
+  validateWindGroup,
+  verticalVisibilityElementOf,
+  warnDuplicateGroup,
+  type Token,
+} from "./groups";
 
 const STATION_PATTERN = /^[A-Z0-9]{4}$/;
 const ISSUE_TIME_PATTERN = /^(\d{2})(\d{2})(\d{2})Z$/;
 const VALIDITY_PATTERN = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/;
+
+/** 基况段右界（批 2/3.4 接管前的停靠点）：变化组 FM####/BECMG/TEMPO/PROB30|40 与气温组 TX/TN */
+const isChangeBoundary = (text: string): boolean =>
+  /^FM\d{4}$/.test(text) ||
+  text === "BECMG" ||
+  text === "TEMPO" ||
+  /^PROB[34]0$/.test(text) ||
+  text.startsWith("TX") ||
+  text.startsWith("TN");
 
 /**
  * Parse one TAF report (tolerant mode) into the TAF IR — the forecast-side entry.
@@ -240,8 +274,149 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     });
   }
 
-  // —— 正文（批 1 骨架）：一律 unknown-token 出声保原文，后续批次逐组接管
+  // —— 基况段（1.5）：有效期后、首个变化组/气温组前——风/能见度/天气/云（含 NSC 晴空词族）
+  // 四要素 + CAVOK。组装语义沿 METAR 侧（重复组 last-wins 出声、缺测不顶替在场值、
+  // 三态 Observed、span 保真）；TAF 无 RVR/温露对/QNH/RMK/NOSIG（教材 §1 电码格式）——
+  // 此类组落入 unknown-token 出声。变化组/气温组（FM####/BECMG/TEMPO/PROB/TX/TN）属批 2/3.4：
+  // 停在界上，其后暂一律 unknown-token。
+  let wind: TafReport["wind"];
+  let visibility: TafReport["visibility"];
+  let weather: TafReport["weather"];
+  const weatherList: WeatherGroup[] = [];
+  let directionalAsPrimary = false;
+  const cloudElements: CloudElement[] = [];
+  let clearCode: { code: SkyClearCode; span: Span } | undefined;
+  let cavok = false;
+  let cavokSpan: Span | undefined;
+
+  for (; i < tokens.length;) {
+    const t = tokens[i];
+    if (t === undefined || isChangeBoundary(t.text)) break;
+    const text = t.text;
+
+    if (text === "CAVOK") {
+      // CAVOK 三关让位契约同 METAR（vis/weather/clouds 让位为省略态，词位以 cavokSpan 标记）；
+      // 前序矛盾交叉校验（cavokCrossCheck）为 METAR 三态快照工具，TAF 侧语义待批 2 变化组接入后统一
+      cavok = true;
+      cavokSpan = spanOf(t);
+      visibility = undefined;
+      directionalAsPrimary = false;
+      weather = undefined;
+      weatherList.length = 0;
+      cloudElements.length = 0;
+      clearCode = undefined;
+      i += 1;
+      continue;
+    }
+
+    const windParsed = parseWindToken(t, tokens[i + 1]);
+    if (windParsed !== null) {
+      if (wind !== undefined) warnDuplicateGroup(raw, warnings, "风组", wind.span, spanOf(t));
+      if (windParsed === "missing") {
+        // 缺测电码不顶替在场值（同 METAR：零信息量缺测按 last-wins 覆盖真实值是纯信息损失）
+        if (wind === undefined) {
+          wind = { kind: "missing", span: spanOf(t) };
+          warnings.push({
+            code: "missing-expected",
+            severity: "info",
+            message: `风组缺测（${t.text}）`,
+            span: spanOf(t),
+          });
+        }
+        i += 1;
+      } else {
+        const applied = validateWindGroup(t, windParsed, raw);
+        wind = applied.wind;
+        warnings.push(...applied.warnings);
+        i += windParsed.consumed;
+      }
+      continue;
+    }
+
+    const visParsed = parseVisibilityToken(t, tokens[i + 1]);
+    if (visParsed !== null) {
+      const applied = applyVisibilityToken(
+        t,
+        visParsed,
+        { visibility, directionalAsPrimary },
+        raw,
+        warnings,
+      );
+      visibility = applied.visibility;
+      directionalAsPrimary = applied.directionalAsPrimary;
+      i += visParsed.consumed;
+      continue;
+    }
+
+    const weatherParsed = tryWeatherToken(t, weatherList, []);
+    if (weatherParsed !== false) {
+      if (weatherParsed.outOfOrder) {
+        warnings.push({
+          code: "invalid-format",
+          severity: "warning",
+          message: `天气组语序不合电码表（${text}：描述符须先于现象）——已按切解结果收下`,
+          span: spanOf(t),
+        });
+      }
+      if (weatherParsed.signWithVc) {
+        warnings.push({
+          code: "invalid-format",
+          severity: "info",
+          message: `强度符与 VC 邻近指示并存（${text}——强度符不与 VC 同组）——已按切解结果收下`,
+          span: spanOf(t),
+        });
+      }
+      i += 1;
+      continue;
+    }
+
+    if (text === "//") {
+      weather = { kind: "missing", span: spanOf(t) };
+      warnings.push({
+        code: "missing-expected",
+        severity: "info",
+        message: "天气组缺测（//，无法观测天气）",
+        span: spanOf(t),
+      });
+      i += 1;
+      continue;
+    }
+
+    const cloudElem = cloudLayerElementOf(t, warnings);
+    if (cloudElem !== null) {
+      cloudElements.push(cloudElem);
+      i += 1;
+      continue;
+    }
+    const vvElem = verticalVisibilityElementOf(t, warnings);
+    if (vvElem !== null) {
+      cloudElements.push(vvElem);
+      i += 1;
+      continue;
+    }
+    if (isSkyClear(text)) {
+      clearCode = { code: text, span: spanOf(t) };
+      cloudElements.length = 0;
+      i += 1;
+      continue;
+    }
+
+    warnings.push({
+      code: "unknown-token",
+      severity: "info",
+      message: `TAF 基况段未识别组（${text}）——TAF 无此组位（RVR/温露对/QNH/RMK 属 METAR 语汇），保留原文`,
+      span: spanOf(t),
+    });
+    i += 1;
+  }
+
+  // 变化组/气温组界之后的 token：批 2/3.4 接管前一律 unknown-token 出声
   collectTailAsUnknown(tokens, i, warnings);
+
+  const clouds: CloudCondition | undefined =
+    cloudElements.length > 0 || clearCode !== undefined
+      ? { elements: [...cloudElements], ...(clearCode !== undefined ? { clear: clearCode } : {}) }
+      : undefined;
 
   return compactIfEnabled({
     kind: "taf" as const,
@@ -250,7 +425,12 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     issueTime,
     validity,
     flags: { amended, corrected },
-    cavok: false,
+    wind,
+    visibility,
+    weather: weather ?? observedWeatherOf(weatherList),
+    clouds,
+    cavok,
+    cavokSpan,
     remarks: [],
     warnings,
   });

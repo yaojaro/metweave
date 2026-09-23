@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MetarParseError } from "@metweave/core";
+import { parse } from "./index";
 import { parseTaf, tryParseTaf } from "./taf";
 import tafFixtures from "./__fixtures__/taf.json";
 
@@ -103,15 +104,12 @@ describe("TAF 批 1 骨架：电头与有效期（清单 A4）", () => {
     expectThrows("TAF 7STATION 010340Z 0106/0206=", "missing-station");
   });
 
-  it("批 1 正文未接管：正文 token 一律 unknown-token（info）出声且带 span（终止符已剥离不进结构）", () => {
-    const raw = "TAF ZBAA 010340Z 0106/0206 17004MPS=";
-    const r = parseTaf(raw);
-    const tailTokens = ["17004MPS"];
-    expect(r.warnings).toHaveLength(tailTokens.length);
-    for (const [idx, text] of tailTokens.entries()) {
-      expect(r.warnings[idx]).toMatchObject({ code: "unknown-token", severity: "info" });
-      expect(rawSlice(raw, r.warnings[idx]?.span)).toBe(text);
-    }
+  it("正文组越界处理：非基况组 unknown-token 出声（METAR 语汇组不属 TAF）", () => {
+    const r = parseTaf("TAF ZBAA 010340Z 0106/0206 R01/0200 Q1009 29/24=");
+    expect(r.wind).toBeUndefined();
+    expect(r.visibility).toBeUndefined();
+    expect(r.warnings).toHaveLength(3); // R01/0200、Q1009、29/24 各一 token
+    expect(r.warnings.every((w) => w.code === "unknown-token")).toBe(true);
   });
 
   it("spans:false 紧凑模式剥除全部 span；strict 模式显式报错不静默降级", () => {
@@ -243,6 +241,74 @@ describe("TAF 批 1.4：AAA/CCA 族仅容错（清单 A3★）", () => {
     expect(deep.flags.amended).toBe(false);
     expect(deep.warnings).toHaveLength(1);
     expect(deep.warnings[0]?.code).toBe("unknown-token");
+  });
+});
+
+describe("TAF 批 1.5：基况段四要素 + CAVOK", () => {
+  it("ogimet 实证（ZBAA 例行报）：基况四要素落位，变化组界后全部 unknown-token", () => {
+    const f = fx("ogimet-plain-zbaa-20090801");
+    const r = parseTaf(f.raw);
+    expect(r.wind?.kind).toBe("value");
+    if (r.wind?.kind === "value") {
+      expect(r.wind.value).toMatchObject({ direction: 170, variable: false });
+      expect(r.wind.value.speed).toMatchObject({ value: 4, unit: "mps" });
+    }
+    expect(r.visibility?.kind).toBe("value");
+    if (r.visibility?.kind === "value") {
+      expect(r.visibility.value).toMatchObject({ value: 2400, unit: "m", exact: true });
+    }
+    expect(r.weather?.kind).toBe("value");
+    if (r.weather?.kind === "value") expect(r.weather.value).toHaveLength(1); // BR
+    expect(r.clouds?.elements).toHaveLength(1); // OVC033
+    expect(r.cavok).toBe(false);
+    // 基况零告警；首个 TEMPO 起 14 个 token 全部 unknown-token（批 2 接管前）
+    expect(r.warnings.filter((w) => w.code !== "unknown-token")).toHaveLength(0);
+    expect(r.warnings.filter((w) => w.code === "unknown-token")).toHaveLength(14);
+    expect(rawSlice(f.raw, r.clouds?.elements[0]?.span)).toBe("OVC033");
+  });
+
+  it("ogimet 实证（ZBTJ 修订报）：NSC 晴空词落位 clear.code", () => {
+    const r = parseTaf(fx("ogimet-amd-zbtj-20090806").raw);
+    expect(r.clouds?.elements).toHaveLength(0);
+    expect(r.clouds?.clear).toMatchObject({ code: "NSC" });
+    expect(r.weather?.kind).toBe("value"); // BR
+  });
+
+  it("aw 实证（ZGSZ 30h 报）：8000/SCT040 落位，TX/TN 界后出声", () => {
+    const r = parseTaf(fx("aw-amd-zgsz-20260910").raw);
+    expect(r.visibility?.kind).toBe("value");
+    expect(r.clouds?.elements?.[0]).toMatchObject({ amount: "SCT" });
+    // TX32×2 + TN25 在 TEMPO 界前后均属批 2/3.4 未接管 token
+    const unknowns = r.warnings.filter((w) => w.code === "unknown-token");
+    expect(unknowns.length).toBeGreaterThan(6);
+  });
+
+  it("CAVOK：三关让位（vis/weather/clouds 为省略态）+ 词位标记", () => {
+    const r = parseTaf("TAF ZBAA 010350Z 0106/0206 18004MPS CAVOK=");
+    expect(r.cavok).toBe(true);
+    expect(r.visibility).toBeUndefined();
+    expect(r.weather).toBeUndefined();
+    expect(r.clouds).toBeUndefined();
+    expect(rawSlice(r.raw, r.cavokSpan)).toBe("CAVOK");
+  });
+
+  it("重复风组 last-wins + duplicate-group 出声；缺测电码不顶替在场值（沿 METAR 口径）", () => {
+    const dup = parseTaf("TAF ZBAA 010340Z 0106/0206 17004MPS 20005MPS=");
+    expect(dup.warnings.some((w) => w.code === "duplicate-group")).toBe(true);
+    if (dup.wind?.kind === "value") {
+      expect(dup.wind.value.direction).toBe(200);
+      expect(dup.wind.value.speed.value).toBe(5);
+    }
+    const keep = parseTaf("TAF ZBAA 010340Z 0106/0206 17004MPS /////KT=");
+    expect(keep.warnings.some((w) => w.code === "duplicate-group")).toBe(true);
+    if (keep.wind?.kind === "value") expect(keep.wind.value.direction).toBe(170);
+  });
+
+  it("同码组与 METAR 侧语义对拍：17004MPS / 2400 在两解析器产出一致（紧凑模式免 span 位差）", () => {
+    const taf = parseTaf("TAF ZBAA 010340Z 0106/0206 17004MPS 2400=", { spans: false });
+    const metar = parse("METAR ZBAA 010340Z 17004MPS 2400 FEW030 29/24 Q1010", { spans: false });
+    expect(taf.wind).toEqual(metar.wind);
+    expect(taf.visibility).toEqual(metar.visibility);
   });
 });
 
