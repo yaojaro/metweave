@@ -136,6 +136,22 @@ describe("TAF 批 1 骨架：电头与有效期（清单 A4）", () => {
   });
 });
 
+describe("TAF 批 3.1：风单位随组（清单 C1★）", () => {
+  it("MPS 实证（ogimet/aw 全量形态）与 KT 形态（合成——本地通道无美国站 TAF 实证，注记）单位各自落位", () => {
+    const mps = parseTaf("TAF ZBAA 010340Z 0106/0206 17004MPS=");
+    expect(mps.wind?.kind === "value" && mps.wind.value.speed.unit).toBe("mps");
+    const kt = parseTaf("TAF KDEN 101100Z 1012/1112 27015G25KT 9999 SCT040=");
+    expect(kt.wind?.kind === "value" && kt.wind.value.speed.unit).toBe("kt");
+    expect(kt.wind?.kind === "value" && kt.wind.value.gust?.value).toBe(25);
+  });
+
+  it("禁全局默认：无单位风组不认（落 unknown-token），绝不按猜测单位收值——IEM KT→MPS 代际漂移教训（2006–2010 KT/2011+ MPS）入档", () => {
+    const r = parseTaf("TAF ZBAA 010340Z 0106/0206 17004=");
+    expect(r.wind).toBeUndefined();
+    expect(r.warnings.some((w) => w.code === "unknown-token")).toBe(true);
+  });
+});
+
 /** 天气组紧凑串（黄金表断言用）：-SHRASN / BR / SN 形态 */
 const wx = (
   list:
