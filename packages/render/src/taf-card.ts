@@ -619,10 +619,13 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     link.olEl?.classList.remove("mw-taf-dim");
     link.rawPEl?.classList.remove("mw-taf-dim");
   };
-  /** 联动三通道（评测工程 P0：mouseenter 之外补 focusin——键盘可达；tabIndex 聚焦 + 虚线 affordance + 激活压暗非相关项） */
-  const pairHover = (self: HTMLElement, others: () => HTMLElement[]): void => {
+  /**
+   * 联动三通道（评测工程 P0：mouseenter 之外补 focusin——键盘可达；tabIndex 聚焦 + 虚线 affordance + 激活压暗非相关项）。
+   * focusable=false（分段条目）不入 Tab 序——行头代表整段聚焦，单卡 Tab stop 从 ~27 降半（复测工程 N3 简版）
+   */
+  const pairHover = (self: HTMLElement, others: () => HTMLElement[], focusable = true): void => {
     self.classList.add("mw-taf-link");
-    self.tabIndex = 0;
+    if (focusable) self.tabIndex = 0;
     const activate = (): void => {
       clearHl();
       self.classList.add(HL);
@@ -676,8 +679,18 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     const atAbs = absDayHour(options.at.day, options.at.hour) + options.at.minute;
     const startAbs = absDayHour(v.startDay, v.startHour);
     const endAbs = absDayHour(v.endDay < v.startDay ? v.endDay + 31 : v.endDay, v.endHour);
-    if (atAbs < startAbs) card.append(el("p", "mw-taf-outrange", t.outEarly));
-    else if (atAbs >= endAbs) card.append(el("p", "mw-taf-outrange", t.outLate));
+    if (atAbs < startAbs || atAbs >= endAbs) {
+      const note = el("p", "mw-taf-outrange", atAbs < startAbs ? t.outEarly : t.outLate);
+      // 时间倒错过渡说明（复测签派 N1）：明示所示报文的发布时刻——滑杆前段「未来的报文演过去」不再含糊
+      if (report.issueTime !== undefined) {
+        note.append(
+          document.createTextNode(
+            `（所示为 ${String(report.issueTime.day).padStart(2, "0")}日${String(report.issueTime.hour).padStart(2, "0")}:${String(report.issueTime.minute).padStart(2, "0")}Z 发布的报文）`,
+          ),
+        );
+      }
+      card.append(note);
+    }
   }
 
   // 气温极值（owner 五轮：置于分段天气上方的基本固定信息；多组分行——组标题 + 高温一行 + 低温一行）
@@ -694,12 +707,13 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     };
     const tempRow = (label: string, list: TafTemperatureGroup[]): void => {
       if (list.length === 0) return;
-      const row = el("p", "mw-taf-temp-line");
-      row.append(el("span", "mw-taf-item-label", label));
-      row.append(
-        document.createTextNode(list.map((x) => tempValueOf(x, tempLt(x))).join("　｜　")),
-      );
-      box.append(row);
+      // 多组逐值一行（首行带标签，其余空标签对齐——复测小白#7：并列一行易漏看第二峰值）
+      for (const [i, x] of list.entries()) {
+        const row = el("p", "mw-taf-temp-line");
+        row.append(el("span", "mw-taf-item-label", i === 0 ? label : ""));
+        row.append(document.createTextNode(tempValueOf(x, tempLt(x))));
+        box.append(row);
+      }
     };
     tempRow(t.labelHigh, maxes);
     tempRow(t.labelLow, mins);
@@ -799,7 +813,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         const item = el("span", `mw-taf-item${it.full === true ? " mw-taf-item-full" : ""}`);
         if (it.label !== "") item.append(el("span", "mw-taf-item-label", it.label));
         item.append(document.createTextNode(it.text));
-        // 组级联动注册：条目 ↔ 其值的来源组片（继承值溯源到基况/前变化组）
+        // 组级联动注册：条目 ↔ 其值的来源组片（继承值溯源到基况/前变化组）；条目不入 Tab 序（行头代表段）
         if (it.key !== undefined) {
           const spans =
             it.key === "group"
@@ -1034,10 +1048,13 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     rawP.append(document.createTextNode(report.raw.slice(pos)));
     // 联动接线：条目↔来源组片（组级）；行头↔该行全部片；气温/有效期组片↔对应元信息行
     for (const item of link.items)
-      pairHover(item.el, () =>
-        link.cuts
-          .filter((c) => item.spans.some((sp) => sp.start === c.start && sp.end === c.end))
-          .map((c) => c.el),
+      pairHover(
+        item.el,
+        () =>
+          link.cuts
+            .filter((c) => item.spans.some((sp) => sp.start === c.start && sp.end === c.end))
+            .map((c) => c.el),
+        false, // 条目不入 Tab 序（复测工程 N3：行头代表段聚焦，Tab stop 减半）
       );
     for (const hd of link.heads)
       pairHover(hd.el, () => link.cuts.filter((c) => c.rowIdx === hd.rowIdx).map((c) => c.el));

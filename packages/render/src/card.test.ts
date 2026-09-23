@@ -1625,12 +1625,12 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     const card = renderTafCard(parseTaf(golden));
     expect(card.querySelectorAll(".mw-taf-strip")).toHaveLength(0); // 四轮移除
     const lines = Array.from(card.querySelectorAll(".mw-taf-temp-line"));
-    expect(lines.length).toBe(2); // TX02 一行、TNM02+TNM04 一行（golden 高温 1 组低温 2 组）
+    expect(lines.length).toBe(3); // 复测修复：多组逐值一行——TX02 一行、TNM02/TNM04 各一行
     const labels = lines.map((x) => x.querySelector(".mw-taf-item-label")?.textContent);
-    expect(labels).toEqual(["高温", "低温"]);
+    expect(labels).toEqual(["高温", "低温", ""]);
     expect(lines[0]?.textContent).toContain("2°C @ 25日18Z");
     expect(lines[1]?.textContent).toContain("-2°C @ 25日23Z");
-    expect(lines[1]?.textContent).toContain("-4°C @ 26日23Z");
+    expect(lines[2]?.textContent).toContain("-4°C @ 26日23Z"); // 双 TN 各占一行
     // 位置：气温区在分段天气之前（owner 五轮：基本固定信息置顶）
     const children = Array.from(card.children);
     expect(children.findIndex((c) => c.classList.contains("mw-taf-temps"))).toBeLessThan(
@@ -1738,6 +1738,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(card.querySelector(".mw-taf-station")?.textContent).toBe("ZGSZ 深圳/宝安");
     // 出界：03Z 早于有效期 06Z → 琥珀提示
     expect(card.textContent).toContain("查看时刻早于本预报开始时间");
+    expect(card.textContent).toContain("（所示为 23日03:03Z 发布的报文）"); // 时间倒错过渡说明（复测签派 N1）
     // 风险摘要：TEMPO 雷暴段置顶
     const risk = card.querySelector(".mw-taf-risk");
     expect(risk?.textContent).toContain("关键风险");
@@ -1751,6 +1752,17 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     const text = card.textContent ?? "";
     expect(text).toContain("查看时刻 23日03:00Z（京23日11:00）");
     expect(text).toContain("（京23日14:00–23日17:00）");
+  });
+
+  it("复测修复：条目不入 Tab 序（行头代表段），行头/原文片可聚焦（工程 N3 简版）", () => {
+    const card = renderTafCard(parseTaf(golden), { raw: true });
+    const items = Array.from(card.querySelectorAll(".mw-taf-item"));
+    expect(items.length).toBeGreaterThan(4);
+    for (const item of items) expect(item.getAttribute("tabindex")).toBeNull(); // 条目仅悬停通道
+    const head = card.querySelector(".mw-taf-period-head");
+    expect(head?.getAttribute("tabindex")).toBe("0"); // 行头＝段聚焦点
+    const seg = card.querySelector(".mw-taf-rawseg");
+    expect(seg?.getAttribute("tabindex")).toBe("0"); // 原文片保留（专业面反向通道）
   });
 
   it("评测批新增：小白人话包——风向方位+蒲福风级、云底台阶化逐层分行（小白#6/#7）", () => {
