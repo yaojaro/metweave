@@ -827,6 +827,20 @@ const tafMarkerItems = new WeakMap<Leaflet.Marker, TafLayerItem>();
 /** marker → 弹窗内容刷新函数（复测 N1/N2：刷新不走合成 popupopen——真实打开才移焦点，刷新按当前时刻重算置顶提示） */
 const tafPopupRefresh = new WeakMap<Leaflet.Marker, (popup: Leaflet.Popup) => void>();
 
+/** 查看时刻是否在该报文有效期外（含窗前/窗后——出窗＝灰点「预报未生效/已过期」） */
+/** 日时 → 分钟序（出窗比较用；TAF 无月，同报文语境内日号自洽） */
+const absDayHour = (d: number, h: number): number => (d - 1) * 1440 + h * 60;
+
+const outOfValidity = (r: TafReport, at: TafExpandAt): boolean => {
+  const v = r.validity;
+  if (v === undefined \|\| r.nil === true \|\| r.cancelled === true) return false;
+  const atAbs = absDayHour(at.day, at.hour) + at.minute;
+  return (
+    atAbs < absDayHour(v.startDay, v.startHour) \|\|
+    atAbs >= absDayHour(v.endDay < v.startDay ? v.endDay + 31 : v.endDay, v.endHour)
+  );
+};
+
 /** 单站展开视觉态（首建与换时刻共用——tier/摘要/提示单一来源） */
 function tafMarkerState(
   item: TafLayerItem,
@@ -841,6 +855,17 @@ function tafMarkerState(
   let tier: ConditionTier = "unknown";
   let summary = r.nil === true ? "缺报（NIL）" : r.cancelled === true ? "预报取消（CNL）" : "";
   const notes: string[] = [];
+  if (!noTimeline && v !== undefined && outOfValidity(r, at)) {
+    // 出窗：灰 unknown（签派复测 N2——「无有效预报」本身是运行信息；卡内有对应出界提示行）
+    const early = absDayHour(at.day, at.hour) < absDayHour(v.startDay, v.startHour);
+    notes.push(early ? "预报尚未生效（按发布时基况显示）" : "预报已过期（按末段显示）");
+    return {
+      tier: "unknown",
+      label: `${name} · 预报${early ? "未生效" : "已过期"}`,
+      summary,
+      notes,
+    };
+  }
   if (!noTimeline && v !== undefined) {
     const expansion = expandTaf(r, at, anchor);
     tier = conditionOf(asConditionInput(expansion.conditions, false));
@@ -1081,6 +1106,12 @@ export interface TafTimeControlOptions {
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
 | leaflet.msg03 | 京 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg04（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg04 | 京 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg01（1 条）
 
