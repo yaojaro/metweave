@@ -1601,9 +1601,9 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(card.querySelector("h2")?.textContent).toContain("ZPPP");
     expect(card.querySelector(".mw-taf-badge")?.textContent).toContain("TAF");
     // 五轮：发布在前（报文语序）、有效期区间化（26日24时→27日00:00 午夜特例换算）、时长保留
-    expect(text.indexOf("发布 25日 15:18")).toBeLessThan(text.indexOf("有效期"));
-    expect(text).toContain("自 25日 18:00Z");
-    expect(text).toContain("至 27日 00:00Z");
+    expect(text.indexOf("发布 25日15:18Z")).toBeLessThan(text.indexOf("有效期"));
+    expect(text).toContain("自 25日 18:00Z（京26日02:00）");
+    expect(text).toContain("至 27日 00:00Z（京27日08:00）");
     expect(text).toContain("30 小时"); // 2518→2624：(26-25)×24+(24-18)=30h（B2 止时 24 进算术）
   });
 
@@ -1613,12 +1613,12 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(row).not.toBeNull();
     const spans = Array.from(row?.querySelectorAll("span") ?? []);
     expect(spans.length).toBe(2);
-    expect(spans[0]?.textContent).toContain("发布 25日 15:18");
-    expect(spans[1]?.textContent).toBe("预报 25日21:00Z 时刻");
+    expect(spans[0]?.textContent).toContain("发布 25日15:18Z（京25日23:18）");
+    expect(spans[1]?.textContent).toBe("查看时刻 25日21:00Z（京26日05:00）");
     const one = renderTafCard(parseTaf(golden));
     expect(one.querySelectorAll(".mw-taf-meta-row span")).toHaveLength(1); // 无 at 仅发布单列
-    expect(one.textContent).toContain("发布 25日 15:18");
-    expect(one.textContent).not.toContain("预报 25日21:00Z");
+    expect(one.textContent).toContain("发布 25日15:18Z");
+    expect(one.textContent).not.toContain("查看时刻");
   });
 
   it("气温极值：置于分段上方，高温/低温分行（多组并列一行），负值 M 前缀", () => {
@@ -1628,9 +1628,9 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(lines.length).toBe(2); // TX02 一行、TNM02+TNM04 一行（golden 高温 1 组低温 2 组）
     const labels = lines.map((x) => x.querySelector(".mw-taf-item-label")?.textContent);
     expect(labels).toEqual(["高温", "低温"]);
-    expect(lines[0]?.textContent).toContain("最高 2°C");
-    expect(lines[1]?.textContent).toContain("最低 -2°C");
-    expect(lines[1]?.textContent).toContain("最低 -4°C");
+    expect(lines[0]?.textContent).toContain("2°C @ 25日18Z");
+    expect(lines[1]?.textContent).toContain("-2°C @ 25日23Z");
+    expect(lines[1]?.textContent).toContain("-4°C @ 26日23Z");
     // 位置：气温区在分段天气之前（owner 五轮：基本固定信息置顶）
     const children = Array.from(card.children);
     expect(children.findIndex((c) => c.classList.contains("mw-taf-temps"))).toBeLessThan(
@@ -1646,14 +1646,14 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(rows.length).toBe(8);
     const chips = rows.map((r) => r.querySelector(".mw-taf-k")?.textContent ?? "");
     expect(chips).toEqual([
-      "基况",
-      "间歇",
-      "渐变中",
-      "转变后",
-      "渐变中",
-      "转变后",
-      "渐变中",
-      "转变后",
+      "主要天气",
+      "TEMPO·间歇（约40%）",
+      "BECMG·渐变中",
+      "BECMG·转变后",
+      "BECMG·渐变中",
+      "BECMG·转变后",
+      "BECMG·渐变中",
+      "BECMG·转变后",
     ]);
     const text = card.textContent ?? "";
     // 人话：TEMPO 发作态（2500 m 小阵雨夹雪轻雾）/ 过渡带「转为」+ 不确定注 / 未列要素回溯
@@ -1666,7 +1666,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(rows[0]?.getAttribute("title") ?? "").toContain("04009G16MPS");
     expect(rows[0]?.getAttribute("title") ?? "").toContain("9999");
     expect(rows[1]?.getAttribute("title") ?? "").toContain("2500 -SHRASN BR");
-    expect(rows[0]?.getAttribute("aria-label")).toBe(rows[0]?.getAttribute("title"));
+    expect(rows[0]?.getAttribute("aria-label")).toBeNull(); // 电码只走 title（读屏读人话正文——评测工程 P0-2）
   });
 
   it("RAW 对照（独立盒区置底、气温行在其上）+ 组级联动：悬停「天气」只点亮天气组片，反向亦然", () => {
@@ -1726,6 +1726,65 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
       (x) => x.textContent,
     );
     expect(labels).toEqual(["风", "能见度", "云"]);
+  });
+
+  it("评测批新增：站名行/出界提示/风险摘要行/行档位左边条/京时括注链（三角色共识①③⑤+签派 P1-3）", () => {
+    const raw =
+      "TAF ZGSZ 230303Z 2306/2412 21004MPS 8000 BKN040 TEMPO 2306/2309 TSRA FEW020CB BKN040=";
+    const card = renderTafCard(parseTaf(raw), {
+      at: { day: 23, hour: 3, minute: 0 },
+      stationTitle: "ZGSZ 深圳/宝安",
+    });
+    expect(card.querySelector(".mw-taf-station")?.textContent).toBe("ZGSZ 深圳/宝安");
+    // 出界：03Z 早于有效期 06Z → 琥珀提示
+    expect(card.textContent).toContain("查看时刻早于本预报有效期");
+    // 风险摘要：TEMPO 雷暴段置顶
+    const risk = card.querySelector(".mw-taf-risk");
+    expect(risk?.textContent).toContain("关键风险");
+    expect(risk?.textContent).toContain("雷暴伴雨");
+    expect(risk?.textContent).toContain("23日06Z–23日09Z");
+    // TEMPO 行档位左边条（TSRA+CB → danger）
+    const rows = Array.from(card.querySelectorAll(".mw-taf-period"));
+    expect(rows[1]?.classList.contains("mw-taf-period-danger")).toBe(true);
+    expect(rows[0]?.classList.contains("mw-taf-period")).toBe(true);
+    // 京时链：发布/查看/有效期/分段行头四处括注
+    const text = card.textContent ?? "";
+    expect(text).toContain("查看时刻 23日03:00Z（京23日11:00）");
+    expect(text).toContain("（京23日14时–23日17时）");
+  });
+
+  it("评测批新增：小白人话包——风向方位+蒲福风级、云底台阶化逐层分行（小白#6/#7）", () => {
+    const card = renderTafCard(
+      parseTaf("TAF ZLXY 230301Z 2306/2406 06003MPS 3000 BR FEW030 OVC060="),
+    );
+    const text = card.textContent ?? "";
+    expect(text).toContain("东北风 2 级（60° 3 mps）");
+    expect(text).toContain("少云，云底约 900 米");
+    expect(text).toContain("阴，云底约 1800 米"); // 1829 → 台阶化 1800，两层各一条
+    const cloudItems = Array.from(card.querySelectorAll(".mw-taf-item")).filter(
+      (x) => (x.querySelector(".mw-taf-item-label")?.textContent ?? "") === "云",
+    );
+    expect(cloudItems.length).toBe(2);
+  });
+
+  it("评测批新增：PROB 徽章双标与概率、CNL 卡、CAVOK 段、未知选项运行时抛错（签派 P1-2/工程 P1-4/P2-3）", () => {
+    const prob = renderTafCard(
+      parseTaf(
+        "TAF ZPPP 251518Z 2518/2624 04009MPS 9999 SCT023 PROB30 TEMPO 2520/2524 2500 -SHRA=",
+      ),
+    );
+    expect(prob.textContent).toContain("PROB30 TEMPO·概率间歇");
+    const probOnly = renderTafCard(
+      parseTaf("TAF ZPPP 251518Z 2518/2624 04009MPS 9999 SCT023 PROB40 2520/2524 2500 RA="),
+    );
+    expect(probOnly.textContent).toContain("PROB40·概率40%");
+    const cnl = renderTafCard(parseTaf("TAF ZWWW 231200Z 2312/2412 CNL="));
+    expect(cnl.querySelector(".mw-taf-outrange")?.textContent).toContain("预报取消");
+    const cavok = renderTafCard(parseTaf("TAF ZBAA 230301Z 2306/2412 18004MPS CAVOK="));
+    expect(cavok.textContent).toContain("能见度佳、低云与天气无碍（CAVOK）");
+    expect(() =>
+      renderTafCard(parseTaf("TAF ZBAA 230301Z 2306/2412 18004MPS="), { locael: "zh" } as never),
+    ).toThrow("未知选项");
   });
 
   it("分段人话与 METAR 卡同源（gloss 词表单一来源）：TSRA 两卡同短语、无变化组报文也给基况行", () => {

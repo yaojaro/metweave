@@ -38,13 +38,27 @@ import {
 export interface RenderTafCardOptions {
   /** 显示语言，缺省中文 */
   locale?: "zh" | "en";
-  /** 展开时刻（地图层传入）：与发布时刻同排右列「预报 xx 时刻」（owner 六轮：一行左右两列） */
+  /** 展开时刻（地图层传入）：与发布时刻同排右列「查看时刻 xxZ」（owner 六轮双列行） */
   at?: TafExpandAt;
   /** 附带 RAW 对照行（原文保真） */
   raw?: boolean;
   /** 宿主附加类名 */
   className?: string;
+  /** 站点名（元数据联表所得，如「ZLXY 西安/咸阳」）——标题下 muted 站名行；缺省不渲染（沿 METAR 卡口径） */
+  stationTitle?: string;
+  /** 本地时偏移（分钟）：非空时关键时间行括注本地时（zh 缺省 480＝北京时，en 缺省 null 不括注） */
+  utcOffsetMinutes?: number | null;
 }
+
+/** renderTafCard 合法选项键（运行时校验——拼错键不静默，沿 renderCard 不静默纪律） */
+const RENDER_TAF_CARD_OPTION_KEYS: ReadonlySet<string> = new Set([
+  "locale",
+  "at",
+  "raw",
+  "className",
+  "stationTitle",
+  "utcOffsetMinutes",
+]);
 
 const LOCALE = {
   zh: {
@@ -56,8 +70,9 @@ const LOCALE = {
     validity: "有效期",
     duration: (h: number): string => `${h} 小时`,
     issued: "发布",
-    atLabel: "预报",
-    atSuffix: "时刻",
+    atLabel: "查看时刻",
+    atSuffix: "",
+    localTag: "京",
     validityFrom: (day: string, hm: string): string => `自 ${day}日 ${hm}`,
     validityTo: (day: string, hm: string): string => `至 ${day}日 ${hm}`,
     validityZone: "UTC",
@@ -69,14 +84,23 @@ const LOCALE = {
     max: (c: number): string => `最高 ${c}°C`,
     min: (c: number): string => `最低 ${c}°C`,
     noValidity: "无有效期（缺报）",
-    warning: "预报值供扫视参考，不得用作运行判据",
+    warning: "本卡由电码自动解析生成，供扫视参考；如有出入，以报文原文及官方发布为准",
+    outEarly: "查看时刻早于本预报有效期（当前展示发布时基况）",
+    outLate: "查看时刻已超出本预报有效期",
+    riskLead: "关键风险：",
+    rawTitle: "报文原文（专业人员核对用）",
+    rawHint: "悬停或 Tab 聚焦可与人话对照",
+    toneGood: "良好",
+    toneCaution: "注意",
+    toneDanger: "差",
     periods: "分段天气",
-    kindBase: "基况",
-    kindFm: "自此",
-    kindBecmgDuring: "渐变中",
-    kindBecmgAfter: "转变后",
-    kindTempo: "间歇",
-    probChip: (p: number): string => `概率 ${p}%`,
+    kindBase: "主要天气",
+    kindFm: "FM·自此",
+    kindBecmgDuring: "BECMG·渐变中",
+    kindBecmgAfter: "BECMG·转变后",
+    kindTempo: "TEMPO·间歇（约40%）",
+    probChip: (p: number, withTempo: boolean): string =>
+      withTempo ? `PROB${p} TEMPO·概率间歇` : `PROB${p}·概率${p}%`,
     uncertainNote: "转变时刻不确定",
     tempoNote: "短时发作，每次不足 1 小时",
     emptySegment: "（未编要素）",
@@ -97,8 +121,9 @@ const LOCALE = {
     validity: "Validity",
     duration: (h: number): string => `${h} h`,
     issued: "Issued",
-    atLabel: "Forecast",
+    atLabel: "Viewing",
     atSuffix: "",
+    localTag: null,
     validityFrom: (day: string, hm: string): string => `from Day ${day}, ${hm}`,
     validityTo: (day: string, hm: string): string => `to Day ${day}, ${hm}`,
     validityZone: "UTC",
@@ -110,14 +135,24 @@ const LOCALE = {
     max: (c: number): string => `Max ${c}°C`,
     min: (c: number): string => `Min ${c}°C`,
     noValidity: "No validity (NIL)",
-    warning: "Forecast values are for glance scanning only — not for operational decisions",
+    warning:
+      "Auto-generated from the coded report for glance scanning; if in doubt, refer to the raw TAF and official channels",
+    outEarly: "Viewing time is before this forecast's validity (base conditions at issue shown)",
+    outLate: "Viewing time is beyond this forecast's validity",
+    riskLead: "Key risks: ",
+    rawTitle: "Raw report (for professional cross-check)",
+    rawHint: "hover or Tab-focus to cross-link with the plain-language rows",
+    toneGood: "good",
+    toneCaution: "caution",
+    toneDanger: "poor",
     periods: "By period",
     kindBase: "Base",
-    kindFm: "From",
+    kindFm: "FM",
     kindBecmgDuring: "BECMG",
-    kindBecmgAfter: "After",
-    kindTempo: "TEMPO",
-    probChip: (p: number): string => `PROB ${p}%`,
+    kindBecmgAfter: "After BECMG",
+    kindTempo: "TEMPO (~40%)",
+    probChip: (p: number, withTempo: boolean): string =>
+      withTempo ? `PROB${p} TEMPO` : `PROB${p}`,
     uncertainNote: "change timing uncertain",
     tempoNote: "brief bursts, each under 1 hour",
     emptySegment: "(no elements reported)",
@@ -175,7 +210,26 @@ const STYLE_TEXT = `
 .mw-taf-meta.mw-taf-hl { background: #fdeeb9; border-radius: 3px; }
 .mw-taf-rawseg { border-bottom: 1px dashed #7f8c9a; cursor: help; }
 .mw-taf-rawseg.mw-taf-hl { background: #fdeeb9; border-radius: 3px; }
-.mw-taf-warn { margin-top: 6px; font-size: 10px; color: #8a94a0; }
+.mw-taf-warn { margin-top: 6px; font-size: 11px; color: #6b7785; }
+.mw-taf-station { margin: -4px 0 4px; color: #6b7785; font-size: 12px; }
+.mw-taf-period-lt { color: #8a94a0; font-size: 11px; }
+.mw-taf-outrange { color: #8a5a00; background: #fdf3dd; border-radius: 4px; padding: 1px 6px;
+  font-size: 12px; display: inline-block; margin: 2px 0; }
+.mw-taf-period-danger { border-left: 3px solid #c2504a; background: #fdf1f0; }
+.mw-taf-period-caution { border-left: 3px solid #d99a2b; }
+.mw-taf-risk { margin: 6px 0 0; font-size: 12px; color: #a02c2c; font-weight: 600; }
+.mw-taf-raw-title { margin: 10px 0 0; font-size: 11px; color: #6b7785; font-weight: 600; }
+.mw-taf-raw-hint { font-weight: 400; color: #6b7785; }
+.mw-taf-rawseg-danger { color: #a02c2c; font-weight: 600; }
+.mw-taf-rawseg-caution { color: #8a5a12; }
+/* 联动可达性（评测工程 P0/P1）：tabIndex 聚焦通道 + 虚线 affordance + 激活时非相关项压暗（focus+context） */
+.mw-taf-item.mw-taf-link, .mw-taf-period-head.mw-taf-link { border-bottom: 1px dashed #7f8c9a; cursor: help; }
+.mw-taf-item:focus-visible, .mw-taf-rawseg:focus-visible, .mw-taf-period-head:focus-visible
+  { outline: 2px solid #4a90d9; outline-offset: 1px; }
+.mw-taf-raw.mw-taf-dim .mw-taf-rawseg:not(.mw-taf-hl) { opacity: .35; }
+.mw-taf-periods.mw-taf-dim .mw-taf-item:not(.mw-taf-hl),
+.mw-taf-periods.mw-taf-dim .mw-taf-period-head:not(.mw-taf-hl) { opacity: .45; }
+.mw-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 `;
 
 const el = (tag: string, cls?: string, text?: string): HTMLElement => {
@@ -200,6 +254,10 @@ const windCodeOf = (w: WindGroup): string =>
 const tempLine = (t: TafTemperatureGroup, L: LocaleTable): string =>
   `${t.extremum === "max" ? L.max(t.celsius) : L.min(t.celsius)}${t.at.day !== undefined ? ` @ ${String(t.at.day).padStart(2, "0")}日${String(t.at.hour).padStart(2, "0")}Z` : ` @ ${String(t.at.hour).padStart(2, "0")}Z`}`;
 
+/** 气温行紧凑值（评测小白#8：「高温最高」语义重复——标签已载极性，值只留 温度@时刻） */
+const tempValueOf = (x: TafTemperatureGroup): string =>
+  `${x.celsius}°C @ ${x.at.day !== undefined ? `${String(x.at.day).padStart(2, "0")}日${String(x.at.hour).padStart(2, "0")}Z` : `${String(x.at.hour).padStart(2, "0")}Z`}`;
+
 // ---------------------------------------------------------------- 分段明细拼装（gloss 词表共用，与 METAR 卡同口径）
 
 /** 展开时刻文本（zh：23日00:00Z / en：23/00:00Z）——发布|预报 双列行右列用 */
@@ -222,12 +280,49 @@ const fmtSegAt = (at: TafExpandAt, locale: "zh" | "en"): string =>
 const cavokText = (locale: "zh" | "en"): string =>
   locale === "zh" ? `${CAVOK_SHORT.zh}（CAVOK）` : `${CAVOK_SHORT.en} (CAVOK)`;
 
-/** 分段行人话——风（静风/风向不定/缺测口径同 METAR 卡） */
+/** 日时 → 分钟序（出界比较用；TAF 无月，同报文语境内日号自洽） */
+const absDayHour = (day: number, hour: number): number => (day - 1) * 1440 + hour * 60;
+
+/** UTC → 本地时显示序（评测共识①：全卡关键时间括注北京时；日回绕按 31 折回——TAF 本无月，显示位近似） */
+const ltClock = (day: number, hour: number, minute: number, offset: number): string => {
+  const total = (day - 1) * 1440 + hour * 60 + minute + offset;
+  const d = (Math.floor(total / 1440) % 31) + 1;
+  const h = Math.floor((total % 1440) / 60);
+  const m = total % 60;
+  return `${String(d).padStart(2, "0")}日${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
+/** 八方位中文风向词（小白人话：60° → 东北） */
+const DIR_WORDS_ZH = ["北", "东北", "东", "东南", "南", "西南", "西", "西北"] as const;
+
+/** 蒲福风级（m/s 阈值上界；kt/kmh 先折 m/s）——小白人话：3 m/s → 2 级 */
+const beaufortOf = (mps: number): number => {
+  const bounds = [0.3, 1.6, 3.4, 5.5, 8.0, 10.8, 13.9, 17.2, 20.8, 24.5, 28.5, 32.7];
+  let level = 12;
+  for (const [i, b] of bounds.entries())
+    if (mps < b) {
+      level = i;
+      break;
+    }
+  return level;
+};
+
+/** 分段行人话——风（zh：方位+风级给小白、括号内精确值给专业；静风/风向不定口径同 METAR 卡） */
 const segmentWindText = (w: WindGroup | undefined, locale: "zh" | "en"): string | undefined => {
   if (w === undefined) return undefined;
   const g = WIND_GLOSS[locale];
   const gust = w.gust === undefined ? "" : g.gustOf(w.gust.value);
   if (!w.variable && w.direction === 0 && w.speed.value === 0) return `${g.calm}${gust}`;
+  if (locale === "zh" && w.direction !== null) {
+    const word = DIR_WORDS_ZH[Math.round(w.direction / 45) % 8];
+    const mps =
+      w.speed.unit === "kt"
+        ? w.speed.value * 0.5144
+        : w.speed.unit === "kmh"
+          ? w.speed.value / 3.6
+          : w.speed.value;
+    return `${word}风 ${beaufortOf(mps)} 级（${w.direction}° ${w.speed.value} ${w.speed.unit}）${gust}`;
+  }
   const dir = w.variable ? g.variable : w.direction === null ? g.missing : `${w.direction}°`;
   return `${dir} ${w.speed.value} ${w.speed.unit}${gust}`;
 };
@@ -254,13 +349,18 @@ const segmentCloudTexts = (c: CloudCondition | undefined, locale: "zh" | "en"): 
       parts.push(
         layer.heightFt.value === null
           ? g.vvMissing
-          : `${g.vvShort}${g.metersShort(ftToMeters(layer.heightFt.value))}`,
+          : `${g.vvShort}${g.metersShort(Math.round(ftToMeters(layer.heightFt.value) / 100) * 100)}`,
       );
       continue;
     }
     const amount = layer.amount === null ? g.amountUnknown : (g.shortAmount[layer.amount] ?? "");
+    // 云底台阶化（评测小白#7：914 米的换算残留精度对小白只传达诡异；精确值在悬停电码与 RAW 原文）
+    const meters =
+      layer.heightFt.value === null
+        ? null
+        : Math.round(ftToMeters(layer.heightFt.value) / 100) * 100;
     const base =
-      layer.heightFt.value === null ? "" : g.baseShortMeters(ftToMeters(layer.heightFt.value));
+      meters === null ? "" : locale === "zh" ? `，云底约 ${meters} 米` : g.baseShortMeters(meters);
     const conv = layer.convective === "CB" ? g.cbNote : layer.convective === "TCU" ? g.tcuNote : "";
     parts.push(`${amount}${base}${conv}`);
   }
@@ -296,9 +396,8 @@ const conditionItems = (
       text: c.weather.map((g) => weatherGloss(g, WX_GLOSS[locale])).join(wxJoin(locale)),
       key: "wx",
     });
-  const clouds = segmentCloudTexts(c.clouds, locale);
-  if (clouds.length > 0)
-    items.push({ label: t.labelCloud, text: clouds.join(wxJoin(locale)), key: "clouds" });
+  for (const cloud of segmentCloudTexts(c.clouds, locale))
+    items.push({ label: t.labelCloud, text: cloud, key: "clouds" });
   return items;
 };
 
@@ -316,9 +415,8 @@ const elementItems = (e: TrendElements, locale: "zh" | "en", t: LocaleTable): Se
       text: e.weather.map((g) => weatherGloss(g, WX_GLOSS[locale])).join(wxJoin(locale)),
       key: "wx",
     });
-  const clouds = segmentCloudTexts(e.clouds, locale);
-  if (clouds.length > 0)
-    items.push({ label: t.labelCloud, text: clouds.join(wxJoin(locale)), key: "clouds" });
+  for (const cloud of segmentCloudTexts(e.clouds, locale))
+    items.push({ label: t.labelCloud, text: cloud, key: "clouds" });
   if (items.length === 0 && e.nsw !== undefined)
     items.push({ label: t.labelWx, text: t.nswText, key: "wx" });
   return items;
@@ -430,9 +528,33 @@ const conditionsCodeOf = (c: TafResolvedConditions): string => {
  * 2026-09-23 四轮评审移除——分段明细完整承载其信息量且更可读，无刻度图例的抽象条只余理解成本）。
  */
 export function renderTafCard(report: TafReport, options: RenderTafCardOptions = {}): HTMLElement {
+  for (const key of Object.keys(options)) {
+    if (!RENDER_TAF_CARD_OPTION_KEYS.has(key)) {
+      throw new Error(
+        `renderTafCard 收到未知选项 "${key}"——拼错的选项不会生效，可用项见 RenderTafCardOptions`,
+      );
+    }
+  }
   injectStyle();
   const locale = options.locale ?? "zh";
   const t = LOCALE[locale];
+  // 本地时括注（评测共识①）：zh 缺省北京时（+480），en 缺省不括注；宿主可显式覆盖或 null 关闭
+  const ltOffset =
+    options.utcOffsetMinutes !== undefined
+      ? options.utcOffsetMinutes
+      : locale === "zh"
+        ? 480
+        : null;
+  const ltB = (day: number, hour: number, minute: number): string =>
+    ltOffset !== null && t.localTag !== null
+      ? `（${t.localTag}${ltClock(day, hour, minute, ltOffset)}）`
+      : "";
+  const ltHour = (day: number, hour: number): string => {
+    if (ltOffset === null || t.localTag === null) return "";
+    const total = (day - 1) * 1440 + hour * 60 + ltOffset;
+    const d = (Math.floor(total / 1440) % 31) + 1;
+    return `（${t.localTag}${String(d).padStart(2, "0")}日${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}时）`;
+  };
   const card = el(
     "div",
     `mw-taf-card${options.className !== undefined ? ` ${options.className}` : ""}`,
@@ -444,12 +566,17 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   if (report.flags.amended) h.append(el("span", "mw-taf-flag", t.amended));
   if (report.flags.corrected) h.append(el("span", "mw-taf-flag", t.corrected));
   card.append(h);
+  if (options.stationTitle !== undefined && options.stationTitle !== "") {
+    card.append(el("p", "mw-taf-station", options.stationTitle));
+  }
   if (report.nil === true) {
     card.append(el("p", "mw-taf-meta", t.nil));
     return card;
   }
   if (report.cancelled === true) {
-    card.append(el("p", "mw-taf-meta", t.cancelled));
+    card.append(el("p", "mw-taf-outrange", t.cancelled));
+    card.append(el("p", "mw-taf-warn", t.warning));
+    return card; // CNL：正文截断，无分段无原文（占风组位＝取消凭据，有效期信息已并入取消行语境）
   }
 
   const v = report.validity;
@@ -476,6 +603,8 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     }[],
     tempsEl: undefined as HTMLElement | undefined,
     validityEl: undefined as HTMLElement | undefined,
+    olEl: undefined as HTMLElement | undefined,
+    rawPEl: undefined as HTMLElement | undefined,
   };
   const clearHl = (): void => {
     for (const c of link.cuts) c.el.classList.remove(HL);
@@ -483,15 +612,24 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     for (const hd of link.heads) hd.el.classList.remove(HL);
     link.tempsEl?.classList.remove(HL);
     link.validityEl?.classList.remove(HL);
+    link.olEl?.classList.remove("mw-taf-dim");
+    link.rawPEl?.classList.remove("mw-taf-dim");
   };
-  /** 悬停联动：自己 + 对侧集合同时点亮，离场全清 */
+  /** 联动三通道（评测工程 P0：mouseenter 之外补 focusin——键盘可达；tabIndex 聚焦 + 虚线 affordance + 激活压暗非相关项） */
   const pairHover = (self: HTMLElement, others: () => HTMLElement[]): void => {
-    self.addEventListener("mouseenter", () => {
+    self.classList.add("mw-taf-link");
+    self.tabIndex = 0;
+    const activate = (): void => {
       clearHl();
       self.classList.add(HL);
       for (const o of others()) o.classList.add(HL);
-    });
+      link.olEl?.classList.add("mw-taf-dim");
+      link.rawPEl?.classList.add("mw-taf-dim");
+    };
+    self.addEventListener("mouseenter", activate);
+    self.addEventListener("focusin", activate);
     self.addEventListener("mouseleave", clearHl);
+    self.addEventListener("focusout", clearHl);
   };
   // 发布在前、有效期在后（owner 五轮语序）；展开时刻在位时与发布同行左右两列（owner 六轮）
   if (report.issueTime !== undefined || options.at !== undefined) {
@@ -501,7 +639,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         el(
           "span",
           undefined,
-          `${t.issued} ${String(report.issueTime.day).padStart(2, "0")}日 ${String(report.issueTime.hour).padStart(2, "0")}:${String(report.issueTime.minute).padStart(2, "0")} Z`,
+          `${t.issued} ${String(report.issueTime.day).padStart(2, "0")}日${String(report.issueTime.hour).padStart(2, "0")}:${String(report.issueTime.minute).padStart(2, "0")}Z${ltB(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)}`,
         ),
       );
     }
@@ -510,7 +648,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         el(
           "span",
           undefined,
-          `${t.atLabel} ${fmtClockAt(options.at, locale)}${t.atSuffix !== "" ? ` ${t.atSuffix}` : ""}`.trim(),
+          `${t.atLabel} ${fmtClockAt(options.at, locale)}${ltB(options.at.day, options.at.hour, options.at.minute)}`.trim(),
         ),
       );
     }
@@ -519,10 +657,24 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   // 有效期直说具体日期时间（不用 ddHH/ddHH 短码）：止时 24＝次日 00:00（B2 午夜特例的显示位换算）
   const endClock =
     v.endHour === 24 ? { day: (v.endDay % 31) + 1, hour: 0 } : { day: v.endDay, hour: v.endHour };
-  const validityText = `${t.validity} ${t.validityFrom(dayOf(v.startDay), clockOf(v.startHour))} ${t.validityTo(dayOf(endClock.day), clockOf(endClock.hour))}（${t.validityZone}，${t.duration(hours)}）`;
+  const validityText = `${t.validity} ${t.validityFrom(
+    dayOf(v.startDay),
+    `${clockOf(v.startHour)}${ltB(v.startDay, v.startHour, 0)}`,
+  )} ${t.validityTo(
+    dayOf(endClock.day),
+    `${clockOf(endClock.hour)}${ltB(endClock.day, endClock.hour, 0)}`,
+  )}（${t.validityZone}，${t.duration(hours)}）`;
   const validityEl = el("p", "mw-taf-meta", validityText);
   link.validityEl = validityEl;
   card.append(validityEl);
+  // 出界提示（评测共识⑤）：查看时刻落在本预报有效期外（展开器按窗前=基况/窗后=末段保守返回，须显式告知）
+  if (options.at !== undefined) {
+    const atAbs = absDayHour(options.at.day, options.at.hour) + options.at.minute;
+    const startAbs = absDayHour(v.startDay, v.startHour);
+    const endAbs = absDayHour(v.endDay < v.startDay ? v.endDay + 31 : v.endDay, v.endHour);
+    if (atAbs < startAbs) card.append(el("p", "mw-taf-outrange", t.outEarly));
+    else if (atAbs >= endAbs) card.append(el("p", "mw-taf-outrange", t.outLate));
+  }
 
   // 气温极值（owner 五轮：置于分段天气上方的基本固定信息；多组分行——组标题 + 高温一行 + 低温一行）
   if (report.temperatures.length > 0) {
@@ -534,7 +686,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       if (list.length === 0) return;
       const row = el("p", "mw-taf-temp-line");
       row.append(el("span", "mw-taf-item-label", label));
-      row.append(document.createTextNode(list.map((x) => tempLine(x, t)).join("　｜　")));
+      row.append(document.createTextNode(list.map(tempValueOf).join("　｜　")));
       box.append(row);
     };
     tempRow(t.labelHigh, maxes);
@@ -547,20 +699,57 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   const rows = tafSegments(report);
   const rowEls: (HTMLElement | undefined)[] = [];
   if (rows.length > 0) {
+    // 关键风险摘要行（评测签派 P1-3：图上红点、卡内逐行读字的层级倒挂——置顶一眼定雷）
+    const toneWord = { good: t.toneGood, caution: t.toneCaution, danger: t.toneDanger } as const;
+    const riskParts: string[] = [];
+    for (const row of rows) {
+      const tone = segmentTone(row.overlay?.conditions ?? row.conditions);
+      if (tone === "good") continue;
+      const c = row.overlay?.conditions ?? row.conditions;
+      const parts: string[] = [];
+      for (const g of c.weather)
+        parts.push(weatherGloss(g, WX_GLOSS[locale]).replace(/（[^）]*）/g, ""));
+      const vis = segmentVisText(c.visibility);
+      if (
+        vis !== undefined &&
+        (tone === "danger" ||
+          (c.visibility !== undefined && visibilityTone(c.visibility) !== undefined))
+      )
+        parts.push(`${t.labelVis} ${vis}`);
+      if (c.clouds !== undefined && c.clouds.clear === undefined)
+        for (const layer of c.clouds.elements)
+          if (layer.kind === "layer" && layer.convective !== undefined)
+            parts.push(layer.convective === "CB" ? "积雨云" : "浓积云");
+      if (parts.length > 0)
+        riskParts.push(
+          `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)} ${parts.join(wxJoin(locale))}`,
+        );
+    }
+    if (riskParts.length > 0) {
+      const risk = el(
+        "p",
+        "mw-taf-risk",
+        `${t.riskLead}${riskParts.slice(0, 3).join("；")}${riskParts.length > 3 ? " 等" : ""}`,
+      );
+      card.append(risk);
+    }
     const title = el("p", "mw-taf-periods-title", t.periods);
     const ol = el("ol", "mw-taf-periods");
+    link.olEl = ol;
     for (const [rowIdx, row] of rows.entries()) {
-      const li = el("li", "mw-taf-period");
+      const tone = segmentTone(row.overlay?.conditions ?? row.conditions);
+      const li = el("li", `mw-taf-period${tone === "good" ? "" : ` mw-taf-period-${tone}`}`);
       rowEls.push(li);
       const src = row.sourceIndex !== undefined ? report.changes[row.sourceIndex] : undefined;
       const shown = row.overlay?.conditions ?? row.conditions;
-      // 行头：扫视色点 + 时间窗 + 类型徽（BECMG 拆「渐变中/转变后」两态；PROB 带概率）
+      // 行头：扫视色点 + 时间窗（含京时括注）+ 类型徽（评测签派 P1-4：行业词为主中文为辅；TEMPO 带隐含概率）
       const head = el("div", "mw-taf-period-head");
-      const dot = el("span", `mw-taf-dot mw-taf-dot-${segmentTone(shown)}`, "●");
+      const dot = el("span", `mw-taf-dot mw-taf-dot-${tone}`, "●");
       dot.setAttribute("aria-hidden", "true");
+      head.append(el("span", "mw-sr", toneWord[tone]));
       const chipText =
         row.kind === "PROB"
-          ? t.probChip(row.overlay?.probability ?? 30)
+          ? t.probChip(row.overlay?.probability ?? 30, row.overlay?.withTempo === true)
           : row.kind === "BECMG"
             ? row.uncertain
               ? t.kindBecmgDuring
@@ -570,13 +759,23 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
               : row.kind === "FM"
                 ? t.kindFm
                 : t.kindBase;
+      const timeSpan = el(
+        "span",
+        "mw-taf-period-time",
+        `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}`,
+      );
+      const ltRange =
+        ltOffset !== null && t.localTag !== null
+          ? `（${ltHour(row.from.day, row.from.hour).replace(/^（/, "").replace(/）$/, "")}–${ltHour(row.to.day, row.to.hour).replace(/^（/, "").replace(/）$/, "")}）`.replace(
+              `–${t.localTag}`,
+              "–",
+            )
+          : "";
+      const ltSpan = ltRange === "" ? undefined : el("span", "mw-taf-period-lt", ltRange);
       head.append(
         dot,
-        el(
-          "span",
-          "mw-taf-period-time",
-          `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}`,
-        ),
+        timeSpan,
+        ...(ltSpan !== undefined ? [ltSpan] : []),
         el("span", `mw-taf-k mw-taf-k-${row.kind.toLowerCase()}`, chipText),
       );
       link.heads.push({ el: head, rowIdx });
@@ -613,8 +812,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       li.append(head, body);
       // 悬停/读屏＝电码（专业面）：该段紧凑电码；挂载/过渡带行附来源组原文
       const code = `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}｜${conditionsCodeOf(shown)}${row.overlay !== undefined && src !== undefined ? ` ｜ ${src.raw}` : ""}`;
-      li.title = code;
-      li.setAttribute("aria-label", code);
+      li.title = code; // 电码走 title（读屏读人话正文，不再 aria-label 覆盖——评测工程 P0-2）
       ol.append(li);
     }
     card.append(title, ol);
@@ -629,6 +827,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       rowIdx: number | null;
       key: string;
       hint: string;
+      tone?: "caution" | "danger";
     }
     const cuts: Cut[] = [];
     if (v.span !== undefined)
@@ -641,10 +840,67 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       });
     const baseRowIdx = rows.findIndex((r) => r.kind === "base");
     const baseHint = baseRowIdx >= 0 ? (rowEls[baseRowIdx]?.textContent ?? "") : "";
-    const baseSpans = baseSpansOf(report);
-    for (const key of ["wind", "vis", "wx", "clouds"] as const)
-      for (const sp of baseSpans[key])
-        cuts.push({ start: sp.start, end: sp.end, rowIdx: baseRowIdx, key, hint: baseHint });
+    const pushCut = (
+      sp: Span | undefined,
+      rowIdx: number | null,
+      key: string,
+      hint: string,
+      tone?: "caution" | "danger",
+    ): void => {
+      if (sp === undefined || sp.start >= sp.end) return;
+      cuts.push({
+        start: sp.start,
+        end: sp.end,
+        rowIdx,
+        key,
+        hint,
+        ...(tone !== undefined ? { tone } : {}),
+      });
+    };
+    // 基况逐要素（带档位：能见度/云层/天气组各按自家判据）
+    pushCut(
+      report.wind?.kind === "value" ? report.wind.value.speed.span : undefined,
+      baseRowIdx,
+      "wind",
+      baseHint,
+    );
+    if (report.visibility?.kind === "value")
+      pushCut(
+        report.visibility.value.span,
+        baseRowIdx,
+        "vis",
+        baseHint,
+        visibilityTone(report.visibility.value) === "mw-danger"
+          ? "danger"
+          : visibilityTone(report.visibility.value) === "mw-caution"
+            ? "caution"
+            : undefined,
+      );
+    if (report.weather?.kind === "value")
+      for (const g of report.weather.value)
+        pushCut(
+          g.span,
+          baseRowIdx,
+          "wx",
+          baseHint,
+          isDangerWeather(g) ? "danger" : isCautionWeather(g) ? "caution" : undefined,
+        );
+    pushCut(report.cavokSpan, baseRowIdx, "wx", baseHint);
+    if (report.clouds !== undefined) {
+      for (const layer of report.clouds.elements)
+        pushCut(
+          layer.span,
+          baseRowIdx,
+          "clouds",
+          baseHint,
+          cloudTone(layer) === "mw-danger"
+            ? "danger"
+            : cloudTone(layer) === "mw-caution"
+              ? "caution"
+              : undefined,
+        );
+      pushCut(report.clouds.clear?.span, baseRowIdx, "clouds", baseHint);
+    }
     const rowIdxOfChange = new Map<number, number>();
     for (const [i, row] of rows.entries())
       if (row.sourceIndex !== undefined && !rowIdxOfChange.has(row.sourceIndex))
@@ -653,17 +909,51 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       const ri = rowIdxOfChange.get(idx);
       if (ri === undefined || change.span === undefined) continue;
       const headHint = rowEls[ri]?.textContent ?? change.raw;
-      cuts.push({
-        start: change.span.start,
-        end: change.span.end,
-        rowIdx: ri,
-        key: "group",
-        hint: headHint,
-      });
-      const esp = elemSpansOf(change.elements);
-      for (const key of ["wind", "vis", "wx", "clouds"] as const)
-        for (const sp of esp[key])
-          cuts.push({ start: sp.start, end: sp.end, rowIdx: ri, key, hint: headHint });
+      const rowTone = segmentTone(
+        rows[ri]?.overlay?.conditions ?? rows[ri]?.conditions ?? { weather: [], cavok: false },
+      );
+      pushCut(
+        change.span,
+        ri,
+        "group",
+        headHint,
+        rowTone === "danger" ? "danger" : rowTone === "caution" ? "caution" : undefined,
+      );
+      const e = change.elements;
+      pushCut(e?.wind !== undefined ? e.wind.speed.span : undefined, ri, "wind", headHint);
+      if (e?.visibility !== undefined)
+        pushCut(
+          e.visibility.span,
+          ri,
+          "vis",
+          headHint,
+          visibilityTone(e.visibility) === "mw-danger"
+            ? "danger"
+            : visibilityTone(e.visibility) === "mw-caution"
+              ? "caution"
+              : undefined,
+        );
+      for (const g of e?.weather ?? [])
+        pushCut(
+          g.span,
+          ri,
+          "wx",
+          headHint,
+          isDangerWeather(g) ? "danger" : isCautionWeather(g) ? "caution" : undefined,
+        );
+      for (const layer of e?.clouds?.elements ?? [])
+        pushCut(
+          layer.span,
+          ri,
+          "clouds",
+          headHint,
+          cloudTone(layer) === "mw-danger"
+            ? "danger"
+            : cloudTone(layer) === "mw-caution"
+              ? "caution"
+              : undefined,
+        );
+      pushCut(e?.clouds?.clear?.span, ri, "clouds", headHint);
     }
     for (const temp of report.temperatures)
       if (temp.span !== undefined)
@@ -723,9 +1013,11 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       const hostNode = top === undefined ? rawP : top.node;
       if (cut.start > innerPos)
         hostNode.append(document.createTextNode(report.raw.slice(innerPos, cut.start)));
-      const seg = el("span", "mw-taf-rawseg"); // 文本由装配栈管理（防父组整段双写）
-      seg.title = cut.hint;
-      seg.setAttribute("aria-label", cut.hint);
+      const seg = el(
+        "span",
+        `mw-taf-rawseg${cut.tone === "danger" ? " mw-taf-rawseg-danger" : cut.tone === "caution" ? " mw-taf-rawseg-caution" : ""}`,
+      ); // 文本由装配栈管理（防父组整段双写）
+      seg.title = cut.hint; // 读屏读原文本身，不再 aria-label 覆盖
       link.cuts.push({ el: seg, rowIdx: cut.rowIdx, key: cut.key, start: cut.start, end: cut.end });
       hostNode.append(seg);
       if (top !== undefined) top.inner = cut.end;
@@ -754,7 +1046,11 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         if (c.key === "validity" && link.validityEl !== undefined) out.push(link.validityEl);
         return out;
       });
-    card.append(rawP);
+    // RAW 区身份行（评测小白#11：原文区无标题=乱码彩蛋；提示联动通道存在）
+    const rawTitle = el("p", "mw-taf-raw-title", t.rawTitle);
+    rawTitle.append(el("span", "mw-taf-raw-hint", `　·　${t.rawHint}`));
+    link.rawPEl = rawP;
+    card.append(rawTitle, rawP);
   }
 
   card.append(el("p", "mw-taf-warn", t.warning));
