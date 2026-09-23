@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MetarParseError } from "@metweave/core";
 import { parse } from "./index";
+import { expandTaf } from "./expand";
 import { parseTaf, tafDurationHours, tryParseTaf } from "./taf";
 import tafFixtures from "./__fixtures__/taf.json";
 
@@ -134,6 +135,36 @@ describe("TAF 批 1 骨架：电头与有效期（清单 A4）", () => {
     if (!bad.ok) expect(bad.error.code).toBe("missing-validity");
   });
 });
+
+/** 天气组紧凑串（黄金表断言用）：-SHRASN / BR / SN 形态 */
+const wx = (
+  list:
+    | readonly {
+        intensity?: string;
+        proximity: boolean;
+        descriptor?: string;
+        phenomena: readonly string[];
+      }[]
+    | undefined,
+): string =>
+  (list ?? [])
+    .map(
+      (g) =>
+        `${g.intensity ?? ""}${g.proximity ? "VC" : ""}${g.descriptor ?? ""}${g.phenomena.join("")}`,
+    )
+    .join(" ");
+/** 云组紧凑串：SCT023 BKN033 / NSC（晴空词）/ VV005——高度英尺折百英尺电码位 */
+const cl = (c: import("@metweave/core").CloudCondition | undefined): string => {
+  if (c === undefined) return "";
+  if (c.clear !== undefined && c.elements.length === 0) return c.clear.code;
+  return c.elements
+    .map((e) =>
+      e.kind === "layer"
+        ? `${e.amount ?? "?"}${String(Math.round((e.heightFt.value ?? 0) / 100)).padStart(3, "0")}${e.convective ?? ""}`
+        : `VV${String(Math.round((e.heightFt.value ?? 0) / 100)).padStart(3, "0")}`,
+    )
+    .join(" ");
+};
 
 /** 时长断言 helper：起有效期组 → tafDurationHours（wrap 可选月锚） */
 const dur = (raw: string, wrap?: number): number | undefined => {
@@ -337,6 +368,111 @@ describe("TAF 批 1.5：基况段四要素 + CAVOK", () => {
     const metar = parse("METAR ZBAA 010340Z 17004MPS 2400 FEW030 29/24 Q1010", { spans: false });
     expect(taf.wind).toEqual(metar.wind);
     expect(taf.visibility).toEqual(metar.visibility);
+  });
+});
+
+describe("TAF 批 2.3：时间线展开器黄金测试（清单 B4★–B7★，taf-timeline §3 三例 13 时刻逐格）", () => {
+  const JAN31 = { daysIn: 31 };
+  const zppp = () => parseTaf(fx("ogimet-zppp-20250125-1518z").raw);
+  const zsof = () => parseTaf(fx("ogimet-zsof-20250125-0913z").raw);
+  const zytl = () => parseTaf(fx("textbook-zytl-260848z-golden").raw); // 教材版＝黄金表权威源（ogimet 变体留结构测试）
+
+  it("§3.1 ZPPP：双 BECMG 继承链（6 时刻）", () => {
+    const r = zppp();
+    // 25 日 19:00——TEMPO 20Z 才开窗：只有基况（自检三问之一）
+    const t1900 = expandTaf(r, { day: 25, hour: 19, minute: 0 }, JAN31);
+    expect(t1900.boundSegment).toEqual({ kind: "base" });
+    expect(t1900.conditions.wind?.speed.value).toBe(9);
+    expect(t1900.conditions.visibility?.value).toBe(9999);
+    expect(wx(t1900.conditions.weather)).toBe("");
+    expect(cl(t1900.conditions.clouds)).toBe("SCT023 BKN033");
+    expect(t1900.tempo).toBeUndefined();
+    // 25 日 21:00——TEMPO 窗内双态
+    const t2100 = expandTaf(r, { day: 25, hour: 21, minute: 0 }, JAN31);
+    expect(t2100.conditions.visibility?.value).toBe(9999);
+    expect(t2100.tempo?.conditions.visibility?.value).toBe(2500);
+    expect(wx(t2100.tempo?.conditions.weather)).toBe("-SHRASN BR");
+    // 26 日 02:00——TEMPO 已关、BECMG 未开：基况
+    const t0200 = expandTaf(r, { day: 26, hour: 2, minute: 0 }, JAN31);
+    expect(t0200.boundSegment).toEqual({ kind: "base" });
+    expect(t0200.conditions.visibility?.value).toBe(9999);
+    expect(t0200.tempo).toBeUndefined();
+    // 26 日 05:30——过渡带（2605/2606 窗内）：uncertain 置真、按前段（基况）值
+    const t0530 = expandTaf(r, { day: 26, hour: 5, minute: 30 }, JAN31);
+    expect(t0530.uncertain).toBe(true);
+    expect(t0530.conditions.visibility?.value).toBe(9999);
+    // 26 日 08:00——2605/2606 后段：vis/天气取本段，风/云沿链回溯
+    const t0800 = expandTaf(r, { day: 26, hour: 8, minute: 0 }, JAN31);
+    expect(t0800.boundSegment).toEqual({ kind: "BECMG", index: 1 });
+    expect(t0800.conditions.visibility?.value).toBe(2000);
+    expect(wx(t0800.conditions.weather)).toBe("-SN BR");
+    expect(t0800.conditions.wind?.direction).toBe(40); // 基况风沿用（04009G16）
+    expect(cl(t0800.conditions.clouds)).toBe("SCT023 BKN033");
+    // 26 日 13:00——2611/2612 后段：风自 2609 接棒（04004），云一路沿用
+    const t1300 = expandTaf(r, { day: 26, hour: 13, minute: 0 }, JAN31);
+    expect(t1300.conditions.wind?.speed.value).toBe(4);
+    expect(t1300.conditions.visibility?.value).toBe(4000);
+    expect(wx(t1300.conditions.weather)).toBe("BR");
+    expect(cl(t1300.conditions.clouds)).toBe("SCT023 BKN033");
+  });
+
+  it("§3.2 ZSOF：云例外双弹（5 时刻）", () => {
+    const r = zsof();
+    // 25 日 15:00 基况
+    const t1500 = expandTaf(r, { day: 25, hour: 15, minute: 0 }, JAN31);
+    expect(t1500.conditions.wind?.speed.value).toBe(4);
+    expect(t1500.conditions.visibility?.value).toBe(6000);
+    expect(cl(t1500.conditions.clouds)).toBe("BKN006 OVC020");
+    // 25 日 18:30——2516/2517 后段 + TEMPO(18–20) 窗内
+    const t1830 = expandTaf(r, { day: 25, hour: 18, minute: 30 }, JAN31);
+    expect(t1830.conditions.wind?.direction).toBe(340);
+    expect(t1830.conditions.visibility?.value).toBe(2500);
+    expect(wx(t1830.conditions.weather)).toBe("-SN BR");
+    expect(cl(t1830.conditions.clouds)).toBe("BKN006 OVC020");
+    expect(t1830.tempo?.conditions.visibility?.value).toBe(700);
+    expect(wx(t1830.tempo?.conditions.weather)).toBe("SN");
+    // 25 日 20:30——2519/2520 云例外：BKN004 单层（此前云作废）
+    const t2030 = expandTaf(r, { day: 25, hour: 20, minute: 30 }, JAN31);
+    expect(cl(t2030.conditions.clouds)).toBe("BKN004");
+    expect(t2030.conditions.visibility?.value).toBe(2500);
+    // 26 日 00:30——过渡带（2600/2601）
+    const t0030 = expandTaf(r, { day: 26, hour: 0, minute: 30 }, JAN31);
+    expect(t0030.uncertain).toBe(true);
+    expect(cl(t0030.conditions.clouds)).toBe("BKN004");
+    // 26 日 03:30——2602/2603 云例外：BKN020 单层；vis 3000 与 BR 沿自前序 BECMG
+    const t0330 = expandTaf(r, { day: 26, hour: 3, minute: 30 }, JAN31);
+    expect(cl(t0330.conditions.clouds)).toBe("BKN020");
+    expect(t0330.conditions.visibility?.value).toBe(3000);
+    expect(wx(t0330.conditions.weather)).toBe("BR");
+  });
+
+  it("§3.3 ZYTL：强度三档 + 风-only 接棒（2 时刻）", () => {
+    const r = zytl();
+    // 26 日 16:00——2614/2615 后段 + TEMPO(15–19) 窗内：发作中雪/间歇小雪 BR
+    const t1600 = expandTaf(r, { day: 26, hour: 16, minute: 0 }, JAN31);
+    expect(t1600.conditions.wind?.direction).toBe(280);
+    expect(t1600.conditions.visibility?.value).toBe(2000);
+    expect(wx(t1600.conditions.weather)).toBe("-SN BR");
+    expect(wx(t1600.tempo?.conditions.weather)).toBe("SN");
+    expect(t1600.conditions.clouds && cl(t1600.conditions.clouds)).toBe("BKN010");
+    // 26 日 20:30——2619/2620 风-only 接棒 + TEMPO(19–23)：发作 +SN/BKN007、间歇 -SN BR/BKN010
+    const t2030 = expandTaf(r, { day: 26, hour: 20, minute: 30 }, JAN31);
+    expect(t2030.conditions.wind?.direction).toBe(350);
+    expect(t2030.conditions.wind?.gust?.value).toBe(15); // 教材版 G15（ogimet 变体为 G14，方言差异入档）
+    expect(t2030.conditions.visibility?.value).toBe(2000);
+    expect(t2030.tempo?.conditions.visibility?.value).toBe(300);
+    expect(wx(t2030.tempo?.conditions.weather)).toBe("+SN");
+    expect(cl(t2030.tempo?.conditions.clouds)).toBe("BKN007");
+    expect(cl(t2030.conditions.clouds)).toBe("BKN010");
+  });
+
+  it("开窗前只有基况（勿预设双态）+ NIL/无有效期报展开即报错", () => {
+    const r = zppp();
+    const before = expandTaf(r, { day: 25, hour: 17, minute: 0 }, JAN31);
+    expect(before.boundSegment).toEqual({ kind: "base" });
+    expect(before.tempo).toBeUndefined();
+    const nil = parseTaf(fx("textbook-nil-zsam").raw);
+    expect(() => expandTaf(nil, { day: 10, hour: 12, minute: 0 }, JAN31)).toThrow();
   });
 });
 

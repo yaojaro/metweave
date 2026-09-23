@@ -61,6 +61,15 @@ export type {
 // TAF 解析层（v0.2 批 1 起）：parseTaf / tryParseTaf 与其结果类型——与 parse 同入口供给
 export { parseTaf, tafDurationHours, tryParseTaf } from "./taf";
 export type { TryParseTafResult } from "./taf";
+// TAF 时间线展开器（v0.2 批 2.3 起）：五步算法的派生层（B4–B7）
+export { expandTaf } from "./expand";
+export type {
+  TafExpandAt,
+  TafExpansion,
+  TafMonthAnchor,
+  TafResolvedConditions,
+  TafTempoOverlay,
+} from "./expand";
 import {
   TREND_KINDS,
   VIS_V_RANGE,

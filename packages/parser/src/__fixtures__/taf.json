@@ -1,6 +1,6 @@
 {
   "schema": "metweave-taf-fixtures/1",
-  "count": 9,
+  "count": 10,
   "fixtures": [
     {
       "id": "ogimet-plain-zbaa-20090801",
@@ -91,6 +91,16 @@
       "hash": "c6251c475c9f",
       "traps": ["golden-timeline", "wind-only-becmg"],
       "note": "黄金三例之三（§3.3 强度三档+风接棒收口）：风-only BECMG（35007G14MPS）与发作/间歇双态"
+    },
+    {
+      "id": "textbook-zytl-260848z-golden",
+      "raw": "TAF AMD ZYTL 260848Z 2606/2706 28004MPS 3000 BR FEW033 TEMPO 2608/2612 1000 -SN BR BKN010 BECMG 2614/2615 2000 -SN BR BKN010 TEMPO 2615/2619 0700 SN BECMG 2619/2620 35007G15MPS TEMPO 2619/2623 0300 +SN BKN007=",
+      "station": "ZYTL",
+      "source": "教材",
+      "obsTime": "2026-01-26T08:48:00Z",
+      "hash": null,
+      "traps": ["golden-timeline", "textbook-variant"],
+      "note": "黄金三例之三·教材版（taf-timeline §3.3 逐时刻表权威源：末段 TEMPO 2619/2623 0300 +SN BKN007、风-only BECMG G15）——与 ogimet 同日实抓变体（G14、无末段 TEMPO）并存，两版皆语料库真实形态，方言差异本身入档"
     }
   ]
 }
