@@ -601,6 +601,21 @@ export interface TafChangeAt {
   readonly span?: Span;
 }
 
+/**
+ * TAF 气温组 TX/TN（清单 C6）：极值温度 + 达到时刻。1–4 组、TX/TN 交错无固定序（按前缀 token 解析），
+ * 负值 M 前缀；30h 版中方 2+1（2TX+1TN 或 1TX+2TN）、24h 版 1+1；WMO 上限 4 组（超出出声不丢弃）。
+ */
+export interface TafTemperatureGroup {
+  /** TX＝时段最高 / TN＝时段最低 */
+  readonly extremum: "max" | "min";
+  /** 摄氏度；M 前缀 → 负值（TNM02 → −2） */
+  readonly celsius: number;
+  /** 达到时刻 ddHHZ（UTC，日+时——实码 4 位形态，全部实证样本一致；分位不编报） */
+  readonly at: { readonly day: number; readonly hour: number };
+  readonly raw: string;
+  readonly span?: Span;
+}
+
 /** The four TAF change-group kinds. TAF 变化组四型。 */
 export type TafChangeKind = "FM" | "BECMG" | "TEMPO" | "PROB";
 
@@ -665,6 +680,8 @@ export interface TafReport {
   readonly cavokSpan?: Span;
   /** 变化组序列（FM/BECMG/TEMPO/PROB，按报文原序）；空数组 = 无变化组 */
   readonly changes: readonly TafChangeGroup[];
+  /** 气温组序列（TX/TN 按报文原序）；空数组 = 无气温组 */
+  readonly temperatures: readonly TafTemperatureGroup[];
   readonly remarks: readonly RemarkGroup[];
   /** 永远存在，可为空数组 */
   readonly warnings: readonly ParseWarning[];

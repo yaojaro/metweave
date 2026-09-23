@@ -48,6 +48,7 @@ export type {
   TafChangeKind,
   TafChangeWindow,
   TafParseOptions,
+  TafTemperatureGroup,
   TafReport,
   TafValidityGroup,
   TemperatureReading,

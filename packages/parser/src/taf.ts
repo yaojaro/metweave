@@ -18,6 +18,7 @@ import type {
   TafChangeGroup,
   TafChangeKind,
   TafChangeWindow,
+  TafTemperatureGroup,
   TrendElements,
   SkyClearCode,
   Span,
@@ -163,6 +164,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       flags: { amended, corrected },
       cavok: false,
       changes: [],
+      temperatures: [],
       remarks: [],
       warnings,
     });
@@ -238,6 +240,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       flags: { amended, corrected },
       cavok: false,
       changes: [],
+      temperatures: [],
       remarks: [],
       warnings,
     });
@@ -293,6 +296,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       flags: { amended, corrected },
       cavok: false,
       changes: [],
+      temperatures: [],
       remarks: [],
       warnings,
     });
@@ -438,18 +442,30 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
   // 语义边界：解析层只收「组内所列要素」（TrendElements，与 METAR 趋势段同构）；
   // 未列要素继承/回溯、云例外、过渡带、间歇双态属展开器（2.3），解析层不越权代判
   const changes: TafChangeGroup[] = [];
+  const temperatures: TafTemperatureGroup[] = [];
   while (i < tokens.length) {
     const t = tokens[i];
     if (t === undefined) break;
     const text = t.text;
 
-    if (text.startsWith("TX") || text.startsWith("TN")) {
-      warnings.push({
-        code: "unknown-token",
-        severity: "info",
-        message: `TAF 气温组暂未解析（${text}）——批 3.4（C6）接管`,
+    const txTn = /^(TX|TN)(M?\d{2})\/(\d{2})(\d{2})Z$/.exec(text);
+    if (txTn !== null) {
+      // C6★ 气温组：TX/TN 前缀 token、M 负值、1–4 组交错无固定序（跨基况/变化组分布照收）
+      temperatures.push({
+        extremum: txTn[1] === "TX" ? "max" : "min",
+        celsius: Number(txTn[2]?.replace("M", "-")),
+        at: { day: Number(txTn[3]), hour: Number(txTn[4]) },
+        raw: text,
         span: spanOf(t),
       });
+      if (temperatures.length > 4) {
+        warnings.push({
+          code: "invalid-format",
+          severity: "warning",
+          message: `气温组超 WMO 上限 4 组（第 ${temperatures.length} 组 ${text}）——照收不丢弃，超出属编报违规（清单 C6）`,
+          span: spanOf(t),
+        });
+      }
       i += 1;
       continue;
     }
@@ -628,6 +644,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     cavok,
     cavokSpan,
     changes,
+    temperatures,
     remarks: [],
     warnings,
   });

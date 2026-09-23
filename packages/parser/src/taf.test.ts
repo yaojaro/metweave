@@ -198,6 +198,29 @@ describe("TAF 批 3.3：天气白名单双层（清单 C5★）", () => {
   });
 });
 
+describe("TAF 批 3.4：气温组可变长（清单 C6★）", () => {
+  it("ZGSZ 实证（30h 版 2TX+1TN 搭配）：交错原序落位，负值 M 前缀由 ZPPP 实证（1TX+2TN）", () => {
+    const r = parseTaf(fx("aw-amd-zgsz-20260910").raw);
+    expect(r.temperatures).toHaveLength(3);
+    expect(r.temperatures.map((x) => x.extremum)).toEqual(["max", "max", "min"]);
+    expect(r.temperatures[0]).toMatchObject({ celsius: 32, at: { day: 10, hour: 6 } });
+    const p = parseTaf(fx("ogimet-zppp-20250125-1518z").raw);
+    expect(p.temperatures.map((x) => x.extremum)).toEqual(["max", "min", "min"]);
+    expect(p.temperatures[1]).toMatchObject({ celsius: -2 }); // TNM02 → −2（M 前缀）
+  });
+
+  it("ZBTJ 实证（24h 版 1TX+1TN）与合成超限形态（第 5 组出声不丢弃）", () => {
+    const r = parseTaf(fx("ogimet-zbtj-20240601-0304z").raw);
+    expect(r.temperatures.map((x) => x.extremum)).toEqual(["max", "min"]);
+    expect(r.warnings.filter((w) => w.message.includes("上限"))).toHaveLength(0);
+    const over = parseTaf(
+      "TAF ZBAA 010340Z 0106/0206 TX30/0107Z TX31/0207Z TN20/0121Z TN21/0221Z TN22/0122Z=",
+    );
+    expect(over.temperatures).toHaveLength(5);
+    expect(over.warnings.filter((w) => w.message.includes("上限"))).toHaveLength(1);
+  });
+});
+
 /** 天气组紧凑串（黄金表断言用）：-SHRASN / BR / SN 形态 */
 const wx = (
   list:
@@ -395,15 +418,14 @@ describe("TAF 批 1.5：基况段四要素 + CAVOK", () => {
     expect(r.weather?.kind).toBe("value"); // BR
   });
 
-  it("aw 实证（ZGSZ 30h 报）：8000/SCT040 落位，TX/TN 界后出声", () => {
+  it("aw 实证（ZGSZ 30h 报）：8000/SCT040 落位；TX/TN 与 TEMPO 分别由 C6/批 2.2 接管后零 unknown-token", () => {
     const r = parseTaf(fx("aw-amd-zgsz-20260910").raw);
     expect(r.visibility?.kind).toBe("value");
     expect(r.clouds?.elements?.[0]).toMatchObject({ amount: "SCT" });
-    // TX32×2 + TN25 三 token 属批 3.4（C6）未接管；TEMPO 变化组已结构化
     expect(r.changes).toHaveLength(1);
     expect(r.changes[0]).toMatchObject({ kind: "TEMPO" });
-    const unknowns = r.warnings.filter((w) => w.code === "unknown-token");
-    expect(unknowns).toHaveLength(3);
+    expect(r.temperatures).toHaveLength(3); // 3.4 接管
+    expect(r.warnings.filter((w) => w.code === "unknown-token")).toHaveLength(0);
   });
 
   it("CAVOK：三关让位（vis/weather/clouds 为省略态）+ 词位标记", () => {
