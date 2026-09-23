@@ -195,6 +195,8 @@ const LTG_TAIL_VOCAB = new Set([
 ]);
 /** 变化能见度尾组形态（RMK VIS 1/2V2 / VIS 1/4V1/2）：两侧为整数或分数（可带 M/P 阈值前缀）。 */
 const VIS_V_RANGE = /^[MP]?\d+(?:\/\d+)?V[MP]?\d+(?:\/\d+)?$/;
+/** 温度预告组形态（TAF TX/TN 混入 METAR 通路：TX25/0907Z = 最高 25°C、09 日 07Z 到达，M 前缀 = 负值）。 */
+const TX_TN_PATTERN = /^(TX|TN)M?\d{2}\/\d{4}Z$/;
 
 // —— E3 首字符位掩码（正文循环分支分流用；可达首字符推导见正文循环内注释）
 const M_WIND = 1 << 0;
@@ -971,1128 +973,727 @@ function parseRunwayStateToken(
   };
 }
 
-// ---------------------------------------------------------------- 主入口
+// ———————————————— 组级纯函数（v0.2 批 0.1 抽取） ————————————————
+// parse() 内的组级解析闭包/内联块迁出为模块级纯函数：游标位置（tokens+pos）与共享累加器
+// （warnings/remarks）一律显式传参，不再闭包捕获 parse() 局部状态——目的：TAF 解析器
+// （parseTaf，后续批次）复用组级逻辑。本迁移为零行为变化重构：解析语义、告警文案与
+// 顺序、span、消费 token 数保持原样（全量语料回放快照锁定）。
 
-/**
- * Parse one METAR/SPECI report (tolerant mode) into the IR — the package's single entry.
- * 解析单条 METAR/SPECI 报文（tolerant）为 IR——本包唯一入口。
- *
- * Throws MetarParseError (stable machine-readable `code`) on whole-report failure
- * (non-string input / missing station / missing time / invalid time / unsupported mode); anything the
- * parser does not recognize lands in `warnings[]` with its span — never dropped.
- * 整体失败（输入非字符串/无站名/无时组/时组越界/未实现模式）抛 MetarParseError（code 稳定契约）；
- * 看不懂的组带 span 进 warnings[]，绝不丢弃。
- * @param raw - Report text, verbatim (kept on report.raw). 报文原文（原样保真于 report.raw）。
- * @param options - See ParseOptions (kind override, compact spans). 见 ParseOptions（类型位注入、紧凑模式）。
- */
-export function parse(raw: string, options?: ParseOptions): MetarReport {
-  // 紧凑模式（E1）：spans === false 时在出口以重建式剥除全部 span（见 compactNode 注释）
-  const compact = options?.spans === false;
-  const compactIfEnabled = <T>(report: T): T => (compact ? compactNode(report) : report);
-  // 输入校验：非字符串走 MetarParseError 稳定契约（code: "invalid-input"）——code 是
-  // 消费方分流的稳定面、EN_MESSAGES 查表英化的键，裸 Error 会同时绕过两者（此前为裸 Error）
-  if (typeof raw !== "string") {
-    throw new MetarParseError(
-      "invalid-input",
-      String(raw),
-      `parse 需要一个 METAR/SPECI 报文字符串，收到 ${raw === null ? "null" : typeof raw}`,
-    );
+/** 重复组告警（原 parse() 内 dupGroupWarning 闭包）：前值后值原文都进 message——
+ *  last-wins 会覆盖 IR 里的前值 span，前值唯一可回溯通道就是这条告警。 */
+function warnDuplicateGroup(
+  raw: string,
+  warnings: ParseWarning[],
+  label: string,
+  prevSpan: Span | undefined,
+  newSpan: Span | undefined,
+): void {
+  const prevText =
+    prevSpan === undefined ? `（原${label}）` : raw.slice(prevSpan.start, prevSpan.end);
+  const newText = newSpan === undefined ? label : raw.slice(newSpan.start, newSpan.end);
+  warnings.push({
+    code: "duplicate-group",
+    severity: "warning",
+    message: `重复${label}（前值 ${prevText}，后值 ${newText}）——报文只应有一组${label}，以末组为准，前值经原文回溯`,
+    span: newSpan,
+  });
+}
+
+/** 气压组落位（原 parse() 内 setAltimeter 闭包）：末组为准（last-wins），重复组追加告警不静默；
+ *  返回新的（altimeter, altimeterSeen）二元组交调用方落位。 */
+function applyAltimeterReading(
+  altimeter: AltimeterReading | undefined,
+  altimeterSeen: boolean,
+  reading: AltimeterReading,
+  raw: string,
+  warnings: ParseWarning[],
+): { altimeter: AltimeterReading | undefined; altimeterSeen: boolean } {
+  if (altimeterSeen) {
+    warnDuplicateGroup(raw, warnings, "气压组", altimeter?.span, reading.span);
   }
-  if ((options?.mode ?? "tolerant") === "strict") {
-    // 错误面契约：strict 留在类型上（路线图项），但 v0.1 未实现——调用方 catch 不漏接裸 Error
-    throw new MetarParseError(
-      "unsupported-mode",
-      raw,
-      "strict 模式尚未实现（v0.1 仅 tolerant）——请省略 mode 或显式传 'tolerant'",
-    );
+  return { altimeter: reading, altimeterSeen: true };
+}
+
+/** QNH 组解析结果：ok = 可信读数；out-of-range = 值不可信（5 位数或物理范围外，
+ *  Q10054 家族脏值），由调用方判缺测 + value-out-of-range 告警；null = 非 Q 组形态。 */
+type AltimeterTokenResult =
+  | { readonly kind: "ok"; readonly reading: AltimeterReading }
+  | { readonly kind: "out-of-range"; readonly message: string; readonly span: Span };
+
+/** Q（hPa）组：5 位数 QNH 与物理范围外值 = 脏值（Q10054 家族）——绝不静默留假值。 */
+function parseQnhToken(t: Token): AltimeterTokenResult | null {
+  const qM = /^Q(\d{4,5})$/.exec(t.text);
+  if (qM === null) return null;
+  const digits = qM[1] ?? "";
+  const hpa = Number.parseInt(digits, 10);
+  if (digits.length === 5 || hpa < QNH_HPA_MIN || hpa > QNH_HPA_MAX) {
+    return {
+      kind: "out-of-range",
+      message: `QNH 超出可信范围（${t.text}，合理区间 ${QNH_HPA_MIN}–${QNH_HPA_MAX} hPa）——值不可信判缺测，原码经 span 回溯`,
+      span: spanOf(t),
+    };
   }
-  const warnings: ParseWarning[] = [];
-  // 报尾 = 终结符剥离（GTS/AFTN 通路报文行以 = 定界，常粘连末组如 Q1006= / NOSIG=）——
-  // 仅剥尾部空白与 =，正文 token 偏移不变，span 仍对应原 raw（raw 保真含 =）。
-  // 末字符预判（E2 性能项）：语料大头无报尾，尾字符既非 = 也非空白时跳过整串正则——
-  // 预判用单字符 \s 测试（与 [\s=] 字符类完全同域，行为等价），省一次全文回溯扫描
-  const tail = raw.at(-1);
-  const body =
-    tail === undefined || tail === "=" || /\s/.test(tail) ? raw.replace(/[\s=]+$/, "") : raw;
-  const tokens = tokenize(body);
-  // 输入规模护栏（只告警不截断——截断破坏 raw 保真与「不丢弃」纪律）：语料单行最大 30 token，
-  // 上限 128 = 4 倍余量；超限报文照常完整解析，仅以一条聚合告警标记异常输入
-  //（span 缺省 = 报文级；整体失败路径不经过此处，失败契约不受影响）
-  const TOKEN_COUNT_LIMIT = 128;
-  if (tokens.length > TOKEN_COUNT_LIMIT) {
-    warnings.push({
-      code: "invalid-format",
+  return { kind: "ok", reading: { value: hpa, unit: "hPa", span: spanOf(t) } };
+}
+
+/** A（inHg，隐含小数点）组：物理范围外值判缺测，同 QNH 纪律。 */
+function parseAltimeterAToken(t: Token): AltimeterTokenResult | null {
+  const aM = /^A(\d{4})$/.exec(t.text);
+  if (aM === null) return null;
+  const inhg = Number.parseInt(aM[1] ?? "0", 10) / 100;
+  if (inhg < ALT_INHG_MIN || inhg > ALT_INHG_MAX) {
+    return {
+      kind: "out-of-range",
+      message: `高度表设定超出可信范围（${t.text} → ${inhg} inHg，合理区间 ${ALT_INHG_MIN}–${ALT_INHG_MAX}）——值不可信判缺测，原码经 span 回溯`,
+      span: spanOf(t),
+    };
+  }
+  return { kind: "ok", reading: { value: inhg, unit: "inHg", span: spanOf(t) } };
+}
+
+/** 风组落位与值域校验（原正文循环风组分支内联块，非缺测路径）：NaN 终结防线、三位数
+ *  模板上限门（>199 判缺测）、风向/变化组端点越界 findings、阵风缺测 info、VRB 与变化组
+ *  并存 cross-check——告警顺序与原分支逐条一致（rangeFindings → gustMissing → VRB 变化组）。 */
+function validateWindGroup(
+  t: Token,
+  windParsed: WindParsed,
+  raw: string,
+): { wind: Observed<WindGroup>; warnings: ParseWarning[] } {
+  const wg = windParsed.group;
+  // 风速模板上限：三位数（≤199，WMO 15.5.6「100 单位以上以精确位数替代两位电码」注至
+  // 199；FMH-1 12.6.5.a「two or three digits」）——超 199 即非规范报文（270250KT 构造探针），
+  // 按 QNH 超界同款纪律整组不可信判缺测，绝不静默留假值。P 前缀超上限形态（P99KT）合法
+  // NaN 终结防线（终结断言，预期不可达）：任何数值入口产 NaN 即整组不可信判缺测。
+  // NaN 恰是现有防线的双重盲区——值域门 >199 对 NaN 恒 false、JSON.stringify 消 NaN 为
+  // null、fuzz 不变量（2026-09-14 实弹 G/// 之前）无有限性检查——故独立成支并配哨兵不变量
+  if (
+    !Number.isFinite(wg.speed.value) ||
+    (wg.gust !== undefined && !Number.isFinite(wg.gust.value))
+  ) {
+    return {
+      wind: { kind: "missing", span: spanOf(t) },
+      warnings: [
+        {
+          code: "value-out-of-range",
+          severity: "warning",
+          message: `风组解码出非有限值（${t.text}）——值不可信判缺测，原码经 span 回溯`,
+          span: spanOf(t),
+        },
+      ],
+    };
+  }
+  if (wg.speed.value > 199 || (wg.gust?.value ?? 0) > 199) {
+    return {
+      wind: { kind: "missing", span: spanOf(t) },
+      warnings: [
+        {
+          code: "value-out-of-range",
+          severity: "warning",
+          message: `风速超出编码范围（${t.text}，三位数模板上限 199 ${wg.speed.unit}）——值不可信判缺测，原码经 span 回溯`,
+          span: spanOf(t),
+        },
+      ],
+    };
+  }
+  const found: ParseWarning[] = [];
+  for (const finding of windParsed.rangeFindings) {
+    found.push({
+      code: "value-out-of-range",
       severity: "warning",
-      message: `输入 token 数超上限（${tokens.length} > ${TOKEN_COUNT_LIMIT}）——按异常输入标记，解析照常完整，原文经 raw 保真`,
+      message: finding.message,
+      span: finding.span,
     });
   }
-  let i = 0;
-  const peek = (ahead = 0): Token | undefined => tokens[i + ahead];
-
-  const externalKind = options?.kind;
-  let kind: ReportKind = externalKind ?? "metar";
-  let corrected = false;
-  let auto = false;
-
-  // —— 头部：类型词 / COR（WMO 形态）/ 站名 / 时组 / AUTO / COR（美式时组后形态）
-  const head = peek();
-  if (head !== undefined && (head.text === "METAR" || head.text === "SPECI")) {
-    if (externalKind === undefined) kind = head.text === "SPECI" ? "speci" : "metar";
-    i += 1; // 类型词 token 无论由谁决定 kind 都要消费
-  }
-  if (peek()?.text === "COR") {
-    corrected = true;
-    i += 1;
-  }
-  // AMD（修订发布标志，部分 CAA 用于 METAR 标题位，TAF 更常见）：标题元数据词，
-  // 语义为「本报告取代此前发布」——消费之不进站名位；是否置 corrected 不越权代判
-  //（修订 ≠ 更正），IR 无 amended 位故仅放行不标注
-  if (peek()?.text === "AMD") {
-    i += 1;
-  }
-  const stTok = peek();
-  if (stTok === undefined || !/^[A-Z0-9]{4}$/.test(stTok.text)) {
-    // 契约：无站名组 = 整体解析失败（不是字段级三态）；code 是稳定契约，message 中文为权威
-    // 文案——英文经 @metweave/core EN_MESSAGES[code] 查表或渲染层 locale:"en" 切换
-    throw new MetarParseError(
-      "missing-station",
-      raw,
-      `无法识别站名组——输入不是 METAR/SPECI 报文（${stTok?.text ?? "空输入"}）`,
-    );
-  }
-  const station: string = stTok.text;
-  i += 1;
-  // CCA/CCB/CCC 与 COR 槽位磨损兜底（站名后/时组前——规范槽位：BBB 系列在时组后（见下方
-  // BBB 消费位）、COR 在类型词位（见报头 COR 位））：部分 feed 的更正标记出现在此槽——此前
-  // 直接 throw missing-time，「合法更正报整体失败」是最恶性失败模式。后随 token 为合法时组时
-  // 消费放行并置 corrected + 出声（槽位漂移本身须可观测——不静默，2026-09-14 独立复评补
-  // COR 对称缺口与出声）；后随非时组则照旧走 missing-time。已知留案：标记若出现在 AUTO
-  // 之前的其他相对序（如 CCA AUTO），AUTO 会落正文 unknown——语料无实证，暂不设防
-  const driftTok = peek();
-  if (driftTok !== undefined && /^(CC[A-Z]|COR)$/.test(driftTok.text)) {
-    const afterDrift = peek(1);
-    if (afterDrift !== undefined && /^\d{2}\d{2}\d{2}Z$/.test(afterDrift.text)) {
-      corrected = true;
-      i += 1;
-      warnings.push({
-        code: "invalid-format",
-        severity: "info",
-        message: `更正标记槽位漂移（${driftTok.text} 出现在站名后/时组前——已消费并置更正标志）`,
-        span: spanOf(driftTok),
-      });
-    }
-  }
-  const tmTok = peek();
-  const tm = tmTok !== undefined ? /^(\d{2})(\d{2})(\d{2})Z$/.exec(tmTok.text) : null;
-  if (tmTok === undefined || tm === null) {
-    throw new MetarParseError(
-      "missing-time",
-      raw,
-      `无法识别时组——输入不是完整的 METAR/SPECI 报文（${tmTok?.text ?? "时组缺失"}）`,
-    );
-  }
-  const time: MetarReport["time"] = {
-    day: Number.parseInt(tm[1] ?? "0", 10),
-    hour: Number.parseInt(tm[2] ?? "0", 10),
-    minute: Number.parseInt(tm[3] ?? "0", 10),
-  };
-  // 契约：时组为两态必填（无缺测形态，无 Observed）——数值越界即不可信时组，等同无效时组整体失败，
-  // 绝不把假值（日 99、时 24、分 60）留在 IR（同 Q10054 脏 QNH 的「值不可信」纪律，时组无处判缺测故整体失败）
-  if (time.day < 1 || time.day > 31 || time.hour > 23 || time.minute > 59) {
-    throw new MetarParseError(
-      "invalid-time",
-      raw,
-      `时组数值越界（${tmTok.text}：须日 01–31 / 时 00–23 / 分 00–59）——输入不是完整的 METAR/SPECI 报文`,
-    );
-  }
-  i += 1;
-  if (peek()?.text === "AUTO") {
-    auto = true;
-    i += 1;
-  }
-  if (peek()?.text === "COR") {
-    corrected = true;
-    i += 1;
-  }
-  // RRA/RRB/RRC 迟到报标记（AP-117-TM-01R2 第 21 条：报头时间组后）——标题元数据，消费放行
-  if (/^RR[ABC]$/.test(peek()?.text ?? "")) {
-    i += 1;
-  }
-  // CCA/CCB/CCC 更正指示符（WMO FM15 §1.3.3 BBB 系列：第一次更正 CCA、第二次 CCB 顺延；
-  // 规范槽位即本位——时组后。加拿大 NAV CANADA 明文采用，中国 AFTN 实务沿用；仓库声明的
-  // 编码基准含 MANOPS-MET）。语义即更正报——与 COR 同义异位（COR 在类型词位、BBB 在时组后位），
-  // 消费并置 corrected；此前落 unknown-token，更正语义丢失（2026-09-14 复评：基准内形态未实现）
-  if (/^CC[A-Z]$/.test(peek()?.text ?? "")) {
-    corrected = true;
-    i += 1;
-  }
-
-  // —— NIL：台站无观测（FM15 代码形注 2 的 NIL 码词；§15.4 是 AUTO 条款）——最小形态：站名/时组凭据保留，正文组不解析（本就无正文），零告警
-  if (peek()?.text === "NIL") {
-    return compactIfEnabled({
-      kind,
-      raw,
-      nil: true,
-      station,
-      time,
-      flags: { auto, corrected },
-      cavok: false,
-      trends: [],
-      runwayStates: [],
-      remarks: [],
-      warnings,
+  if (windParsed.gustMissing === true) {
+    found.push({
+      code: "missing-expected",
+      severity: "info",
+      // 缺测电码双形态（G// 标准两位 / G/// 磨损三斜杠）直出原文
+      message: `阵风位缺测（${t.text}——G 后斜杠位缺测，组照常成立）`,
+      span: spanOf(t),
     });
   }
-
-  // —— 正文状态
-  let cavok = false;
-  let cavokSpan: Span | undefined;
-  let wind: Observed<WindGroup> | undefined;
-  let visibility: Observed<VisibilityGroup> | undefined;
-  // 脱离主导能见度的方向组被按主导收下的局部标记（见正文循环方向组分支注释；非 IR 字段）
-  let directionalAsPrimary = false;
-  let rvr: Observed<readonly RunwayVisualRange[]> | undefined;
-  const rvrList: RunwayVisualRange[] = [];
-  // 多组 RVR 的组级 span 首组至末组（与天气组同口径——单组 span 在各自元素上）
-  let rvrSpan: Span | undefined;
-  let weather: Observed<readonly WeatherGroup[]> | undefined;
-  const weatherList: WeatherGroup[] = [];
-  const recentList: WeatherGroup[] = [];
-  let clouds: CloudCondition | undefined;
-  let cloudSeen = false;
-  const cloudElements: CloudElement[] = [];
-  let clearCode: CloudCondition["clear"];
-  let temperature: TemperatureReading | undefined;
-  let dewpoint: TemperatureReading | undefined;
-  let altimeter: AltimeterReading | undefined;
-  // 双气压组口径（tolerant 惯例）：末组为准（保持既有 last-wins 行为），重复组追加 info 告警不静默
-  let altimeterSeen = false;
-  const setAltimeter = (reading: AltimeterReading): void => {
-    if (altimeterSeen) {
-      dupGroupWarning("气压组", altimeter?.span, reading.span);
-    }
-    altimeterSeen = true;
-    altimeter = reading;
-  };
-  const trends: TrendGroup[] = [];
-  const runwayStates: RunwayStateGroup[] = [];
-  const remarks: RemarkGroup[] = [];
-  // 重复组口径（与双气压组同款 tolerant 惯例）：末组为准（保持既有 last-wins 行为），
-  // 重复组出声不静默——专用码 duplicate-group（2026-09-15 五角色评测定案：此前借用
-  // cross-check-conflict+info，消费方无法按「重复」分流；severity 升 warning）。
-  // 前值后值原文都进 message：last-wins 会覆盖 IR 里的前值 span，前值唯一可回溯通道就是这条告警
-  const dupGroupWarning = (
-    label: string,
-    prevSpan: Span | undefined,
-    newSpan: Span | undefined,
-  ): void => {
-    const prevText =
-      prevSpan === undefined ? `（原${label}）` : raw.slice(prevSpan.start, prevSpan.end);
-    const newText = newSpan === undefined ? label : raw.slice(newSpan.start, newSpan.end);
-    warnings.push({
-      code: "duplicate-group",
-      severity: "warning",
-      message: `重复${label}（前值 ${prevText}，后值 ${newText}）——报文只应有一组${label}，以末组为准，前值经原文回溯`,
-      span: newSpan,
+  if (wg.variable && wg.variation !== undefined) {
+    const vs = wg.variation.span;
+    found.push({
+      code: "cross-check-conflict",
+      severity: "info",
+      message: `静风变向（VRB）与风向变化组（${
+        vs === undefined ? "" : raw.slice(vs.start, vs.end)
+      }）并存——VRB 本义方向不定，变化组冗余，报文自洽性存疑`,
+      span: vs,
     });
-  };
-  // 趋势段收口可观测性：R 组收口（RVR/跑道状态不属趋势要素）沿用既有口径出声；
-  // 其余非趋势组收口（温露/QNH/WS/TX/TN/RVRNO/无法认领 token 等——2026-09-14 收窄新增）
-  // 同样出声 info：该组交回正文循环认组（typed 语义无损恢复，冲突自然触发重复组告警），
-  // 但趋势语境存疑须可观测——不静默。RMK/RMK 粘连与趋势指示组切换（含粘连形
-  // BECMGAT0130——它本身就是趋势指示组，下一步由正文粘连分支认领）、以及规范报尾位 $
-  // （FMH-1：$ 为整报最后一组，趋势段后随 $ 属规范位置）不出声（2026-09-14 独立复评补豁免）。
-  const trendCloseWarning = (): void => {
-    const btTok = tokens[i];
-    const bt = btTok?.text;
-    if (bt === undefined || btTok === undefined) return;
-    if (TREND_KINDS.has(bt) || bt.startsWith("RMK") || bt === "$") return;
-    if (/^(BECMG|TEMPO)(AT|TL|FM)\d{4}$/.test(bt)) return; // 粘连指示组：由正文粘连分支认领
-    if (/^R(\d{2}[RLC]?\/|\/SNOCLO$)/.test(bt)) {
-      warnings.push({
-        code: "invalid-format",
-        severity: "info",
-        message: `趋势段收口于 R 组（${bt}——RVR/跑道状态不属趋势要素，按正文组处理，趋势语境存疑）`,
-        span: spanOf(btTok),
-      });
-      return;
+  }
+  return { wind: { kind: "value", value: wg, span: spanOf(t) }, warnings: found };
+}
+
+/** 能见度组落位（原正文循环能见度分支内联块）：方向组挂靠/脱离主导、缺测不顶替在场值、
+ *  零分母 invalid 判缺测、ok 落值——返回新的（visibility, directionalAsPrimary）二元组。 */
+function applyVisibilityToken(
+  t: Token,
+  visParsed: VisibilityResult,
+  state: { visibility: Observed<VisibilityGroup> | undefined; directionalAsPrimary: boolean },
+  raw: string,
+  warnings: ParseWarning[],
+): { visibility: Observed<VisibilityGroup> | undefined; directionalAsPrimary: boolean } {
+  const visibility = state.visibility;
+  const directionalAsPrimary = state.directionalAsPrimary;
+  // 最低能见度方向组（WMO 15.6.2）：挂到已存主导能见度（非重复组不出 duplicate 告警）；
+  // 脱离主导能见度单独出现属非规范形态——按能见度收下 + info 出声。
+  // directionalAsPrimary = 脱离主导的方向组被按主导收下（非规范状态，解析器局部标记）——
+  // 其后再来的方向组是「连挂第二枚」（1200NW 1200NE），同样出声不静默
+  //（2026-09-14 独立复评补齐：此前连挂时第二枚静默覆写第一枚）
+  if (visParsed.kind === "directional") {
+    if (visibility?.kind === "value") {
+      if (visibility.value.minimum !== undefined || directionalAsPrimary) {
+        warnDuplicateGroup(
+          raw,
+          warnings,
+          "最低能见度方向组",
+          visibility.value.minimum?.span,
+          spanOf(t),
+        );
+      }
+      return {
+        visibility: {
+          kind: "value",
+          value: {
+            ...visibility.value,
+            minimum: {
+              value: visParsed.group.value,
+              direction: visParsed.group.direction,
+              span: visParsed.group.span,
+            },
+          },
+          span: visibility.span,
+        },
+        directionalAsPrimary,
+      };
     }
     warnings.push({
       code: "invalid-format",
       severity: "info",
-      message: `趋势段收口于非趋势组（${bt}——不属趋势要素族，交回正文认组，趋势语境存疑）`,
-      span: spanOf(btTok),
+      message: `最低能见度方向组脱离主导能见度（${t.text}）——按能见度收下`,
+      span: spanOf(t),
     });
-  };
-  // 趋势段收组：仅封闭清单内 token 收进 collected（判据见 isTrendCollectible），其余留在
-  // tokens[i] 交回正文循环——三处收集入口（指示组/粘连/裸时段词）共用一份循环防漂移
-  const collectTrendTokens = (collected: Token[]): void => {
-    for (;;) {
-      const inner = tokens[i];
-      if (inner === undefined || !isTrendCollectible(inner, tokens[i + 1])) break;
-      collected.push(inner);
-      i += 1;
-    }
-  };
-  // CAVOK 三面交叉校验（能见度/天气/云）。词位时对「前序」组校验；正文循环收口后对「后续」
-  // 组再校验——CAVOK 让位发生在词位，其后再出现的矛盾组此前静默并存（CAVOK BKN012 形态）。
-  // 判据词位/词后完全一致：确定矛盾才告警（下界编码/真值天气/低云或对流云；缺测云高不判）。
-  // 告警 span 统一指 CAVOK 词位（既有契约：矛盾双方中「主张」所在）。
-  const cavokConflicts = (whenLabel: string): void => {
-    const at = cavokSpan;
-    if (visibility?.kind === "value") {
-      const g = visibility.value;
-      const meters = g.unit === "m" ? g.value : g.value * 1609.344;
-      const visRaw =
-        visibility.span === undefined
-          ? `${g.value} ${g.unit}`
-          : raw.slice(visibility.span.start, visibility.span.end);
-      const definitelyBelow =
-        g.beyond === "below" ||
-        (g.unit === "sm" && visRaw.startsWith("M")) ||
-        (g.exact && meters < 10_000);
-      if (definitelyBelow) {
-        warnings.push({
-          code: "cross-check-conflict",
-          severity: "warning",
-          message: `CAVOK 与${whenLabel}能见度组矛盾（${visRaw}，CAVOK 语义要求 ≥10km）——让位照旧，报文自洽性存疑`,
-          span: at,
-        });
-      }
-    }
-    if (weatherList.length > 0) {
-      const wxRaw = weatherList
-        .map(
-          (g) =>
-            `${g.proximity ? "VC" : ""}${g.intensity ?? ""}${g.descriptor ?? ""}${g.phenomena.join("")}`,
-        )
-        .join(" ");
-      warnings.push({
-        code: "cross-check-conflict",
-        severity: "warning",
-        message: `CAVOK 与${whenLabel}天气组矛盾（${wxRaw}，CAVOK 语义要求无重要天气）——让位照旧，报文自洽性存疑`,
-        span: at,
-      });
-    }
-    if (rvr !== undefined && rvr.kind === "value") {
-      const rvrRaw = rvr.span === undefined ? "" : raw.slice(rvr.span.start, rvr.span.end);
-      warnings.push({
-        code: "cross-check-conflict",
-        severity: "warning",
-        message: `CAVOK 与${whenLabel}RVR 组矛盾（${rvrRaw}——AP-117 第 140 条：CAVOK 代替能见度、跑道视程、现在天气和云）——让位照旧，报文自洽性存疑`,
-        span: at,
-      });
-    }
-    const cloudConflict = cloudElements.some((e) => {
-      if (e.kind === "layer" && e.convective !== undefined) return true;
-      const h = e.heightFt.value;
-      return h !== null && h < 5_000;
-    });
-    if (cloudConflict) {
-      const cloudRaw = cloudElements
-        .map(
-          (e) =>
-            `${e.kind === "layer" ? (e.amount ?? "///") : "VV"}${
-              e.heightFt.value === null
-                ? "///"
-                : String(Math.round(e.heightFt.value / 100)).padStart(3, "0")
-            }${e.kind === "layer" ? (e.convective ?? "") : ""}`,
-        )
-        .join(" ");
-      warnings.push({
-        code: "cross-check-conflict",
-        severity: "warning",
-        message: `CAVOK 与${whenLabel}云组矛盾（${cloudRaw}，CAVOK 语义要求 5000ft 以下无云且无 CB/TCU）——让位照旧，报文自洽性存疑`,
-        span: at,
-      });
-    }
-  };
-  // 风切变组累积器（同报多组 WS 合一：runways 连接、span 首组至末组）
-  let windShear: WindShearGroup | undefined;
-  let wsRunways: string[] | undefined;
-  let wsAll = false;
-  let wsSpan: Span | undefined;
-
-  // —— 正文循环（RMK 交段外处理）
-  while (i < tokens.length) {
-    const t = tokens[i];
-    if (t === undefined) break;
-    const text = t.text;
-
-    if (text === "RMK") {
-      i += 1;
-      break;
-    }
-    // RMK 磨损粘连（RMKQFE749/0998 = RMK 与后组丢空格，fuzz 实弹 35/5 万例命中）：进 RMK 段
-    // 但不跳过 token 本身——由 RMK 段按认组粒度收下（多为 unknown，raw 保真不蒸发）
-    if (text.startsWith("RMK")) {
-      break;
-    }
-
-    // 趋势指示组：NOSIG / BECMG / TEMPO（吞到下一个指示组、RMK 或结尾）
-    if (TREND_KINDS.has(text)) {
-      const kindText = text;
-      const collected: Token[] = [t];
-      i += 1;
-      let period: TrendGroup["period"];
-      const periodTok = peek();
-      if (
-        kindText !== "NOSIG" &&
-        periodTok !== undefined &&
-        // 时段词双形态：AT/TL/FM+DDHH（WMO 306 FM15 §15.14.3）与 DDHH/DDHH 斜杠时段
-        //（ICAO Annex 3 模板 / 中国民航主流编法，2026-09-16 五方实测评测发现的缺失形态）
-        (/^(?:AT|FM|TL)\d{4}$/.test(periodTok.text) || /^\d{4}\/\d{4}$/.test(periodTok.text))
-      ) {
-        period = { text: periodTok.text, span: spanOf(periodTok) };
-        collected.push(periodTok);
-        i += 1;
-      }
-      // 收口语义见 isTrendCollectible：仅趋势合法要素族可收，其余收口交回正文（trendCloseWarning 出声）
-      collectTrendTokens(collected);
-      trendCloseWarning();
-      const elements =
-        kindText === "NOSIG"
-          ? undefined
-          : structureTrendElements(collected, period !== undefined ? 2 : 1);
-      trends.push({
-        kind: kindText === "NOSIG" ? "nosig" : kindText === "BECMG" ? "becmg" : "tempo",
-        period,
-        ...(elements !== undefined ? { elements } : {}),
-        raw: collected.map((c) => c.text).join(" "),
-        span: joinSpan(collected),
-      });
-      continue;
-    }
-
-    // 指示组缺失趋势段两形态——传输磨损所致（WMO 306 FM15 §15.14.3 时段词 AT/TL/FM 不得脱离指示组）：
-    // ①粘连——指示组与时段词丢空格（BECMGTL0350，IEM 归档实弹 10 次）：宽容拆分，语义完整可恢复；
-    // ②裸时段词——指示组整组丢失（Q1009 TL0730 …，IEM 归档实弹 128 次）：按 kind 'unspecified'
-    //   收段（要素组不再散落正文——尤其防趋势风组以 last-wins 覆盖正文真风组），告警标注指示组不可辨。
-    //   NOSIG 粘连不拆（NOSIG 语义上不配时段词）；标准位置的时段词已在上方指示组分支内消费，此处不重复触达。
-    if (
-      (text.length === 6 &&
-        (text.charCodeAt(0) === 65 || text.charCodeAt(0) === 84 || text.charCodeAt(0) === 70)) ||
-      text.startsWith("BECMG") ||
-      text.startsWith("TEMPO")
-    ) {
-      const fused = /^(BECMG|TEMPO)((?:AT|TL|FM)\d{4}|\d{4}\/\d{4})$/.exec(text);
-      if (fused !== null) {
-        const indicator = fused[1] ?? "";
-        const collected: Token[] = [t];
-        i += 1;
-        collectTrendTokens(collected);
-        trendCloseWarning();
-        const fusedElements = structureTrendElements(collected, 1);
-        trends.push({
-          kind: indicator === "BECMG" ? "becmg" : "tempo",
-          period: {
-            text: text.slice(indicator.length),
-            span: { start: t.start + indicator.length, end: t.end },
-          },
-          ...(fusedElements !== undefined ? { elements: fusedElements } : {}),
-          raw: collected.map((c) => c.text).join(" "),
-          span: joinSpan(collected),
-        });
-        warnings.push({
-          code: "invalid-format",
-          severity: "info",
-          message: `趋势指示组与时段词粘连（${text}——传输磨损丢空格，BECMG/TEMPO 与 AT/TL/FM 时段语义完整可恢复）`,
-          span: spanOf(t),
-        });
-        continue;
-      }
-      if (/^(AT|TL|FM)\d{4}$/.test(text)) {
-        const collected: Token[] = [t];
-        i += 1;
-        collectTrendTokens(collected);
-        trendCloseWarning();
-        const bareElements = structureTrendElements(collected, 1);
-        trends.push({
-          kind: "unspecified",
-          period: { text, span: spanOf(t) },
-          ...(bareElements !== undefined ? { elements: bareElements } : {}),
-          raw: collected.map((c) => c.text).join(" "),
-          span: joinSpan(collected),
-        });
-        warnings.push({
-          code: "invalid-format",
-          severity: "warning",
-          message: `趋势时段词缺指示组（${text}——§15.14.3 时段词须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨`,
-          span: spanOf(t),
-        });
-        continue;
-      }
-    }
-    // 裸斜杠时段词（1616/1618——ICAO Annex 3 模板 / 中国民航主流趋势时段编法，指示组缺失）：
-    // 与 AT/TL/FM 裸词同纪律——kind 'unspecified' 收段出声，要素组不再散落正文
-    //（2026-09-16 五方实测评测发现：此前该形态散落正文，趋势能见度以 last-wins 顶掉正文能见度）。
-    // 前置守卫（长度 9 + 第 5 字符为斜杠）保正文热路径不为逐 token 正则付费
-    if (text.length === 9 && text.charCodeAt(4) === 47 && /^\d{4}\/\d{4}$/.test(text)) {
-      const collected: Token[] = [t];
-      i += 1;
-      collectTrendTokens(collected);
-      trendCloseWarning();
-      const bareElements = structureTrendElements(collected, 1);
-      trends.push({
-        kind: "unspecified",
-        period: { text, span: spanOf(t) },
-        ...(bareElements !== undefined ? { elements: bareElements } : {}),
-        raw: collected.map((c) => c.text).join(" "),
-        span: joinSpan(collected),
-      });
-      warnings.push({
-        code: "invalid-format",
-        severity: "warning",
-        message: `趋势时段词缺指示组（${text}——ICAO Annex 3 模板趋势时段须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨`,
-        span: spanOf(t),
-      });
-      continue;
-    }
-
-    if (text === "CAVOK") {
-      cavok = true;
-      cavokSpan = spanOf(t);
-      // 交叉校验（三面：能见度/天气/云，判据见 cavokConflicts 注）——CAVOK 语义要求能见度
-      // ≥10km、无重要天气、5000ft 以下无云且无 CB/TCU；前序组确定矛盾即出声。
-      // 下界语义的编码（9999 ≥10km、P6SM >9.6km）与 CAVOK 相容不告警；M 前缀（小于下界）必矛盾。
-      // 让位契约照旧（vis/weather/cloud 三组让位），矛盾仅追加 cross-check-conflict 告警
-      cavokConflicts("前序");
-      // 契约（IR）：CAVOK = 能见度 ≥10km + 无低云 + 无天气，前序 vis/weather/cloud 三组让位为 undefined
-      // （让位是契约行为不发告警；词位以 cavokSpan 标记，前序组原码仍可从 raw 回溯）
-      visibility = undefined;
-      directionalAsPrimary = false;
-      weather = undefined;
-      weatherList.length = 0;
-      cloudSeen = false;
-      cloudElements.length = 0;
-      clearCode = undefined;
-      i += 1;
-      continue;
-    }
-
-    // E3 性能项——首字符位掩码分流：每轮按首字符一次 switch 得「可能匹配的分支」位集，
-    // 各分支先做一次位测试再进正则——不可能匹配的分支零正则尝试。分支相对顺序与原
-    // 全试链完全一致（行为等价由全量语料回放快照锁定）。可达首字符推导：
-    // 风 V/数字//；能见度 数字//M/P；RVRNO 与 R 组 R；天气 = 现象/描述符首字母
-    // （B D F G H I M P R S T U）+ -/+/V（VC）；裸 // 与云 /；云 F/S/B/O//；
-    // VV 与 VIS 的 V；晴空词 S/N/C；温露 M/数字//；QNH 的 Q；A 组的 A；维护符 $。
-    const mask = maskOf(text.charCodeAt(0));
-
-    // 风（含 /////KT 缺测与 260V050 变化组）
-    const windParsed = (mask & M_WIND) !== 0 ? parseWindToken(t, peek(1)) : null;
-    if (windParsed !== null) {
-      if (wind !== undefined) dupGroupWarning("风组", wind.span, spanOf(t));
-      if (windParsed === "missing") {
-        if (wind === undefined) {
-          wind = { kind: "missing", span: spanOf(t) };
-          warnings.push({
-            code: "missing-expected",
-            severity: "info",
-            // 全缺测 /////KT（自动站假报文形态）与部分缺测（180//KT 风速位缺）同口径出声
-            message: t.text.startsWith("/////")
-              ? "风组缺测（/////KT，疑似自动站假报文形态）"
-              : `风组缺测（${t.text}，风速位缺测）`,
-            span: spanOf(t),
-          });
-        }
-        // 已有风组时：缺测电码不顶替在场值（duplicate-group 已出声）——
-        // 零信息量的缺测码按 last-wins 覆盖真实观测是纯信息损失（2026-09-15 五角色评测批）
-        i += 1;
-      } else {
-        const wg = windParsed.group;
-        // 风速模板上限：三位数（≤199，WMO 15.5.6「100 单位以上以精确位数替代两位电码」注至
-        // 199；FMH-1 12.6.5.a「two or three digits」）——超 199 即非规范报文（270250KT 构造探针），
-        // 按 QNH 超界同款纪律整组不可信判缺测，绝不静默留假值。P 前缀超上限形态（P99KT）合法
-        // NaN 终结防线（终结断言，预期不可达）：任何数值入口产 NaN 即整组不可信判缺测。
-        // NaN 恰是现有防线的双重盲区——值域门 >199 对 NaN 恒 false、JSON.stringify 消 NaN 为
-        // null、fuzz 不变量（2026-09-14 实弹 G/// 之前）无有限性检查——故独立成支并配哨兵不变量
-        if (
-          !Number.isFinite(wg.speed.value) ||
-          (wg.gust !== undefined && !Number.isFinite(wg.gust.value))
-        ) {
-          wind = { kind: "missing", span: spanOf(t) };
-          warnings.push({
-            code: "value-out-of-range",
-            severity: "warning",
-            message: `风组解码出非有限值（${t.text}）——值不可信判缺测，原码经 span 回溯`,
-            span: spanOf(t),
-          });
-        } else if (wg.speed.value > 199 || (wg.gust?.value ?? 0) > 199) {
-          wind = { kind: "missing", span: spanOf(t) };
-          warnings.push({
-            code: "value-out-of-range",
-            severity: "warning",
-            message: `风速超出编码范围（${t.text}，三位数模板上限 199 ${wg.speed.unit}）——值不可信判缺测，原码经 span 回溯`,
-            span: spanOf(t),
-          });
-        } else {
-          wind = { kind: "value", value: wg, span: spanOf(t) };
-          for (const finding of windParsed.rangeFindings) {
-            warnings.push({
-              code: "value-out-of-range",
-              severity: "warning",
-              message: finding.message,
-              span: finding.span,
-            });
-          }
-          if (windParsed.gustMissing === true) {
-            warnings.push({
-              code: "missing-expected",
-              severity: "info",
-              // 缺测电码双形态（G// 标准两位 / G/// 磨损三斜杠）直出原文
-              message: `阵风位缺测（${t.text}——G 后斜杠位缺测，组照常成立）`,
-              span: spanOf(t),
-            });
-          }
-          if (wg.variable && wg.variation !== undefined) {
-            const vs = wg.variation.span;
-            warnings.push({
-              code: "cross-check-conflict",
-              severity: "info",
-              message: `静风变向（VRB）与风向变化组（${
-                vs === undefined ? "" : raw.slice(vs.start, vs.end)
-              }）并存——VRB 本义方向不定，变化组冗余，报文自洽性存疑`,
-              span: vs,
-            });
-          }
-        }
-        i += windParsed.consumed;
-      }
-      continue;
-    }
-
-    // 能见度（//// 显式缺测补 info 告警——对齐风/天气缺测口径；零分母判缺测补超界告警）
-    const visParsed = (mask & M_VIS) !== 0 ? parseVisibilityToken(t, peek(1)) : null;
-    if (visParsed !== null) {
-      // 最低能见度方向组（WMO 15.6.2）：挂到已存主导能见度（非重复组不出 duplicate 告警）；
-      // 脱离主导能见度单独出现属非规范形态——按能见度收下 + info 出声。
-      // directionalAsPrimary = 脱离主导的方向组被按主导收下（非规范状态，解析器局部标记）——
-      // 其后再来的方向组是「连挂第二枚」（1200NW 1200NE），同样出声不静默
-      //（2026-09-14 独立复评补齐：此前连挂时第二枚静默覆写第一枚）
-      if (visParsed.kind === "directional") {
-        if (visibility?.kind === "value") {
-          if (visibility.value.minimum !== undefined || directionalAsPrimary) {
-            dupGroupWarning("最低能见度方向组", visibility.value.minimum?.span, spanOf(t));
-          }
-          visibility = {
-            kind: "value",
-            value: {
-              ...visibility.value,
-              minimum: {
-                value: visParsed.group.value,
-                direction: visParsed.group.direction,
-                span: visParsed.group.span,
-              },
-            },
-            span: visibility.span,
-          };
-        } else {
-          visibility = {
-            kind: "value",
-            value: {
-              value: visParsed.group.value,
-              unit: "m",
-              exact: true,
-              span: visParsed.group.span,
-            },
-          };
-          directionalAsPrimary = true;
-          warnings.push({
-            code: "invalid-format",
-            severity: "info",
-            message: `最低能见度方向组脱离主导能见度（${t.text}）——按能见度收下`,
-            span: spanOf(t),
-          });
-        }
-        i += visParsed.consumed;
-        continue;
-      }
-      if (visibility !== undefined) dupGroupWarning("能见度组", visibility.span, spanOf(t));
-      if (visParsed.kind === "missing") {
-        if (visibility === undefined) {
-          visibility = { kind: "missing", span: spanOf(t) };
-          warnings.push({
-            code: "missing-expected",
-            severity: "info",
-            // 缺测电码两形态直出原文（//// 米制 / ////SM 英里制——加拿大自动站，RMK VIS MISG 佐证）
-            message: `能见度组缺测（${t.text}，无法观测能见度）`,
-            span: spanOf(t),
-          });
-        }
-        // 已有能见度组时：缺测电码不顶替在场值（duplicate-group 已出声）——
-        // 后位 ////（温露位畸形/错位落点）按 last-wins 把 9999 冲成 missing 是纯信息损失
-        //（2026-09-15 五角色评测批；WMO 正常报文能见度缺测只出现在能见度槽位，此形态仅见于错位/磨损报文）
-        directionalAsPrimary = false;
-        i += visParsed.consumed;
-        continue;
-      } else if (visParsed.kind === "invalid") {
-        visibility = { kind: "missing", span: visParsed.span };
-        directionalAsPrimary = false;
-        warnings.push({
-          code: "value-out-of-range",
-          severity: "warning",
-          message: visParsed.message,
-          span: visParsed.span,
-        });
-      } else {
-        visibility = { kind: "value", value: visParsed.group, span: visParsed.group.span };
-        directionalAsPrimary = false;
-      }
-      i += visParsed.consumed;
-      continue;
-    }
-
-    // RVRNO：RVR 设备存在但明示不可用（显式缺测，区别于组省略）。
-    // 正文位与 RMK 位行为统一（2026-09-15 方案一，专业判读定案）：一律进 remarks（kind
-    // 'rvr-no'）——站级状态声明 typed 可见，原正文位不留痕的双标消除；RVRNO 单独出现
-    //（此前无值组）仍 = rvr 显式缺测（既有 IR 契约不变）。
-    // 值组与 RVRNO 并存 = 自相矛盾形态（规范未定义并存）：值组按跑道级明细保留——具体
-    // 值组是逐道运行信息、可信度高于无道号的站级状态码（预报员/塔台标准判读；NWS 官方
-    // 解码器即「值组 + RVRNO 旗标并存不复算」），矛盾出声、文案描述矛盾本身不预言终态。
-    if ((mask & M_R) !== 0 && text === "RVRNO") {
-      if (rvr?.kind === "value") {
-        const prevText = rvr.span === undefined ? "" : raw.slice(rvr.span.start, rvr.span.end);
-        warnings.push({
-          code: "cross-check-conflict",
-          severity: "info",
-          message: `RVRNO（站级：应报而缺）与 RVR 值组并存（${prevText}）——矛盾形态，值组按跑道级明细保留，RVRNO 经 remarks/raw 可回溯`,
-          span: spanOf(t),
-        });
-      } else {
-        rvr = { kind: "missing", span: spanOf(t) };
-        warnings.push({
-          code: "missing-expected",
-          severity: "info",
-          message: "RVR 设备在但明示不可用（RVRNO）",
-          span: spanOf(t),
-        });
-      }
-      remarks.push({ kind: "rvr-no", raw: text, span: spanOf(t) });
-      i += 1;
-      continue;
-    }
-
-    // RVR 与跑道状态（同为 R 前缀组，先按 RVR 语法试解、再按跑道状态电码试解）
-    if ((mask & M_R) !== 0 && text.startsWith("R") && text.includes("/")) {
-      const rvrParsed = parseRvrToken(t);
-      if (rvrParsed !== null) {
-        // 反向次序对称口径：RVRNO 在前、值组在后同样出声（方案一：可解读为传感器恢复，
-        // 值组按明细保留——与正序矛盾并存同一文案口径，见 RVRNO 位注释）
-        if (rvr?.kind === "missing") {
-          const prevText = rvr.span === undefined ? "" : raw.slice(rvr.span.start, rvr.span.end);
-          warnings.push({
-            code: "cross-check-conflict",
-            severity: "info",
-            message: `RVRNO（站级：应报而缺）与后随 RVR 值组并存（${prevText}）——矛盾形态，值组按跑道级明细保留（可解读为传感器恢复），RVRNO 经 remarks/raw 可回溯`,
-            span: spanOf(t),
-          });
-        }
-        rvrList.push(rvrParsed);
-        const s = spanOf(t);
-        rvrSpan = rvrSpan === undefined ? s : { start: rvrSpan.start, end: s.end };
-        rvr = { kind: "value", value: [...rvrList], span: rvrSpan };
-        i += 1;
-        continue;
-      }
-      const runwayState = parseRunwayStateToken(t);
-      if (runwayState !== null) {
-        runwayStates.push(runwayState.group);
-        for (const finding of runwayState.findings) {
-          warnings.push({
-            code: "invalid-format",
-            severity: "warning",
-            message: finding.message,
-            span: finding.span,
-          });
-        }
-        i += 1;
-        continue;
-      }
-      // RVR 全斜杠缺测：R## + / + ////（分离符 + 四位值位斜杠 = 5 斜杠，标准缺测形态）。
-      // 依据：WMO 306 FM15 RVR 值位恒四位（VRVRVRVR），全斜杠即数值缺测（斜杠逐位填充的缺测惯例）；
-      // 4 斜杠（R10////）为磨损短一段——按缺测收下，另附 invalid-format info（tgftp/IEM 实弹均见）
-      const rvrSlash = /^R\d{2}[RLC]?(\/{4,5})$/.exec(text);
-      if (rvrSlash !== null) {
-        rvr = { kind: "missing", span: spanOf(t) };
-        warnings.push({
-          code: "missing-expected",
-          severity: "info",
-          message: `RVR 组缺测（${text}——跑道号在位、视程值位全斜杠）`,
-          span: spanOf(t),
-        });
-        if ((rvrSlash[1] ?? "").length === 4) {
-          warnings.push({
-            code: "invalid-format",
-            severity: "info",
-            message: `RVR 缺测段磨损（${text}——4 位斜杠对标准 5 位（分离符 + 四位值位），少一位；按缺测收下）`,
-            span: spanOf(t),
-          });
-        }
-        i += 1;
-        continue;
-      }
-    }
-
-    // 风切变组（WMO 306 FM15 §15.13.3 / ICAO Annex 3 模板）：标准形态 WS ALL RWY（全部跑道）
-    // 与 WS R##[RLC]（WS RDRDR，如 WS R24——IEM 归档实弹 544 次、中国区多发且为近月主流形态）。
-    // 中国区实务变体 WS RWY##[RLC]（RWY 前缀 + 设计器，教材常用）与 WS RWY ALL（词序倒置）
-    // 同样语义无损一等收下——四形态正文组（跑道状态之后、趋势之前）。
-    // 低空风切变对起降阶段是重大危害，IR 一等字段不蒸发。
-    if ((mask & M_WS_RWY) !== 0 && text === "WS") {
-      const rwyTok = peek(1);
-      const designator = rwyTok !== undefined ? /^RWY(\d{2}[RLC]?)$/.exec(rwyTok.text) : null;
-      const stdDesignator = rwyTok !== undefined ? /^R(\d{2}[RLC]?)$/.exec(rwyTok.text) : null;
-      // 全跑道两形态：标准 WS ALL RWY 与词序倒置变体 WS RWY ALL
-      const isAll =
-        (rwyTok?.text === "ALL" && peek(2)?.text === "RWY") ||
-        (rwyTok?.text === "RWY" && peek(2)?.text === "ALL");
-      if (designator !== null || isAll || stdDesignator !== null) {
-        const endTok = isAll ? peek(2) : rwyTok;
-        const startSpan = spanOf(t);
-        const endSpan = endTok !== undefined ? spanOf(endTok) : startSpan;
-        wsRunways ??= [];
-        if (designator !== null) wsRunways.push(designator[1] ?? "");
-        if (stdDesignator !== null) wsRunways.push(stdDesignator[1] ?? "");
-        if (isAll) wsAll = true;
-        wsSpan =
-          wsSpan === undefined
-            ? { start: startSpan.start, end: endSpan.end }
-            : { start: wsSpan.start, end: endSpan.end };
-        windShear = { runways: wsRunways, allRunways: wsAll, span: wsSpan };
-        i += isAll ? 3 : 2;
-        continue;
-      }
-    }
-
-    // 温度预告组（TAF TX/TN 混入 METAR 通路，IEM 归档实弹 26 次——中国区 TAF 行混入 METAR 流）：
-    // TX25/0907Z = 最高 25°C、09 日 07Z 到达（ICAO Annex 3 附录五温度预告组，M 前缀 = 负值）。
-    // 认组收下进 remarks（kind 'temperature-forecast'，raw 保真）——TAF 语义不属于 METAR 趋势段，
-    // 与既有 temp-extrema-6h/24h 同款认组粒度，不解码数值（RemarkGroup 无值槽，数值化留待后续 additive 扩展）
-    const txTnM = (mask & M_WEATHER) !== 0 ? /^(TX|TN)M?\d{2}\/\d{4}Z$/.exec(text) : null;
-    if (txTnM !== null) {
-      remarks.push({ kind: "temperature-forecast", raw: text, span: spanOf(t) });
-      i += 1;
-      continue;
-    }
-
-    // 天气组（RE 近期天气一并识别——不参与当前天气三态判定）
-    const weatherParsed =
-      (mask & M_WEATHER) !== 0 ? tryWeatherToken(t, weatherList, recentList) : false;
-    if (weatherParsed !== false) {
-      if (weatherParsed.outOfOrder) {
-        // 能完整切解但语序反常（描述符在现象之后，如 RATS）：按切解结果收下 + invalid-format 告警，
-        // 不静默也不拒收；完全无法切解的仍走下方 unknown-token
-        warnings.push({
-          code: "invalid-format",
-          severity: "warning",
-          message: `天气组语序不合电码表（${text}：描述符须先于现象）——已按切解结果收下`,
-          span: spanOf(t),
-        });
-      }
-      if (weatherParsed.signWithVc) {
-        // 强度符与 VC 并存（-VCTSRA 家族，NWS 自动站实弹）：互斥是明文条款（4678 限定槽
-        // 四选一、FAA AIM「Intensity and 'VC' will not appear together」），语义可无损恢复
-        //（强度+邻近+现象俱全）故容忍切解收下并出声——此前整体落 unknown-token 语义全丢
-        warnings.push({
-          code: "invalid-format",
-          severity: "info",
-          message: `强度符与 VC 邻近指示并存（${text}——强度符不与 VC 同组）——已按切解结果收下`,
-          span: spanOf(t),
-        });
-      }
-      if (weatherParsed.intensityMisuse === true) {
-        warnings.push({
-          code: "invalid-format",
-          severity: "info",
-          message:
-            weatherParsed.kind === "recent"
-              ? `RE 近期天气组带强度符（${text}——15.13.2.1 RE 组无强度位）——已收下`
-              : `强度符超适用面（${text}——表 4678 注 4：-/+ 仅限降水族，非降水唯 +SS/+FC/+DS）——已收下`,
-          span: spanOf(t),
-        });
-      }
-      i += 1;
-      continue;
-    }
-
-    // 裸 // 天气缺测组（自动站无法观测天气；IR 口径 = weather missing，绝不捏造也不吞进温度组）
-    if ((mask & M_WEATHER) !== 0 && text === "//") {
-      weather = { kind: "missing", span: spanOf(t) };
+    return {
+      visibility: {
+        kind: "value",
+        value: {
+          value: visParsed.group.value,
+          unit: "m",
+          exact: true,
+          span: visParsed.group.span,
+        },
+      },
+      directionalAsPrimary: true,
+    };
+  }
+  if (visibility !== undefined) {
+    warnDuplicateGroup(raw, warnings, "能见度组", visibility.span, spanOf(t));
+  }
+  if (visParsed.kind === "missing") {
+    // 已有能见度组时：缺测电码不顶替在场值（duplicate-group 已出声）——
+    // 后位 ////（温露位畸形/错位落点）按 last-wins 把 9999 冲成 missing 是纯信息损失
+    //（2026-09-15 五角色评测批；WMO 正常报文能见度缺测只出现在能见度槽位，此形态仅见于错位/磨损报文）
+    if (visibility === undefined) {
       warnings.push({
         code: "missing-expected",
         severity: "info",
-        message: "天气组缺测（//，无法观测天气）",
+        // 缺测电码两形态直出原文（//// 米制 / ////SM 英里制——加拿大自动站，RMK VIS MISG 佐证）
+        message: `能见度组缺测（${t.text}，无法观测能见度）`,
         span: spanOf(t),
       });
-      i += 1;
-      continue;
+      return { visibility: { kind: "missing", span: spanOf(t) }, directionalAsPrimary: false };
     }
-
-    // 云：云量位 /// 与云高 /// 双缺测形态（绝不捏造）
-    const cloudM = (mask & M_CLOUD) !== 0 ? CLOUD_LAYER_PATTERN.exec(text) : null;
-    if (cloudM !== null) {
-      cloudSeen = true;
-      const amountRaw = cloudM[1];
-      const heightRaw = cloudM[2];
-      const convectiveRaw = cloudM[3];
-      const typeMissing = cloudM[4] !== undefined;
-      const amountMissing = amountRaw === "///";
-      const heightMissing = heightRaw === "///";
-      if (heightMissing) {
-        warnings.push({
-          code: "missing-expected",
-          severity: "info",
-          message: "云高缺测（///），不捏造基高",
-          span: spanOf(t),
-        });
-      }
-      if (amountMissing) {
-        warnings.push({
-          code: "missing-expected",
-          severity: "info",
-          message: "云量位缺测（///），探测到云但云量无法观测",
-          span: spanOf(t),
-        });
-      }
-      if (typeMissing) {
-        warnings.push({
-          code: "missing-expected",
-          severity: "info",
-          message: "云型位缺测（///）",
-          span: spanOf(t),
-        });
-      }
-      cloudElements.push({
-        kind: "layer",
-        amount: amountRaw !== undefined && isCloudAmount(amountRaw) ? amountRaw : null,
-        heightFt: {
-          value:
-            heightRaw !== undefined && heightRaw !== "///"
-              ? Number.parseInt(heightRaw, 10) * 100
-              : null,
-          span: spanOf(t),
-        },
-        convective:
-          convectiveRaw !== undefined && isConvective(convectiveRaw) ? convectiveRaw : undefined,
-        span: spanOf(t),
-      });
-      i += 1;
-      continue;
-    }
-    const vvM = (mask & M_VV) !== 0 ? VV_PATTERN.exec(text) : null;
-    if (vvM !== null) {
-      cloudSeen = true;
-      const heightRaw = vvM[1];
-      if (heightRaw === undefined || heightRaw === "///") {
-        // 缺测电码形态才告警——合法数值组（VV002 = 垂直能见度 200ft）零告警
-        warnings.push({
-          code: "missing-expected",
-          severity: "info",
-          message:
-            heightRaw === "///"
-              ? "垂直能见度缺测（VV///，天空全遮蔽但垂直能见度不可测）"
-              : "垂直能见度缺测（VV，兼容形态）",
-          span: spanOf(t),
-        });
-      }
-      cloudElements.push({
-        kind: "vertical-visibility",
-        heightFt: {
-          value:
-            heightRaw === undefined || heightRaw === "///"
-              ? null
-              : Number.parseInt(heightRaw, 10) * 100,
-          span: spanOf(t),
-        },
-        span: spanOf(t),
-      });
-      i += 1;
-      continue;
-    }
-    if ((mask & M_SKY_CLEAR) !== 0 && isSkyClear(text)) {
-      cloudSeen = true;
-      clearCode = { code: text, span: spanOf(t) };
-      i += 1;
-      continue;
-    }
-
-    // 温度/露点
-    const tempParsed = (mask & M_TEMP) !== 0 ? parseTempDewToken(t) : null;
-    if (tempParsed !== null) {
-      const dupTemp = temperature !== undefined || dewpoint !== undefined;
-      if (dupTemp) dupGroupWarning("温度组", temperature?.span ?? dewpoint?.span, tempParsed.span);
-      // 已有温露组时：全缺测电码（/////）不顶替在场值（duplicate-group 已出声）——
-      // 零信息量形态覆盖真实观测是纯信息损失；带部分值的形态（如 12//）照常 last-wins
-      if (dupTemp && tempParsed.temperature === null && tempParsed.dewpoint === null) {
-        i += 1;
-        continue;
-      }
-      // 温度物理极值门（与 QNH 同款纪律）：超可信范围判缺测 + value-out-of-range，
-      // 绝不静默留假值；双侧同时超界合并为一条告警（M91/M95 不重复出声）；
-      // 显式缺测（//）另发 missing-expected，两告警互不替代
-      const rawTemp = tempParsed.temperature;
-      const rawDew = tempParsed.dewpoint;
-      const outOfRange = (r: TemperatureReading | null): boolean =>
-        r !== null && (r.celsius < TEMP_C_MIN || r.celsius > TEMP_C_MAX);
-      const outT = outOfRange(rawTemp);
-      const outD = outOfRange(rawDew);
-      if (outT || outD) {
-        const single = outT ? rawTemp : rawDew;
-        const span = outT && outD ? tempParsed.span : single?.span;
-        const shown = span === undefined ? `${TEMP_C_MIN}` : raw.slice(span.start, span.end);
-        warnings.push({
-          code: "value-out-of-range",
-          severity: "warning",
-          message: `温度超出可信范围（${shown}，合理区间 ${TEMP_C_MIN}–${TEMP_C_MAX}°C）——值不可信判缺测，原码经 span 回溯`,
-          span,
-        });
-      }
-      temperature = outT ? undefined : (rawTemp ?? undefined);
-      dewpoint = outD ? undefined : (rawDew ?? undefined);
-      if (rawTemp === null || rawDew === null) {
-        warnings.push({
-          code: "missing-expected",
-          severity: "info",
-          // 形态判别精确到正则（2026-09-14 独立复评收口：endsWith("/") 会把 12// 的标准
-          // 缺测与 12/// 的磨损形都误述为 24/ 形态）
-          message: /^M?\d{2}\/$/.test(t.text)
-            ? "露点位缺测（24/ 形态，FMH-1 12.6.10）"
-            : "温度/露点位缺测（//）",
-          span: tempParsed.span,
-        });
-      }
-      // 交叉校验：露点不可能高于温度（相对湿度 >100% 物理不可能）——典型传感器故障形态。
-      // 两组值照常保留（含 M 负值），矛盾交由告警呈现，绝不静默也不捏造
-      if (
-        temperature !== undefined &&
-        dewpoint !== undefined &&
-        temperature.celsius < dewpoint.celsius
-      ) {
-        warnings.push({
-          code: "cross-check-conflict",
-          severity: "warning",
-          message: `温度低于露点（${t.text}）——物理不可能，疑似传感器故障`,
-          span: tempParsed.span,
-        });
-      }
-      i += 1;
-      continue;
-    }
-
-    // 气压：Q（hPa）/ A（inHg，隐含小数点）；5 位数 QNH 与物理范围外值 = 脏值（Q10054 家族）
-    const qM = (mask & M_QNH) !== 0 ? /^Q(\d{4,5})$/.exec(text) : null;
-    if (qM !== null) {
-      const digits = qM[1] ?? "";
-      const hpa = Number.parseInt(digits, 10);
-      if (digits.length === 5 || hpa < QNH_HPA_MIN || hpa > QNH_HPA_MAX) {
-        altimeter = undefined;
-        warnings.push({
-          code: "value-out-of-range",
-          severity: "warning",
-          message: `QNH 超出可信范围（${text}，合理区间 ${QNH_HPA_MIN}–${QNH_HPA_MAX} hPa）——值不可信判缺测，原码经 span 回溯`,
-          span: spanOf(t),
-        });
-      } else {
-        setAltimeter({ value: hpa, unit: "hPa", span: spanOf(t) });
-      }
-      i += 1;
-      continue;
-    }
-    const aM = (mask & M_ALTIMETER_A) !== 0 ? /^A(\d{4})$/.exec(text) : null;
-    if (aM !== null) {
-      const inhg = Number.parseInt(aM[1] ?? "0", 10) / 100;
-      if (inhg < ALT_INHG_MIN || inhg > ALT_INHG_MAX) {
-        altimeter = undefined;
-        warnings.push({
-          code: "value-out-of-range",
-          severity: "warning",
-          message: `高度表设定超出可信范围（${text} → ${inhg} inHg，合理区间 ${ALT_INHG_MIN}–${ALT_INHG_MAX}）——值不可信判缺测，原码经 span 回溯`,
-          span: spanOf(t),
-        });
-      } else {
-        setAltimeter({ value: inhg, unit: "inHg", span: spanOf(t) });
-      }
-      i += 1;
-      continue;
-    }
-
-    // 变化能见度（FAA 正文位形态：主能见度组后跟「VIS 1/4V1/2」变化区间）——
-    // IR 建模为 RemarkKind 'variable-visibility'（不占 visibility 槽），与 RMK 段同族同 kind
-    if ((mask & M_VIS_RANGE) !== 0 && text === "VIS" && VIS_V_RANGE.test(peek(1)?.text ?? "")) {
-      const nextTok = peek(1);
-      if (nextTok !== undefined) {
-        remarks.push({
-          kind: "variable-visibility",
-          raw: `${text} ${nextTok.text}`,
-          span: { start: t.start, end: nextTok.end },
-        });
-        i += 2;
-        continue;
-      }
-    }
-
-    // 维护指示符（正文级孤例）
-    if ((mask & M_DOLLAR) !== 0 && text === "$") {
-      remarks.push({ kind: "maintenance", raw: "$", span: spanOf(t) });
-      i += 1;
-      continue;
-    }
-
-    // 不静默：看不懂的 token 进 warnings，绝不丢弃
+    return { visibility, directionalAsPrimary: false };
+  }
+  if (visParsed.kind === "invalid") {
     warnings.push({
-      code: "unknown-token",
+      code: "value-out-of-range",
+      severity: "warning",
+      message: visParsed.message,
+      span: visParsed.span,
+    });
+    return {
+      visibility: { kind: "missing", span: visParsed.span },
+      directionalAsPrimary: false,
+    };
+  }
+  return {
+    visibility: { kind: "value", value: visParsed.group, span: visParsed.group.span },
+    directionalAsPrimary: false,
+  };
+}
+
+/** 温度读数物理极值门（世界极值 ±裕量，与 QNH 世界极值门同款纪律）。 */
+const tempOutOfRange = (r: TemperatureReading | null): boolean =>
+  r !== null && (r.celsius < TEMP_C_MIN || r.celsius > TEMP_C_MAX);
+
+/** 温度/露点组落位（原正文循环温露分支内联块）：重复组告警、全缺测不顶替在场值、
+ *  物理极值门（双侧同超界合并一条告警）、显式缺测 info、温露倒挂 cross-check——
+ *  返回新的（temperature, dewpoint）二元组。 */
+function applyTempDewToken(
+  t: Token,
+  tempParsed: {
+    temperature: TemperatureReading | null;
+    dewpoint: TemperatureReading | null;
+    span: Span;
+  },
+  state: { temperature: TemperatureReading | undefined; dewpoint: TemperatureReading | undefined },
+  raw: string,
+  warnings: ParseWarning[],
+): { temperature: TemperatureReading | undefined; dewpoint: TemperatureReading | undefined } {
+  const temperature = state.temperature;
+  const dewpoint = state.dewpoint;
+  const dupTemp = temperature !== undefined || dewpoint !== undefined;
+  if (dupTemp) {
+    warnDuplicateGroup(
+      raw,
+      warnings,
+      "温度组",
+      temperature?.span ?? dewpoint?.span,
+      tempParsed.span,
+    );
+  }
+  // 已有温露组时：全缺测电码（/////）不顶替在场值（duplicate-group 已出声）——
+  // 零信息量形态覆盖真实观测是纯信息损失；带部分值的形态（如 12//）照常 last-wins
+  if (dupTemp && tempParsed.temperature === null && tempParsed.dewpoint === null) {
+    return { temperature, dewpoint };
+  }
+  // 温度物理极值门（与 QNH 同款纪律）：超可信范围判缺测 + value-out-of-range，
+  // 绝不静默留假值；双侧同时超界合并为一条告警（M91/M95 不重复出声）；
+  // 显式缺测（//）另发 missing-expected，两告警互不替代
+  const rawTemp = tempParsed.temperature;
+  const rawDew = tempParsed.dewpoint;
+  const outT = tempOutOfRange(rawTemp);
+  const outD = tempOutOfRange(rawDew);
+  if (outT || outD) {
+    const single = outT ? rawTemp : rawDew;
+    const span = outT && outD ? tempParsed.span : single?.span;
+    const shown = span === undefined ? `${TEMP_C_MIN}` : raw.slice(span.start, span.end);
+    warnings.push({
+      code: "value-out-of-range",
+      severity: "warning",
+      message: `温度超出可信范围（${shown}，合理区间 ${TEMP_C_MIN}–${TEMP_C_MAX}°C）——值不可信判缺测，原码经 span 回溯`,
+      span,
+    });
+  }
+  const gatedTemperature = outT ? undefined : (rawTemp ?? undefined);
+  const gatedDewpoint = outD ? undefined : (rawDew ?? undefined);
+  if (rawTemp === null || rawDew === null) {
+    warnings.push({
+      code: "missing-expected",
       severity: "info",
-      message: `未识别的组（${text}）——已如实收下`,
+      // 形态判别精确到正则（2026-09-14 独立复评收口：endsWith("/") 会把 12// 的标准
+      // 缺测与 12/// 的磨损形都误述为 24/ 形态）
+      message: /^M?\d{2}\/$/.test(t.text)
+        ? "露点位缺测（24/ 形态，FMH-1 12.6.10）"
+        : "温度/露点位缺测（//）",
+      span: tempParsed.span,
+    });
+  }
+  // 交叉校验：露点不可能高于温度（相对湿度 >100% 物理不可能）——典型传感器故障形态。
+  // 两组值照常保留（含 M 负值），矛盾交由告警呈现，绝不静默也不捏造
+  if (
+    gatedTemperature !== undefined &&
+    gatedDewpoint !== undefined &&
+    gatedTemperature.celsius < gatedDewpoint.celsius
+  ) {
+    warnings.push({
+      code: "cross-check-conflict",
+      severity: "warning",
+      message: `温度低于露点（${t.text}）——物理不可能，疑似传感器故障`,
+      span: tempParsed.span,
+    });
+  }
+  return { temperature: gatedTemperature, dewpoint: gatedDewpoint };
+}
+
+/** 趋势段收口出声（原 parse() 内 trendCloseWarning 闭包）：R 组收口（RVR/跑道状态不属趋势
+ *  要素）沿用既有口径出声；其余非趋势组收口（温露/QNH/WS/TX/TN/RVRNO/无法认领 token 等）
+ *  同样出声 info：该组交回正文循环认组（typed 语义无损恢复，冲突自然触发重复组告警），
+ *  但趋势语境存疑须可观测——不静默。RMK/RMK 粘连与趋势指示组切换（含粘连形
+ *  BECMGAT0130——它本身就是趋势指示组，下一步由正文粘连分支认领）、以及规范报尾位 $
+ *  （FMH-1：$ 为整报最后一组，趋势段后随 $ 属规范位置）不出声（2026-09-14 独立复评补豁免）。 */
+function warnTrendClose(tokens: readonly Token[], pos: number, warnings: ParseWarning[]): void {
+  const btTok = tokens[pos];
+  const bt = btTok?.text;
+  if (bt === undefined || btTok === undefined) return;
+  if (TREND_KINDS.has(bt) || bt.startsWith("RMK") || bt === "$") return;
+  if (/^(BECMG|TEMPO)(AT|TL|FM)\d{4}$/.test(bt)) return; // 粘连指示组：由正文粘连分支认领
+  if (/^R(\d{2}[RLC]?\/|\/SNOCLO$)/.test(bt)) {
+    warnings.push({
+      code: "invalid-format",
+      severity: "info",
+      message: `趋势段收口于 R 组（${bt}——RVR/跑道状态不属趋势要素，按正文组处理，趋势语境存疑）`,
+      span: spanOf(btTok),
+    });
+    return;
+  }
+  warnings.push({
+    code: "invalid-format",
+    severity: "info",
+    message: `趋势段收口于非趋势组（${bt}——不属趋势要素族，交回正文认组，趋势语境存疑）`,
+    span: spanOf(btTok),
+  });
+}
+
+/** 趋势段收组（原 parse() 内 collectTrendTokens 闭包）：仅封闭清单内 token 收进 collected
+ *  （判据见 isTrendCollectible），其余留在收口位置交回正文循环——三处收集入口
+ *  （指示组/粘连/裸时段词）共用一份循环防漂移；返回收口位置。 */
+function collectTrendSegment(tokens: readonly Token[], pos: number, collected: Token[]): number {
+  let idx = pos;
+  for (;;) {
+    const inner = tokens[idx];
+    if (inner === undefined || !isTrendCollectible(inner, tokens[idx + 1])) break;
+    collected.push(inner);
+    idx += 1;
+  }
+  return idx;
+}
+
+/** 趋势段构造（三形态共用尾半段：标准指示组/粘连/裸时段词分支）：要素结构化复用
+ *  structureTrendElements；NOSIG 不做要素结构化（原分支口径），elementsStart 为
+ *  结构化起始下标（跳过已收下的指示组/时段词 token）。 */
+function buildTrendGroup(
+  kind: TrendGroup["kind"],
+  period: TrendGroup["period"],
+  collected: readonly Token[],
+  elementsStart: number,
+): TrendGroup {
+  const elements = kind === "nosig" ? undefined : structureTrendElements(collected, elementsStart);
+  return {
+    kind,
+    period,
+    ...(elements !== undefined ? { elements } : {}),
+    raw: collected.map((c) => c.text).join(" "),
+    span: joinSpan(collected),
+  };
+}
+
+/** 云层组元素构造（原正文循环云层分支内联块）：云量/云高/云型缺测位告警随构造直出；
+ *  null = 非云层组形态。趋势段的云层构造为静默口径（structureTrendElements）——
+ *  两处行为刻意不同（正文出声、趋势保真静默），不合并。 */
+function cloudLayerElementOf(t: Token, warnings: ParseWarning[]): CloudElement | null {
+  const cloudM = CLOUD_LAYER_PATTERN.exec(t.text);
+  if (cloudM === null) return null;
+  const amountRaw = cloudM[1];
+  const heightRaw = cloudM[2];
+  const convectiveRaw = cloudM[3];
+  const typeMissing = cloudM[4] !== undefined;
+  const amountMissing = amountRaw === "///";
+  const heightMissing = heightRaw === "///";
+  if (heightMissing) {
+    warnings.push({
+      code: "missing-expected",
+      severity: "info",
+      message: "云高缺测（///），不捏造基高",
       span: spanOf(t),
     });
-    i += 1;
   }
+  if (amountMissing) {
+    warnings.push({
+      code: "missing-expected",
+      severity: "info",
+      message: "云量位缺测（///），探测到云但云量无法观测",
+      span: spanOf(t),
+    });
+  }
+  if (typeMissing) {
+    warnings.push({
+      code: "missing-expected",
+      severity: "info",
+      message: "云型位缺测（///）",
+      span: spanOf(t),
+    });
+  }
+  return {
+    kind: "layer",
+    amount: amountRaw !== undefined && isCloudAmount(amountRaw) ? amountRaw : null,
+    heightFt: {
+      value:
+        heightRaw !== undefined && heightRaw !== "///"
+          ? Number.parseInt(heightRaw, 10) * 100
+          : null,
+      span: spanOf(t),
+    },
+    convective:
+      convectiveRaw !== undefined && isConvective(convectiveRaw) ? convectiveRaw : undefined,
+    span: spanOf(t),
+  };
+}
 
-  // 当前天气组：仅有实组时给值；RE-only 报文 weather 保持 undefined（组省略 ≠ 缺测）
-  if (weatherList.length > 0) {
-    const first = weatherList[0];
-    const last = weatherList[weatherList.length - 1];
-    if (first !== undefined && last !== undefined) {
-      weather = {
-        kind: "value",
-        value: [...weatherList],
-        span:
-          first.span !== undefined && last.span !== undefined
-            ? { start: first.span.start, end: last.span.end }
-            : undefined,
-      };
+/** VV（垂直能见度）元素构造（原正文循环 VV 分支内联块）：缺测电码形态告警、合法数值组
+ *  （VV002 = 垂直能见度 200ft）零告警；null = 非 VV 组形态。 */
+function verticalVisibilityElementOf(t: Token, warnings: ParseWarning[]): CloudElement | null {
+  const vvM = VV_PATTERN.exec(t.text);
+  if (vvM === null) return null;
+  const heightRaw = vvM[1];
+  if (heightRaw === undefined || heightRaw === "///") {
+    warnings.push({
+      code: "missing-expected",
+      severity: "info",
+      message:
+        heightRaw === "///"
+          ? "垂直能见度缺测（VV///，天空全遮蔽但垂直能见度不可测）"
+          : "垂直能见度缺测（VV，兼容形态）",
+      span: spanOf(t),
+    });
+  }
+  return {
+    kind: "vertical-visibility",
+    heightFt: {
+      value:
+        heightRaw === undefined || heightRaw === "///"
+          ? null
+          : Number.parseInt(heightRaw, 10) * 100,
+      span: spanOf(t),
+    },
+    span: spanOf(t),
+  };
+}
+
+/** 风切变组识别（原正文循环 WS 分支内联块，四形态：WS ALL RWY / WS RWY ALL /
+ *  WS RWY##[RLC] / WS R##[RLC]）：返回识别出的跑道号（或全跑道旗标）、组 span 与消费
+ *  token 数；null = 非风切变组（正文循环继续后续分支）。多组累积（runways 连接、
+ *  span 首组至末组）由调用方合并。 */
+interface WindShearMatch {
+  readonly runway: string | null;
+  readonly all: boolean;
+  readonly span: Span;
+  readonly consumed: number;
+}
+
+function parseWindShearSequence(
+  t: Token,
+  tok1: Token | undefined,
+  tok2: Token | undefined,
+): WindShearMatch | null {
+  const designator = tok1 !== undefined ? /^RWY(\d{2}[RLC]?)$/.exec(tok1.text) : null;
+  const stdDesignator = tok1 !== undefined ? /^R(\d{2}[RLC]?)$/.exec(tok1.text) : null;
+  // 全跑道两形态：标准 WS ALL RWY 与词序倒置变体 WS RWY ALL
+  const isAll =
+    (tok1?.text === "ALL" && tok2?.text === "RWY") ||
+    (tok1?.text === "RWY" && tok2?.text === "ALL");
+  if (designator === null && stdDesignator === null && !isAll) return null;
+  const endTok = isAll ? tok2 : tok1;
+  const startSpan = spanOf(t);
+  const endSpan = endTok !== undefined ? spanOf(endTok) : startSpan;
+  return {
+    runway:
+      designator !== null
+        ? (designator[1] ?? "")
+        : stdDesignator !== null
+          ? (stdDesignator[1] ?? "")
+          : null,
+    all: isAll,
+    span: { start: startSpan.start, end: endSpan.end },
+    consumed: isAll ? 3 : 2,
+  };
+}
+
+/** RVRNO 落位（正文位，原正文循环 RVRNO 分支内联块）：与 RVR 值组并存 = 矛盾形态出声、
+ *  值组按跑道级明细保留；否则 rvr 显式缺测 + missing-expected；remarks 一律留痕 rvr-no。
+ *  返回新的 rvr 值。 */
+function applyRvrNoBodyToken(
+  t: Token,
+  rvr: Observed<readonly RunwayVisualRange[]> | undefined,
+  raw: string,
+  warnings: ParseWarning[],
+  remarks: RemarkGroup[],
+): Observed<readonly RunwayVisualRange[]> | undefined {
+  let next = rvr;
+  if (rvr?.kind === "value") {
+    const prevText = rvr.span === undefined ? "" : raw.slice(rvr.span.start, rvr.span.end);
+    warnings.push({
+      code: "cross-check-conflict",
+      severity: "info",
+      message: `RVRNO（站级：应报而缺）与 RVR 值组并存（${prevText}）——矛盾形态，值组按跑道级明细保留，RVRNO 经 remarks/raw 可回溯`,
+      span: spanOf(t),
+    });
+  } else {
+    warnings.push({
+      code: "missing-expected",
+      severity: "info",
+      message: "RVR 设备在但明示不可用（RVRNO）",
+      span: spanOf(t),
+    });
+    next = { kind: "missing", span: spanOf(t) };
+  }
+  remarks.push({ kind: "rvr-no", raw: t.text, span: spanOf(t) });
+  return next;
+}
+
+/** 反向次序矛盾出声（RVRNO 在前、值组在后，原 RVR 值组分支内联块）：可解读为传感器恢复，
+ *  值组按明细保留——与正序矛盾并存同一文案口径（见 applyRvrNoBodyToken 注释）。 */
+function warnRvrNoThenValues(
+  t: Token,
+  prevSpan: Span | undefined,
+  raw: string,
+  warnings: ParseWarning[],
+): void {
+  const prevText = prevSpan === undefined ? "" : raw.slice(prevSpan.start, prevSpan.end);
+  warnings.push({
+    code: "cross-check-conflict",
+    severity: "info",
+    message: `RVRNO（站级：应报而缺）与后随 RVR 值组并存（${prevText}）——矛盾形态，值组按跑道级明细保留（可解读为传感器恢复），RVRNO 经 remarks/raw 可回溯`,
+    span: spanOf(t),
+  });
+}
+
+/** RVR 全斜杠缺测（R##/#### 标准 5 斜杠与磨损 4 斜杠形态，原正文循环内联块）：判缺测 +
+ *  missing-expected（4 斜杠另附磨损 info）；null = 非本组形态。
+ *  依据：WMO 306 FM15 RVR 值位恒四位（VRVRVRVR），全斜杠即数值缺测（斜杠逐位填充的缺测惯例）。 */
+function applyRvrSlashToken(
+  t: Token,
+  warnings: ParseWarning[],
+): Observed<readonly RunwayVisualRange[]> | null {
+  const rvrSlash = /^R\d{2}[RLC]?(\/{4,5})$/.exec(t.text);
+  if (rvrSlash === null) return null;
+  warnings.push({
+    code: "missing-expected",
+    severity: "info",
+    message: `RVR 组缺测（${t.text}——跑道号在位、视程值位全斜杠）`,
+    span: spanOf(t),
+  });
+  if ((rvrSlash[1] ?? "").length === 4) {
+    warnings.push({
+      code: "invalid-format",
+      severity: "info",
+      message: `RVR 缺测段磨损（${t.text}——4 位斜杠对标准 5 位（分离符 + 四位值位），少一位；按缺测收下）`,
+      span: spanOf(t),
+    });
+  }
+  return { kind: "missing", span: spanOf(t) };
+}
+
+/** 当前天气三态收口（原正文循环后内联块）：仅有实组时给值；RE-only 报文 weather 保持
+ *  undefined（组省略 ≠ 缺测）；组级 span 首组至末组。 */
+function observedWeatherOf(
+  weatherList: readonly WeatherGroup[],
+): Observed<readonly WeatherGroup[]> | undefined {
+  if (weatherList.length === 0) return undefined;
+  const first = weatherList[0];
+  const last = weatherList[weatherList.length - 1];
+  if (first !== undefined && last !== undefined) {
+    return {
+      kind: "value",
+      value: [...weatherList],
+      span:
+        first.span !== undefined && last.span !== undefined
+          ? { start: first.span.start, end: last.span.end }
+          : undefined,
+    };
+  }
+  return undefined;
+}
+
+/** CAVOK 交叉校验的正文状态快照（cavokCrossCheck 入参，批 0.1 显式化）。 */
+interface CavokCrossCheckState {
+  readonly cavokSpan: Span | undefined;
+  readonly visibility: Observed<VisibilityGroup> | undefined;
+  readonly weatherList: readonly WeatherGroup[];
+  readonly rvr: Observed<readonly RunwayVisualRange[]> | undefined;
+  readonly cloudElements: readonly CloudElement[];
+}
+
+/** CAVOK 三面交叉校验（能见度/天气/云，原 parse() 内 cavokConflicts 闭包）。词位时对
+ *  「前序」组校验；正文循环收口后对「后续」组再校验——CAVOK 让位发生在词位，其后再出现
+ *  的矛盾组此前静默并存（CAVOK BKN012 形态）。判据词位/词后完全一致：确定矛盾才告警
+ *  （下界编码/真值天气/低云或对流云；缺测云高不判）。告警 span 统一指 CAVOK 词位
+ *  （既有契约：矛盾双方中「主张」所在）。 */
+function cavokCrossCheck(
+  state: CavokCrossCheckState,
+  whenLabel: string,
+  raw: string,
+  warnings: ParseWarning[],
+): void {
+  const at = state.cavokSpan;
+  const visibility = state.visibility;
+  if (visibility?.kind === "value") {
+    const g = visibility.value;
+    const meters = g.unit === "m" ? g.value : g.value * 1609.344;
+    const visRaw =
+      visibility.span === undefined
+        ? `${g.value} ${g.unit}`
+        : raw.slice(visibility.span.start, visibility.span.end);
+    const definitelyBelow =
+      g.beyond === "below" ||
+      (g.unit === "sm" && visRaw.startsWith("M")) ||
+      (g.exact && meters < 10_000);
+    if (definitelyBelow) {
+      warnings.push({
+        code: "cross-check-conflict",
+        severity: "warning",
+        message: `CAVOK 与${whenLabel}能见度组矛盾（${visRaw}，CAVOK 语义要求 ≥10km）——让位照旧，报文自洽性存疑`,
+        span: at,
+      });
     }
   }
-  if (cloudSeen) {
-    clouds = { elements: cloudElements, clear: clearCode };
-  }
-
-  // CAVOK 词后矛盾校验：词位让位后，其后新出现的能见度/天气/云组若与 CAVOK 语义确定矛盾，
-  // 此前静默并存——同三面判据出声（趋势段已被围栏隔离，不会流入此处的正文状态）
-  if (cavok) cavokConflicts("后续");
-
-  // 云组自洽（WMO 15.9.2 / 15.9.1）：VV 顶替整个云组、NSC/SKC/NCD/CLR 为无云电码——
-  // 与层组并存均互斥矛盾形态，出声不静默（规范外容错照旧收下）
-  const hasVvElement = cloudElements.some((e) => e.kind === "vertical-visibility");
-  const hasLayerElement = cloudElements.some((e) => e.kind === "layer");
-  if (hasVvElement && hasLayerElement) {
+  if (state.weatherList.length > 0) {
+    const wxRaw = state.weatherList
+      .map(
+        (g) =>
+          `${g.proximity ? "VC" : ""}${g.intensity ?? ""}${g.descriptor ?? ""}${g.phenomena.join("")}`,
+      )
+      .join(" ");
     warnings.push({
       code: "cross-check-conflict",
       severity: "warning",
-      message: "VV 组与云层组并存（WMO 15.9.2：VV 顶替整个云组）——报文自洽性存疑",
-      span: cloudElements[0]?.span,
+      message: `CAVOK 与${whenLabel}天气组矛盾（${wxRaw}，CAVOK 语义要求无重要天气）——让位照旧，报文自洽性存疑`,
+      span: at,
     });
   }
-  if (clearCode !== undefined && hasLayerElement) {
+  if (state.rvr !== undefined && state.rvr.kind === "value") {
+    const rvrRaw =
+      state.rvr.span === undefined ? "" : raw.slice(state.rvr.span.start, state.rvr.span.end);
     warnings.push({
       code: "cross-check-conflict",
       severity: "warning",
-      message: `${clearCode.code}（无云电码）与云层组并存——互斥形态，报文自洽性存疑`,
-      span: clearCode.span,
+      message: `CAVOK 与${whenLabel}RVR 组矛盾（${rvrRaw}——AP-117 第 140 条：CAVOK 代替能见度、跑道视程、现在天气和云）——让位照旧，报文自洽性存疑`,
+      span: at,
     });
   }
+  const cloudConflict = state.cloudElements.some((e) => {
+    if (e.kind === "layer" && e.convective !== undefined) return true;
+    const h = e.heightFt.value;
+    return h !== null && h < 5_000;
+  });
+  if (cloudConflict) {
+    const cloudRaw = state.cloudElements
+      .map(
+        (e) =>
+          `${e.kind === "layer" ? (e.amount ?? "///") : "VV"}${
+            e.heightFt.value === null
+              ? "///"
+              : String(Math.round(e.heightFt.value / 100)).padStart(3, "0")
+          }${e.kind === "layer" ? (e.convective ?? "") : ""}`,
+      )
+      .join(" ");
+    warnings.push({
+      code: "cross-check-conflict",
+      severity: "warning",
+      message: `CAVOK 与${whenLabel}云组矛盾（${cloudRaw}，CAVOK 语义要求 5000ft 以下无云且无 CB/TCU）——让位照旧，报文自洽性存疑`,
+      span: at,
+    });
+  }
+}
 
-  // —— RMK 段（认组粒度；未知 ≠ 错误，不进 warnings）
+/** RMK 段整体（原 parse() 内 RMK while 循环迁出）：认组粒度收下 FMH-1 附加信息与俄区
+ *  国家组，未知 ≠ 错误（不进 warnings，收 'unknown' remark）；RVRNO 在 RMK 位与正文位
+ *  同口径（并存矛盾出声、值组明细保留）。游标（tokens+start）与累加器（remarks/warnings）
+ *  显式传参；返回 rvr 终态与段末位置。 */
+function parseRemarkSegment(
+  tokens: readonly Token[],
+  start: number,
+  raw: string,
+  remarks: RemarkGroup[],
+  warnings: ParseWarning[],
+  rvrIn: Observed<readonly RunwayVisualRange[]> | undefined,
+): { rvr: Observed<readonly RunwayVisualRange[]> | undefined; next: number } {
+  let rvr = rvrIn;
+  let i = start;
   while (i < tokens.length) {
     const t = tokens[i];
     if (t === undefined) break;
@@ -2359,6 +1960,708 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
     }
     push("unknown");
   }
+  return { rvr, next: i };
+}
+
+// ---------------------------------------------------------------- 主入口
+
+/**
+ * Parse one METAR/SPECI report (tolerant mode) into the IR — the package's single entry.
+ * 解析单条 METAR/SPECI 报文（tolerant）为 IR——本包唯一入口。
+ *
+ * Throws MetarParseError (stable machine-readable `code`) on whole-report failure
+ * (non-string input / missing station / missing time / invalid time / unsupported mode); anything the
+ * parser does not recognize lands in `warnings[]` with its span — never dropped.
+ * 整体失败（输入非字符串/无站名/无时组/时组越界/未实现模式）抛 MetarParseError（code 稳定契约）；
+ * 看不懂的组带 span 进 warnings[]，绝不丢弃。
+ * @param raw - Report text, verbatim (kept on report.raw). 报文原文（原样保真于 report.raw）。
+ * @param options - See ParseOptions (kind override, compact spans). 见 ParseOptions（类型位注入、紧凑模式）。
+ */
+export function parse(raw: string, options?: ParseOptions): MetarReport {
+  // 紧凑模式（E1）：spans === false 时在出口以重建式剥除全部 span（见 compactNode 注释）
+  const compact = options?.spans === false;
+  const compactIfEnabled = <T>(report: T): T => (compact ? compactNode(report) : report);
+  // 输入校验：非字符串走 MetarParseError 稳定契约（code: "invalid-input"）——code 是
+  // 消费方分流的稳定面、EN_MESSAGES 查表英化的键，裸 Error 会同时绕过两者（此前为裸 Error）
+  if (typeof raw !== "string") {
+    throw new MetarParseError(
+      "invalid-input",
+      String(raw),
+      `parse 需要一个 METAR/SPECI 报文字符串，收到 ${raw === null ? "null" : typeof raw}`,
+    );
+  }
+  if ((options?.mode ?? "tolerant") === "strict") {
+    // 错误面契约：strict 留在类型上（路线图项），但 v0.1 未实现——调用方 catch 不漏接裸 Error
+    throw new MetarParseError(
+      "unsupported-mode",
+      raw,
+      "strict 模式尚未实现（v0.1 仅 tolerant）——请省略 mode 或显式传 'tolerant'",
+    );
+  }
+  const warnings: ParseWarning[] = [];
+  // 报尾 = 终结符剥离（GTS/AFTN 通路报文行以 = 定界，常粘连末组如 Q1006= / NOSIG=）——
+  // 仅剥尾部空白与 =，正文 token 偏移不变，span 仍对应原 raw（raw 保真含 =）。
+  // 末字符预判（E2 性能项）：语料大头无报尾，尾字符既非 = 也非空白时跳过整串正则——
+  // 预判用单字符 \s 测试（与 [\s=] 字符类完全同域，行为等价），省一次全文回溯扫描
+  const tail = raw.at(-1);
+  const body =
+    tail === undefined || tail === "=" || /\s/.test(tail) ? raw.replace(/[\s=]+$/, "") : raw;
+  const tokens = tokenize(body);
+  // 输入规模护栏（只告警不截断——截断破坏 raw 保真与「不丢弃」纪律）：语料单行最大 30 token，
+  // 上限 128 = 4 倍余量；超限报文照常完整解析，仅以一条聚合告警标记异常输入
+  //（span 缺省 = 报文级；整体失败路径不经过此处，失败契约不受影响）
+  const TOKEN_COUNT_LIMIT = 128;
+  if (tokens.length > TOKEN_COUNT_LIMIT) {
+    warnings.push({
+      code: "invalid-format",
+      severity: "warning",
+      message: `输入 token 数超上限（${tokens.length} > ${TOKEN_COUNT_LIMIT}）——按异常输入标记，解析照常完整，原文经 raw 保真`,
+    });
+  }
+  let i = 0;
+  const peek = (ahead = 0): Token | undefined => tokens[i + ahead];
+
+  const externalKind = options?.kind;
+  let kind: ReportKind = externalKind ?? "metar";
+  let corrected = false;
+  let auto = false;
+
+  // —— 头部：类型词 / COR（WMO 形态）/ 站名 / 时组 / AUTO / COR（美式时组后形态）
+  const head = peek();
+  if (head !== undefined && (head.text === "METAR" || head.text === "SPECI")) {
+    if (externalKind === undefined) kind = head.text === "SPECI" ? "speci" : "metar";
+    i += 1; // 类型词 token 无论由谁决定 kind 都要消费
+  }
+  if (peek()?.text === "COR") {
+    corrected = true;
+    i += 1;
+  }
+  // AMD（修订发布标志，部分 CAA 用于 METAR 标题位，TAF 更常见）：标题元数据词，
+  // 语义为「本报告取代此前发布」——消费之不进站名位；是否置 corrected 不越权代判
+  //（修订 ≠ 更正），IR 无 amended 位故仅放行不标注
+  if (peek()?.text === "AMD") {
+    i += 1;
+  }
+  const stTok = peek();
+  if (stTok === undefined || !/^[A-Z0-9]{4}$/.test(stTok.text)) {
+    // 契约：无站名组 = 整体解析失败（不是字段级三态）；code 是稳定契约，message 中文为权威
+    // 文案——英文经 @metweave/core EN_MESSAGES[code] 查表或渲染层 locale:"en" 切换
+    throw new MetarParseError(
+      "missing-station",
+      raw,
+      `无法识别站名组——输入不是 METAR/SPECI 报文（${stTok?.text ?? "空输入"}）`,
+    );
+  }
+  const station: string = stTok.text;
+  i += 1;
+  // CCA/CCB/CCC 与 COR 槽位磨损兜底（站名后/时组前——规范槽位：BBB 系列在时组后（见下方
+  // BBB 消费位）、COR 在类型词位（见报头 COR 位））：部分 feed 的更正标记出现在此槽——此前
+  // 直接 throw missing-time，「合法更正报整体失败」是最恶性失败模式。后随 token 为合法时组时
+  // 消费放行并置 corrected + 出声（槽位漂移本身须可观测——不静默，2026-09-14 独立复评补
+  // COR 对称缺口与出声）；后随非时组则照旧走 missing-time。已知留案：标记若出现在 AUTO
+  // 之前的其他相对序（如 CCA AUTO），AUTO 会落正文 unknown——语料无实证，暂不设防
+  const driftTok = peek();
+  if (driftTok !== undefined && /^(CC[A-Z]|COR)$/.test(driftTok.text)) {
+    const afterDrift = peek(1);
+    if (afterDrift !== undefined && /^\d{2}\d{2}\d{2}Z$/.test(afterDrift.text)) {
+      corrected = true;
+      i += 1;
+      warnings.push({
+        code: "invalid-format",
+        severity: "info",
+        message: `更正标记槽位漂移（${driftTok.text} 出现在站名后/时组前——已消费并置更正标志）`,
+        span: spanOf(driftTok),
+      });
+    }
+  }
+  const tmTok = peek();
+  const tm = tmTok !== undefined ? /^(\d{2})(\d{2})(\d{2})Z$/.exec(tmTok.text) : null;
+  if (tmTok === undefined || tm === null) {
+    throw new MetarParseError(
+      "missing-time",
+      raw,
+      `无法识别时组——输入不是完整的 METAR/SPECI 报文（${tmTok?.text ?? "时组缺失"}）`,
+    );
+  }
+  const time: MetarReport["time"] = {
+    day: Number.parseInt(tm[1] ?? "0", 10),
+    hour: Number.parseInt(tm[2] ?? "0", 10),
+    minute: Number.parseInt(tm[3] ?? "0", 10),
+  };
+  // 契约：时组为两态必填（无缺测形态，无 Observed）——数值越界即不可信时组，等同无效时组整体失败，
+  // 绝不把假值（日 99、时 24、分 60）留在 IR（同 Q10054 脏 QNH 的「值不可信」纪律，时组无处判缺测故整体失败）
+  if (time.day < 1 || time.day > 31 || time.hour > 23 || time.minute > 59) {
+    throw new MetarParseError(
+      "invalid-time",
+      raw,
+      `时组数值越界（${tmTok.text}：须日 01–31 / 时 00–23 / 分 00–59）——输入不是完整的 METAR/SPECI 报文`,
+    );
+  }
+  i += 1;
+  if (peek()?.text === "AUTO") {
+    auto = true;
+    i += 1;
+  }
+  if (peek()?.text === "COR") {
+    corrected = true;
+    i += 1;
+  }
+  // RRA/RRB/RRC 迟到报标记（AP-117-TM-01R2 第 21 条：报头时间组后）——标题元数据，消费放行
+  if (/^RR[ABC]$/.test(peek()?.text ?? "")) {
+    i += 1;
+  }
+  // CCA/CCB/CCC 更正指示符（WMO FM15 §1.3.3 BBB 系列：第一次更正 CCA、第二次 CCB 顺延；
+  // 规范槽位即本位——时组后。加拿大 NAV CANADA 明文采用，中国 AFTN 实务沿用；仓库声明的
+  // 编码基准含 MANOPS-MET）。语义即更正报——与 COR 同义异位（COR 在类型词位、BBB 在时组后位），
+  // 消费并置 corrected；此前落 unknown-token，更正语义丢失（2026-09-14 复评：基准内形态未实现）
+  if (/^CC[A-Z]$/.test(peek()?.text ?? "")) {
+    corrected = true;
+    i += 1;
+  }
+
+  // —— NIL：台站无观测（FM15 代码形注 2 的 NIL 码词；§15.4 是 AUTO 条款）——最小形态：站名/时组凭据保留，正文组不解析（本就无正文），零告警
+  if (peek()?.text === "NIL") {
+    return compactIfEnabled({
+      kind,
+      raw,
+      nil: true,
+      station,
+      time,
+      flags: { auto, corrected },
+      cavok: false,
+      trends: [],
+      runwayStates: [],
+      remarks: [],
+      warnings,
+    });
+  }
+
+  // —— 正文状态
+  let cavok = false;
+  let cavokSpan: Span | undefined;
+  let wind: Observed<WindGroup> | undefined;
+  let visibility: Observed<VisibilityGroup> | undefined;
+  // 脱离主导能见度的方向组被按主导收下的局部标记（见正文循环方向组分支注释；非 IR 字段）
+  let directionalAsPrimary = false;
+  let rvr: Observed<readonly RunwayVisualRange[]> | undefined;
+  const rvrList: RunwayVisualRange[] = [];
+  // 多组 RVR 的组级 span 首组至末组（与天气组同口径——单组 span 在各自元素上）
+  let rvrSpan: Span | undefined;
+  let weather: Observed<readonly WeatherGroup[]> | undefined;
+  const weatherList: WeatherGroup[] = [];
+  const recentList: WeatherGroup[] = [];
+  let clouds: CloudCondition | undefined;
+  let cloudSeen = false;
+  const cloudElements: CloudElement[] = [];
+  let clearCode: CloudCondition["clear"];
+  let temperature: TemperatureReading | undefined;
+  let dewpoint: TemperatureReading | undefined;
+  let altimeter: AltimeterReading | undefined;
+  // 双气压组口径（tolerant 惯例）：末组为准（保持既有 last-wins 行为），重复组追加 info 告警不静默
+  let altimeterSeen = false;
+  const trends: TrendGroup[] = [];
+  const runwayStates: RunwayStateGroup[] = [];
+  const remarks: RemarkGroup[] = [];
+  // 重复组口径（与双气压组同款 tolerant 惯例）：末组为准（保持既有 last-wins 行为），
+  // 重复组出声不静默——专用码 duplicate-group（2026-09-15 五角色评测定案：此前借用
+  // cross-check-conflict+info，消费方无法按「重复」分流；severity 升 warning）。
+  // 前值后值原文都进 message：last-wins 会覆盖 IR 里的前值 span，前值唯一可回溯通道就是这条告警
+  // 风切变组累积器（同报多组 WS 合一：runways 连接、span 首组至末组）
+  let windShear: WindShearGroup | undefined;
+  let wsRunways: string[] | undefined;
+  let wsAll = false;
+  let wsSpan: Span | undefined;
+
+  // —— 正文循环（RMK 交段外处理）
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (t === undefined) break;
+    const text = t.text;
+
+    if (text === "RMK") {
+      i += 1;
+      break;
+    }
+    // RMK 磨损粘连（RMKQFE749/0998 = RMK 与后组丢空格，fuzz 实弹 35/5 万例命中）：进 RMK 段
+    // 但不跳过 token 本身——由 RMK 段按认组粒度收下（多为 unknown，raw 保真不蒸发）
+    if (text.startsWith("RMK")) {
+      break;
+    }
+
+    // 趋势指示组：NOSIG / BECMG / TEMPO（吞到下一个指示组、RMK 或结尾）
+    if (TREND_KINDS.has(text)) {
+      const kindText = text;
+      const collected: Token[] = [t];
+      i += 1;
+      let period: TrendGroup["period"];
+      const periodTok = peek();
+      if (
+        kindText !== "NOSIG" &&
+        periodTok !== undefined &&
+        // 时段词双形态：AT/TL/FM+DDHH（WMO 306 FM15 §15.14.3）与 DDHH/DDHH 斜杠时段
+        //（ICAO Annex 3 模板 / 中国民航主流编法，2026-09-16 五方实测评测发现的缺失形态）
+        (/^(?:AT|FM|TL)\d{4}$/.test(periodTok.text) || /^\d{4}\/\d{4}$/.test(periodTok.text))
+      ) {
+        period = { text: periodTok.text, span: spanOf(periodTok) };
+        collected.push(periodTok);
+        i += 1;
+      }
+      // 收口语义见 isTrendCollectible：仅趋势合法要素族可收，其余收口交回正文（warnTrendClose 出声）
+      i = collectTrendSegment(tokens, i, collected);
+      warnTrendClose(tokens, i, warnings);
+      trends.push(
+        buildTrendGroup(
+          kindText === "NOSIG" ? "nosig" : kindText === "BECMG" ? "becmg" : "tempo",
+          period,
+          collected,
+          period !== undefined ? 2 : 1,
+        ),
+      );
+      continue;
+    }
+
+    // 指示组缺失趋势段两形态——传输磨损所致（WMO 306 FM15 §15.14.3 时段词 AT/TL/FM 不得脱离指示组）：
+    // ①粘连——指示组与时段词丢空格（BECMGTL0350，IEM 归档实弹 10 次）：宽容拆分，语义完整可恢复；
+    // ②裸时段词——指示组整组丢失（Q1009 TL0730 …，IEM 归档实弹 128 次）：按 kind 'unspecified'
+    //   收段（要素组不再散落正文——尤其防趋势风组以 last-wins 覆盖正文真风组），告警标注指示组不可辨。
+    //   NOSIG 粘连不拆（NOSIG 语义上不配时段词）；标准位置的时段词已在上方指示组分支内消费，此处不重复触达。
+    if (
+      (text.length === 6 &&
+        (text.charCodeAt(0) === 65 || text.charCodeAt(0) === 84 || text.charCodeAt(0) === 70)) ||
+      text.startsWith("BECMG") ||
+      text.startsWith("TEMPO")
+    ) {
+      const fused = /^(BECMG|TEMPO)((?:AT|TL|FM)\d{4}|\d{4}\/\d{4})$/.exec(text);
+      if (fused !== null) {
+        const indicator = fused[1] ?? "";
+        const collected: Token[] = [t];
+        i += 1;
+        i = collectTrendSegment(tokens, i, collected);
+        warnTrendClose(tokens, i, warnings);
+        trends.push(
+          buildTrendGroup(
+            indicator === "BECMG" ? "becmg" : "tempo",
+            {
+              text: text.slice(indicator.length),
+              span: { start: t.start + indicator.length, end: t.end },
+            },
+            collected,
+            1,
+          ),
+        );
+        warnings.push({
+          code: "invalid-format",
+          severity: "info",
+          message: `趋势指示组与时段词粘连（${text}——传输磨损丢空格，BECMG/TEMPO 与 AT/TL/FM 时段语义完整可恢复）`,
+          span: spanOf(t),
+        });
+        continue;
+      }
+      if (/^(AT|TL|FM)\d{4}$/.test(text)) {
+        const collected: Token[] = [t];
+        i += 1;
+        i = collectTrendSegment(tokens, i, collected);
+        warnTrendClose(tokens, i, warnings);
+        trends.push(buildTrendGroup("unspecified", { text, span: spanOf(t) }, collected, 1));
+        warnings.push({
+          code: "invalid-format",
+          severity: "warning",
+          message: `趋势时段词缺指示组（${text}——§15.14.3 时段词须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨`,
+          span: spanOf(t),
+        });
+        continue;
+      }
+    }
+    // 裸斜杠时段词（1616/1618——ICAO Annex 3 模板 / 中国民航主流趋势时段编法，指示组缺失）：
+    // 与 AT/TL/FM 裸词同纪律——kind 'unspecified' 收段出声，要素组不再散落正文
+    //（2026-09-16 五方实测评测发现：此前该形态散落正文，趋势能见度以 last-wins 顶掉正文能见度）。
+    // 前置守卫（长度 9 + 第 5 字符为斜杠）保正文热路径不为逐 token 正则付费
+    if (text.length === 9 && text.charCodeAt(4) === 47 && /^\d{4}\/\d{4}$/.test(text)) {
+      const collected: Token[] = [t];
+      i += 1;
+      i = collectTrendSegment(tokens, i, collected);
+      warnTrendClose(tokens, i, warnings);
+      trends.push(buildTrendGroup("unspecified", { text, span: spanOf(t) }, collected, 1));
+      warnings.push({
+        code: "invalid-format",
+        severity: "warning",
+        message: `趋势时段词缺指示组（${text}——ICAO Annex 3 模板趋势时段须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨`,
+        span: spanOf(t),
+      });
+      continue;
+    }
+
+    if (text === "CAVOK") {
+      cavok = true;
+      cavokSpan = spanOf(t);
+      // 交叉校验（三面：能见度/天气/云，判据见 cavokCrossCheck 注）——CAVOK 语义要求能见度
+      // ≥10km、无重要天气、5000ft 以下无云且无 CB/TCU；前序组确定矛盾即出声。
+      // 下界语义的编码（9999 ≥10km、P6SM >9.6km）与 CAVOK 相容不告警；M 前缀（小于下界）必矛盾。
+      // 让位契约照旧（vis/weather/cloud 三组让位），矛盾仅追加 cross-check-conflict 告警
+      cavokCrossCheck(
+        { cavokSpan, visibility, weatherList, rvr, cloudElements },
+        "前序",
+        raw,
+        warnings,
+      );
+      // 契约（IR）：CAVOK = 能见度 ≥10km + 无低云 + 无天气，前序 vis/weather/cloud 三组让位为 undefined
+      // （让位是契约行为不发告警；词位以 cavokSpan 标记，前序组原码仍可从 raw 回溯）
+      visibility = undefined;
+      directionalAsPrimary = false;
+      weather = undefined;
+      weatherList.length = 0;
+      cloudSeen = false;
+      cloudElements.length = 0;
+      clearCode = undefined;
+      i += 1;
+      continue;
+    }
+
+    // E3 性能项——首字符位掩码分流：每轮按首字符一次 switch 得「可能匹配的分支」位集，
+    // 各分支先做一次位测试再进正则——不可能匹配的分支零正则尝试。分支相对顺序与原
+    // 全试链完全一致（行为等价由全量语料回放快照锁定）。可达首字符推导：
+    // 风 V/数字//；能见度 数字//M/P；RVRNO 与 R 组 R；天气 = 现象/描述符首字母
+    // （B D F G H I M P R S T U）+ -/+/V（VC）；裸 // 与云 /；云 F/S/B/O//；
+    // VV 与 VIS 的 V；晴空词 S/N/C；温露 M/数字//；QNH 的 Q；A 组的 A；维护符 $。
+    const mask = maskOf(text.charCodeAt(0));
+
+    // 风（含 /////KT 缺测与 260V050 变化组）
+    const windParsed = (mask & M_WIND) !== 0 ? parseWindToken(t, peek(1)) : null;
+    if (windParsed !== null) {
+      if (wind !== undefined) warnDuplicateGroup(raw, warnings, "风组", wind.span, spanOf(t));
+      if (windParsed === "missing") {
+        if (wind === undefined) {
+          wind = { kind: "missing", span: spanOf(t) };
+          warnings.push({
+            code: "missing-expected",
+            severity: "info",
+            // 全缺测 /////KT（自动站假报文形态）与部分缺测（180//KT 风速位缺）同口径出声
+            message: t.text.startsWith("/////")
+              ? "风组缺测（/////KT，疑似自动站假报文形态）"
+              : `风组缺测（${t.text}，风速位缺测）`,
+            span: spanOf(t),
+          });
+        }
+        // 已有风组时：缺测电码不顶替在场值（duplicate-group 已出声）——
+        // 零信息量的缺测码按 last-wins 覆盖真实观测是纯信息损失（2026-09-15 五角色评测批）
+        i += 1;
+      } else {
+        // 值域门（NaN 终结防线 / >199 上限 / 越界 findings / 阵风缺测 / VRB 变化组并存）
+        // 迁至 validateWindGroup——判据与告警顺序见其注释
+        const applied = validateWindGroup(t, windParsed, raw);
+        wind = applied.wind;
+        warnings.push(...applied.warnings);
+        i += windParsed.consumed;
+      }
+      continue;
+    }
+
+    // 能见度（//// 显式缺测补 info 告警——对齐风/天气缺测口径；零分母判缺测补超界告警）
+    const visParsed = (mask & M_VIS) !== 0 ? parseVisibilityToken(t, peek(1)) : null;
+    if (visParsed !== null) {
+      // 方向组挂靠/脱离主导、缺测不顶替在场值、零分母判缺测等落位规则迁至 applyVisibilityToken
+      const applied = applyVisibilityToken(
+        t,
+        visParsed,
+        { visibility, directionalAsPrimary },
+        raw,
+        warnings,
+      );
+      visibility = applied.visibility;
+      directionalAsPrimary = applied.directionalAsPrimary;
+      i += visParsed.consumed;
+      continue;
+    }
+
+    // RVRNO：RVR 设备存在但明示不可用（显式缺测，区别于组省略）。
+    // 正文位与 RMK 位行为统一（2026-09-15 方案一，专业判读定案）：一律进 remarks（kind
+    // 'rvr-no'）——站级状态声明 typed 可见，原正文位不留痕的双标消除；RVRNO 单独出现
+    //（此前无值组）仍 = rvr 显式缺测（既有 IR 契约不变）。
+    // 值组与 RVRNO 并存 = 自相矛盾形态（规范未定义并存）：值组按跑道级明细保留——具体
+    // 值组是逐道运行信息、可信度高于无道号的站级状态码（预报员/塔台标准判读；NWS 官方
+    // 解码器即「值组 + RVRNO 旗标并存不复算」），矛盾出声、文案描述矛盾本身不预言终态。
+    if ((mask & M_R) !== 0 && text === "RVRNO") {
+      rvr = applyRvrNoBodyToken(t, rvr, raw, warnings, remarks);
+      i += 1;
+      continue;
+    }
+
+    // RVR 与跑道状态（同为 R 前缀组，先按 RVR 语法试解、再按跑道状态电码试解）
+    if ((mask & M_R) !== 0 && text.startsWith("R") && text.includes("/")) {
+      const rvrParsed = parseRvrToken(t);
+      if (rvrParsed !== null) {
+        // 反向次序对称口径：RVRNO 在前、值组在后同样出声（方案一：可解读为传感器恢复，
+        // 值组按明细保留——与正序矛盾并存同一文案口径，见 RVRNO 位注释）
+        if (rvr?.kind === "missing") {
+          warnRvrNoThenValues(t, rvr.span, raw, warnings);
+        }
+        rvrList.push(rvrParsed);
+        const s = spanOf(t);
+        rvrSpan = rvrSpan === undefined ? s : { start: rvrSpan.start, end: s.end };
+        rvr = { kind: "value", value: [...rvrList], span: rvrSpan };
+        i += 1;
+        continue;
+      }
+      const runwayState = parseRunwayStateToken(t);
+      if (runwayState !== null) {
+        runwayStates.push(runwayState.group);
+        for (const finding of runwayState.findings) {
+          warnings.push({
+            code: "invalid-format",
+            severity: "warning",
+            message: finding.message,
+            span: finding.span,
+          });
+        }
+        i += 1;
+        continue;
+      }
+      // RVR 全斜杠缺测：R## + / + ////（分离符 + 四位值位斜杠 = 5 斜杠，标准缺测形态）。
+      // 4 斜杠（R10////）为磨损短一段——按缺测收下，另附 invalid-format info（tgftp/IEM 实弹均见）
+      const rvrMissing = applyRvrSlashToken(t, warnings);
+      if (rvrMissing !== null) {
+        rvr = rvrMissing;
+        i += 1;
+        continue;
+      }
+    }
+
+    // 风切变组（WMO 306 FM15 §15.13.3 / ICAO Annex 3 模板）：标准形态 WS ALL RWY（全部跑道）
+    // 与 WS R##[RLC]（WS RDRDR，如 WS R24——IEM 归档实弹 544 次、中国区多发且为近月主流形态）。
+    // 中国区实务变体 WS RWY##[RLC]（RWY 前缀 + 设计器，教材常用）与 WS RWY ALL（词序倒置）
+    // 同样语义无损一等收下——四形态正文组（跑道状态之后、趋势之前）。
+    // 低空风切变对起降阶段是重大危害，IR 一等字段不蒸发。
+    if ((mask & M_WS_RWY) !== 0 && text === "WS") {
+      const wsMatch = parseWindShearSequence(t, peek(1), peek(2));
+      if (wsMatch !== null) {
+        wsRunways ??= [];
+        if (wsMatch.runway !== null) wsRunways.push(wsMatch.runway);
+        if (wsMatch.all) wsAll = true;
+        wsSpan =
+          wsSpan === undefined ? wsMatch.span : { start: wsSpan.start, end: wsMatch.span.end };
+        windShear = { runways: wsRunways, allRunways: wsAll, span: wsSpan };
+        i += wsMatch.consumed;
+        continue;
+      }
+    }
+
+    // 温度预告组（TAF TX/TN 混入 METAR 通路，IEM 归档实弹 26 次——中国区 TAF 行混入 METAR 流）：
+    // TX25/0907Z = 最高 25°C、09 日 07Z 到达（ICAO Annex 3 附录五温度预告组，M 前缀 = 负值）。
+    // 认组收下进 remarks（kind 'temperature-forecast'，raw 保真）——TAF 语义不属于 METAR 趋势段，
+    // 与既有 temp-extrema-6h/24h 同款认组粒度，不解码数值（RemarkGroup 无值槽，数值化留待后续 additive 扩展）
+    const txTnMatch = (mask & M_WEATHER) !== 0 && TX_TN_PATTERN.test(text);
+    if (txTnMatch) {
+      remarks.push({ kind: "temperature-forecast", raw: text, span: spanOf(t) });
+      i += 1;
+      continue;
+    }
+
+    // 天气组（RE 近期天气一并识别——不参与当前天气三态判定）
+    const weatherParsed =
+      (mask & M_WEATHER) !== 0 ? tryWeatherToken(t, weatherList, recentList) : false;
+    if (weatherParsed !== false) {
+      if (weatherParsed.outOfOrder) {
+        // 能完整切解但语序反常（描述符在现象之后，如 RATS）：按切解结果收下 + invalid-format 告警，
+        // 不静默也不拒收；完全无法切解的仍走下方 unknown-token
+        warnings.push({
+          code: "invalid-format",
+          severity: "warning",
+          message: `天气组语序不合电码表（${text}：描述符须先于现象）——已按切解结果收下`,
+          span: spanOf(t),
+        });
+      }
+      if (weatherParsed.signWithVc) {
+        // 强度符与 VC 并存（-VCTSRA 家族，NWS 自动站实弹）：互斥是明文条款（4678 限定槽
+        // 四选一、FAA AIM「Intensity and 'VC' will not appear together」），语义可无损恢复
+        //（强度+邻近+现象俱全）故容忍切解收下并出声——此前整体落 unknown-token 语义全丢
+        warnings.push({
+          code: "invalid-format",
+          severity: "info",
+          message: `强度符与 VC 邻近指示并存（${text}——强度符不与 VC 同组）——已按切解结果收下`,
+          span: spanOf(t),
+        });
+      }
+      if (weatherParsed.intensityMisuse === true) {
+        warnings.push({
+          code: "invalid-format",
+          severity: "info",
+          message:
+            weatherParsed.kind === "recent"
+              ? `RE 近期天气组带强度符（${text}——15.13.2.1 RE 组无强度位）——已收下`
+              : `强度符超适用面（${text}——表 4678 注 4：-/+ 仅限降水族，非降水唯 +SS/+FC/+DS）——已收下`,
+          span: spanOf(t),
+        });
+      }
+      i += 1;
+      continue;
+    }
+
+    // 裸 // 天气缺测组（自动站无法观测天气；IR 口径 = weather missing，绝不捏造也不吞进温度组）
+    if ((mask & M_WEATHER) !== 0 && text === "//") {
+      weather = { kind: "missing", span: spanOf(t) };
+      warnings.push({
+        code: "missing-expected",
+        severity: "info",
+        message: "天气组缺测（//，无法观测天气）",
+        span: spanOf(t),
+      });
+      i += 1;
+      continue;
+    }
+
+    // 云：云量位 /// 与云高 /// 双缺测形态（绝不捏造）——缺测位告警随构造直出（cloudLayerElementOf）
+    const cloudElem = (mask & M_CLOUD) !== 0 ? cloudLayerElementOf(t, warnings) : null;
+    if (cloudElem !== null) {
+      cloudSeen = true;
+      cloudElements.push(cloudElem);
+      i += 1;
+      continue;
+    }
+    const vvElem = (mask & M_VV) !== 0 ? verticalVisibilityElementOf(t, warnings) : null;
+    if (vvElem !== null) {
+      cloudSeen = true;
+      cloudElements.push(vvElem);
+      i += 1;
+      continue;
+    }
+    if ((mask & M_SKY_CLEAR) !== 0 && isSkyClear(text)) {
+      cloudSeen = true;
+      clearCode = { code: text, span: spanOf(t) };
+      i += 1;
+      continue;
+    }
+
+    // 温度/露点
+    const tempParsed = (mask & M_TEMP) !== 0 ? parseTempDewToken(t) : null;
+    if (tempParsed !== null) {
+      // 重复组/物理极值门/缺测出声/温露倒挂等落位规则迁至 applyTempDewToken
+      const applied = applyTempDewToken(t, tempParsed, { temperature, dewpoint }, raw, warnings);
+      temperature = applied.temperature;
+      dewpoint = applied.dewpoint;
+      i += 1;
+      continue;
+    }
+
+    // 气压：Q（hPa）/ A（inHg，隐含小数点）；5 位数 QNH 与物理范围外值 = 脏值（Q10054 家族）
+    const qnhParsed = (mask & M_QNH) !== 0 ? parseQnhToken(t) : null;
+    if (qnhParsed !== null) {
+      if (qnhParsed.kind === "out-of-range") {
+        altimeter = undefined;
+        warnings.push({
+          code: "value-out-of-range",
+          severity: "warning",
+          message: qnhParsed.message,
+          span: qnhParsed.span,
+        });
+      } else {
+        ({ altimeter, altimeterSeen } = applyAltimeterReading(
+          altimeter,
+          altimeterSeen,
+          qnhParsed.reading,
+          raw,
+          warnings,
+        ));
+      }
+      i += 1;
+      continue;
+    }
+    const altAParsed = (mask & M_ALTIMETER_A) !== 0 ? parseAltimeterAToken(t) : null;
+    if (altAParsed !== null) {
+      if (altAParsed.kind === "out-of-range") {
+        altimeter = undefined;
+        warnings.push({
+          code: "value-out-of-range",
+          severity: "warning",
+          message: altAParsed.message,
+          span: altAParsed.span,
+        });
+      } else {
+        ({ altimeter, altimeterSeen } = applyAltimeterReading(
+          altimeter,
+          altimeterSeen,
+          altAParsed.reading,
+          raw,
+          warnings,
+        ));
+      }
+      i += 1;
+      continue;
+    }
+
+    // 变化能见度（FAA 正文位形态：主能见度组后跟「VIS 1/4V1/2」变化区间）——
+    // IR 建模为 RemarkKind 'variable-visibility'（不占 visibility 槽），与 RMK 段同族同 kind
+    if ((mask & M_VIS_RANGE) !== 0 && text === "VIS" && VIS_V_RANGE.test(peek(1)?.text ?? "")) {
+      const nextTok = peek(1);
+      if (nextTok !== undefined) {
+        remarks.push({
+          kind: "variable-visibility",
+          raw: `${text} ${nextTok.text}`,
+          span: { start: t.start, end: nextTok.end },
+        });
+        i += 2;
+        continue;
+      }
+    }
+
+    // 维护指示符（正文级孤例）
+    if ((mask & M_DOLLAR) !== 0 && text === "$") {
+      remarks.push({ kind: "maintenance", raw: "$", span: spanOf(t) });
+      i += 1;
+      continue;
+    }
+
+    // 不静默：看不懂的 token 进 warnings，绝不丢弃
+    warnings.push({
+      code: "unknown-token",
+      severity: "info",
+      message: `未识别的组（${text}）——已如实收下`,
+      span: spanOf(t),
+    });
+    i += 1;
+  }
+
+  // 当前天气组：仅有实组时给值；RE-only 报文 weather 保持 undefined（组省略 ≠ 缺测）——
+  // 组级 span 首组至末组的收口规则迁至 observedWeatherOf
+  weather = observedWeatherOf(weatherList) ?? weather;
+  if (cloudSeen) {
+    clouds = { elements: cloudElements, clear: clearCode };
+  }
+
+  // CAVOK 词后矛盾校验：词位让位后，其后新出现的能见度/天气/云组若与 CAVOK 语义确定矛盾，
+  // 此前静默并存——同三面判据出声（趋势段已被围栏隔离，不会流入此处的正文状态）
+  if (cavok) {
+    cavokCrossCheck(
+      { cavokSpan, visibility, weatherList, rvr, cloudElements },
+      "后续",
+      raw,
+      warnings,
+    );
+  }
+
+  // 云组自洽（WMO 15.9.2 / 15.9.1）：VV 顶替整个云组、NSC/SKC/NCD/CLR 为无云电码——
+  // 与层组并存均互斥矛盾形态，出声不静默（规范外容错照旧收下）
+  const hasVvElement = cloudElements.some((e) => e.kind === "vertical-visibility");
+  const hasLayerElement = cloudElements.some((e) => e.kind === "layer");
+  if (hasVvElement && hasLayerElement) {
+    warnings.push({
+      code: "cross-check-conflict",
+      severity: "warning",
+      message: "VV 组与云层组并存（WMO 15.9.2：VV 顶替整个云组）——报文自洽性存疑",
+      span: cloudElements[0]?.span,
+    });
+  }
+  if (clearCode !== undefined && hasLayerElement) {
+    warnings.push({
+      code: "cross-check-conflict",
+      severity: "warning",
+      message: `${clearCode.code}（无云电码）与云层组并存——互斥形态，报文自洽性存疑`,
+      span: clearCode.span,
+    });
+  }
+
+  // —— RMK 段（认组粒度；未知 ≠ 错误，不进 warnings）——段循环整体迁至 parseRemarkSegment
+  const rmk = parseRemarkSegment(tokens, i, raw, remarks, warnings, rvr);
+  rvr = rmk.rvr;
 
   return compactIfEnabled({
     kind,
