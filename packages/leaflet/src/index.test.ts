@@ -518,14 +518,16 @@ it("层②：弹窗接 renderTafCard（分段明细 + RAW 联动），展开时�
   });
   const marker = g.getLayers()[0];
   if (!(marker instanceof L.Marker)) throw new Error("应为 Marker");
-  const popupEl = marker.getPopup()?.getContent() as HTMLElement;
-  expect(popupEl.classList.contains("mw-taf-card")).toBe(true); // 卡即弹窗根,querySelector 不查自身
+  // 惰性弹窗（评测 P2-1）：内容在 popupopen 时渲染——openPopup 后从地图弹窗取卡
+  marker.openPopup();
+  const popupEl = map.getPane?.("popupPane")?.querySelector(".mw-taf-card") ?? null;
+  if (popupEl === null) throw new Error("弹窗未渲染卡片");
   expect(popupEl.querySelectorAll(".mw-taf-period").length).toBe(2); // 基况 + TEMPO（四轮后时间线条已移除）
   expect(popupEl.querySelector(".mw-taf-raw")).not.toBeNull(); // RAW 对照默认开
-  // 六轮：展开时刻入卡片「发布|预报」双列行（首段 p＝TEMPO 摘要行）
+  // 六轮：展开时刻入卡片「发布|查看时刻」双列行；七批：stationTitle 站名行（title 剥 ICAO 前缀）
   const metaRow = popupEl.querySelector(".mw-taf-meta-row");
-  expect(metaRow?.textContent ?? "").toContain("发布 25日 15:18");
-  expect(metaRow?.textContent ?? "").toContain("预报 25日21:00Z");
+  expect(metaRow?.textContent ?? "").toContain("发布 25日15:18Z");
+  expect(metaRow?.textContent ?? "").toContain("查看时刻 25日21:00Z");
   map.remove();
 });
 
@@ -550,6 +552,48 @@ it("层③：setTafLayerTime 全图换时刻（同一图层实例原地重建，
   await new Promise((r) => setTimeout(r, 20));
   expect(firstDot(g)).toContain("mw-dot-poor");
   expect(ctrl.querySelector("span")?.textContent ?? "").toContain("01日 12:00");
+  map.remove();
+});
+
+it("评测批 B：常显站码标签（zoom≥5）/card 透传/滑杆窗对齐+京时+aria-valuetext/换时刻不清弹窗", async () => {
+  const map = freshMap();
+  map.setZoom(6);
+  const raw = "TAF ZBAA 010340Z 0106/0206 17004MPS 9999 SCT030 BECMG 0110/0111 1200 -SN OVC008=";
+  const g = await addTafLayer(map, [{ report: parseTaf(raw), position: [40, 116] }], {
+    at: { day: 1, hour: 8, minute: 0 },
+    card: { raw: false },
+  });
+  // 站码标签随 icon 注入，缩放门控类由 zoomend 维护（zoom6 ≥5 → 不隐藏）
+  const iconHtml = (g.getLayers()[0] as L.Marker).getElement()?.innerHTML ?? "";
+  expect(iconHtml).toContain("mw-code-label");
+  expect(iconHtml).toContain("ZBAA");
+  expect(map.getContainer().classList.contains("mw-hide-codes")).toBe(false);
+  map.setZoom(4);
+  map.fire("zoomend");
+  expect(map.getContainer().classList.contains("mw-hide-codes")).toBe(true);
+  map.setZoom(6);
+  // card 透传：raw:false → 弹窗卡无 RAW 区
+  const marker = g.getLayers()[0] as L.Marker;
+  marker.openPopup();
+  const pane = map.getPane?.("popupPane");
+  expect(pane?.querySelector(".mw-taf-raw")).toBeNull();
+  // 换时刻不清弹窗：开着弹窗 setTafLayerTime → 同一弹窗元素在位、内容即时换
+  await setTafLayerTime(map, g, [{ report: parseTaf(raw), position: [40, 116] }], {
+    at: { day: 1, hour: 12, minute: 0 },
+    card: { raw: false },
+  });
+  const popupAfter = pane?.querySelector(".mw-taf-card");
+  expect(popupAfter).not.toBeNull();
+  expect(popupAfter?.textContent ?? "").toContain("查看时刻 01日12:00Z");
+  // 滑杆：窗对齐（0106→0206=24 格）+ aria-valuetext + 京时括注
+  const ctrl = createTafTimeControl(map, {
+    layer: g,
+    items: [{ report: parseTaf(raw), position: [40, 116] }],
+    layerOptions: { card: { raw: false } },
+  });
+  const input = ctrl.querySelector("input");
+  expect(input?.max).toBe("24");
+  expect(input?.getAttribute("aria-valuetext") ?? "").toContain("京");
   map.remove();
 });
 

@@ -751,6 +751,8 @@ export interface AddTafLayerOptions {
   anchorDays?: number;
   /** 点击站点时以弹窗展示预报摘要（缺省开启；层② 的完整 TAF 卡片在后续版本） */
   popup?: boolean;
+  /** renderTafCard 透传（raw/className/stationTitle/utcOffsetMinutes——宿主定制 TAF 卡；at 由图层按当前时刻注入） */
+  card?: Omit<RenderTafCardOptions, "locale" \| "at">;
 }
 
 const ADD_TAF_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
@@ -758,6 +760,7 @@ const ADD_TAF_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
   "at",
   "anchorDays",
   "popup",
+  "card",
 ]);
 
 /**
@@ -790,7 +793,108 @@ export async function addTafLayer(
   return group;
 }
 
-/** TAF 标记构建核心：addTafLayer 与 setTafLayerTime 共用（原地重建＝清层后重灌同一图层实例） */
+/** 常显站码标签样式（评测签派 P0-1：无站码＝「有红的看不出是谁红的」）；缩放门控类由 zoomend 维护 */
+const TAF_LAYER_STYLE_ID = "mw-taf-layer-style";
+const injectTafLayerStyle = (): void => {
+  if (document.getElementById(TAF_LAYER_STYLE_ID) !== null) return;
+  const style = document.createElement("style");
+  style.id = TAF_LAYER_STYLE_ID;
+  style.append(
+    document.createTextNode(
+      ".mw-code-label { position:absolute; left:15px; top:-3px; white-space:nowrap; font:600 10px/1.4 system-ui,sans-serif; color:#2c3e50; text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff; pointer-events:none; }" +
+        ".mw-hide-codes .mw-code-label { display:none; }",
+    ),
+  );
+  document.head.append(style);
+};
+const codeZoomBound = new WeakSet<Leaflet.Map>();
+/** zoom ≥ 5 常显 ICAO 码，低于则收（38 站全显互相压盖；评测签派 P0-1 的缩放分级折中） */
+const bindCodeZoom = (map: Leaflet.Map): void => {
+  if (codeZoomBound.has(map)) return;
+  codeZoomBound.add(map);
+  const container = map.getContainer();
+  const toggle = (): void => {
+    container.classList.toggle("mw-hide-codes", map.getZoom() < 5);
+  };
+  map.on("zoomend", toggle);
+  toggle();
+};
+
+/** 各层当前展开时刻（setTafLayerTime 换时刻不再清层重建——marker 原地 setIcon/setTooltipContent，评测工程 P2-1） */
+const tafLayerAt = new WeakMap<Leaflet.LayerGroup, TafExpandAt>();
+/** marker → 其 TafLayerItem（换时刻原地更新时的数据面） */
+const tafMarkerItems = new WeakMap<Leaflet.Marker, TafLayerItem>();
+
+/** 单站展开视觉态（首建与换时刻共用——tier/摘要/提示单一来源） */
+function tafMarkerState(
+  item: TafLayerItem,
+  at: TafExpandAt,
+  anchor: TafMonthAnchor,
+  locale: "zh" \| "en",
+): { tier: ConditionTier; label: string; summary: string; notes: string[] } {
+  const r = item.report;
+  const name = item.title ?? r.station;
+  const noTimeline = r.nil === true \|\| r.cancelled === true;
+  const v = r.validity;
+  let tier: ConditionTier = "unknown";
+  let summary = r.nil === true ? "缺报（NIL）" : r.cancelled === true ? "预报取消（CNL）" : "";
+  const notes: string[] = [];
+  if (!noTimeline && v !== undefined) {
+    const expansion = expandTaf(r, at, anchor);
+    tier = conditionOf(asConditionInput(expansion.conditions, false));
+    summary = summarizeTaf(expansion.conditions, locale);
+    if (expansion.uncertain)
+      notes.push(
+        locale === "en" ? "Transition band — timing uncertain" : "过渡带（变化时刻不确定）",
+      );
+    if (expansion.tempo !== undefined) {
+      const tempoSummary = summarizeTaf(
+        {
+          ...expansion.conditions,
+          ...expansion.tempo.conditions,
+          weather: expansion.tempo.conditions.weather ?? [],
+          cavok: expansion.tempo.conditions.cavok,
+        },
+        locale,
+      );
+      notes.push((locale === "en" ? "TEMPO bursts: " : "TEMPO 发作可能：") + tempoSummary);
+    }
+  } else if (v !== undefined) {
+    notes.push(`有效期 ${v.raw}`);
+  }
+  return {
+    tier,
+    label: `${name} · ${locale === "en" ? "Forecast " : "预报"}${TIER_WORDS[locale][tier]}`,
+    summary,
+    notes,
+  };
+}
+
+/** 点位 divIcon（含常显 ICAO 站码标签）与悬停 tooltip 内容 */
+function tafMarkerIcon(
+  L: typeof import("leaflet"),
+  item: TafLayerItem,
+  state: { tier: ConditionTier; label: string; summary: string; notes: string[] },
+): { icon: Leaflet.DivIcon; tip: HTMLElement } {
+  const name = item.title ?? item.report.station;
+  const marker = L.divIcon({
+    className: "mw-cond-icon",
+    html: `<span role="img" aria-label="${escapeHtml(state.label)}" class="mw-dot mw-dot-${state.tier}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${TIER_COLORS[state.tier]};border:2px solid #fff;box-shadow:0 0 2px rgba(0,0,0,.4)"></span><span class="mw-code-label" aria-hidden="true">${escapeHtml(item.report.station)}</span>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+  return { icon: marker, tip: tafTipContent(name, state) };
+}
+
+function tafTipContent(name: string, state: { summary: string; notes: string[] }): HTMLElement {
+  const tip = document.createElement("span");
+  tip.append(textCarrier(name));
+  if (state.summary !== "") tip.append(document.createElement("br"), textCarrier(state.summary));
+  for (const n of state.notes) tip.append(document.createElement("br"), textCarrier(n));
+  return tip;
+}
+
+/** TAF 标记构建核心：addTafLayer 首建用（标记构建 + 常显站码 + 惰性弹窗） */
 async function populateTafLayer(
   map: Leaflet.Map,
   group: Leaflet.LayerGroup,
@@ -802,73 +906,53 @@ async function populateTafLayer(
   const locale = options.locale ?? "zh";
   for (const item of items) {
     const r = item.report;
-    const name = item.title ?? r.station;
-
-    // NIL/CNL 不展开：灰 unknown 圆点 + 缺报/取消提示（对齐 METAR 侧 NIL 口径）
     const noTimeline = r.nil === true \|\| r.cancelled === true;
     const v = r.validity;
     const at: TafExpandAt = noTimeline
       ? { day: v?.startDay ?? 0, hour: v?.startHour ?? 0, minute: 0 }
       : (options.at ?? { day: v?.startDay ?? 0, hour: v?.startHour ?? 0, minute: 0 });
-
-    let tier: ConditionTier = "unknown";
-    let summary = r.nil === true ? "缺报（NIL）" : r.cancelled === true ? "预报取消（CNL）" : "";
-    let notes: string[] = [];
-    if (!noTimeline && v !== undefined) {
-      const expansion = expandTaf(r, at, anchor);
-      tier = conditionOf(asConditionInput(expansion.conditions, false));
-      summary = summarizeTaf(expansion.conditions, locale);
-      if (expansion.uncertain) {
-        notes.push(
-          locale === "en" ? "Transition band — timing uncertain" : "过渡带（变化时刻不确定）",
-        );
-      }
-      if (expansion.tempo !== undefined) {
-        const tempoSummary = summarizeTaf(
-          {
-            ...expansion.conditions,
-            ...expansion.tempo.conditions,
-            weather: expansion.tempo.conditions.weather ?? [],
-            cavok: expansion.tempo.conditions.cavok,
-          },
-          locale,
-        );
-        notes.push((locale === "en" ? "TEMPO bursts: " : "TEMPO 发作可能：") + tempoSummary);
-      }
-    } else if (v !== undefined) {
-      notes.push(`有效期 ${v.raw}`);
-    }
-
-    const label = `${name} · ${locale === "en" ? "Forecast " : "预报"}${TIER_WORDS[locale][tier]}`;
-    const marker = L.marker(item.position, {
-      icon: L.divIcon({
-        className: "mw-cond-icon",
-        html: `<span role="img" aria-label="${escapeHtml(label)}" class="mw-dot mw-dot-${tier}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${TIER_COLORS[tier]};border:2px solid #fff;box-shadow:0 0 2px rgba(0,0,0,.4)"></span>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
-      }),
-    });
-    const tip = document.createElement("span");
-    tip.append(textCarrier(`${name} · ${locale === "en" ? "Forecast" : "预报"}`));
-    if (summary !== "") tip.append(document.createElement("br"), textCarrier(summary));
-    for (const n of notes) tip.append(document.createElement("br"), textCarrier(n));
+    const state = tafMarkerState(item, at, anchor, locale);
+    const { icon, tip } = tafMarkerIcon(L, item, state);
+    const marker = L.marker(item.position, { icon });
+    tafMarkerItems.set(marker, item);
     marker.bindTooltip(tip);
 
     if (options.popup ?? true) {
-      // 层②起弹窗换 renderTafCard（时间线条 + 变化组清单 + 气温行；展开时刻摘要行置于卡前）
-      // RAW 对照置底 + 行↔原文组级联动；at＝展开时刻入卡片「发布\|预报」双列行（owner 六轮）
-      const card = renderTafCard(r, noTimeline ? { locale, raw: true } : { locale, raw: true, at });
-      if (notes.length > 0) {
-        const lead = document.createElement("p");
-        lead.style.margin = "0 0 4px";
-        lead.className = "mw-taf-meta";
-        for (const [i, n] of notes.entries()) {
-          if (i > 0) lead.append(document.createElement("br"));
-          lead.append(textCarrier(n));
+      // 惰性弹窗（评测工程 P2-1）：占位 DOM 只在 popupopen 时换真卡——滑杆换时刻不清层，重开即见新时刻卡
+      marker.bindPopup(document.createElement("div"), { maxWidth: 420 });
+      marker.on("popupopen", (e) => {
+        if (e.popup === undefined) return;
+        marker.closeTooltip();
+        const current = tafLayerAt.get(group) ?? at;
+        const cardOpts: RenderTafCardOptions = {
+          locale,
+          raw: true,
+          ...(noTimeline ? {} : { at: current }),
+          ...options.card,
+        };
+        if (cardOpts.stationTitle === undefined && item.title !== undefined) {
+          const stationName = item.title.startsWith(`${r.station} `)
+            ? item.title.slice(r.station.length + 1)
+            : undefined;
+          if (stationName !== undefined) cardOpts.stationTitle = stationName;
         }
-        card.prepend(lead);
-      }
-      marker.bindPopup(card, { maxWidth: 420 });
+        const card = renderTafCard(r, cardOpts);
+        if (state.notes.length > 0) {
+          const lead = document.createElement("p");
+          lead.style.margin = "0 0 4px";
+          lead.className = "mw-taf-meta";
+          for (const [i, n] of state.notes.entries()) {
+            if (i > 0) lead.append(document.createElement("br"));
+            lead.append(textCarrier(n));
+          }
+          card.prepend(lead);
+        }
+        e.popup.setContent(card);
+        const focusTarget = e.popup
+          .getElement()
+          ?.querySelector<HTMLElement>("a.leaflet-popup-close-button, button, [href]");
+        focusTarget?.focus();
+      });
     }
     marker.addTo(group);
   }
@@ -878,50 +962,87 @@ async function populateTafLayer(
       if (event.key === "Escape") map.closePopup();
     });
   }
+  injectTafLayerStyle();
+  bindCodeZoom(map);
+  // 层级当前时刻：仅显式 at 时设全局态；缺省各站自有效期起（弹窗回退 marker 自身 at）
+  if (options.at !== undefined) tafLayerAt.set(group, options.at);
 }
 
 // ---------------------------------------------------------------- TAF 时间轴（v0.2 渲染层③：全图统一时刻）
 
 /**
- * Re-expand every TAF marker in the layer at a new instant (in-place rebuild; pure-function
- * expansion, dozens of stations are sub-millisecond). The single-map time-scrub core.
- * 全图统一换时刻：整层按新时刻原地重建（展开是纯函数，几十站毫秒级）——地图级时间轴的功能核。
- * 层对象保持同一实例（图层引用不失效）；过渡带与 TEMPO 标注随新时刻更新。
+ * Re-expand every TAF marker at a new instant — in-place icon/tooltip update, no rebuild.
+ * 全图统一换时刻（评测工程 P2-1 瘦身版）：各标记原地 setIcon/setTooltipContent，不再清层重建——
+ * 换时刻不销毁已开弹窗（打开中的弹窗即时换内容）、无 DOM/监听器 churn（38 站滑杆拖动不再百卡重建）。
+ * 展开是纯函数、遍历同步，无 clearLayers/populate 竞态窗口（旧代际令牌机制随重建路径一并退役）。
  */
-/** 层级重建代际令牌：clearLayers 同步、populate 隔一个 await——同步连拨多次换时刻时，
- * 各次 clear 都清在空层上、随后多批 populate 叠加（demo 实测 38 站连拨三下变 114 点）。
- * 代际不符的旧调用在 await 后作废，末次拨动独占重建 */
-const tafLayerGen = new WeakMap<Leaflet.LayerGroup, object>();
-
 export async function setTafLayerTime(
   map: Leaflet.Map,
   layer: Leaflet.LayerGroup,
   items: readonly TafLayerItem[],
   options: AddTafLayerOptions = {},
 ): Promise<Leaflet.LayerGroup> {
-  const gen = {};
-  tafLayerGen.set(layer, gen);
-  layer.clearLayers();
+  void map;
+  void items; // 签名保留（公开 API 契约）：原地更新路径经 markerItems 拿数据，不再需要整表
   const L = await loadLeaflet();
-  if (tafLayerGen.get(layer) !== gen) return layer;
-  await populateTafLayer(map, layer, items, options, L);
+  const anchor: TafMonthAnchor = { daysIn: options.anchorDays ?? 31 };
+  const locale = options.locale ?? "zh";
+  const at = options.at ?? { day: 0, hour: 0, minute: 0 };
+  tafLayerAt.set(layer, at);
+  const openRefresh: Leaflet.Marker[] = [];
+  layer.eachLayer((ml) => {
+    if (!(ml instanceof L.Marker)) return; // 层内非 marker（弹窗代理等）跳过
+    const marker: Leaflet.Marker = ml;
+    const item = tafMarkerItems.get(marker);
+    if (item === undefined) return;
+    const r = item.report;
+    const noTimeline = r.nil === true \|\| r.cancelled === true;
+    const v = r.validity;
+    const own: TafExpandAt = noTimeline
+      ? { day: v?.startDay ?? 0, hour: v?.startHour ?? 0, minute: 0 }
+      : at;
+    const state = tafMarkerState(item, own, anchor, locale);
+    const { icon, tip } = tafMarkerIcon(L, item, state);
+    marker.setIcon(icon);
+    marker.setTooltipContent(tip);
+    if (marker.isPopupOpen()) openRefresh.push(marker);
+  });
+  // 已开弹窗即时换内容（重开等价——popupopen 惰性渲染，同一工厂）
+  for (const marker of openRefresh) marker.fire("popupopen", { popup: marker.getPopup() });
   return layer;
 }
 
-/** 时刻展示串（控件与卡片共用口径） */
-const fmtTafAt = (at: TafExpandAt): string =>
-  `${String(at.day).padStart(2, "0")}日 ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")} Z`;
+/** 时刻展示串（控件与卡片共用口径；en 无「日」字） */
+const fmtTafAt = (at: TafExpandAt, locale: "zh" \| "en" = "zh"): string =>
+  locale === "zh"
+    ? `${String(at.day).padStart(2, "0")}日 ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")} Z`
+    : `Day ${String(at.day).padStart(2, "0")} ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")} Z`;
+
+/** 控件本地时括注（评测共识①：zh 缺省北京时；日回绕按 31 折回——显示位近似） */
+const fmtTafLt = (at: TafExpandAt, offset: number, tag: string): string => {
+  const total = (at.day - 1) * 1440 + at.hour * 60 + at.minute + offset;
+  const d = (Math.floor(total / 1440) % 31) + 1;
+  const h = Math.floor((total % 1440) / 60);
+  const m = total % 60;
+  return `（${tag}${String(d).padStart(2, "0")}日${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}）`;
+};
 
 export interface TafTimeControlOptions {
   /** 受控图层与数据（每次拨动全量重展开） */
   layer: Leaflet.LayerGroup;
   items: readonly TafLayerItem[];
-  /** addTafLayer 的其余选项（locale/anchorDays/popup） */
+  /** addTafLayer 的其余选项（locale/anchorDays/popup/card） */
   layerOptions?: Omit<AddTafLayerOptions, "at">;
   /** 步进分钟数（滑杆一格），缺省 60 */
   stepMinutes?: number;
   /** 滑杆零点时刻；缺省自动取各站最早有效期起点 */
   from?: TafExpandAt;
+  /** 滑杆终点时刻；缺省自动取各站最晚有效期止（评测共识⑤：滑杆窗对齐数据，不再盲拖出界） */
+  to?: TafExpandAt;
+  /** 显示语言（缺省 zh；en 不加「日」字与京时括注——评测工程 P2-3 i18n 漏网） */
+  locale?: "zh" \| "en";
+  /** 本地时括注偏移（分钟）；zh 缺省 480＝北京时，null 关闭 */
+  utcOffsetMinutes?: number \| null;
   /** 时刻变更回调（拿到当前时刻，供宿主联动外部 UI） */
   onTime?: (at: TafExpandAt) => void;
 }
@@ -935,6 +1056,12 @@ export interface TafTimeControlOptions {
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
 | leaflet.msg02 | 预报时刻 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg03（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg03 | 京 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg01（1 条）
 
