@@ -7,6 +7,13 @@
   </head>
   <body>
     <div id="map"></div>
+    <div id="mode-bar" role="tablist" aria-label="演示模式">
+      <button type="button" id="mode-metar" class="mode-btn active" aria-pressed="true">
+        METAR 实况
+      </button>
+      <button type="button" id="mode-taf" class="mode-btn" aria-pressed="false">TAF 预报</button>
+      <div id="taf-time" hidden></div>
+    </div>
     <div id="basemap-hint" role="note" hidden></div>
     <aside id="panel" role="alert" hidden></aside>
     <footer id="disclaimer">

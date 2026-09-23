@@ -2,9 +2,15 @@ import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 // 主流程分两阶段：① 站点元数据（stations.json，静态可信）立即上图「待更新」态，杜绝空白地图；
 // ② 实况到达后移除待更新层、渲染条件色实况层。取数（含解析与定位联表）→ 卡片上图（底图切换见 basemaps.ts）
-import { parse, renderCard } from "metweave";
+import { parse, parseTaf, renderCard } from "metweave";
 import { getMetarReports } from "metweave/sources";
-import { addMetarLayer } from "@metweave/leaflet";
+import {
+  addMetarLayer,
+  addTafLayer,
+  createTafTimeControl,
+  type TafLayerItem,
+} from "@metweave/leaflet";
+import type * as LeafletNS from "leaflet";
 import stationsFile from "../stations.json";
 import { setupBasemap } from "./basemaps";
 import "./style.css";
@@ -129,6 +135,7 @@ const report = async (): Promise<void> => {
   });
   map.removeLayer(pendingLayer);
   const group = await addMetarLayer(map, items, { card: { raw: true }, conditionColors: true });
+  metarLayer = group;
   const updatedClock = new Date().toISOString().slice(11, 16);
   setStatus(
     `已更新 ${items.length} 站 · ${updatedClock} UTC${skipped.length > 0 ? ` · ${skipped.length} 站跳过` : ""}`,
@@ -163,3 +170,90 @@ report().catch((err: unknown) => {
     marker.setPopupContent(failureContent(icao, name));
   });
 });
+
+// —— TAF 预报模式（v0.2 渲染层演示）：拉 aviationweather 公开通路 39 站最新 TAF 原文，
+// 本地 parseTaf 解析 → addTafLayer 预报当观测渲 + 时间滑杆全图换时刻（层①③；弹窗卡片为层②）
+const modeBar = {
+  metar: document.getElementById("mode-metar"),
+  taf: document.getElementById("mode-taf"),
+  time: document.getElementById("taf-time"),
+};
+let metarLayer: LeafletNS.LayerGroup | undefined;
+let tafLayer: LeafletNS.LayerGroup | undefined;
+let tafItems: readonly TafLayerItem[] | undefined;
+
+const setMode = (mode: "metar" | "taf"): void => {
+  const active = mode === "taf";
+  modeBar.metar?.classList.toggle("active", !active);
+  modeBar.taf?.classList.toggle("active", active);
+  modeBar.metar?.setAttribute("aria-pressed", String(!active));
+  modeBar.taf?.setAttribute("aria-pressed", String(active));
+  if (modeBar.time !== null) modeBar.time.hidden = !active;
+};
+
+const loadTaf = async (): Promise<void> => {
+  if (tafLayer !== undefined && tafItems !== undefined) {
+    // 已加载过：直接换层
+    if (metarLayer !== undefined) map.removeLayer(metarLayer);
+    map.addLayer(tafLayer);
+    setMode("taf");
+    return;
+  }
+  setStatus("正在拉取 39 站 TAF 预报（aviationweather 公开通路）…", "loading");
+  const ids = stationsFile.stations.map((s) => s.icao).join(",");
+  const res = await fetch(`/aw-taf?ids=${ids}&format=raw`); // 走 vite 代理（见 vite.config.ts——上游无 CORS 头）
+  if (!res.ok) throw new Error(`aviationweather 返回 ${res.status}`);
+  const text = await res.text();
+  const byIcao = new Map(stationsFile.stations.map((s) => [s.icao, s]));
+  const items: TafLayerItem[] = [];
+  let failed = 0;
+  // aviationweather raw 格式：新报行从行首起，续行以空白缩进续接——先归并再解析
+  const reports: string[] = [];
+  for (const line of text.split("\n")) {
+    if (line.trim() === "") continue;
+    if (/^\s/.test(line) && reports.length > 0) reports[reports.length - 1] += ` ${line.trim()}`;
+    else reports.push(line.trim());
+  }
+  for (const raw of reports) {
+    try {
+      const taf = parseTaf(raw);
+      const st = byIcao.get(taf.station);
+      if (st === undefined) continue;
+      items.push({ report: taf, position: [st.lat, st.lon], title: `${st.icao} ${st.name}` });
+    } catch {
+      failed += 1;
+    }
+  }
+  if (items.length === 0) throw new Error("全部 TAF 解析失败");
+  tafItems = items;
+  tafLayer = await addTafLayer(map, items);
+  if (metarLayer !== undefined) map.removeLayer(metarLayer);
+  else map.removeLayer(pendingLayer);
+  const ctrl = createTafTimeControl(map, {
+    layer: tafLayer,
+    items,
+    layerOptions: {},
+    onTime: undefined,
+  });
+  modeBar.time?.replaceChildren(ctrl);
+  setMode("taf");
+  setStatus(
+    `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 拖动右上滑杆换时刻`,
+    "ok",
+  );
+};
+
+modeBar.taf?.addEventListener("click", () => {
+  loadTaf().catch((err: unknown) => {
+    const reason = err instanceof Error ? err.message : String(err);
+    setStatus(`TAF 拉取失败：${reason}`, "error");
+    setMode("metar");
+  });
+});
+modeBar.metar?.addEventListener("click", () => {
+  if (tafLayer !== undefined) map.removeLayer(tafLayer);
+  if (metarLayer !== undefined) map.addLayer(metarLayer);
+  setMode("metar");
+});
+
+// 实况层完成后留存引用，供模式切换（原 addMetarLayer 调用点捕获返回值）
