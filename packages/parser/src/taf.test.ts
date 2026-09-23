@@ -223,6 +223,29 @@ describe("TAF 批 1.3：NIL/CNL 位置判别（清单 A2★）", () => {
   });
 });
 
+describe("TAF 批 1.4：AAA/CCA 族仅容错（清单 A3★）", () => {
+  // D 层纪律：824 万条三语料 0 出现（2026-09-14 精读核对入档），无实证可溯源——不入 fixture，
+  // 仅合成单元用例；条文依据 AP-117 第三十条（修订加注 AAA/AAB、更正加注 CCA/CCB，发布时组后位）
+  it("AAA/AAB 消费放行置 amended，CCA/CCB 置 corrected，均 invalid-format/info 出声", () => {
+    const a = parseTaf("TAF ZBAA 010340Z AAA 0106/0206 17004MPS=");
+    expect(a.flags.amended).toBe(true);
+    expect(a.warnings[0]).toMatchObject({ code: "invalid-format", severity: "info" });
+    expect(a.warnings[0]?.message).toContain("AAA");
+    const c = parseTaf("TAF ZBAA 010340Z CCA 0106/0206 17004MPS=");
+    expect(c.flags.corrected).toBe(true);
+    expect(c.warnings[0]?.message).toContain("CCA");
+  });
+
+  it("主路径不受影响：无加注报文零此类告警；正文深位 AAA 不容错（unknown-token 出声）", () => {
+    const plain = parseTaf("TAF ZBAA 010340Z 0106/0206 17004MPS=");
+    expect(plain.warnings.some((w) => w.code === "invalid-format")).toBe(false);
+    const deep = parseTaf("TAF ZBAA 010340Z 0106/0206 AAA=");
+    expect(deep.flags.amended).toBe(false);
+    expect(deep.warnings).toHaveLength(1);
+    expect(deep.warnings[0]?.code).toBe("unknown-token");
+  });
+});
+
 /** 取 span 对应原文（本地 helper，等价 METAR 侧测试的原文回看）；定义先于使用（模块提升不适用于函数声明外的场景，此处前置） */
 function rawSlice(raw: string, span: { start: number; end: number } | undefined): string {
   if (span === undefined) return "";

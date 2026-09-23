@@ -4,8 +4,9 @@
  *
  * 批 1 范围：电头 token 序列（清单 A4——TAF 词可省（剥词源同理）、AMD/COR 不写死槽位、
  * COR 时组后位）、发布时组 ddHHMMZ、有效期组 ddHH/ddHH（止时 24 = 午夜合法特例）、
- * 传输层终止符 `=` 剥离（A1）。正文 token 暂一律 unknown-token 出声（不静默纪律），
- * 基况段（1.5）、NIL/CNL（1.3）、AAA/CCA 容错（1.4）、变化组与气温组（批 2/3）随后逐组接管。
+ * 传输层终止符 `=` 剥离（A1）、NIL/CNL 位置判别（A2）、AAA/CCA 族仅容错（A3）。
+ * 正文 token 暂一律 unknown-token 出声（不静默纪律），
+ * 基况段（1.5）与变化组/气温组（批 2/3）随后逐组接管。
  * 纪律与 METAR 侧同源：不静默、span 保真、错误码只增不改（ParseError 别名自 v0.2 起）。
  */
 import { MetarParseError } from "@metweave/core";
@@ -132,6 +133,24 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
   }
   const issueTime = { day, hour, minute };
   i += 1;
+
+  // —— A3★ AAA/CCA 族仅容错（AP-117 第三十条自有形态：修订加注 AAA/AAB、更正加注 CCA/CCB，
+  // 出现在发布时组后如 `160000Z AAA`）。主解析路径不支持——824 万条三语料实测 0 出现
+  // （2026-09-14 精读核对已入档，公开通路走 ICAO 惯例 TAF AMD / 时组后 COR）——
+  // 消费放行不报错，按族置位（A 族→amended、C 族→corrected）+ 出声（非主路径形态须可观测）
+  for (let guard = 0; guard < 2; guard++) {
+    const annotation = peek();
+    if (annotation === undefined || !/^(AAA|AAB|CCA|CCB)$/.test(annotation.text)) break;
+    if (annotation.text.startsWith("A")) amended = true;
+    else corrected = true;
+    i += 1;
+    warnings.push({
+      code: "invalid-format",
+      severity: "info",
+      message: `AP-117 加注形态（${annotation.text} 于发布时组后——主路径为 TAF AMD/时组后 COR，条文自有形态已消费并按族置位）`,
+      span: spanOf(annotation),
+    });
+  }
 
   // COR 时组后位（A4 序列第二槽位：中国 AFTN/ICAO 惯例；美式 COR 在类型词位已在上方消费）
   const corAfterTime = peek();
