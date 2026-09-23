@@ -94,6 +94,23 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
   const station: string = stTok.text;
   i += 1;
 
+  // —— A2★ NIL（其一）：站名后直接 NIL（实测无时组形态 `TAF ZSAM NIL=`，教材 §2）＝缺报。
+  // 最小形态与 METAR 侧 NIL 同语义：无有效期、无正文；其后零期待，多余 token 出声不静默
+  if (peek()?.text === "NIL") {
+    i += 1;
+    collectTailAsUnknown(tokens, i, warnings);
+    return compactIfEnabled({
+      kind: "taf" as const,
+      raw,
+      station,
+      nil: true,
+      flags: { amended, corrected },
+      cavok: false,
+      remarks: [],
+      warnings,
+    });
+  }
+
   const tmTok = peek();
   const tm = tmTok !== undefined ? ISSUE_TIME_PATTERN.exec(tmTok.text) : null;
   if (tmTok === undefined || tm === null) {
@@ -131,8 +148,24 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     i += 1;
   }
 
-  // —— 有效期组 ddHH/ddHH（NIL 占位属 A2/1.3，届时在此分叉）
+  // —— 有效期组 ddHH/ddHH
   const vTok = peek();
+  // —— A2★ NIL（其二）：带时组形态的 NIL 占**有效期组位**＝缺报（同上最小形态，时组凭据保留）
+  if (vTok?.text === "NIL") {
+    i += 1;
+    collectTailAsUnknown(tokens, i, warnings);
+    return compactIfEnabled({
+      kind: "taf" as const,
+      raw,
+      station,
+      issueTime,
+      nil: true,
+      flags: { amended, corrected },
+      cavok: false,
+      remarks: [],
+      warnings,
+    });
+  }
   const v = vTok !== undefined ? VALIDITY_PATTERN.exec(vTok.text) : null;
   if (vTok === undefined || v === null) {
     throw new MetarParseError(
@@ -169,17 +202,27 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
   };
   i += 1;
 
-  // —— 正文（批 1 骨架）：一律 unknown-token 出声保原文，后续批次逐组接管
-  for (; i < tokens.length; i++) {
-    const t = tokens[i];
-    if (t === undefined) break;
-    warnings.push({
-      code: "unknown-token",
-      severity: "info",
-      message: `TAF 正文组暂未解析（${t.text}）——批 1 骨架覆盖电头与有效期，该组保留原文待后续版本`,
-      span: spanOf(t),
+  // —— A2★ CNL：占**风组位**（有效期之后）＝预报取消——有效期保留（发布与覆盖窗信息不丢），
+  // 正文到此截断；其后零期待，多余 token 出声。CNL 出现在有效期位属结构违规 → missing-validity
+  if (peek()?.text === "CNL") {
+    i += 1;
+    collectTailAsUnknown(tokens, i, warnings);
+    return compactIfEnabled({
+      kind: "taf" as const,
+      raw,
+      station,
+      issueTime,
+      validity,
+      cancelled: true,
+      flags: { amended, corrected },
+      cavok: false,
+      remarks: [],
+      warnings,
     });
   }
+
+  // —— 正文（批 1 骨架）：一律 unknown-token 出声保原文，后续批次逐组接管
+  collectTailAsUnknown(tokens, i, warnings);
 
   return compactIfEnabled({
     kind: "taf" as const,
@@ -192,6 +235,24 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     remarks: [],
     warnings,
   });
+}
+
+/** NIL/CNL/批 1 骨架共用的尾部处理：剩余 token 一律 unknown-token 出声（不静默纪律） */
+function collectTailAsUnknown(
+  tokens: readonly Token[],
+  from: number,
+  warnings: ParseWarning[],
+): void {
+  for (let k = from; k < tokens.length; k++) {
+    const t = tokens[k];
+    if (t === undefined) break;
+    warnings.push({
+      code: "unknown-token",
+      severity: "info",
+      message: `TAF 正文组暂未解析（${t.text}）——批 1 骨架覆盖电头与有效期，该组保留原文待后续版本`,
+      span: spanOf(t),
+    });
+  }
 }
 
 /**

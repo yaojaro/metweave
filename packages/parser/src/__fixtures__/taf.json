@@ -1,6 +1,6 @@
 {
   "schema": "metweave-taf-fixtures/1",
-  "count": 4,
+  "count": 6,
   "fixtures": [
     {
       "id": "ogimet-plain-zbaa-20090801",
@@ -41,6 +41,26 @@
       "hash": "2bf800782255",
       "traps": ["header-amd", "no-trailing-equals", "30h-validity"],
       "note": "30h TAF（1006/1112 跨日窗）；aviationweather.gov 通道无传输层终止符 =（与 ogimet 中国站通道对照）；2TX+1TN 气温组为 C6 批 3.4 语料预埋"
+    },
+    {
+      "id": "textbook-nil-zsam",
+      "raw": "TAF ZSAM NIL=",
+      "station": "ZSAM",
+      "source": "教材",
+      "obsTime": "2016-12-10T22:00:00Z",
+      "hash": null,
+      "traps": ["nil-no-time"],
+      "note": "缺报 NIL 占时组位（实测形态：无发布时组，教材 §2 真实形态三例之一）；ogimet 16 年回填 2026-09-23 复核 0 出现，属条文/历史形态"
+    },
+    {
+      "id": "textbook-amd-cnl-zbad",
+      "raw": "TAF AMD ZBAD 030800Z 0306/0406 CNL=",
+      "station": "ZBAD",
+      "source": "教材",
+      "obsTime": "2019-09-03T08:00:00Z",
+      "hash": null,
+      "traps": ["cnl"],
+      "note": "取消 CNL 占风组位（有效期 0306/0406 保留）；报头 AMD＝对修订报的取消；教材 §2 真实形态三例之一"
     }
   ]
 }

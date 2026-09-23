@@ -172,6 +172,57 @@ describe("TAF 批 1.2：传输层终止符 = 剥离（清单 A1★）", () => {
   });
 });
 
+describe("TAF 批 1.3：NIL/CNL 位置判别（清单 A2★）", () => {
+  it("NIL 占时组位（实测形态 TAF ZSAM NIL=，无时组）：缺报最小形态，无有效期无正文零告警", () => {
+    const f = fx("textbook-nil-zsam");
+    const r = parseTaf(f.raw);
+    expect(r).toMatchObject({
+      kind: "taf",
+      station: "ZSAM",
+      nil: true,
+      flags: { amended: false, corrected: false },
+      cavok: false,
+    });
+    expect(r.issueTime).toBeUndefined();
+    expect(r.validity).toBeUndefined();
+    expect(r.cancelled).toBeUndefined();
+    expect(r.warnings).toEqual([]);
+  });
+
+  it("NIL 占有效期位（带时组形态）：nil 最小形态，时组凭据保留", () => {
+    const r = parseTaf("TAF ZSAM 010000Z NIL=");
+    expect(r.nil).toBe(true);
+    expect(r.issueTime).toEqual({ day: 1, hour: 0, minute: 0 });
+    expect(r.validity).toBeUndefined();
+    expect(r.warnings).toEqual([]);
+  });
+
+  it("NIL 后零期待：多余 token 出声不静默", () => {
+    const r = parseTaf("TAF ZSAM 010000Z NIL TEMPO 0106/0109=");
+    expect(r.nil).toBe(true);
+    expect(r.warnings).toHaveLength(2); // TEMPO 与 0106/0109 两个 token（终止符已剥离）
+    expect(r.warnings.every((w) => w.code === "unknown-token")).toBe(true);
+  });
+
+  it("CNL 占风组位（教材实证）：cancelled 置位，有效期保留，正文截断零告警", () => {
+    const f = fx("textbook-amd-cnl-zbad");
+    const r = parseTaf(f.raw);
+    expect(r.cancelled).toBe(true);
+    expect(r.flags.amended).toBe(true);
+    expect(r.validity).toMatchObject({ startDay: 3, startHour: 6, endDay: 4, endHour: 6 });
+    expect(r.nil).toBeUndefined();
+    expect(r.warnings).toEqual([]);
+  });
+
+  it("CNL 后零期待：多余 token 出声；CNL 占有效期位属结构违规 → missing-validity", () => {
+    const r = parseTaf("TAF ZBAD 030800Z 0306/0406 CNL 9999=");
+    expect(r.cancelled).toBe(true);
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]?.code).toBe("unknown-token");
+    expectThrows("TAF ZBAD 030800Z CNL=", "missing-validity");
+  });
+});
+
 /** 取 span 对应原文（本地 helper，等价 METAR 侧测试的原文回看）；定义先于使用（模块提升不适用于函数声明外的场景，此处前置） */
 function rawSlice(raw: string, span: { start: number; end: number } | undefined): string {
   if (span === undefined) return "";

@@ -595,8 +595,9 @@ export interface TafReport {
   readonly cancelled?: boolean;
   /** 无站名组 = 整体解析失败，不是字段级三态 */
   readonly station: string;
-  /** 发布时组 ddHHMMZ（UTC）；同 METAR：无时组 = 整体失败 */
-  readonly issueTime: ReportTime;
+  /** 发布时组 ddHHMMZ（UTC）；非 NIL 报必填——缺失即 missing-time 整体失败。
+   *  NIL 缺报的实测形态可无时组（`TAF ZSAM NIL=`，教材 §2 真实形态），故整体可选 */
+  readonly issueTime?: ReportTime;
   /** 有效期组；nil 时 undefined（NIL 占其位） */
   readonly validity?: TafValidityGroup;
   /** 正交标志位：AMD 修订（取代此前发布）与 COR 更正——修订 ≠ 更正，禁止合并成一个字段 */
