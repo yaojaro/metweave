@@ -1647,7 +1647,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     const chips = rows.map((r) => r.querySelector(".mw-taf-k")?.textContent ?? "");
     expect(chips).toEqual([
       "主要天气",
-      "TEMPO·间歇（约40%）",
+      "TEMPO·间歇（概率≥40%）",
       "BECMG·渐变中",
       "BECMG·转变后",
       "BECMG·渐变中",
@@ -1737,7 +1737,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     });
     expect(card.querySelector(".mw-taf-station")?.textContent).toBe("ZGSZ 深圳/宝安");
     // 出界：03Z 早于有效期 06Z → 琥珀提示
-    expect(card.textContent).toContain("查看时刻早于本预报有效期");
+    expect(card.textContent).toContain("查看时刻早于本预报开始时间");
     // 风险摘要：TEMPO 雷暴段置顶
     const risk = card.querySelector(".mw-taf-risk");
     expect(risk?.textContent).toContain("关键风险");
@@ -1750,7 +1750,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     // 京时链：发布/查看/有效期/分段行头四处括注
     const text = card.textContent ?? "";
     expect(text).toContain("查看时刻 23日03:00Z（京23日11:00）");
-    expect(text).toContain("（京23日14时–23日17时）");
+    expect(text).toContain("（京23日14:00–23日17:00）");
   });
 
   it("评测批新增：小白人话包——风向方位+蒲福风级、云底台阶化逐层分行（小白#6/#7）", () => {

@@ -85,8 +85,8 @@ const LOCALE = {
     min: (c: number): string => `最低 ${c}°C`,
     noValidity: "无有效期（缺报）",
     warning: "本卡由电码自动解析生成，供扫视参考；如有出入，以报文原文及官方发布为准",
-    outEarly: "查看时刻早于本预报有效期（当前展示发布时基况）",
-    outLate: "查看时刻已超出本预报有效期",
+    outEarly: "查看时刻早于本预报开始时间，以下显示预报起始时段的天气",
+    outLate: "查看时刻已超出本预报结束时间，以下显示预报末段的天气",
     riskLead: "关键风险：",
     rawTitle: "报文原文（专业人员核对用）",
     rawHint: "悬停或 Tab 聚焦可与人话对照",
@@ -98,11 +98,11 @@ const LOCALE = {
     kindFm: "FM·自此",
     kindBecmgDuring: "BECMG·渐变中",
     kindBecmgAfter: "BECMG·转变后",
-    kindTempo: "TEMPO·间歇（约40%）",
+    kindTempo: "TEMPO·间歇（概率≥40%）",
     probChip: (p: number, withTempo: boolean): string =>
       withTempo ? `PROB${p} TEMPO·概率间歇` : `PROB${p}·概率${p}%`,
     uncertainNote: "转变时刻不确定",
-    tempoNote: "短时发作，每次不足 1 小时",
+    tempoNote: "叠加在主时段之内的短时发作，每次不足 1 小时",
     emptySegment: "（未编要素）",
     labelWind: "风",
     labelVis: "能见度",
@@ -137,8 +137,8 @@ const LOCALE = {
     noValidity: "No validity (NIL)",
     warning:
       "Auto-generated from the coded report for glance scanning; if in doubt, refer to the raw TAF and official channels",
-    outEarly: "Viewing time is before this forecast's validity (base conditions at issue shown)",
-    outLate: "Viewing time is beyond this forecast's validity",
+    outEarly: "Viewing time is before this forecast starts — showing its first period",
+    outLate: "Viewing time is beyond this forecast's end — showing its last period",
     riskLead: "Key risks: ",
     rawTitle: "Raw report (for professional cross-check)",
     rawHint: "hover or Tab-focus to cross-link with the plain-language rows",
@@ -150,11 +150,11 @@ const LOCALE = {
     kindFm: "FM",
     kindBecmgDuring: "BECMG",
     kindBecmgAfter: "After BECMG",
-    kindTempo: "TEMPO (~40%)",
+    kindTempo: "TEMPO (prob ≥40%)",
     probChip: (p: number, withTempo: boolean): string =>
       withTempo ? `PROB${p} TEMPO` : `PROB${p}`,
     uncertainNote: "change timing uncertain",
-    tempoNote: "brief bursts, each under 1 hour",
+    tempoNote: "brief bursts within the main period, each under 1 hour",
     emptySegment: "(no elements reported)",
     labelWind: "Wind",
     labelVis: "Visibility",
@@ -210,9 +210,9 @@ const STYLE_TEXT = `
 .mw-taf-meta.mw-taf-hl { background: #fdeeb9; border-radius: 3px; }
 .mw-taf-rawseg { border-bottom: 1px dashed #7f8c9a; cursor: help; }
 .mw-taf-rawseg.mw-taf-hl { background: #fdeeb9; border-radius: 3px; }
-.mw-taf-warn { margin-top: 6px; font-size: 11px; color: #6b7785; }
+.mw-taf-warn { margin-top: 6px; font-size: 11px; color: #5f6b79; }
 .mw-taf-station { margin: -4px 0 4px; color: #6b7785; font-size: 12px; }
-.mw-taf-period-lt { color: #8a94a0; font-size: 11px; }
+.mw-taf-period-lt { color: #6b7785; font-size: 11px; }
 .mw-taf-outrange { color: #8a5a00; background: #fdf3dd; border-radius: 4px; padding: 1px 6px;
   font-size: 12px; display: inline-block; margin: 2px 0; }
 .mw-taf-period-danger { border-left: 3px solid #c2504a; background: #fdf1f0; }
@@ -255,8 +255,8 @@ const tempLine = (t: TafTemperatureGroup, L: LocaleTable): string =>
   `${t.extremum === "max" ? L.max(t.celsius) : L.min(t.celsius)}${t.at.day !== undefined ? ` @ ${String(t.at.day).padStart(2, "0")}日${String(t.at.hour).padStart(2, "0")}Z` : ` @ ${String(t.at.hour).padStart(2, "0")}Z`}`;
 
 /** 气温行紧凑值（评测小白#8：「高温最高」语义重复——标签已载极性，值只留 温度@时刻） */
-const tempValueOf = (x: TafTemperatureGroup): string =>
-  `${x.celsius}°C @ ${x.at.day !== undefined ? `${String(x.at.day).padStart(2, "0")}日${String(x.at.hour).padStart(2, "0")}Z` : `${String(x.at.hour).padStart(2, "0")}Z`}`;
+const tempValueOf = (x: TafTemperatureGroup, lt = ""): string =>
+  `${x.celsius}°C @ ${x.at.day !== undefined ? `${String(x.at.day).padStart(2, "0")}日${String(x.at.hour).padStart(2, "0")}Z` : `${String(x.at.hour).padStart(2, "0")}Z`}${lt}`;
 
 // ---------------------------------------------------------------- 分段明细拼装（gloss 词表共用，与 METAR 卡同口径）
 
@@ -549,11 +549,15 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     ltOffset !== null && t.localTag !== null
       ? `（${t.localTag}${ltClock(day, hour, minute, ltOffset)}）`
       : "";
-  const ltHour = (day: number, hour: number): string => {
+  /** 本地时区间（HH:00 制，全卡统一）：（京dd日HH:00–dd日HH:00） */
+  const ltRangeOf = (from: TafExpandAt, to: TafExpandAt): string => {
     if (ltOffset === null || t.localTag === null) return "";
-    const total = (day - 1) * 1440 + hour * 60 + ltOffset;
-    const d = (Math.floor(total / 1440) % 31) + 1;
-    return `（${t.localTag}${String(d).padStart(2, "0")}日${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}时）`;
+    const clock = (day: number, hour: number): string => {
+      const total = (day - 1) * 1440 + hour * 60 + ltOffset;
+      const d = (Math.floor(total / 1440) % 31) + 1;
+      return `${t.localTag}${String(d).padStart(2, "0")}日${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}:00`;
+    };
+    return `（${clock(from.day, from.hour)}–${clock(to.day, to.hour).replace(t.localTag, "")}）`;
   };
   const card = el(
     "div",
@@ -682,11 +686,19 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     box.append(el("p", "mw-taf-meta", `${t.temps}：`));
     const maxes = report.temperatures.filter((x) => x.extremum === "max");
     const mins = report.temperatures.filter((x) => x.extremum === "min");
+    const tempLt = (x: TafTemperatureGroup): string => {
+      if (ltOffset === null || t.localTag === null || x.at.day === undefined) return "";
+      const total = (x.at.day - 1) * 1440 + x.at.hour * 60 + ltOffset;
+      const d = (Math.floor(total / 1440) % 31) + 1;
+      return `（${t.localTag}${String(d).padStart(2, "0")}日${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}:00）`;
+    };
     const tempRow = (label: string, list: TafTemperatureGroup[]): void => {
       if (list.length === 0) return;
       const row = el("p", "mw-taf-temp-line");
       row.append(el("span", "mw-taf-item-label", label));
-      row.append(document.createTextNode(list.map(tempValueOf).join("　｜　")));
+      row.append(
+        document.createTextNode(list.map((x) => tempValueOf(x, tempLt(x))).join("　｜　")),
+      );
       box.append(row);
     };
     tempRow(t.labelHigh, maxes);
@@ -722,7 +734,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
             parts.push(layer.convective === "CB" ? "积雨云" : "浓积云");
       if (parts.length > 0)
         riskParts.push(
-          `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)} ${parts.join(wxJoin(locale))}`,
+          `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}${ltRangeOf(row.from, row.to)} ${parts.join(wxJoin(locale))}`,
         );
     }
     if (riskParts.length > 0) {
@@ -764,13 +776,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         "mw-taf-period-time",
         `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}`,
       );
-      const ltRange =
-        ltOffset !== null && t.localTag !== null
-          ? `（${ltHour(row.from.day, row.from.hour).replace(/^（/, "").replace(/）$/, "")}–${ltHour(row.to.day, row.to.hour).replace(/^（/, "").replace(/）$/, "")}）`.replace(
-              `–${t.localTag}`,
-              "–",
-            )
-          : "";
+      const ltRange = ltRangeOf(row.from, row.to);
       const ltSpan = ltRange === "" ? undefined : el("span", "mw-taf-period-lt", ltRange);
       head.append(
         dot,
