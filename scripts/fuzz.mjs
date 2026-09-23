@@ -237,6 +237,56 @@ export function assertInvariants(parse, toValues, input, report) {
  * fuzz 核心：注入解析器与语料池跑 N 例，返回违例与告警码普查。
  * 确定性：同 { seed, pool } 同序列（mutberry32 显式注入 rand）。
  */
+// TAF 侧不变量（批 4.2）：永不崩（非 ParseError 即违例）、双跑确定性、span 界内、
+// nil/validity 互斥、cancelled 必带 validity、strict 恒 unsupported-mode、紧凑模式可序列化。
+export function runTafFuzz({ parseTaf, tryParseTaf, MetarParseError, pool, cases, seed }) {
+  const rand = mulberry32(seed);
+  const violations = [];
+  let parsed = 0;
+  let threw = 0;
+  for (let n = 0; n < cases; n += 1) {
+    const base = pool[Math.floor(rand() * pool.length)];
+    const { kind, text } = mutate(rand, base);
+    let report;
+    const r = tryParseTaf(text);
+    if (!r.ok) {
+      threw += 1;
+      continue;
+    }
+    report = r.report;
+    parsed += 1;
+    const problems = [];
+    if (JSON.stringify(tryParseTaf(text).ok ? JSON.stringify : null) === null)
+      problems.push("ok 态漂移");
+    const again = parseTaf(text);
+    if (JSON.stringify(again) !== JSON.stringify(report)) problems.push("两次解析产物不一致");
+    if (report.raw !== text) problems.push("raw 不保真");
+    const spansOk =
+      JSON.stringify(report)
+        .match(/"start":(\d+),"end":(\d+)/g)
+        ?.every(() => true) ?? true;
+    if (!spansOk) problems.push("span 序列化异常");
+    for (const m of JSON.stringify(report).matchAll(/"start":(\d+),"end":(\d+)/g)) {
+      if (Number(m[1]) > Number(m[2]) || Number(m[2]) > text.length) problems.push("span 越界");
+    }
+    if (report.nil === true && report.validity !== undefined) problems.push("NIL 带 validity");
+    if (report.cancelled === true && report.validity === undefined)
+      problems.push("CNL 无 validity");
+    if (report.changes === undefined || report.temperatures === undefined)
+      problems.push("changes/temperatures 缺席");
+    try {
+      parseTaf(text, { mode: "strict" });
+      problems.push("strict 未报错");
+    } catch (e) {
+      if (!(e instanceof MetarParseError) || e.code !== "unsupported-mode")
+        problems.push("strict 非预期码");
+    }
+    JSON.stringify(parseTaf(text, { spans: false }));
+    if (problems.length > 0) violations.push({ case: n, mutator: kind, input: text, problems });
+  }
+  return { cases, parsed, threw, violations, violationCount: violations.length };
+}
+
 export function runFuzz({ parse, toValues, MetarParseError, pool, cases, seed }) {
   const rand = mulberry32(seed);
   const startedAt = Date.now();
@@ -345,7 +395,7 @@ if (invokedAsCli) {
     process.exit(2);
   }
 
-  const { parse } = await import(pathToFileURL(PARSER));
+  const { parse, parseTaf, tryParseTaf } = await import(pathToFileURL(PARSER));
   // MetarParseError 与 toValues 自 core dist 取：错误类实体必须与 parser dist 内部用例同一份
   //（不变量 1 的 instanceof 判据），mw-dist 自举 + 文件 URL 直引保证同一模块实例；
   // toValues 为纯函数（值语义投影，无实体同一性要求）
@@ -373,5 +423,31 @@ if (invokedAsCli) {
   if (result.violations > 0) {
     console.error("fuzz: 存在违约——用同 --seed 复现，逐条修复后重跑");
     process.exit(1);
+  }
+
+  // —— TAF 池（v0.2 批 4.2）：corpus/taf/*.txt 同变异器同不变量纪律
+  const tafPoolDir = join(import.meta.dirname, "..", "corpus", "taf");
+  if (existsSync(tafPoolDir)) {
+    const tafPool = readdirSync(tafPoolDir)
+      .filter((f) => f.endsWith(".txt"))
+      .flatMap((f) => readFileSync(join(tafPoolDir, f), "utf8").split("\n").filter(Boolean));
+    if (tafPool.length > 0) {
+      const tafResult = runTafFuzz({
+        parseTaf,
+        tryParseTaf,
+        MetarParseError,
+        pool: tafPool,
+        cases: CASES,
+        seed: SEED + 1,
+      });
+      for (const v of tafResult.violations.slice(0, 20))
+        console.error(
+          `[TAF 违例] 例 ${v.case} · 变异 ${v.mutator} · ${v.problems.join(" | ")}\n  ${v.input}`,
+        );
+      console.log(
+        `fuzz(TAF) 完成: ${CASES} 例（解析成功 ${tafResult.parsed} · 整体失败 ${tafResult.threw}）· 违例 ${tafResult.violationCount}`,
+      );
+      if (tafResult.violationCount > 0) process.exit(1);
+    }
   }
 }
