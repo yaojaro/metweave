@@ -597,6 +597,34 @@ it("评测批 B：常显站码标签（zoom≥5）/card 透传/滑杆窗对齐+�
   map.remove();
 });
 
+it("复测修复锁 N1/N2/N5：键盘拖滑杆不抢焦、弹窗置顶提示随时刻重算、缺省 at 保持层当前时刻", async () => {
+  const raw = "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 TEMPO 2520/2524 2500 -SHRA BR=";
+  const items = [{ report: parseTaf(raw), position: [25, 102] as [number, number] }];
+  const map = freshMap();
+  const g = await addTafLayer(map, items, { at: { day: 25, hour: 19, minute: 0 } });
+  const marker = g.getLayers()[0] as L.Marker;
+  marker.openPopup();
+  const pane = map.getPane?.("popupPane");
+  // 19Z 在 TEMPO 窗（20-24）前：无「TEMPO 发作可能」提示
+  expect(pane?.querySelector(".mw-taf-card")?.textContent ?? "").not.toContain("TEMPO 发作可能");
+  // 滑杆聚焦后拨动（键盘路径）：换时刻不抢焦（N1）、弹窗提示即时更新（N2）
+  const ctrl = createTafTimeControl(map, { layer: g, items });
+  document.body.append(ctrl); // 控件需在文档内 focus 才生效（happy-dom 语义）
+  const input = ctrl.querySelector("input");
+  input?.focus();
+  if (input !== null) input.value = "5"; // 18+5=23Z 落 TEMPO 窗（属性赋值，非 setAttribute 默认值）
+  input?.dispatchEvent(new Event("input", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+  expect(document.activeElement).toBe(input); // N1：焦点仍在滑杆
+  expect(pane?.querySelector(".mw-taf-card")?.textContent ?? "").toContain("TEMPO 发作可能"); // N2：提示重算
+  // N5：不传 at 的 setTafLayerTime 保持层当前时刻（不回退 0 日）
+  await setTafLayerTime(map, g, items, {});
+  expect(pane?.querySelector(".mw-taf-meta-row")?.textContent ?? "").toContain(
+    "查看时刻 25日23:00Z",
+  );
+  map.remove();
+});
+
 it("层③竞态回归：同步连拨两次不叠点（clearLayers 与 populate 之间的 await 窗口），末次拨动生效", async () => {
   const raw = "TAF ZBAA 010340Z 0106/0206 17004MPS 9999 SCT030 BECMG 0110/0111 1200 -SN OVC008=";
   const items = [{ report: parseTaf(raw), position: [40, 116] as [number, number] }];

@@ -591,6 +591,8 @@ const bindCodeZoom = (map: Leaflet.Map): void => {
 const tafLayerAt = new WeakMap<Leaflet.LayerGroup, TafExpandAt>();
 /** marker → 其 TafLayerItem（换时刻原地更新时的数据面） */
 const tafMarkerItems = new WeakMap<Leaflet.Marker, TafLayerItem>();
+/** marker → 弹窗内容刷新函数（复测 N1/N2：刷新不走合成 popupopen——真实打开才移焦点，刷新按当前时刻重算置顶提示） */
+const tafPopupRefresh = new WeakMap<Leaflet.Marker, (popup: Leaflet.Popup) => void>();
 
 /** 单站展开视觉态（首建与换时刻共用——tier/摘要/提示单一来源） */
 function tafMarkerState(
@@ -687,10 +689,11 @@ async function populateTafLayer(
     if (options.popup ?? true) {
       // 惰性弹窗（评测工程 P2-1）：占位 DOM 只在 popupopen 时换真卡——滑杆换时刻不清层，重开即见新时刻卡
       marker.bindPopup(document.createElement("div"), { maxWidth: 420 });
-      marker.on("popupopen", (e) => {
-        if (e.popup === undefined) return;
-        marker.closeTooltip();
+      // 刷新函数（复测 N1/N2）：按层当前时刻重展开取 notes（置顶提示随换时刻更新，与 tooltip 同源），
+      // 只重建卡片内容不动焦点——焦点移入仅发生在真实 popupopen（键盘拖滑杆不再被抢焦）
+      const refresh = (popup: Leaflet.Popup): void => {
         const current = tafLayerAt.get(group) ?? at;
+        const fresh = tafMarkerState(item, noTimeline ? at : current, anchor, locale);
         const cardOpts: RenderTafCardOptions = {
           locale,
           raw: true,
@@ -704,17 +707,23 @@ async function populateTafLayer(
           if (stationName !== undefined) cardOpts.stationTitle = stationName;
         }
         const card = renderTafCard(r, cardOpts);
-        if (state.notes.length > 0) {
+        if (fresh.notes.length > 0) {
           const lead = document.createElement("p");
           lead.style.margin = "0 0 4px";
           lead.className = "mw-taf-meta";
-          for (const [i, n] of state.notes.entries()) {
+          for (const [i, n] of fresh.notes.entries()) {
             if (i > 0) lead.append(document.createElement("br"));
             lead.append(textCarrier(n));
           }
           card.prepend(lead);
         }
-        e.popup.setContent(card);
+        popup.setContent(card);
+      };
+      tafPopupRefresh.set(marker, refresh);
+      marker.on("popupopen", (e) => {
+        if (e.popup === undefined) return;
+        marker.closeTooltip();
+        refresh(e.popup);
         const focusTarget = e.popup
           .getElement()
           ?.querySelector<HTMLElement>("a.leaflet-popup-close-button, button, [href]");
@@ -754,8 +763,14 @@ export async function setTafLayerTime(
   const L = await loadLeaflet();
   const anchor: TafMonthAnchor = { daysIn: options.anchorDays ?? 31 };
   const locale = options.locale ?? "zh";
-  const at = options.at ?? { day: 0, hour: 0, minute: 0 };
-  tafLayerAt.set(layer, at);
+  // 缺省 at：保持层当前时刻（不回退到非法 0 日——复测 N5；层尚无时刻时退各站自身有效期起点）
+  const at = options.at ??
+    tafLayerAt.get(layer) ?? {
+      day: items[0]?.report.validity?.startDay ?? 1,
+      hour: items[0]?.report.validity?.startHour ?? 0,
+      minute: 0,
+    };
+  if (options.at !== undefined) tafLayerAt.set(layer, options.at);
   const openRefresh: Leaflet.Marker[] = [];
   layer.eachLayer((ml) => {
     if (!(ml instanceof L.Marker)) return; // 层内非 marker（弹窗代理等）跳过
@@ -774,15 +789,19 @@ export async function setTafLayerTime(
     marker.setTooltipContent(tip);
     if (marker.isPopupOpen()) openRefresh.push(marker);
   });
-  // 已开弹窗即时换内容（重开等价——popupopen 惰性渲染，同一工厂）
-  for (const marker of openRefresh) marker.fire("popupopen", { popup: marker.getPopup() });
+  // 已开弹窗即时换内容：走刷新函数（不动焦点——键盘拖滑杆不被抢焦，复测 N1；notes 按新时刻重算，N2）
+  for (const marker of openRefresh) {
+    const popup = marker.getPopup();
+    if (popup === undefined) continue;
+    tafPopupRefresh.get(marker)?.(popup);
+  }
   return layer;
 }
 
 /** 时刻展示串（控件与卡片共用口径；en 无「日」字） */
 const fmtTafAt = (at: TafExpandAt, locale: "zh" | "en" = "zh"): string =>
   locale === "zh"
-    ? `${String(at.day).padStart(2, "0")}日 ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")} Z`
+    ? `${String(at.day).padStart(2, "0")}日 ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`
     : `Day ${String(at.day).padStart(2, "0")} ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")} Z`;
 
 /** 控件本地时括注（评测共识①：zh 缺省北京时；日回绕按 31 折回——显示位近似） */
@@ -836,8 +855,7 @@ export function createTafTimeControl(
   box.className = "mw-taf-timectrl";
   box.style.cssText =
     "display:flex;gap:8px;align-items:center;padding:6px 10px;background:#fff;border:1px solid #d8dee6;border-radius:8px;font:12px/1.4 system-ui,sans-serif;color:#1c2733";
-  const label = document.createElement("span");
-  label.setAttribute("aria-live", "polite");
+  const label = document.createElement("span"); // 读屏走 input 的 aria-valuetext（复测 N6：双通道会逐格双朗读）
   const input = document.createElement("input");
   input.type = "range";
   input.min = "0";
