@@ -29,7 +29,8 @@ TAF（FM 51）解析层全量落地：解析 → 时间线展开的预报侧工�
   - render 包：时间双制（zh 全卡关键时间括注北京时，`utcOffsetMinutes` 可覆盖；「预报 xx 时刻」改「查看时刻」、Z 写法统一）；`stationTitle` 站名行；徽章双标+概率显式（TEMPO·间歇（约40%）/PROB30·概率30%/BECMG·渐变中·转变后/FM·自此，基况→主要天气）；出界琥珀提示（查看时刻早于/超出有效期）；关键风险摘要行+分段行档位左边条+RAW 组片档位着色（图卡层级倒挂修复）；小白人话包（风向八方位+蒲福风级括注精确值、云底台阶化百米逐层分行、气温值去重复）；联动可达包（tabIndex+focusin 三通道、虚线 affordance、激活压暗非相关项、原文区标题+提示行、去 aria-label 覆盖保读屏人话、警示语重写+对比度达标）；`renderTafCard` 未知选项运行时抛错；CNL 卡提前返回。
   - leaflet 包：常显 ICAO 站码标签（zoom≥5 门控、白描边；悬停摘要保留）；`addTafLayer` card 透传（raw/className/stationTitle/utcOffsetMinutes）+ stationTitle 自动联表；TAF 弹窗焦点管理；弹窗惰性渲染（popupopen 建卡）；`setTafLayerTime` 瘦身为原地 setIcon/setTooltipContent（不清层、已开弹窗即时换内容、监听器零 churn，代际令牌随重建路径退役）；滑杆窗对齐数据（from=最早起点 to=最晚止点）+ locale 化 + 京时括注 + aria-valuetext + rAF 合帧。
   - examples：38 站列表视图（档色点+站码+站名+下一变化、按当前时刻档位排序、行点击飞行开卡、滑杆联动刷新、键盘可达）；fetch 健壮化（20s 超时/防重入/四态错误文案）。
-  - 测试：G 阵风断言补样例覆盖（NIL/CNL/CAVOK/PROB 随评测批用例）；全量 403。
+  - 测试：G 阵风断言补样例覆盖（NIL/CNL/CAVOK/PROB 随评测批用例）；全量 404。
+- **复测修复批（三角色二轮复测后）**：TEMPO 概率措辞改「≥40%」（ICAO 语义）；出界提示行大白话去「基况」；关键风险/气温行补京时、京时格式统一 HH:00、Z 写法统一；TEMPO 注明「叠加在主时段之内」；京时括注对比度达标；**N1 滑杆焦点劫持**（换时刻改走刷新函数、不再合成 popupopen——键盘拖动不抢焦）；**N2 弹窗置顶提示随时刻重算**；N5 缺省 at 保持层当前时刻；N6 去滑杆双朗读；面板「下一变化」人话化（dd日HH时+京时）+四档图例、「档」列改「状态」。
 
 ### 变更
 
