@@ -2,7 +2,13 @@
 import { describe, expect, it } from "vitest";
 import * as L from "leaflet";
 import { parse, parseTaf } from "@metweave/parser";
-import { addMetarLayer, addTafLayer, type AddTafLayerOptions } from "./index";
+import {
+  addMetarLayer,
+  addTafLayer,
+  createTafTimeControl,
+  setTafLayerTime,
+  type AddTafLayerOptions,
+} from "./index";
 
 const report = parse("METAR ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG");
 
@@ -517,5 +523,29 @@ it("层②：弹窗接 renderTafCard（时间线条 + 变化组清单），展�
   expect(popupEl.querySelector(".mw-taf-strip")).not.toBeNull();
   expect(popupEl.querySelector(".mw-taf-seg-tempo")).not.toBeNull();
   expect(popupEl.querySelector("p")?.textContent ?? "").toContain("预报 25日21:00Z");
+  map.remove();
+});
+
+it("层③：setTafLayerTime 全图换时刻（同一图层实例原地重建，档位随 BECMG 翻红）；滑杆控件拨动驱动重展开", async () => {
+  const raw = "TAF ZBAA 010340Z 0106/0206 17004MPS 9999 SCT030 BECMG 0110/0111 1200 -SN OVC008=";
+  const items = [{ report: parseTaf(raw), position: [40, 116] as [number, number] }];
+  const map = freshMap();
+  const g = await addTafLayer(map, items, { at: { day: 1, hour: 8, minute: 0 } });
+  expect(firstDot(g)).toContain("mw-dot-good");
+  // 换到 BECMG 之后：同实例重建、档位翻红
+  const g2 = await setTafLayerTime(map, g, items, { at: { day: 1, hour: 12, minute: 0 } });
+  expect(g2).toBe(g);
+  expect(firstDot(g)).toContain("mw-dot-poor");
+  // 滑杆控件：零点自动锚有效期起点（01日 06Z），第 6 格 × 60 分 → 01日 12:00Z 翻红
+  const ctrl = createTafTimeControl(map, { layer: g, items, onTime: undefined });
+  const input = ctrl.querySelector("input");
+  expect(input).not.toBeNull();
+  await new Promise((r) => setTimeout(r, 20)); // 控件初始 apply 的异步重建先落定（06Z 绿档）
+  expect(firstDot(g)).toContain("mw-dot-good");
+  (input as HTMLInputElement).value = "6";
+  input?.dispatchEvent(new Event("input"));
+  await new Promise((r) => setTimeout(r, 20));
+  expect(firstDot(g)).toContain("mw-dot-poor");
+  expect(ctrl.querySelector("span")?.textContent ?? "").toContain("01日 12:00");
   map.remove();
 });

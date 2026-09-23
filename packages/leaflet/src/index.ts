@@ -549,9 +549,23 @@ export async function addTafLayer(
     const bad: string = locale;
     throw new Error(`addTafLayer 的 locale 选项值 "${bad}" 不受支持（可用："zh" | "en"）`);
   }
-  const anchor: TafMonthAnchor = { daysIn: options.anchorDays ?? 31 };
   const L = await loadLeaflet();
   const group = L.layerGroup();
+  await populateTafLayer(map, group, items, options, L);
+  group.addTo(map);
+  return group;
+}
+
+/** TAF 标记构建核心：addTafLayer 与 setTafLayerTime 共用（原地重建＝清层后重灌同一图层实例） */
+async function populateTafLayer(
+  map: Leaflet.Map,
+  group: Leaflet.LayerGroup,
+  items: readonly TafLayerItem[],
+  options: AddTafLayerOptions,
+  L: typeof import("leaflet"),
+): Promise<void> {
+  const anchor: TafMonthAnchor = { daysIn: options.anchorDays ?? 31 };
+  const locale = options.locale ?? "zh";
   for (const item of items) {
     const r = item.report;
     const name = item.title ?? r.station;
@@ -631,6 +645,97 @@ export async function addTafLayer(
       if (event.key === "Escape") map.closePopup();
     });
   }
-  group.addTo(map);
-  return group;
+}
+
+// ---------------------------------------------------------------- TAF 时间轴（v0.2 渲染层③：全图统一时刻）
+
+/**
+ * Re-expand every TAF marker in the layer at a new instant (in-place rebuild; pure-function
+ * expansion, dozens of stations are sub-millisecond). The single-map time-scrub core.
+ * 全图统一换时刻：整层按新时刻原地重建（展开是纯函数，几十站毫秒级）——地图级时间轴的功能核。
+ * 层对象保持同一实例（图层引用不失效）；过渡带与 TEMPO 标注随新时刻更新。
+ */
+export async function setTafLayerTime(
+  map: Leaflet.Map,
+  layer: Leaflet.LayerGroup,
+  items: readonly TafLayerItem[],
+  options: AddTafLayerOptions = {},
+): Promise<Leaflet.LayerGroup> {
+  layer.clearLayers();
+  await populateTafLayer(map, layer, items, options, await loadLeaflet());
+  return layer;
+}
+
+/** 时刻展示串（控件与卡片共用口径） */
+const fmtTafAt = (at: TafExpandAt): string =>
+  `${String(at.day).padStart(2, "0")}日 ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")} Z`;
+
+export interface TafTimeControlOptions {
+  /** 受控图层与数据（每次拨动全量重展开） */
+  layer: Leaflet.LayerGroup;
+  items: readonly TafLayerItem[];
+  /** addTafLayer 的其余选项（locale/anchorDays/popup） */
+  layerOptions?: Omit<AddTafLayerOptions, "at">;
+  /** 步进分钟数（滑杆一格），缺省 60 */
+  stepMinutes?: number;
+  /** 滑杆零点时刻；缺省自动取各站最早有效期起点 */
+  from?: TafExpandAt;
+  /** 时刻变更回调（拿到当前时刻，供宿主联动外部 UI） */
+  onTime?: (at: TafExpandAt) => void;
+}
+
+/**
+ * A framework-free time-scrub control element for a TAF layer: one range input drives every
+ * station's re-expansion (renderer layer ③). Host mounts it anywhere; pure DOM, no Leaflet control
+ * inheritance required.
+ * TAF 图层的时间滑杆控件（零框架纯 DOM）：一个 range 输入驱动全图各站重展开；宿主自行挂载定位。
+ */
+export function createTafTimeControl(
+  map: Leaflet.Map,
+  options: TafTimeControlOptions,
+): HTMLElement {
+  const step = options.stepMinutes ?? 60;
+  const box = document.createElement("div");
+  box.className = "mw-taf-timectrl";
+  box.style.cssText =
+    "display:flex;gap:8px;align-items:center;padding:6px 10px;background:#fff;border:1px solid #d8dee6;border-radius:8px;font:12px/1.4 system-ui,sans-serif;color:#1c2733";
+  const label = document.createElement("span");
+  label.setAttribute("aria-live", "polite");
+  const input = document.createElement("input");
+  input.type = "range";
+  input.min = "0";
+  input.max = "100";
+  input.step = "1";
+  input.setAttribute("aria-label", "预报时刻");
+  const atOfValue = (value: number): TafExpandAt => {
+    const base = from.day * 1440 + from.hour * 60 + from.minute + value * step;
+    return {
+      day: Math.floor(base / 1440),
+      hour: Math.floor((base % 1440) / 60),
+      minute: base % 60,
+    };
+  };
+  // 滑杆零点：显式 from > 各站最早有效期起点（日/时较小时优先，分位忽略——起点整时语义）
+  const from: TafExpandAt =
+    options.from ??
+    options.items.reduce<TafExpandAt>(
+      (acc, it) => {
+        const v = it.report.validity;
+        if (v === undefined) return acc;
+        const cand = { day: v.startDay, hour: v.startHour, minute: 0 };
+        if (acc.day === 0 && acc.hour === 0) return cand;
+        return cand.day < acc.day || (cand.day === acc.day && cand.hour < acc.hour) ? cand : acc;
+      },
+      { day: 0, hour: 0, minute: 0 },
+    );
+  const apply = (at: TafExpandAt): void => {
+    label.textContent = fmtTafAt(at);
+    void setTafLayerTime(map, options.layer, options.items, { ...options.layerOptions, at });
+    options.onTime?.(at);
+  };
+  input.addEventListener("input", () => apply(atOfValue(Number(input.value))));
+  // 缺省落在第 0 格；宿主可用 setTafLayerTime 自定初始时刻后拨动
+  apply(atOfValue(0));
+  box.append(input, label);
+  return box;
 }
