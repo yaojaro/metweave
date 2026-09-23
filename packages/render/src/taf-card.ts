@@ -11,6 +11,7 @@
  */
 import type {
   CloudCondition,
+  Span,
   TafChangeGroup,
   TafReport,
   TafTemperatureGroup,
@@ -26,7 +27,11 @@ import {
   WX_GLOSS,
   WIND_GLOSS,
   cloudCodeOf,
+  cloudTone,
   ftToMeters,
+  isCautionWeather,
+  isDangerWeather,
+  visibilityTone,
   weatherCodeOf,
   weatherGloss,
 } from "./gloss";
@@ -73,6 +78,10 @@ const LOCALE = {
     uncertainNote: "转变时刻不确定",
     tempoNote: "短时发作，每次不足 1 小时",
     emptySegment: "（未编要素）",
+    labelWind: "风",
+    labelVis: "能见度",
+    labelWx: "天气",
+    labelCloud: "云",
     becomingLead: "转为：",
     nswText: "其间无重要天气（NSW）",
     sep: " ｜ ",
@@ -108,6 +117,10 @@ const LOCALE = {
     uncertainNote: "change timing uncertain",
     tempoNote: "brief bursts, each under 1 hour",
     emptySegment: "(no elements reported)",
+    labelWind: "Wind",
+    labelVis: "Visibility",
+    labelWx: "Weather",
+    labelCloud: "Clouds",
     becomingLead: "becoming: ",
     nswText: "no significant weather then (NSW)",
     sep: " · ",
@@ -136,9 +149,16 @@ const STYLE_TEXT = `
   color: #4a5560; word-break: break-all; }
 .mw-taf-periods-title { margin: 8px 0 2px; font-size: 11px; color: #6b7785; font-weight: 600; }
 .mw-taf-periods { margin: 0; padding: 0; list-style: none; }
-.mw-taf-period { display: grid; grid-template-columns: auto auto 1fr; gap: 2px 8px;
-  align-items: baseline; padding: 3px 0; border-top: 1px dashed #e3e8ee; font-size: 12px; }
+.mw-taf-period { padding: 4px 2px; border-top: 1px dashed #e3e8ee; font-size: 12px; border-radius: 4px; }
 .mw-taf-period:first-child { border-top: none; }
+.mw-taf-period-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.mw-taf-period-body { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 1px 0 0 16px; }
+.mw-taf-item { color: #1c2733; }
+.mw-taf-item-label { color: #6b7785; margin-right: 4px; }
+.mw-taf-dot { font-size: 10px; }
+.mw-taf-dot-good { color: #2f9e63; }
+.mw-taf-dot-caution { color: #d99a2b; }
+.mw-taf-dot-danger { color: #c2504a; }
 .mw-taf-period-time { color: #6b7785; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mw-taf-k { font-size: 11px; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
 .mw-taf-k-base { background: #f2f6fa; color: #44546a; }
@@ -146,8 +166,11 @@ const STYLE_TEXT = `
 .mw-taf-k-becmg { background: #e3ecf6; color: #3d5a80; }
 .mw-taf-k-tempo { background: #fdf3dd; color: #8a5a00; }
 .mw-taf-k-prob { background: #eef0f3; color: #5a6b7d; }
-.mw-taf-period-desc { color: #1c2733; }
 .mw-taf-period-note { color: #8a5a12; font-size: 11px; }
+/* 行↔原文双向联动高亮（悬停任一侧，两侧同时点亮） */
+.mw-taf-rawseg { border-bottom: 1px dashed #7f8c9a; cursor: help; }
+.mw-taf-rawseg.mw-taf-hl { background: #fdeeb9; border-radius: 3px; }
+li.mw-taf-period.mw-taf-hl { background: #fdf3dd; }
 .mw-taf-warn { margin-top: 6px; font-size: 10px; color: #8a94a0; }
 `;
 
@@ -285,31 +308,74 @@ const segmentCloudTexts = (c: CloudCondition | undefined, locale: "zh" | "en"): 
   return parts;
 };
 
-/** 展开四要素 → 人话片段（主导段行与悬停共用）；CAVOK 独立成句（其让位语义下 vis/weather/clouds 缺席） */
-const conditionsGloss = (c: TafResolvedConditions, locale: "zh" | "en"): string[] => {
-  if (c.cavok) return [cavokText(locale)];
-  const parts: string[] = [];
+/** 分段行条目：要素标签 + 人话值（小白读标签行，专业悬停看电码） */
+interface SegItem {
+  label: string;
+  text: string;
+}
+
+const wxJoin = (locale: "zh" | "en"): string => (locale === "zh" ? "、" : ", ");
+
+/** 展开四要素 → 带标签条目；CAVOK 独立成句（其让位语义下 vis/weather/clouds 缺席） */
+const conditionItems = (
+  c: TafResolvedConditions,
+  locale: "zh" | "en",
+  t: LocaleTable,
+): SegItem[] => {
+  if (c.cavok) return [{ label: t.labelWx, text: cavokText(locale) }];
+  const items: SegItem[] = [];
   const w = segmentWindText(c.wind, locale);
-  if (w !== undefined) parts.push(w);
+  if (w !== undefined) items.push({ label: t.labelWind, text: w });
   const v = segmentVisText(c.visibility);
-  if (v !== undefined) parts.push(v);
-  for (const g of c.weather) parts.push(weatherGloss(g, WX_GLOSS[locale]));
-  parts.push(...segmentCloudTexts(c.clouds, locale));
-  return parts;
+  if (v !== undefined) items.push({ label: t.labelVis, text: v });
+  if (c.weather.length > 0)
+    items.push({
+      label: t.labelWx,
+      text: c.weather.map((g) => weatherGloss(g, WX_GLOSS[locale])).join(wxJoin(locale)),
+    });
+  const clouds = segmentCloudTexts(c.clouds, locale);
+  if (clouds.length > 0) items.push({ label: t.labelCloud, text: clouds.join(wxJoin(locale)) });
+  return items;
 };
 
-/** 变化组所列要素 → 人话片段（BECMG 过渡带行的「转为」内容）：未列要素不回溯，只报组内 */
-const elementsGloss = (e: TrendElements, locale: "zh" | "en", t: LocaleTable): string[] => {
-  if (e.cavok !== undefined) return [cavokText(locale)];
-  const parts: string[] = [];
+/** 变化组所列要素 → 带标签条目（BECMG 过渡带行/TEMPO 发作态）：未列要素不回溯，只报组内 */
+const elementItems = (e: TrendElements, locale: "zh" | "en", t: LocaleTable): SegItem[] => {
+  if (e.cavok !== undefined) return [{ label: t.labelWx, text: cavokText(locale) }];
+  const items: SegItem[] = [];
   const w = segmentWindText(e.wind, locale);
-  if (w !== undefined) parts.push(w);
+  if (w !== undefined) items.push({ label: t.labelWind, text: w });
   const v = segmentVisText(e.visibility);
-  if (v !== undefined) parts.push(v);
-  for (const g of e.weather) parts.push(weatherGloss(g, WX_GLOSS[locale]));
-  parts.push(...segmentCloudTexts(e.clouds, locale));
-  if (e.nsw !== undefined && parts.length === 0) parts.push(t.nswText);
-  return parts;
+  if (v !== undefined) items.push({ label: t.labelVis, text: v });
+  if (e.weather.length > 0)
+    items.push({
+      label: t.labelWx,
+      text: e.weather.map((g) => weatherGloss(g, WX_GLOSS[locale])).join(wxJoin(locale)),
+    });
+  const clouds = segmentCloudTexts(e.clouds, locale);
+  if (clouds.length > 0) items.push({ label: t.labelCloud, text: clouds.join(wxJoin(locale)) });
+  if (items.length === 0 && e.nsw !== undefined) items.push({ label: t.labelWx, text: t.nswText });
+  return items;
+};
+
+/** 分段扫视色点（好/注意/差，与 METAR 卡行色同判据族——显示层启发式，非运行判据） */
+const segmentTone = (c: TafResolvedConditions): "good" | "caution" | "danger" => {
+  let danger = false;
+  let caution = false;
+  for (const g of c.weather) {
+    if (isDangerWeather(g)) danger = true;
+    else if (isCautionWeather(g)) caution = true;
+  }
+  const vt = c.visibility === undefined ? undefined : visibilityTone(c.visibility);
+  if (vt === "mw-danger") danger = true;
+  else if (vt === "mw-caution") caution = true;
+  if (c.clouds !== undefined && c.clouds.clear === undefined) {
+    for (const layer of c.clouds.elements) {
+      const lt = cloudTone(layer);
+      if (lt === "mw-danger") danger = true;
+      else if (lt === "mw-caution") caution = true;
+    }
+  }
+  return danger ? "danger" : caution ? "caution" : "good";
 };
 
 /** 分段行悬停电码（专业面）：由 IR 重建紧凑电码串——与变化组清单/RAW 同源同口径 */
@@ -429,14 +495,17 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     if (rows.length > 0) {
       const title = el("p", "mw-taf-periods-title", t.periods);
       const ol = el("ol", "mw-taf-periods");
+      const rowEls: (HTMLElement | undefined)[] = [];
+      const baseRowIdx = rows.findIndex((r) => r.kind === "base");
       for (const row of rows) {
         const li = el("li", "mw-taf-period");
-        const time = el(
-          "span",
-          "mw-taf-period-time",
-          `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}`,
-        );
-        // 类型徽：BECMG 拆「渐变中（过渡带）/转变后」两态；PROB 带概率
+        rowEls.push(li);
+        const src = row.sourceIndex !== undefined ? report.changes[row.sourceIndex] : undefined;
+        const shown = row.overlay?.conditions ?? row.conditions;
+        // 行头：扫视色点 + 时间窗 + 类型徽（BECMG 拆「渐变中/转变后」两态；PROB 带概率）
+        const head = el("div", "mw-taf-period-head");
+        const dot = el("span", `mw-taf-dot mw-taf-dot-${segmentTone(shown)}`, "●");
+        dot.setAttribute("aria-hidden", "true");
         const chipText =
           row.kind === "PROB"
             ? t.probChip(row.overlay?.probability ?? 30)
@@ -449,29 +518,145 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
                 : row.kind === "FM"
                   ? t.kindFm
                   : t.kindBase;
-        const chip = el("span", `mw-taf-k mw-taf-k-${row.kind.toLowerCase()}`, chipText);
-        // 人话：TEMPO/PROB 行展示发作态（组内所列要素）；BECMG 过渡带行展示「转为」内容；其余主导段行=展开四要素
-        const src = row.sourceIndex !== undefined ? report.changes[row.sourceIndex] : undefined;
-        const parts =
-          row.uncertain && src?.elements !== undefined
-            ? [t.becomingLead + elementsGloss(src.elements, locale, t).join(t.sep)]
-            : conditionsGloss(row.overlay?.conditions ?? row.conditions, locale);
-        const descBox = el("span", "mw-taf-period-desc");
-        descBox.append(
-          document.createTextNode(parts.length > 0 ? parts.join(t.sep) : t.emptySegment),
+        head.append(
+          dot,
+          el(
+            "span",
+            "mw-taf-period-time",
+            `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}`,
+          ),
+          el("span", `mw-taf-k mw-taf-k-${row.kind.toLowerCase()}`, chipText),
         );
-        if (row.uncertain)
-          descBox.append(el("span", "mw-taf-period-note", `（${t.uncertainNote}）`));
+        // 行体：带标签要素条目（小白读标签人话）；TEMPO/PROB 行=发作态，BECMG 过渡带行=「转为」内容
+        const body = el("div", "mw-taf-period-body");
+        const items: SegItem[] =
+          row.uncertain && src?.elements !== undefined
+            ? [{ label: "", text: t.becomingLead }, ...elementItems(src.elements, locale, t)]
+            : conditionItems(shown, locale, t);
+        if (items.length === 0) items.push({ label: "", text: t.emptySegment });
+        for (const it of items) {
+          const item = el("span", "mw-taf-item");
+          if (it.label !== "") item.append(el("span", "mw-taf-item-label", it.label));
+          item.append(document.createTextNode(it.text));
+          body.append(item);
+        }
+        if (row.uncertain) body.append(el("span", "mw-taf-period-note", `（${t.uncertainNote}）`));
         else if (row.kind === "TEMPO" || row.overlay?.withTempo === true)
-          descBox.append(el("span", "mw-taf-period-note", `（${t.tempoNote}）`));
-        li.append(time, chip, descBox);
+          body.append(el("span", "mw-taf-period-note", `（${t.tempoNote}）`));
+        li.append(head, body);
         // 悬停/读屏＝电码（专业面）：该段紧凑电码；挂载/过渡带行附来源组原文
-        const code = `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}｜${conditionsCodeOf(row.overlay?.conditions ?? row.conditions)}${row.overlay !== undefined && src !== undefined ? ` ｜ ${src.raw}` : ""}`;
+        const code = `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}｜${conditionsCodeOf(shown)}${row.overlay !== undefined && src !== undefined ? ` ｜ ${src.raw}` : ""}`;
         li.title = code;
         li.setAttribute("aria-label", code);
         ol.append(li);
       }
       card.append(title, ol);
+
+      // —— RAW 对照 + 行↔原文双向联动（owner 9/23 二轮：专业面要看原文，解析结果与原文互指）：
+      // 已知组（有效期/基况各要素/变化组/气温组）在原文里包 span；悬停任一侧，分段行与对应原文段同时点亮
+      if (options.raw === true) {
+        interface Cut {
+          start: number;
+          end: number;
+          rowIdx: number | null;
+          hint: string;
+        }
+        const cuts: Cut[] = [];
+        if (v.span !== undefined)
+          cuts.push({
+            start: v.span.start,
+            end: v.span.end,
+            rowIdx: null,
+            hint: `${t.validity} ${v.raw}`,
+          });
+        const baseItems =
+          baseRowIdx >= 0
+            ? conditionItems(
+                rows[baseRowIdx]?.conditions ?? { weather: [], cavok: false },
+                locale,
+                t,
+              )
+            : [];
+        const baseHint = baseItems.map((x) => x.text).join(t.sep);
+        const addBase = (sp: Span | undefined, hint: string): void => {
+          if (sp === undefined || baseRowIdx < 0) return;
+          cuts.push({ start: sp.start, end: sp.end, rowIdx: baseRowIdx, hint });
+        };
+        if (report.wind?.kind === "value") addBase(report.wind.value.speed.span, baseHint); // speed.span＝整个风组 token 跨度
+        if (report.visibility?.kind === "value") addBase(report.visibility.value.span, baseHint);
+        if (report.weather?.kind === "value")
+          for (const g of report.weather.value) addBase(g.span, baseHint);
+        if (report.clouds !== undefined) {
+          for (const layer of report.clouds.elements) addBase(layer.span, baseHint);
+          if (report.clouds.clear?.span !== undefined) addBase(report.clouds.clear.span, baseHint);
+        }
+        if (report.cavokSpan !== undefined) addBase(report.cavokSpan, baseHint);
+        // 变化组 → 首个对应行（BECMG 过渡带/转变后两行同源一组，联动指向首行）
+        const rowIdxOfChange = new Map<number, number>();
+        for (const [i, row] of rows.entries())
+          if (row.sourceIndex !== undefined && !rowIdxOfChange.has(row.sourceIndex))
+            rowIdxOfChange.set(row.sourceIndex, i);
+        for (const [idx, change] of report.changes.entries()) {
+          if (change.span === undefined) continue;
+          const ri = rowIdxOfChange.get(idx);
+          if (ri === undefined) continue;
+          const row = rows[ri];
+          const hint =
+            row?.overlay !== undefined
+              ? conditionItems(row.overlay.conditions as TafResolvedConditions, locale, t)
+                  .map((x) => x.text)
+                  .join(t.sep)
+              : (rowEls[ri]?.textContent ?? change.raw);
+          cuts.push({ start: change.span.start, end: change.span.end, rowIdx: ri, hint });
+        }
+        for (const temp of report.temperatures) {
+          if (temp.span !== undefined)
+            cuts.push({
+              start: temp.span.start,
+              end: temp.span.end,
+              rowIdx: null,
+              hint: tempLine(temp, t),
+            });
+        }
+        // 组装：原文按切割点走片，已知组包 span（悬停=该组人话），其余原样保真
+        const rawP = el("p", "mw-taf-raw");
+        rawP.append(document.createTextNode(`${t.raw}｜`));
+        let pos = 0;
+        const sorted: Cut[] = []; // 手动插入排序（避免 Array#sort 原地变异）
+        for (const cut of cuts) {
+          let at = sorted.length;
+          while (at > 0) {
+            const prev = sorted[at - 1];
+            if (prev === undefined || prev.start <= cut.start) break;
+            at -= 1;
+          }
+          sorted.splice(at, 0, cut);
+        }
+        for (const cut of sorted) {
+          if (cut.start < pos || cut.start >= cut.end) continue; // 越界/重叠片跳过（防御传输怪形）
+          rawP.append(document.createTextNode(report.raw.slice(pos, cut.start)));
+          const seg = el("span", "mw-taf-rawseg", report.raw.slice(cut.start, cut.end));
+          seg.title = cut.hint;
+          seg.setAttribute("aria-label", cut.hint);
+          if (cut.rowIdx !== null) {
+            const li = rowEls[cut.rowIdx];
+            if (li !== undefined) {
+              const hl = (on: boolean): void => {
+                seg.classList.toggle("mw-taf-hl", on);
+                li.classList.toggle("mw-taf-hl", on);
+              };
+              seg.addEventListener("mouseenter", () => hl(true));
+              seg.addEventListener("mouseleave", () => hl(false));
+              li.addEventListener("mouseenter", () => hl(true));
+              li.addEventListener("mouseleave", () => hl(false));
+            }
+          }
+          rawP.append(seg);
+          pos = cut.end;
+        }
+        rawP.append(document.createTextNode(report.raw.slice(pos)));
+        card.append(rawP);
+      }
     }
   }
 
@@ -482,9 +667,6 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     card.append(p);
   }
 
-  if (options.raw === true) {
-    card.append(el("p", "mw-taf-raw", `${t.raw}｜${report.raw}`));
-  }
   card.append(el("p", "mw-taf-warn", t.warning));
   return card;
 }

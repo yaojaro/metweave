@@ -1650,13 +1650,54 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     // 人话：TEMPO 发作态（2500 m 小阵雨夹雪轻雾）/ 过渡带「转为」+ 不确定注 / 未列要素回溯
     expect(text).toContain("2500 m");
     expect(text).toContain("小阵雨、雪");
-    expect(text).toContain("转为：2000 m");
+    expect(text).toContain("转为：");
+    expect(text).toContain("2000 m");
     expect(text).toContain("转变时刻不确定");
     // 电码走悬停/读屏（沿 METAR 卡口径：主表人话、原码悬停）：基况段=展开电码，TEMPO 段附组原文
     expect(rows[0]?.getAttribute("title") ?? "").toContain("04009G16MPS");
     expect(rows[0]?.getAttribute("title") ?? "").toContain("9999");
     expect(rows[1]?.getAttribute("title") ?? "").toContain("2500 -SHRASN BR");
     expect(rows[0]?.getAttribute("aria-label")).toBe(rows[0]?.getAttribute("title"));
+  });
+
+  it("RAW 对照 + 行↔原文双向联动：已知组包 span，悬停任一侧两侧点亮；悬停原文=该组人话", () => {
+    const card = renderTafCard(parseTaf(golden), { raw: true });
+    const rawP = card.querySelector(".mw-taf-raw");
+    expect(rawP).not.toBeNull();
+    const segs = Array.from(card.querySelectorAll(".mw-taf-rawseg"));
+    // 有效期 1 + 基况 4（风/能见度/两云层）+ 变化组 4 + 气温 3 = 12 片
+    expect(segs.length).toBe(12);
+    expect(rawP?.textContent).toContain(golden.slice(0, 4)); // 原文保真（含未包裹的电头）
+    const rows = Array.from(card.querySelectorAll(".mw-taf-period"));
+    // TEMPO 行（index 1）↔ 其原文组：悬停行 → 原文片点亮；悬停原文片 → 行点亮
+    const tempoSpan = segs.find((x) => (x.textContent ?? "").includes("SHRASN"));
+    expect(tempoSpan).toBeDefined();
+    rows[1]?.dispatchEvent(new MouseEvent("mouseenter"));
+    expect(tempoSpan?.classList.contains("mw-taf-hl")).toBe(true);
+    expect(rows[1]?.classList.contains("mw-taf-hl")).toBe(true);
+    rows[1]?.dispatchEvent(new MouseEvent("mouseleave"));
+    expect(tempoSpan?.classList.contains("mw-taf-hl")).toBe(false);
+    tempoSpan?.dispatchEvent(new MouseEvent("mouseenter"));
+    expect(rows[1]?.classList.contains("mw-taf-hl")).toBe(true);
+    // 悬停原文片的人话（title）= 该组翻译
+    expect(tempoSpan?.getAttribute("title") ?? "").toContain("2500 m");
+  });
+
+  it("分段色点与要素标签（小白直观面）：TEMPO 雷雨行红点、基况行绿点，要素带标签", () => {
+    const card = renderTafCard(
+      parseTaf(
+        "TAF ZGSZ 230303Z 2306/2412 21004MPS 8000 BKN040 TEMPO 2306/2309 TSRA FEW020CB BKN040=",
+      ),
+    );
+    const rows = Array.from(card.querySelectorAll(".mw-taf-period"));
+    expect(rows[0]?.querySelector(".mw-taf-dot")?.classList.contains("mw-taf-dot-good")).toBe(true);
+    expect(rows[1]?.querySelector(".mw-taf-dot")?.classList.contains("mw-taf-dot-danger")).toBe(
+      true,
+    );
+    const labels = Array.from(rows[0]?.querySelectorAll(".mw-taf-item-label") ?? []).map(
+      (x) => x.textContent,
+    );
+    expect(labels).toEqual(["风", "能见度", "云"]);
   });
 
   it("分段人话与 METAR 卡同源（gloss 词表单一来源）：TSRA 两卡同短语、无变化组报文也给基况行", () => {

@@ -25,7 +25,6 @@ import type {
   TrendGroup,
   WarningCode,
   WeatherGroup,
-  WeatherPhenomenon,
   WindShearGroup,
 } from "@metweave/core";
 import { toValues } from "@metweave/core";
@@ -35,7 +34,11 @@ import {
   WX_GLOSS,
   WIND_GLOSS,
   cloudCodeOf,
+  cloudTone,
   ftToMeters,
+  isCautionWeather,
+  isDangerWeather,
+  visibilityTone,
   weatherCodeOf,
   weatherGloss,
 } from "./gloss";
@@ -590,77 +593,6 @@ function observeTimeOf(t: ReportTime, now: Date): Date | null {
   }
   return null;
 }
-
-/** 能见度折米（单位跟组走；1 SM = 1609.344 m 精确换算） */
-const visibilityMeters = (vis: {
-  value: number;
-  unit: "m" | "sm";
-  exact: boolean;
-  beyond?: "above" | "below";
-}): number => (vis.unit === "m" ? vis.value : vis.value * 1609.344);
-
-/** 降水类现象（着色判据用，与 WMO 4678 降水族对应） */
-const PRECIP_PHENOMENA: ReadonlySet<WeatherPhenomenon> = new Set([
-  "RA",
-  "SN",
-  "SG",
-  "PL",
-  "GS",
-  "IC",
-  "DZ",
-  "UP",
-]);
-
-/**
- * 危险值分级（值着色口径，本库自拟，初稿待审）：
- * 只是「一眼扫视哪些组更值得注意」的显示层启发式，阈值由本库拟定——
- * **不对应、也不代表任何官方飞行天气分类；本库不提供也不承诺飞行规则判定**（本期无此功能）：
- * - danger（红系 mw-danger）：天气描述符含 TS（雷暴）或 FZ（冻降水族，2026-09-22 运行视角评审升红）或现象含 GR（冰雹）或强度 +（强）；
- *   云层含 CB/TCU（对流云）；能见度 < 1500 m；RVR < 800 m；跑道关闭。
- * - caution（橙系 mw-caution）：降水类现象（RA/SN/SG/PL/GS/IC/DZ/UP）；
- *   能见度 1500–5000 m（能见度分档取国内通行 1500/5000 m 口径）。
- * 阈值与分级细则随术语表版本审定后修订。
- */
-const isDangerWeather = (g: WeatherGroup): boolean =>
-  g.descriptor === "TS" ||
-  g.descriptor === "FZ" ||
-  g.phenomena.includes("GR") ||
-  g.intensity === "+";
-
-const isCautionWeather = (g: WeatherGroup): boolean =>
-  !isDangerWeather(g) &&
-  (g.descriptor === "FZ" || g.phenomena.some((p) => PRECIP_PHENOMENA.has(p)));
-
-/**
- * 低云底着色（判据本库自拟、初稿待审——显示层扫视口径，非标准分级、非运行判据）：
- * BKN/OVC 云底 < 1000 ft → mw-danger；1000–3000 ft → mw-caution；
- * VV 组任意 → mw-caution，VV < 400 ft → mw-danger。
- * 对流云（CB/TCU）恒 danger（威胁优先于云底档位）；缺测云高不捏造档位不着色。
- */
-const cloudTone = (layer: CloudElement): "mw-danger" | "mw-caution" | undefined => {
-  if (layer.kind === "vertical-visibility") {
-    const v = layer.heightFt.value;
-    return v !== null && v < 400 ? "mw-danger" : "mw-caution";
-  }
-  if (layer.amount !== "BKN" && layer.amount !== "OVC") return undefined;
-  const h = layer.heightFt.value;
-  if (h === null) return undefined;
-  if (h < 1000) return "mw-danger";
-  if (h <= 3000) return "mw-caution";
-  return undefined;
-};
-
-const visibilityTone = (vis: {
-  value: number;
-  unit: "m" | "sm";
-  exact: boolean;
-  beyond?: "above" | "below";
-}): "mw-danger" | "mw-caution" | undefined => {
-  const meters = visibilityMeters(vis);
-  if (meters < 1500) return "mw-danger";
-  if (meters < 5000) return "mw-caution";
-  return undefined;
-};
 
 /** 跑道状态行文本：跑道号 + 关闭/清除 + 污染物 + 覆盖 + 深度 + 摩擦/制动（WMO §15.13.6 电码表）。 */
 function runwayStateText(st: RunwayStateGroup, rwy: LocaleTable["rwy"]): string {

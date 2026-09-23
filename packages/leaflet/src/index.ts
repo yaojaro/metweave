@@ -624,7 +624,7 @@ async function populateTafLayer(
 
     if (options.popup ?? true) {
       // 层②起弹窗换 renderTafCard（时间线条 + 变化组清单 + 气温行；展开时刻摘要行置于卡前）
-      const card = renderTafCard(r, { locale });
+      const card = renderTafCard(r, { locale, raw: true }); // RAW 对照置底 + 行↔原文双向联动（owner 9/23 二轮）
       if (notes.length > 0) {
         const lead = document.createElement("p");
         lead.style.margin = "0 0 4px";
