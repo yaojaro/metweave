@@ -158,9 +158,9 @@ describe("TAF 批 3.2：天气强度三档逐元素读（清单 C4★）", () =>
     const groups = r.weather?.kind === "value" ? r.weather.value : [];
     expect(groups).toHaveLength(4);
     expect(groups[0]).toMatchObject({ intensity: "-", descriptor: "SH" });
-    expect([...(groups[0]?.phenomena ?? [])].sort()).toEqual(["RA", "SN"]);
+    expect(groups[0]?.phenomena).toEqual(["RA", "SN"]);
     expect(groups[1]).toMatchObject({ intensity: "-" });
-    expect([...(groups[1]?.phenomena ?? [])].sort()).toEqual(["RA", "SN"]);
+    expect(groups[1]?.phenomena).toEqual(["RA", "SN"]);
     expect(groups[2]).toMatchObject({ intensity: "+" });
     expect(groups[2]?.phenomena).toEqual(["SN"]);
     expect(groups[3]?.intensity).toBeUndefined();
@@ -178,6 +178,23 @@ describe("TAF 批 3.2：天气强度三档逐元素读（清单 C4★）", () =>
     expect(intensities.has("-")).toBe(true);
     expect(intensities.has("none")).toBe(true);
     expect(intensities.has("+")).toBe(true);
+  });
+});
+
+describe("TAF 批 3.3：天气白名单双层（清单 C5★）", () => {
+  it("ZBTJ 实证：HZ 中国扩展层收下 + invalid-format/info 出声；国际白名单组（TSRA 族）不出声", () => {
+    const r = parseTaf(fx("ogimet-zbtj-20240601-0304z").raw);
+    expect(wx(r.weather?.kind === "value" ? r.weather.value : [])).toBe("HZ");
+    const cn = r.warnings.filter((w) => w.message.includes("中国扩展层"));
+    expect(cn).toHaveLength(1);
+    expect(cn[0]).toMatchObject({ code: "invalid-format", severity: "info" });
+    const intl = parseTaf("TAF ZBAA 010340Z 0106/0206 9999 TSRA SCT030CB=");
+    expect(intl.warnings.filter((w) => w.message.includes("中国扩展层"))).toHaveLength(0);
+  });
+
+  it("弱档 -SN/-RA 均标记（变化组内同样出声）；完整拒收语义归 /validate（注记）", () => {
+    const r = parseTaf("TAF ZBAA 010340Z 0106/0206 9999 TEMPO 0106/0109 -SN=");
+    expect(r.warnings.filter((w) => w.message.includes("中国扩展层"))).toHaveLength(1);
   });
 });
 
@@ -363,9 +380,11 @@ describe("TAF 批 1.5：基况段四要素 + CAVOK", () => {
     if (r.weather?.kind === "value") expect(r.weather.value).toHaveLength(1); // BR
     expect(r.clouds?.elements).toHaveLength(1); // OVC033
     expect(r.cavok).toBe(false);
-    // 批 2.2 起：三条变化组（TEMPO×2 + BECMG）全结构化，零 unknown-token
+    // 批 2.2 起：三条变化组（TEMPO×2 + BECMG）全结构化零 unknown-token；
+    // 批 3.3 起：基况 BR + TEMPO -TSRA 两枚中国扩展层 info 告警（C5 容错层标记）
     expect(r.changes.map((c) => c.kind)).toEqual(["TEMPO", "TEMPO", "BECMG"]);
-    expect(r.warnings).toHaveLength(0);
+    expect(r.warnings).toHaveLength(2);
+    expect(r.warnings.every((w) => w.message.includes("中国扩展层"))).toBe(true);
     expect(rawSlice(f.raw, r.clouds?.elements[0]?.span)).toBe("OVC033");
   });
 

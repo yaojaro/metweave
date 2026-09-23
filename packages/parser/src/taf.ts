@@ -589,6 +589,31 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       ? { elements: [...cloudElements], ...(clearCode !== undefined ? { clear: clearCode } : {}) }
       : undefined;
 
+  // —— C5★ 天气白名单双层：国际白名单（重要天气——中大降水/雷暴族/尘沙暴/冻雾/吹雪/飑/漏斗云等，
+  // WMO 51.5）为基；中国扩展层（弱档 `-` 与 BR/HZ 等，ZBTJ/ZSSS 官方示例实证）容错收下 + 出声——
+  // 完整白名单编码与拒收语义归 /validate（strict 侧），tolerant 层只标记不拒收
+  const cnExtensionGroups: { group: WeatherGroup; where: string }[] = [];
+  const baseWeather = weather ?? observedWeatherOf(weatherList);
+  if (baseWeather?.kind === "value") {
+    for (const g of baseWeather.value) cnExtensionGroups.push({ group: g, where: "基况段" });
+  }
+  for (const change of changes) {
+    for (const g of change.elements?.weather ?? []) {
+      cnExtensionGroups.push({ group: g, where: `${change.kind} 组` });
+    }
+  }
+  for (const { group, where } of cnExtensionGroups) {
+    const isCnExtension =
+      group.intensity === "-" || group.phenomena.some((p) => p === "BR" || p === "HZ");
+    if (!isCnExtension) continue;
+    warnings.push({
+      code: "invalid-format",
+      severity: "info",
+      message: `TAF 国际白名单外天气组（${where}——弱档/BR/HZ 属中国扩展层，清单 C5）：已收下`,
+      span: group.span,
+    });
+  }
+
   return compactIfEnabled({
     kind: "taf" as const,
     raw,

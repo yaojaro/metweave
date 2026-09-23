@@ -1,6 +1,6 @@
 {
   "schema": "metweave-taf-fixtures/1",
-  "count": 10,
+  "count": 11,
   "fixtures": [
     {
       "id": "ogimet-plain-zbaa-20090801",
@@ -101,6 +101,16 @@
       "hash": null,
       "traps": ["golden-timeline", "textbook-variant"],
       "note": "黄金三例之三·教材版（taf-timeline §3.3 逐时刻表权威源：末段 TEMPO 2619/2623 0300 +SN BKN007、风-only BECMG G15）——与 ogimet 同日实抓变体（G14、无末段 TEMPO）并存，两版皆语料库真实形态，方言差异本身入档"
+    },
+    {
+      "id": "ogimet-zbtj-20240601-0304z",
+      "raw": "TAF ZBTJ 010304Z 0106/0206 25003MPS 5000 HZ NSC TX33/0107Z TN18/0121Z=",
+      "station": "ZBTJ",
+      "source": "ogimet",
+      "obsTime": "2024-06-01T03:04:00Z",
+      "hash": "c46df00611fc",
+      "traps": ["hz-cn-extension", "tx-tn"],
+      "note": "C5 中国扩展层实证（清单引用站 ZBTJ）：HZ 霾为 TAF 国际白名单外、中方常用；兼带 TX/TN（C6 语料）"
     }
   ]
 }
