@@ -1,7 +1,9 @@
 // 工作区契约检查：
 //   ① 锁步版本——v0.x 阶段五包必须同版本；
 //   ② core 零依赖——IR 包不得有任何运行时依赖 / peerDependencies；
-//   ③ 依赖方向单向——parser→core←render，leaflet→core+render，伞包全依赖，禁止其他组合；
+//   ③ 依赖方向单向——core←parser←render←leaflet（render/leaflet 消费展开器 tafSegments/expandTaf，
+//      2026-09-23 随 TAF 分段明细落地改约；此前 leaflet 运行时 import parser 却只声明 devDep，
+//      dist 外部化引用会令发布件解析失败——本批一并修正声明），伞包全依赖，禁止其他组合；
 //   ④ publishConfig 替换就位——开发期 exports 指向 src，发布时必须替换为 dist；
 //   ⑤ 子路径完整——开发期 exports 的每个子路径必须在 publishConfig.exports 有同键 dist 替换
 //     （通用断言：新增子路径忘了发布面 → 发布即 404；产物缺失由 check:artifact 的 publint/attw 拦截）；
@@ -18,8 +20,8 @@ const packagesDir = join(root, "packages");
 const EXPECTED_INTERNAL_DEPS = {
   "@metweave/core": [],
   "@metweave/parser": ["@metweave/core"],
-  "@metweave/render": ["@metweave/core"],
-  "@metweave/leaflet": ["@metweave/core", "@metweave/render"],
+  "@metweave/render": ["@metweave/core", "@metweave/parser"],
+  "@metweave/leaflet": ["@metweave/core", "@metweave/parser", "@metweave/render"],
   metweave: ["@metweave/core", "@metweave/parser", "@metweave/render"],
 };
 

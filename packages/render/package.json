@@ -60,11 +60,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@metweave/core": "workspace:*"
-  },
-  "devDependencies": {
+    "@metweave/core": "workspace:*",
     "@metweave/parser": "workspace:*"
   },
+  "devDependencies": {},
   "engines": {
     "node": ">=20"
   }

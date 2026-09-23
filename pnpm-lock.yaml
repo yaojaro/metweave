@@ -65,13 +65,13 @@ importers:
       '@metweave/core':
         specifier: workspace:*
         version: link:../core
+      '@metweave/parser':
+        specifier: workspace:*
+        version: link:../parser
       '@metweave/render':
         specifier: workspace:*
         version: link:../render
     devDependencies:
-      '@metweave/parser':
-        specifier: workspace:*
-        version: link:../parser
       '@types/leaflet':
         specifier: ^1.9.22
         version: 1.9.22
@@ -106,7 +106,6 @@ importers:
       '@metweave/core':
         specifier: workspace:*
         version: link:../core
-    devDependencies:
       '@metweave/parser':
         specifier: workspace:*
         version: link:../parser
