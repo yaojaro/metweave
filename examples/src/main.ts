@@ -176,11 +176,16 @@ report().catch((err: unknown) => {
 const modeBar = {
   metar: document.getElementById("mode-metar"),
   taf: document.getElementById("mode-taf"),
+  list: document.getElementById("mode-list"),
   time: document.getElementById("taf-time"),
+  panel: document.getElementById("taf-panel"),
+  panelTitle: document.getElementById("taf-panel-title"),
+  panelBody: document.getElementById("taf-panel-body"),
 };
 let metarLayer: LeafletNS.LayerGroup | undefined;
 let tafLayer: LeafletNS.LayerGroup | undefined;
 let tafItems: readonly TafLayerItem[] | undefined;
+let listOpen = false;
 
 const setMode = (mode: "metar" | "taf"): void => {
   const active = mode === "taf";
@@ -189,7 +194,19 @@ const setMode = (mode: "metar" | "taf"): void => {
   modeBar.metar?.setAttribute("aria-pressed", String(!active));
   modeBar.taf?.setAttribute("aria-pressed", String(active));
   if (modeBar.time !== null) modeBar.time.hidden = !active;
+  if (modeBar.list !== null) modeBar.list.hidden = !active;
+  if (!active) setListOpen(false);
 };
+
+/** 站点列表开关（评测签派 P2-7：38 站扫读列表态） */
+const setListOpen = (open: boolean): void => {
+  listOpen = open;
+  modeBar.list?.classList.toggle("active", open);
+  modeBar.list?.setAttribute("aria-pressed", String(open));
+  if (modeBar.panel !== null) modeBar.panel.hidden = !open;
+};
+
+let tafLoading: Promise<void> | undefined; // 防重入（评测工程 P2-4：连点不重复拉取）
 
 const loadTaf = async (): Promise<void> => {
   if (tafLayer !== undefined && tafItems !== undefined) {
@@ -199,48 +216,147 @@ const loadTaf = async (): Promise<void> => {
     setMode("taf");
     return;
   }
-  setStatus("正在拉取 39 站 TAF 预报（aviationweather 公开通路）…", "loading");
-  const ids = stationsFile.stations.map((s) => s.icao).join(",");
-  const res = await fetch(`/aw-taf?ids=${ids}&format=raw`); // 走 vite 代理（见 vite.config.ts——上游无 CORS 头）
-  if (!res.ok) throw new Error(`aviationweather 返回 ${res.status}`);
-  const text = await res.text();
-  const byIcao = new Map(stationsFile.stations.map((s) => [s.icao, s]));
-  const items: TafLayerItem[] = [];
-  let failed = 0;
-  // aviationweather raw 格式：新报行从行首起，续行以空白缩进续接——先归并再解析
-  const reports: string[] = [];
-  for (const line of text.split("\n")) {
-    if (line.trim() === "") continue;
-    if (/^\s/.test(line) && reports.length > 0) reports[reports.length - 1] += ` ${line.trim()}`;
-    else reports.push(line.trim());
-  }
-  for (const raw of reports) {
+  if (tafLoading !== undefined) return tafLoading; // 拉取中：复用在飞请求
+  tafLoading = (async () => {
+    setStatus("正在拉取 39 站 TAF 预报（aviationweather 公开通路）…", "loading");
+    const ids = stationsFile.stations.map((s) => s.icao).join(",");
+    // 超时 20s（评测工程 P2-4：上游挂死不再无界等待）；错误分层在 catch 判别
+    let res: Response;
     try {
-      const taf = parseTaf(raw);
-      const st = byIcao.get(taf.station);
-      if (st === undefined) continue;
-      items.push({ report: taf, position: [st.lat, st.lon], title: `${st.icao} ${st.name}` });
-    } catch {
-      failed += 1;
+      res = await fetch(`/aw-taf?ids=${ids}&format=raw`, { signal: AbortSignal.timeout(20_000) }); // 走 vite 代理（见 vite.config.ts——上游无 CORS 头）
+    } catch (err) {
+      const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+      throw timedOut
+        ? new Error("拉取超时（20 秒），请稍后重试")
+        : new Error("网络请求失败，请检查网络后重试");
     }
+    if (!res.ok) throw new Error(`上游返回异常状态 ${res.status}，请稍后重试`);
+    const text = await res.text();
+    const byIcao = new Map(stationsFile.stations.map((s) => [s.icao, s]));
+    const items: TafLayerItem[] = [];
+    let failed = 0;
+    // aviationweather raw 格式：新报行从行首起，续行以空白缩进续接——先归并再解析
+    const reports: string[] = [];
+    for (const line of text.split("\n")) {
+      if (line.trim() === "") continue;
+      if (/^\s/.test(line) && reports.length > 0) reports[reports.length - 1] += ` ${line.trim()}`;
+      else reports.push(line.trim());
+    }
+    for (const raw of reports) {
+      try {
+        const taf = parseTaf(raw);
+        const st = byIcao.get(taf.station);
+        if (st === undefined) continue;
+        items.push({ report: taf, position: [st.lat, st.lon], title: `${st.icao} ${st.name}` });
+      } catch {
+        failed += 1;
+      }
+    }
+    if (items.length === 0) throw new Error("上游返回的报文全部解析失败（数据异常），请稍后重试");
+    tafItems = items;
+    tafLayer = await addTafLayer(map, items);
+    if (metarLayer !== undefined) map.removeLayer(metarLayer);
+    else map.removeLayer(pendingLayer);
+    // 站点列表（档色点＋下一变化；滑杆换时刻即刷新；行点击飞行并开卡——评测签派 P2-7）
+    const TIER_ORDER: Record<string, number> = { danger: 0, caution: 1, good: 2, unknown: 3 };
+    const CHANGE_WORD: Record<string, string> = {
+      FM: "自此",
+      BECMG: "渐变",
+      TEMPO: "间歇",
+      PROB: "概率",
+    };
+    const renderPanel = (): void => {
+      if (!listOpen || tafLayer === undefined || tafItems === undefined) return;
+      const body = modeBar.panelBody;
+      if (body === null) return;
+      body.replaceChildren();
+      const markers = tafLayer.getLayers();
+      const rowsData = tafItems.map((it, i) => {
+        const ml = markers[i];
+        const dot = ml instanceof L.Marker ? ml.getElement()?.querySelector(".mw-dot") : undefined;
+        const tier = dot?.className.match(/mw-dot-(\w+)/)?.[1] ?? "unknown";
+        const ch = it.report.changes[0];
+        const atText =
+          ch?.at !== undefined
+            ? `${String(ch.at.hour).padStart(2, "0")}${String(ch.at.minute).padStart(2, "0")}`
+            : "";
+        const next =
+          ch !== undefined
+            ? `${CHANGE_WORD[ch.kind] ?? ch.kind} ${ch.window?.raw ?? atText}`.trim()
+            : "—";
+        return { it, tier, next };
+      });
+      rowsData.sort(
+        (a, b) =>
+          (TIER_ORDER[a.tier] ?? 9) - (TIER_ORDER[b.tier] ?? 9) ||
+          a.it.report.station.localeCompare(b.it.report.station),
+      );
+      const colors: Record<string, string> = {
+        danger: "#c2504a",
+        caution: "#d99a2b",
+        good: "#2f9e63",
+        unknown: "#94a3b8",
+      };
+      for (const r of rowsData) {
+        const tr = document.createElement("tr");
+        tr.tabIndex = 0;
+        const tdDot = document.createElement("td");
+        const dot = document.createElement("span");
+        dot.className = "p-dot";
+        dot.style.background = colors[r.tier] ?? colors.unknown ?? "#94a3b8";
+        tdDot.append(dot);
+        const tdName = document.createElement("td");
+        const code = document.createElement("span");
+        code.className = "p-code";
+        code.textContent = r.it.report.station;
+        const name = document.createElement("span");
+        name.className = "p-name";
+        name.textContent = (r.it.title ?? r.it.report.station).slice(
+          r.it.report.station.length + 1,
+        );
+        tdName.append(code, name);
+        const tdNext = document.createElement("td");
+        tdNext.className = "p-next";
+        tdNext.textContent = r.next;
+        tr.append(tdDot, tdName, tdNext);
+        const fly = (): void => {
+          const idx = tafItems?.findIndex((x) => x.report.station === r.it.report.station) ?? -1;
+          const found = markers[idx];
+          if (!(found instanceof L.Marker)) return;
+          const marker = found;
+          map.flyTo(r.it.position, 6);
+          marker.openPopup();
+        };
+        tr.addEventListener("click", fly);
+        tr.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") fly();
+        });
+        body.append(tr);
+      }
+      if (modeBar.panelTitle !== null)
+        modeBar.panelTitle.textContent = `站点预报 · ${rowsData.length} 站（按当前时刻档位排序）`;
+    };
+    const ctrl = createTafTimeControl(map, {
+      layer: tafLayer,
+      items,
+      layerOptions: {},
+      onTime: () => {
+        window.setTimeout(renderPanel, 60); // 等 setTafLayerTime 原地更新图标落地后刷新列表
+      },
+    });
+    modeBar.time?.replaceChildren(ctrl);
+    setMode("taf");
+    renderPanel();
+    setStatus(
+      `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 拖动右上滑杆换时刻`,
+      "ok",
+    );
+  })();
+  try {
+    await tafLoading;
+  } finally {
+    tafLoading = undefined;
   }
-  if (items.length === 0) throw new Error("全部 TAF 解析失败");
-  tafItems = items;
-  tafLayer = await addTafLayer(map, items);
-  if (metarLayer !== undefined) map.removeLayer(metarLayer);
-  else map.removeLayer(pendingLayer);
-  const ctrl = createTafTimeControl(map, {
-    layer: tafLayer,
-    items,
-    layerOptions: {},
-    onTime: undefined,
-  });
-  modeBar.time?.replaceChildren(ctrl);
-  setMode("taf");
-  setStatus(
-    `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 拖动右上滑杆换时刻`,
-    "ok",
-  );
 };
 
 modeBar.taf?.addEventListener("click", () => {
@@ -254,6 +370,14 @@ modeBar.metar?.addEventListener("click", () => {
   if (tafLayer !== undefined) map.removeLayer(tafLayer);
   if (metarLayer !== undefined) map.addLayer(metarLayer);
   setMode("metar");
+});
+modeBar.list?.addEventListener("click", () => {
+  setListOpen(!listOpen);
+  if (listOpen) {
+    // 首开即渲染（此后滑杆/重开自动刷新）
+    const ev = new Event("input", { bubbles: true });
+    document.querySelector("#taf-time input")?.dispatchEvent(ev);
+  }
 });
 
 // 实况层完成后留存引用，供模式切换（原 addMetarLayer 调用点捕获返回值）

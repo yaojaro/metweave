@@ -7,11 +7,27 @@
   </head>
   <body>
     <div id="map"></div>
+    <aside id="taf-panel" hidden aria-label="站点预报列表">
+      <h3 id="taf-panel-title">站点预报</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>档</th>
+            <th>站点</th>
+            <th>下一变化</th>
+          </tr>
+        </thead>
+        <tbody id="taf-panel-body"></tbody>
+      </table>
+    </aside>
     <div id="mode-bar" role="tablist" aria-label="演示模式">
       <button type="button" id="mode-metar" class="mode-btn active" aria-pressed="true">
         METAR 实况
       </button>
       <button type="button" id="mode-taf" class="mode-btn" aria-pressed="false">TAF 预报</button>
+      <button type="button" id="mode-list" class="mode-btn" aria-pressed="false" hidden>
+        站点列表
+      </button>
       <div id="taf-time" hidden></div>
     </div>
     <div id="basemap-hint" role="note" hidden></div>
