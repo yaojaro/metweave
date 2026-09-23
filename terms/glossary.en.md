@@ -356,6 +356,18 @@
 |---|---|---|---|---|
 | errors.invalid-time | Observation-time group out of range (day 01–31 / hour 00–23 / minute 00–59) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
 
+## errors.missing-validity (1 entries)
+
+| key | Text | kind | Usage | Standard · Document · Clause |
+|---|---|---|---|---|
+| errors.missing-validity | Not a complete TAF report: validity group ddHH/ddHH missing | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+
+## errors.invalid-validity (1 entries)
+
+| key | Text | kind | Usage | Standard · Document · Clause |
+|---|---|---|---|---|
+| errors.invalid-validity | TAF validity group out of range (day 01–31 / start hour 00–23 / end hour 00–24) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+
 ## errors.unsupported-mode (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |

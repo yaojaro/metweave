@@ -3014,7 +3014,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 234
+   "line": 233
   },
   "leaflet.msg02": {
    "kind": "product",
@@ -3030,7 +3030,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 250
+   "line": 249
   },
   "leaflet.msg03": {
    "kind": "product",
@@ -3046,7 +3046,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 337
+   "line": 336
   },
   "leaflet.msg04": {
    "kind": "product",
@@ -3062,7 +3062,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 346
+   "line": 345
   },
   "leaflet.msg05": {
    "kind": "product",
@@ -3078,7 +3078,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 374
+   "line": 373
   },
   "sources.msg01": {
    "kind": "product",
@@ -3201,12 +3201,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "能见度混分数分母为零（${t.text} ${next.text}）——解码不出有限值，值不可信判缺测，原码经 span 回溯",
+   "text": "\",\n    );\n  }\n  const warnings: ParseWarning[] = [];\n  // 报尾 = 终结符剥离（GTS/AFTN 通路报文行以 = 定界，常粘连末组如 Q1006= / NOSIG=）——\n  // 仅剥尾部空白与 =，正文 token 偏移不变，span 仍对应原 raw（raw 保真含 =）。\n  // 末字符预判（E2 性能项）：语料大头无报尾，尾字符既非 = 也非空白时跳过整串正则——\n  // 预判用单字符 \\s 测试（与 [\\s=] 字符类完全同域，行为等价），省一次全文回溯扫描\n  const tail = raw.at(-1);\n  const body =\n    tail === undefined || tail === \"=\" || /\\s/.test(tail) ? raw.replace(/[\\s=]+$/, \"\") : raw;\n  const tokens = tokenize(body);\n  // 输入规模护栏（只告警不截断——截断破坏 raw 保真与「不丢弃」纪律）：语料单行最大 30 token，\n  // 上限 128 = 4 倍余量；超限报文照常完整解析，仅以一条聚合告警标记异常输入\n  //（span 缺省 = 报文级；整体失败路径不经过此处，失败契约不受影响）\n  const TOKEN_COUNT_LIMIT = 128;\n  if (tokens.length > TOKEN_COUNT_LIMIT) {\n    warnings.push({\n      code: \"invalid-format\",\n      severity: \"warning\",\n      message: `输入 token 数超上限（${tokens.length} > ${TOKEN_COUNT_LIMIT}）——按异常输入标记，解析照常完整，原文经 raw 保真`,\n    });\n  }\n  let i = 0;\n  const peek = (ahead = 0): Token | undefined => tokens[i + ahead];\n\n  const externalKind = options?.kind;\n  let kind: ReportKind = externalKind ?? \"metar\";\n  let corrected = false;\n  let auto = false;\n\n  // —— 头部：类型词 / COR（WMO 形态）/ 站名 / 时组 / AUTO / COR（美式时组后形态）\n  const head = peek();\n  if (head !== undefined && (head.text === \"METAR\" || head.text === \"SPECI\")) {\n    if (externalKind === undefined) kind = head.text === \"SPECI\" ? \"speci\" : \"metar\";\n    i += 1; // 类型词 token 无论由谁决定 kind 都要消费\n  }\n  if (peek()?.text === \"COR\") {\n    corrected = true;\n    i += 1;\n  }\n  // AMD（修订发布标志，部分 CAA 用于 METAR 标题位，TAF 更常见）：标题元数据词，\n  // 语义为「本报告取代此前发布」——消费之不进站名位；是否置 corrected 不越权代判\n  //（修订 ≠ 更正），IR 无 amended 位故仅放行不标注\n  if (peek()?.text === \"AMD\") {\n    i += 1;\n  }\n  const stTok = peek();\n  if (stTok === undefined || !/^[A-Z0-9]{4}$/.test(stTok.text)) {\n    // 契约：无站名组 = 整体解析失败（不是字段级三态）；code 是稳定契约，message 中文为权威\n    // 文案——英文经 @metweave/core EN_MESSAGES[code] 查表或渲染层 locale:\"en\" 切换\n    throw new MetarParseError(\n      \"missing-station\",\n      raw,\n      `无法识别站名组——输入不是 METAR/SPECI 报文（${stTok?.text ?? \"空输入\"}）`,\n    );\n  }\n  const station: string = stTok.text;\n  i += 1;\n  // CCA/CCB/CCC 与 COR 槽位磨损兜底（站名后/时组前——规范槽位：BBB 系列在时组后（见下方\n  // BBB 消费位）、COR 在类型词位（见报头 COR 位））：部分 feed 的更正标记出现在此槽——此前\n  // 直接 throw missing-time，「合法更正报整体失败」是最恶性失败模式。后随 token 为合法时组时\n  // 消费放行并置 corrected + 出声（槽位漂移本身须可观测——不静默，2026-09-14 独立复评补\n  // COR 对称缺口与出声）；后随非时组则照旧走 missing-time。已知留案：标记若出现在 AUTO\n  // 之前的其他相对序（如 CCA AUTO），AUTO 会落正文 unknown——语料无实证，暂不设防\n  const driftTok = peek();\n  if (driftTok !== undefined && /^(CC[A-Z]|COR)$/.test(driftTok.text)) {\n    const afterDrift = peek(1);\n    if (afterDrift !== undefined && /^\\d{2}\\d{2}\\d{2}Z$/.test(afterDrift.text)) {\n      corrected = true;\n      i += 1;\n      warnings.push({\n        code: \"invalid-format\",\n        severity: \"info\",\n        message: `更正标记槽位漂移（${driftTok.text} 出现在站名后/时组前——已消费并置更正标志）`,\n        span: spanOf(driftTok),\n      });\n    }\n  }\n  const tmTok = peek();\n  const tm = tmTok !== undefined ? /^(\\d{2})(\\d{2})(\\d{2})Z$/.exec(tmTok.text) : null;\n  if (tmTok === undefined || tm === null) {\n    throw new MetarParseError(\n      \"missing-time\",\n      raw,\n      `无法识别时组——输入不是完整的 METAR/SPECI 报文（${tmTok?.text ?? \"时组缺失\"}）`,\n    );\n  }\n  const time: MetarReport[\"time\"] = {\n    day: Number.parseInt(tm[1] ?? \"0\", 10),\n    hour: Number.parseInt(tm[2] ?? \"0\", 10),\n    minute: Number.parseInt(tm[3] ?? \"0\", 10),\n  };\n  // 契约：时组为两态必填（无缺测形态，无 Observed）——数值越界即不可信时组，等同无效时组整体失败，\n  // 绝不把假值（日 99、时 24、分 60）留在 IR（同 Q10054 脏 QNH 的「值不可信」纪律，时组无处判缺测故整体失败）\n  if (time.day < 1 || time.day > 31 || time.hour > 23 || time.minute > 59) {\n    throw new MetarParseError(\n      \"invalid-time\",\n      raw,\n      `时组数值越界（${tmTok.text}：须日 01–31 / 时 00–23 / 分 00–59）——输入不是完整的 METAR/SPECI 报文`,\n    );\n  }\n  i += 1;\n  if (peek()?.text === \"AUTO\") {\n    auto = true;\n    i += 1;\n  }\n  if (peek()?.text === \"COR\") {\n    corrected = true;\n    i += 1;\n  }\n  // RRA/RRB/RRC 迟到报标记（AP-117-TM-01R2 第 21 条：报头时间组后）——标题元数据，消费放行\n  if (/^RR[ABC]$/.test(peek()?.text ?? \"\")) {\n    i += 1;\n  }\n  // CCA/CCB/CCC 更正指示符（WMO FM15 §1.3.3 BBB 系列：第一次更正 CCA、第二次 CCB 顺延；\n  // 规范槽位即本位——时组后。加拿大 NAV CANADA 明文采用，中国 AFTN 实务沿用；仓库声明的\n  // 编码基准含 MANOPS-MET）。语义即更正报——与 COR 同义异位（COR 在类型词位、BBB 在时组后位），\n  // 消费并置 corrected；此前落 unknown-token，更正语义丢失（2026-09-14 复评：基准内形态未实现）\n  if (/^CC[A-Z]$/.test(peek()?.text ?? \"\")) {\n    corrected = true;\n    i += 1;\n  }\n\n  // —— NIL：台站无观测（FM15 代码形注 2 的 NIL 码词；§15.4 是 AUTO 条款）——最小形态：站名/时组凭据保留，正文组不解析（本就无正文），零告警\n  if (peek()?.text === \"NIL\") {\n    return compactIfEnabled({\n      kind,\n      raw,\n      nil: true,\n      station,\n      time,\n      flags: { auto, corrected },\n      cavok: false,\n      trends: [],\n      runwayStates: [],\n      remarks: [],\n      warnings,\n    });\n  }\n\n  // —— 正文状态\n  let cavok = false;\n  let cavokSpan: Span | undefined;\n  let wind: Observed<WindGroup> | undefined;\n  let visibility: Observed<VisibilityGroup> | undefined;\n  // 脱离主导能见度的方向组被按主导收下的局部标记（见正文循环方向组分支注释；非 IR 字段）\n  let directionalAsPrimary = false;\n  let rvr: Observed<readonly RunwayVisualRange[]> | undefined;\n  const rvrList: RunwayVisualRange[] = [];\n  // 多组 RVR 的组级 span 首组至末组（与天气组同口径——单组 span 在各自元素上）\n  let rvrSpan: Span | undefined;\n  let weather: Observed<readonly WeatherGroup[]> | undefined;\n  const weatherList: WeatherGroup[] = [];\n  const recentList: WeatherGroup[] = [];\n  let clouds: CloudCondition | undefined;\n  let cloudSeen = false;\n  const cloudElements: CloudElement[] = [];\n  let clearCode: CloudCondition[\"clear\"];\n  let temperature: TemperatureReading | undefined;\n  let dewpoint: TemperatureReading | undefined;\n  let altimeter: AltimeterReading | undefined;\n  // 双气压组口径（tolerant 惯例）：末组为准（保持既有 last-wins 行为），重复组追加 info 告警不静默\n  let altimeterSeen = false;\n  const trends: TrendGroup[] = [];\n  const runwayStates: RunwayStateGroup[] = [];\n  const remarks: RemarkGroup[] = [];\n  // 重复组口径（与双气压组同款 tolerant 惯例）：末组为准（保持既有 last-wins 行为），\n  // 重复组出声不静默——专用码 duplicate-group（2026-09-15 五角色评测定案：此前借用\n  // cross-check-conflict+info，消费方无法按「重复」分流；severity 升 warning）。\n  // 前值后值原文都进 message：last-wins 会覆盖 IR 里的前值 span，前值唯一可回溯通道就是这条告警\n  // 风切变组累积器（同报多组 WS 合一：runways 连接、span 首组至末组）\n  let windShear: WindShearGroup | undefined;\n  let wsRunways: string[] | undefined;\n  let wsAll = false;\n  let wsSpan: Span | undefined;\n\n  // —— 正文循环（RMK 交段外处理）\n  while (i < tokens.length) {\n    const t = tokens[i];\n    if (t === undefined) break;\n    const text = t.text;\n\n    if (text === \"RMK\") {\n      i += 1;\n      break;\n    }\n    // RMK 磨损粘连（RMKQFE749/0998 = RMK 与后组丢空格，fuzz 实弹 35/5 万例命中）：进 RMK 段\n    // 但不跳过 token 本身——由 RMK 段按认组粒度收下（多为 unknown，raw 保真不蒸发）\n    if (text.startsWith(\"RMK\")) {\n      break;\n    }\n\n    // 趋势指示组：NOSIG / BECMG / TEMPO（吞到下一个指示组、RMK 或结尾）\n    if (TREND_KINDS.has(text)) {\n      const kindText = text;\n      const collected: Token[] = [t];\n      i += 1;\n      let period: TrendGroup[\"period\"];\n      const periodTok = peek();\n      if (\n        kindText !== \"NOSIG\" &&\n        periodTok !== undefined &&\n        // 时段词双形态：AT/TL/FM+DDHH（WMO 306 FM15 §15.14.3）与 DDHH/DDHH 斜杠时段\n        //（ICAO Annex 3 模板 / 中国民航主流编法，2026-09-16 五方实测评测发现的缺失形态）\n        (/^(?:AT|FM|TL)\\d{4}$/.test(periodTok.text) || /^\\d{4}\\/\\d{4}$/.test(periodTok.text))\n      ) {\n        period = { text: periodTok.text, span: spanOf(periodTok) };\n        collected.push(periodTok);\n        i += 1;\n      }\n      // 收口语义见 isTrendCollectible：仅趋势合法要素族可收，其余收口交回正文（warnTrendClose 出声）\n      i = collectTrendSegment(tokens, i, collected);\n      warnTrendClose(tokens, i, warnings);\n      trends.push(\n        buildTrendGroup(\n          kindText === \"NOSIG\" ? \"nosig\" : kindText === \"BECMG\" ? \"becmg\" : \"tempo\",\n          period,\n          collected,\n          period !== undefined ? 2 : 1,\n        ),\n      );\n      continue;\n    }\n\n    // 指示组缺失趋势段两形态——传输磨损所致（WMO 306 FM15 §15.14.3 时段词 AT/TL/FM 不得脱离指示组）：\n    // ①粘连——指示组与时段词丢空格（BECMGTL0350，IEM 归档实弹 10 次）：宽容拆分，语义完整可恢复；\n    // ②裸时段词——指示组整组丢失（Q1009 TL0730 …，IEM 归档实弹 128 次）：按 kind ",
    "usage": [
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 672
+   "line": 141
   },
   "parser.msg002": {
    "kind": "product",
@@ -3217,12 +3217,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "能见度分数分母为零（${t.text}）——解码不出有限值，值不可信判缺测，原码经 span 回溯",
+   "text": "\n    //   收段（要素组不再散落正文——尤其防趋势风组以 last-wins 覆盖正文真风组），告警标注指示组不可辨。\n    //   NOSIG 粘连不拆（NOSIG 语义上不配时段词）；标准位置的时段词已在上方指示组分支内消费，此处不重复触达。\n    if (\n      (text.length === 6 &&\n        (text.charCodeAt(0) === 65 || text.charCodeAt(0) === 84 || text.charCodeAt(0) === 70)) ||\n      text.startsWith(\"BECMG\") ||\n      text.startsWith(\"TEMPO\")\n    ) {\n      const fused = /^(BECMG|TEMPO)((?:AT|TL|FM)\\d{4}|\\d{4}\\/\\d{4})$/.exec(text);\n      if (fused !== null) {\n        const indicator = fused[1] ?? \"\";\n        const collected: Token[] = [t];\n        i += 1;\n        i = collectTrendSegment(tokens, i, collected);\n        warnTrendClose(tokens, i, warnings);\n        trends.push(\n          buildTrendGroup(\n            indicator === \"BECMG\" ? \"becmg\" : \"tempo\",\n            {\n              text: text.slice(indicator.length),\n              span: { start: t.start + indicator.length, end: t.end },\n            },\n            collected,\n            1,\n          ),\n        );\n        warnings.push({\n          code: \"invalid-format\",\n          severity: \"info\",\n          message: `趋势指示组与时段词粘连（${text}——传输磨损丢空格，BECMG/TEMPO 与 AT/TL/FM 时段语义完整可恢复）`,\n          span: spanOf(t),\n        });\n        continue;\n      }\n      if (/^(AT|TL|FM)\\d{4}$/.test(text)) {\n        const collected: Token[] = [t];\n        i += 1;\n        i = collectTrendSegment(tokens, i, collected);\n        warnTrendClose(tokens, i, warnings);\n        trends.push(buildTrendGroup(\"unspecified\", { text, span: spanOf(t) }, collected, 1));\n        warnings.push({\n          code: \"invalid-format\",\n          severity: \"warning\",\n          message: `趋势时段词缺指示组（${text}——§15.14.3 时段词须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨`,\n          span: spanOf(t),\n        });\n        continue;\n      }\n    }\n    // 裸斜杠时段词（1616/1618——ICAO Annex 3 模板 / 中国民航主流趋势时段编法，指示组缺失）：\n    // 与 AT/TL/FM 裸词同纪律——kind ",
    "usage": [
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 698
+   "line": 368
   },
   "parser.msg003": {
    "kind": "product",
@@ -3233,12 +3233,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "风向越界（${dirRaw}，须 0–360）——风向位判缺测，原码经 span 回溯",
+   "text": " 收段出声，要素组不再散落正文\n    //（2026-09-16 五方实测评测发现：此前该形态散落正文，趋势能见度以 last-wins 顶掉正文能见度）。\n    // 前置守卫（长度 9 + 第 5 字符为斜杠）保正文热路径不为逐 token 正则付费\n    if (text.length === 9 && text.charCodeAt(4) === 47 && /^\\d{4}\\/\\d{4}$/.test(text)) {\n      const collected: Token[] = [t];\n      i += 1;\n      i = collectTrendSegment(tokens, i, collected);\n      warnTrendClose(tokens, i, warnings);\n      trends.push(buildTrendGroup(\"unspecified\", { text, span: spanOf(t) }, collected, 1));\n      warnings.push({\n        code: \"invalid-format\",\n        severity: \"warning\",\n        message: `趋势时段词缺指示组（${text}——ICAO Annex 3 模板趋势时段须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨`,\n        span: spanOf(t),\n      });\n      continue;\n    }\n\n    if (text === \"CAVOK\") {\n      cavok = true;\n      cavokSpan = spanOf(t);\n      // 交叉校验（三面：能见度/天气/云，判据见 cavokCrossCheck 注）——CAVOK 语义要求能见度\n      // ≥10km、无重要天气、5000ft 以下无云且无 CB/TCU；前序组确定矛盾即出声。\n      // 下界语义的编码（9999 ≥10km、P6SM >9.6km）与 CAVOK 相容不告警；M 前缀（小于下界）必矛盾。\n      // 让位契约照旧（vis/weather/cloud 三组让位），矛盾仅追加 cross-check-conflict 告警\n      cavokCrossCheck(\n        { cavokSpan, visibility, weatherList, rvr, cloudElements },\n        \"前序\",\n        raw,\n        warnings,\n      );\n      // 契约（IR）：CAVOK = 能见度 ≥10km + 无低云 + 无天气，前序 vis/weather/cloud 三组让位为 undefined\n      // （让位是契约行为不发告警；词位以 cavokSpan 标记，前序组原码仍可从 raw 回溯）\n      visibility = undefined;\n      directionalAsPrimary = false;\n      weather = undefined;\n      weatherList.length = 0;\n      cloudSeen = false;\n      cloudElements.length = 0;\n      clearCode = undefined;\n      i += 1;\n      continue;\n    }\n\n    // E3 性能项——首字符位掩码分流：每轮按首字符一次 switch 得「可能匹配的分支」位集，\n    // 各分支先做一次位测试再进正则——不可能匹配的分支零正则尝试。分支相对顺序与原\n    // 全试链完全一致（行为等价由全量语料回放快照锁定）。可达首字符推导：\n    // 风 V/数字//；能见度 数字//M/P；RVRNO 与 R 组 R；天气 = 现象/描述符首字母\n    // （B D F G H I M P R S T U）+ -/+/V（VC）；裸 // 与云 /；云 F/S/B/O//；\n    // VV 与 VIS 的 V；晴空词 S/N/C；温露 M/数字//；QNH 的 Q；A 组的 A；维护符 $。\n    const mask = maskOf(text.charCodeAt(0));\n\n    // 风（含 /////KT 缺测与 260V050 变化组）\n    const windParsed = (mask & M_WIND) !== 0 ? parseWindToken(t, peek(1)) : null;\n    if (windParsed !== null) {\n      if (wind !== undefined) warnDuplicateGroup(raw, warnings, \"风组\", wind.span, spanOf(t));\n      if (windParsed === \"missing\") {\n        if (wind === undefined) {\n          wind = { kind: \"missing\", span: spanOf(t) };\n          warnings.push({\n            code: \"missing-expected\",\n            severity: \"info\",\n            // 全缺测 /////KT（自动站假报文形态）与部分缺测（180//KT 风速位缺）同口径出声\n            message: t.text.startsWith(\"/////\")\n              ? \"风组缺测（/////KT，疑似自动站假报文形态）\"\n              : `风组缺测（${t.text}，风速位缺测）`,\n            span: spanOf(t),\n          });\n        }\n        // 已有风组时：缺测电码不顶替在场值（duplicate-group 已出声）——\n        // 零信息量的缺测码按 last-wins 覆盖真实观测是纯信息损失（2026-09-15 五角色评测批）\n        i += 1;\n      } else {\n        // 值域门（NaN 终结防线 / >199 上限 / 越界 findings / 阵风缺测 / VRB 变化组并存）\n        // 迁至 validateWindGroup——判据与告警顺序见其注释\n        const applied = validateWindGroup(t, windParsed, raw);\n        wind = applied.wind;\n        warnings.push(...applied.warnings);\n        i += windParsed.consumed;\n      }\n      continue;\n    }\n\n    // 能见度（//// 显式缺测补 info 告警——对齐风/天气缺测口径；零分母判缺测补超界告警）\n    const visParsed = (mask & M_VIS) !== 0 ? parseVisibilityToken(t, peek(1)) : null;\n    if (visParsed !== null) {\n      // 方向组挂靠/脱离主导、缺测不顶替在场值、零分母判缺测等落位规则迁至 applyVisibilityToken\n      const applied = applyVisibilityToken(\n        t,\n        visParsed,\n        { visibility, directionalAsPrimary },\n        raw,\n        warnings,\n      );\n      visibility = applied.visibility;\n      directionalAsPrimary = applied.directionalAsPrimary;\n      i += visParsed.consumed;\n      continue;\n    }\n\n    // RVRNO：RVR 设备存在但明示不可用（显式缺测，区别于组省略）。\n    // 正文位与 RMK 位行为统一（2026-09-15 方案一，专业判读定案）：一律进 remarks（kind\n    // ",
    "usage": [
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 759
+   "line": 419
   },
   "parser.msg004": {
    "kind": "product",
@@ -3249,12 +3249,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "风向变化组端点越界（${next.text}，须 0–360）——变化组判缺测，原码经 span 回溯",
+   "text": "）——站级状态声明 typed 可见，原正文位不留痕的双标消除；RVRNO 单独出现\n    //（此前无值组）仍 = rvr 显式缺测（既有 IR 契约不变）。\n    // 值组与 RVRNO 并存 = 自相矛盾形态（规范未定义并存）：值组按跑道级明细保留——具体\n    // 值组是逐道运行信息、可信度高于无道号的站级状态码（预报员/塔台标准判读；NWS 官方\n    // 解码器即「值组 + RVRNO 旗标并存不复算」），矛盾出声、文案描述矛盾本身不预言终态。\n    if ((mask & M_R) !== 0 && text === \"RVRNO\") {\n      rvr = applyRvrNoBodyToken(t, rvr, raw, warnings, remarks);\n      i += 1;\n      continue;\n    }\n\n    // RVR 与跑道状态（同为 R 前缀组，先按 RVR 语法试解、再按跑道状态电码试解）\n    if ((mask & M_R) !== 0 && text.startsWith(\"R\") && text.includes(\"/\")) {\n      const rvrParsed = parseRvrToken(t);\n      if (rvrParsed !== null) {\n        // 反向次序对称口径：RVRNO 在前、值组在后同样出声（方案一：可解读为传感器恢复，\n        // 值组按明细保留——与正序矛盾并存同一文案口径，见 RVRNO 位注释）\n        if (rvr?.kind === \"missing\") {\n          warnRvrNoThenValues(t, rvr.span, raw, warnings);\n        }\n        rvrList.push(rvrParsed);\n        const s = spanOf(t);\n        rvrSpan = rvrSpan === undefined ? s : { start: rvrSpan.start, end: s.end };\n        rvr = { kind: \"value\", value: [...rvrList], span: rvrSpan };\n        i += 1;\n        continue;\n      }\n      const runwayState = parseRunwayStateToken(t);\n      if (runwayState !== null) {\n        runwayStates.push(runwayState.group);\n        for (const finding of runwayState.findings) {\n          warnings.push({\n            code: \"invalid-format\",\n            severity: \"warning\",\n            message: finding.message,\n            span: finding.span,\n          });\n        }\n        i += 1;\n        continue;\n      }\n      // RVR 全斜杠缺测：R## + / + ////（分离符 + 四位值位斜杠 = 5 斜杠，标准缺测形态）。\n      // 4 斜杠（R10////）为磨损短一段——按缺测收下，另附 invalid-format info（tgftp/IEM 实弹均见）\n      const rvrMissing = applyRvrSlashToken(t, warnings);\n      if (rvrMissing !== null) {\n        rvr = rvrMissing;\n        i += 1;\n        continue;\n      }\n    }\n\n    // 风切变组（WMO 306 FM15 §15.13.3 / ICAO Annex 3 模板）：标准形态 WS ALL RWY（全部跑道）\n    // 与 WS R##[RLC]（WS RDRDR，如 WS R24——IEM 归档实弹 544 次、中国区多发且为近月主流形态）。\n    // 中国区实务变体 WS RWY##[RLC]（RWY 前缀 + 设计器，教材常用）与 WS RWY ALL（词序倒置）\n    // 同样语义无损一等收下——四形态正文组（跑道状态之后、趋势之前）。\n    // 低空风切变对起降阶段是重大危害，IR 一等字段不蒸发。\n    if ((mask & M_WS_RWY) !== 0 && text === \"WS\") {\n      const wsMatch = parseWindShearSequence(t, peek(1), peek(2));\n      if (wsMatch !== null) {\n        wsRunways ??= [];\n        if (wsMatch.runway !== null) wsRunways.push(wsMatch.runway);\n        if (wsMatch.all) wsAll = true;\n        wsSpan =\n          wsSpan === undefined ? wsMatch.span : { start: wsSpan.start, end: wsMatch.span.end };\n        windShear = { runways: wsRunways, allRunways: wsAll, span: wsSpan };\n        i += wsMatch.consumed;\n        continue;\n      }\n    }\n\n    // 温度预告组（TAF TX/TN 混入 METAR 通路，IEM 归档实弹 26 次——中国区 TAF 行混入 METAR 流）：\n    // TX25/0907Z = 最高 25°C、09 日 07Z 到达（ICAO Annex 3 附录五温度预告组，M 前缀 = 负值）。\n    // 认组收下进 remarks（kind ",
    "usage": [
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 776
+   "line": 521
   },
   "parser.msg005": {
    "kind": "product",
@@ -3265,12 +3265,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "parse 需要一个 METAR/SPECI 报文字符串，收到 ${raw === null ? \"null\" : typeof raw}",
+   "text": "，raw 保真）——TAF 语义不属于 METAR 趋势段，\n    // 与既有 temp-extrema-6h/24h 同款认组粒度，不解码数值（RemarkGroup 无值槽，数值化留待后续 additive 扩展）\n    const txTnMatch = (mask & M_WEATHER) !== 0 && TX_TN_PATTERN.test(text);\n    if (txTnMatch) {\n      remarks.push({ kind: \"temperature-forecast\", raw: text, span: spanOf(t) });\n      i += 1;\n      continue;\n    }\n\n    // 天气组（RE 近期天气一并识别——不参与当前天气三态判定）\n    const weatherParsed =\n      (mask & M_WEATHER) !== 0 ? tryWeatherToken(t, weatherList, recentList) : false;\n    if (weatherParsed !== false) {\n      if (weatherParsed.outOfOrder) {\n        // 能完整切解但语序反常（描述符在现象之后，如 RATS）：按切解结果收下 + invalid-format 告警，\n        // 不静默也不拒收；完全无法切解的仍走下方 unknown-token\n        warnings.push({\n          code: \"invalid-format\",\n          severity: \"warning\",\n          message: `天气组语序不合电码表（${text}：描述符须先于现象）——已按切解结果收下`,\n          span: spanOf(t),\n        });\n      }\n      if (weatherParsed.signWithVc) {\n        // 强度符与 VC 并存（-VCTSRA 家族，NWS 自动站实弹）：互斥是明文条款（4678 限定槽\n        // 四选一、FAA AIM「Intensity and ",
    "usage": [
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 998
+   "line": 593
   },
   "parser.msg006": {
    "kind": "product",
@@ -3281,830 +3281,14 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "strict 模式尚未实现（v0.1 仅 tolerant）——请省略 mode 或显式传 'tolerant'",
+   "text": " will not appear together」），语义可无损恢复\n        //（强度+邻近+现象俱全）故容忍切解收下并出声——此前整体落 unknown-token 语义全丢\n        warnings.push({\n          code: \"invalid-format\",\n          severity: \"info\",\n          message: `强度符与 VC 邻近指示并存（${text}——强度符不与 VC 同组）——已按切解结果收下`,\n          span: spanOf(t),\n        });\n      }\n      if (weatherParsed.intensityMisuse === true) {\n        warnings.push({\n          code: \"invalid-format\",\n          severity: \"info\",\n          message:\n            weatherParsed.kind === \"recent\"\n              ? `RE 近期天气组带强度符（${text}——15.13.2.1 RE 组无强度位）——已收下`\n              : `强度符超适用面（${text}——表 4678 注 4：-/+ 仅限降水族，非降水唯 +SS/+FC/+DS）——已收下`,\n          span: spanOf(t),\n        });\n      }\n      i += 1;\n      continue;\n    }\n\n    // 裸 // 天气缺测组（自动站无法观测天气；IR 口径 = weather missing，绝不捏造也不吞进温度组）\n    if ((mask & M_WEATHER) !== 0 && text === \"//\") {\n      weather = { kind: \"missing\", span: spanOf(t) };\n      warnings.push({\n        code: \"missing-expected\",\n        severity: \"info\",\n        message: \"天气组缺测（//，无法观测天气）\",\n        span: spanOf(t),\n      });\n      i += 1;\n      continue;\n    }\n\n    // 云：云量位 /// 与云高 /// 双缺测形态（绝不捏造）——缺测位告警随构造直出（cloudLayerElementOf）\n    const cloudElem = (mask & M_CLOUD) !== 0 ? cloudLayerElementOf(t, warnings) : null;\n    if (cloudElem !== null) {\n      cloudSeen = true;\n      cloudElements.push(cloudElem);\n      i += 1;\n      continue;\n    }\n    const vvElem = (mask & M_VV) !== 0 ? verticalVisibilityElementOf(t, warnings) : null;\n    if (vvElem !== null) {\n      cloudSeen = true;\n      cloudElements.push(vvElem);\n      i += 1;\n      continue;\n    }\n    if ((mask & M_SKY_CLEAR) !== 0 && isSkyClear(text)) {\n      cloudSeen = true;\n      clearCode = { code: text, span: spanOf(t) };\n      i += 1;\n      continue;\n    }\n\n    // 温度/露点\n    const tempParsed = (mask & M_TEMP) !== 0 ? parseTempDewToken(t) : null;\n    if (tempParsed !== null) {\n      // 重复组/物理极值门/缺测出声/温露倒挂等落位规则迁至 applyTempDewToken\n      const applied = applyTempDewToken(t, tempParsed, { temperature, dewpoint }, raw, warnings);\n      temperature = applied.temperature;\n      dewpoint = applied.dewpoint;\n      i += 1;\n      continue;\n    }\n\n    // 气压：Q（hPa）/ A（inHg，隐含小数点）；5 位数 QNH 与物理范围外值 = 脏值（Q10054 家族）\n    const qnhParsed = (mask & M_QNH) !== 0 ? parseQnhToken(t) : null;\n    if (qnhParsed !== null) {\n      if (qnhParsed.kind === \"out-of-range\") {\n        altimeter = undefined;\n        warnings.push({\n          code: \"value-out-of-range\",\n          severity: \"warning\",\n          message: qnhParsed.message,\n          span: qnhParsed.span,\n        });\n      } else {\n        ({ altimeter, altimeterSeen } = applyAltimeterReading(\n          altimeter,\n          altimeterSeen,\n          qnhParsed.reading,\n          raw,\n          warnings,\n        ));\n      }\n      i += 1;\n      continue;\n    }\n    const altAParsed = (mask & M_ALTIMETER_A) !== 0 ? parseAltimeterAToken(t) : null;\n    if (altAParsed !== null) {\n      if (altAParsed.kind === \"out-of-range\") {\n        altimeter = undefined;\n        warnings.push({\n          code: \"value-out-of-range\",\n          severity: \"warning\",\n          message: altAParsed.message,\n          span: altAParsed.span,\n        });\n      } else {\n        ({ altimeter, altimeterSeen } = applyAltimeterReading(\n          altimeter,\n          altimeterSeen,\n          altAParsed.reading,\n          raw,\n          warnings,\n        ));\n      }\n      i += 1;\n      continue;\n    }\n\n    // 变化能见度（FAA 正文位形态：主能见度组后跟「VIS 1/4V1/2」变化区间）——\n    // IR 建模为 RemarkKind ",
    "usage": [
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1006
+   "line": 618
   },
   "parser.msg007": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "输入 token 数超上限（${tokens.length} > ${TOKEN_COUNT_LIMIT}）——按异常输入标记，解析照常完整，原文经 raw 保真",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1026
-  },
-  "parser.msg008": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "无法识别站名组——输入不是 METAR/SPECI 报文（${stTok?.text ?? \"空输入\"}）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1060
-  },
-  "parser.msg009": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "更正标记槽位漂移（${driftTok.text} 出现在站名后/时组前——已消费并置更正标志）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1080
-  },
-  "parser.msg010": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "无法识别时组——输入不是完整的 METAR/SPECI 报文（${tmTok?.text ?? \"时组缺失\"}）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1091
-  },
-  "parser.msg011": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "时组数值越界（${tmTok.text}：须日 01–31 / 时 00–23 / 分 00–59）——输入不是完整的 METAR/SPECI 报文",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1105
-  },
-  "parser.msg012": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "气压组",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1172
-  },
-  "parser.msg013": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "（原${label}）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1190
-  },
-  "parser.msg014": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "重复${label}（前值 ${prevText}，后值 ${newText}）——报文只应有一组${label}，以末组为准，前值经原文回溯",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1195
-  },
-  "parser.msg015": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "趋势段收口于 R 组（${bt}——RVR/跑道状态不属趋势要素，按正文组处理，趋势语境存疑）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1215
-  },
-  "parser.msg016": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "趋势段收口于非趋势组（${bt}——不属趋势要素族，交回正文认组，趋势语境存疑）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1223
-  },
-  "parser.msg017": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "CAVOK 与${whenLabel}能见度组矛盾（${visRaw}，CAVOK 语义要求 ≥10km）——让位照旧，报文自洽性存疑",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1258
-  },
-  "parser.msg018": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "CAVOK 与${whenLabel}天气组矛盾（${wxRaw}，CAVOK 语义要求无重要天气）——让位照旧，报文自洽性存疑",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1273
-  },
-  "parser.msg019": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "CAVOK 与${whenLabel}RVR 组矛盾（${rvrRaw}——AP-117 第 140 条：CAVOK 代替能见度、跑道视程、现在天气和云）——让位照旧，报文自洽性存疑",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1282
-  },
-  "parser.msg020": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "CAVOK 与${whenLabel}云组矛盾（${cloudRaw}，CAVOK 语义要求 5000ft 以下无云且无 CB/TCU）——让位照旧，报文自洽性存疑",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1305
-  },
-  "parser.msg021": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "趋势指示组与时段词粘连（${text}——传输磨损丢空格，BECMG/TEMPO 与 AT/TL/FM 时段语义完整可恢复）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1399
-  },
-  "parser.msg022": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "趋势时段词缺指示组（${text}——§15.14.3 时段词须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1420
-  },
-  "parser.msg023": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "趋势时段词缺指示组（${text}——ICAO Annex 3 模板趋势时段须随 BECMG/TEMPO 出现）——按指示组缺失的趋势段收下，指示组类型不可辨",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1445
-  },
-  "parser.msg024": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "前序",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1458
-  },
-  "parser.msg025": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "风组",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1483
-  },
-  "parser.msg026": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "风组缺测（/////KT，疑似自动站假报文形态）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1492
-  },
-  "parser.msg027": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "风组缺测（${t.text}，风速位缺测）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1493
-  },
-  "parser.msg028": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "风组解码出非有限值（${t.text}）——值不可信判缺测，原码经 span 回溯",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1516
-  },
-  "parser.msg029": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "风速超出编码范围（${t.text}，三位数模板上限 199 ${wg.speed.unit}）——值不可信判缺测，原码经 span 回溯",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1524
-  },
-  "parser.msg030": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "阵风位缺测（${t.text}——G 后斜杠位缺测，组照常成立）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1542
-  },
-  "parser.msg031": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "静风变向（VRB）与风向变化组（${\n                vs === undefined ? \"\" : raw.slice(vs.start, vs.end)\n              }）并存——VRB 本义方向不定，变化组冗余，报文自洽性存疑",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1551
-  },
-  "parser.msg032": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "最低能见度方向组",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1574
-  },
-  "parser.msg033": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "最低能见度方向组脱离主导能见度（${t.text}）——按能见度收下",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1602
-  },
-  "parser.msg034": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "能见度组",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1609
-  },
-  "parser.msg035": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "能见度组缺测（${t.text}，无法观测能见度）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1617
-  },
-  "parser.msg036": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "RVRNO（站级：应报而缺）与 RVR 值组并存（${prevText}）——矛盾形态，值组按跑道级明细保留，RVRNO 经 remarks/raw 可回溯",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1657
-  },
-  "parser.msg037": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "RVR 设备在但明示不可用（RVRNO）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1665
-  },
-  "parser.msg038": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "RVRNO（站级：应报而缺）与后随 RVR 值组并存（${prevText}）——矛盾形态，值组按跑道级明细保留（可解读为传感器恢复），RVRNO 经 remarks/raw 可回溯",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1685
-  },
-  "parser.msg039": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "RVR 组缺测（${text}——跑道号在位、视程值位全斜杠）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1719
-  },
-  "parser.msg040": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "RVR 缺测段磨损（${text}——4 位斜杠对标准 5 位（分离符 + 四位值位），少一位；按缺测收下）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1726
-  },
-  "parser.msg041": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "天气组语序不合电码表（${text}：描述符须先于现象）——已按切解结果收下",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1787
-  },
-  "parser.msg042": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "强度符与 VC 邻近指示并存（${text}——强度符不与 VC 同组）——已按切解结果收下",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1798
-  },
-  "parser.msg043": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "RE 近期天气组带强度符（${text}——15.13.2.1 RE 组无强度位）——已收下",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1808
-  },
-  "parser.msg044": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "强度符超适用面（${text}——表 4678 注 4：-/+ 仅限降水族，非降水唯 +SS/+FC/+DS）——已收下",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1809
-  },
-  "parser.msg045": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "天气组缺测（//，无法观测天气）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1823
-  },
-  "parser.msg046": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "云高缺测（///），不捏造基高",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1844
-  },
-  "parser.msg047": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "云量位缺测（///），探测到云但云量无法观测",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1852
-  },
-  "parser.msg048": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "云型位缺测（///）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1860
-  },
-  "parser.msg049": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "垂直能见度缺测（VV///，天空全遮蔽但垂直能见度不可测）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1892
-  },
-  "parser.msg050": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "垂直能见度缺测（VV，兼容形态）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1893
-  },
-  "parser.msg051": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "温度组",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1922
-  },
-  "parser.msg052": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "温度超出可信范围（${shown}，合理区间 ${TEMP_C_MIN}–${TEMP_C_MAX}°C）——值不可信判缺测，原码经 span 回溯",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1945
-  },
-  "parser.msg053": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "露点位缺测（24/ 形态，FMH-1 12.6.10）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1958
-  },
-  "parser.msg054": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "温度/露点位缺测（//）",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1959
-  },
-  "parser.msg055": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "温度低于露点（${t.text}）——物理不可能，疑似传感器故障",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1973
-  },
-  "parser.msg056": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "QNH 超出可信范围（${text}，合理区间 ${QNH_HPA_MIN}–${QNH_HPA_MAX} hPa）——值不可信判缺测，原码经 span 回溯",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 1991
-  },
-  "parser.msg057": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "高度表设定超出可信范围（${text} → ${inhg} inHg，合理区间 ${ALT_INHG_MIN}–${ALT_INHG_MAX}）——值不可信判缺测，原码经 span 回溯",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 2008
-  },
-  "parser.msg058": {
    "kind": "product",
    "refs": [
     {
@@ -4118,9 +3302,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2044
+   "line": 760
   },
-  "parser.msg059": {
+  "parser.msg008": {
    "kind": "product",
    "refs": [
     {
@@ -4134,9 +3318,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2071
+   "line": 778
   },
-  "parser.msg060": {
+  "parser.msg009": {
    "kind": "product",
    "refs": [
     {
@@ -4150,9 +3334,9 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2081
+   "line": 792
   },
-  "parser.msg061": {
+  "parser.msg010": {
    "kind": "product",
    "refs": [
     {
@@ -4166,23 +3350,7 @@
     "packages/parser/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2089
-  },
-  "parser.msg062": {
-   "kind": "product",
-   "refs": [
-    {
-     "standard": "PRODUCT",
-     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
-     "clause": "显示自拟（无标准对应条款）"
-    }
-   ],
-   "text": "RVRNO（站级：应报而缺）与 RVR 值组并存（${prevText}）——矛盾形态，值组按跑道级明细保留，RVRNO 经 remarks/raw 可回溯",
-   "usage": [
-    "packages/parser/src/index.ts"
-   ],
-   "zhOnly": true,
-   "line": 2185
+   "line": 800
   }
  }
 }

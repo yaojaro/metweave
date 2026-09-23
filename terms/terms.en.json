@@ -2705,6 +2705,36 @@
    ],
    "enOnly": true
   },
+  "errors.missing-validity": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Not a complete TAF report: validity group ddHH/ddHH missing",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.invalid-validity": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "TAF validity group out of range (day 01–31 / start hour 00–23 / end hour 00–24)",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
   "errors.unsupported-mode": {
    "kind": "product",
    "refs": [
