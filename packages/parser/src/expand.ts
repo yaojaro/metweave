@@ -91,6 +91,10 @@ function resolveConditions(chain: readonly Segment[], upto: number): TafResolved
   let clouds: CloudCondition | undefined;
   let cavok = false;
   let sawWeather = false;
+  // CAVOK 让位语义（同解析层三关契约）：回溯途中遇 CAVOK，其前未定值的 vis/weather/clouds 作废
+  let visVoid = false;
+  let weatherVoid = false;
+  let cloudsVoid = false;
   // 从绑定段向前回溯（链序：越靠后越新）——FM 段为硬界，回溯止于其前
   for (let k = upto; k >= 0; k--) {
     const seg = chain[k];
@@ -107,13 +111,22 @@ function resolveConditions(chain: readonly Segment[], upto: number): TafResolved
       if (e.cavok !== undefined) cavok = true;
       clouds = e.clouds;
     }
+    if (e.cavok !== undefined) {
+      // 该段编 CAVOK：其前的未定要素按三关让位作废（已定值——如 CAVOK 后 BECMG 重编——不回退）
+      if (visibility === undefined) visVoid = true;
+      if (!sawWeather) {
+        weatherVoid = true;
+        sawWeather = true;
+      }
+      if (clouds === undefined) cloudsVoid = true;
+    }
     if (seg.hard) break; // FM 硬分页：此前一切作废
   }
   return {
     ...(wind !== undefined ? { wind } : {}),
-    ...(visibility !== undefined ? { visibility } : {}),
-    weather: weather ?? [],
-    ...(clouds !== undefined ? { clouds } : {}),
+    ...(visibility !== undefined && !visVoid ? { visibility } : {}),
+    weather: weatherVoid ? [] : (weather ?? []),
+    ...(clouds !== undefined && !cloudsVoid ? { clouds } : {}),
     cavok,
   };
 }

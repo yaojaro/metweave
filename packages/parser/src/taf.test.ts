@@ -221,6 +221,33 @@ describe("TAF 批 3.4：气温组可变长（清单 C6★）", () => {
   });
 });
 
+describe("TAF 批 3.5：C2/C3/C7/C8 测试锁（合法性判据显式移交 /validate——与学习线 T1-2 汇合）", () => {
+  it("C2 VRB 两源：解析一律「方向不定」（variable/direction=null），阈值互不卡（WMO <1.5 或无法预报单一风向 / CAAC <2 或雷暴——判据归 /validate）", () => {
+    const r = parseTaf("TAF ZBAA 010340Z 0106/0206 VRB03MPS 9999=");
+    expect(r.wind?.kind === "value" && r.wind.value.variable).toBe(true);
+    expect(r.wind?.kind === "value" && r.wind.value.direction).toBeNull();
+  });
+
+  it("C3 阵风组：G 值带单位落位（ZYTL 实证 G15 已锁）；「超出平均 ≥5 m/s（10 kt）才合法」判据归 /validate", () => {
+    const r = parseTaf("TAF ZBAA 010340Z 0106/0206 17004G14MPS 9999=");
+    expect(r.wind?.kind === "value" && r.wind.value.gust).toMatchObject({ value: 14, unit: "mps" });
+  });
+
+  it("C7 云组：解析层照单全收保序（编报选层规则——最低任意层/次高>2okta/更高>4okta、CB/TCU 必补——归 /validate）", () => {
+    const r = parseTaf("TAF ZBAA 010340Z 0106/0206 9999 FEW020 SCT030CB BKN040 OVC100=");
+    expect(cl(r.clouds)).toBe("FEW020 SCT030CB BKN040 OVC100");
+  });
+
+  it("C8 能见度：主导值语义（TAF 无分立最小能见度组）；CAVOK 可现于变化组后（趋势要素顶替）", () => {
+    const r = parseTaf("TAF ZBAA 010340Z 0106/0206 4000 BECMG 0106/0107 CAVOK=");
+    expect(r.visibility?.kind === "value" && r.visibility.value.value).toBe(4000);
+    expect(r.changes[0]?.elements?.cavok).toBeDefined();
+    const expanded = expandTaf(r, { day: 1, hour: 8, minute: 0 }, { daysIn: 31 });
+    expect(expanded.conditions.cavok).toBe(true);
+    expect(expanded.conditions.visibility).toBeUndefined();
+  });
+});
+
 /** 天气组紧凑串（黄金表断言用）：-SHRASN / BR / SN 形态 */
 const wx = (
   list:
