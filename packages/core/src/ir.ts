@@ -578,6 +578,56 @@ export interface TafValidityGroup {
 }
 
 /**
+ * TAF 变化组窗口 ddHH/ddHH（BECMG/TEMPO/PROB 的带窗形态）——数值语义同有效期组（止时 24 合法）。
+ * The change-group window ddHH/ddHH.
+ */
+export interface TafChangeWindow {
+  readonly startDay: number;
+  readonly startHour: number;
+  readonly endDay: number;
+  readonly endHour: number;
+  readonly raw: string;
+  readonly span?: Span;
+}
+
+/**
+ * FM 硬时刻 GGgg（到分钟）——日不含在组内，归属由展开层在有效期语境内锚定（B4）。
+ * The FM hard time GGgg (minute precision; day anchored by the expander).
+ */
+export interface TafChangeAt {
+  readonly hour: number;
+  readonly minute: number;
+  readonly raw: string;
+  readonly span?: Span;
+}
+
+/** The four TAF change-group kinds. TAF 变化组四型。 */
+export type TafChangeKind = "FM" | "BECMG" | "TEMPO" | "PROB";
+
+/**
+ * One TAF change group (FM / BECMG / TEMPO / PROB) with its window or hard time and the
+ * elements it lists. 结构真相层：elements 只收**组内所列**要素（BECMG/TEMPO 只列变化要素、
+ * FM 应全套——完备性校验归 /validate）；「未列要素沿链继承、云例外全重报」的展开语义在
+ * 展开器（expandTaf，B4–B7），不在解析层越权代判。
+ */
+export interface TafChangeGroup {
+  readonly kind: TafChangeKind;
+  /** PROB 专属概率（组形态 PROB30/PROB40）；C2C2 ∉ {30,40} 时省略并出声（B8） */
+  readonly probability?: 30 | 40;
+  /** PROB TEMPO 连用形态（B8：PROB 在前，只可独立或连 TEMPO；禁与 BECMG/FM） */
+  readonly withTempo?: boolean;
+  /** FM 硬时刻 */
+  readonly at?: TafChangeAt;
+  /** BECMG/TEMPO/PROB 窗口；中方四位短窗（如 TEMPO 1824）日归属已锚定有效期起日（B9） */
+  readonly window?: TafChangeWindow;
+  /** 组内所列要素（TrendElements 与 METAR 趋势段同构——两报文族共用一套要素结构） */
+  readonly elements?: TrendElements;
+  /** 组原文（变化词起至末要素） */
+  readonly raw: string;
+  readonly span?: Span;
+}
+
+/**
  * The parsed TAF report — the forecast-side IR root, parallel to MetarReport (observation side).
  * 解析后的 TAF 报文——预报侧 IR 根，与 MetarReport（观测侧）平行。
  *
@@ -613,6 +663,8 @@ export interface TafReport {
   /** CAVOK 同 METAR 三关语义；此时 vis/weather/clouds 让位 */
   readonly cavok: boolean;
   readonly cavokSpan?: Span;
+  /** 变化组序列（FM/BECMG/TEMPO/PROB，按报文原序）；空数组 = 无变化组 */
+  readonly changes: readonly TafChangeGroup[];
   readonly remarks: readonly RemarkGroup[];
   /** 永远存在，可为空数组 */
   readonly warnings: readonly ParseWarning[];

@@ -261,7 +261,7 @@ const VV_PATTERN = /^VV(\/\/\/|\d{3})?$/;
  * 正文循环同款的 token 级解析函数直接复用（parseWindToken/parseVisibilityToken/parseWeatherBody），
  * 组形正则取共享常量。返回 undefined = 没有任何组被识别（如裸 NOSIG）。
  */
-function structureTrendElements(
+export function structureTrendElements(
   tokens: readonly Token[],
   start: number,
 ): TrendElements | undefined {

@@ -287,9 +287,9 @@ describe("TAF 批 1.5：基况段四要素 + CAVOK", () => {
     if (r.weather?.kind === "value") expect(r.weather.value).toHaveLength(1); // BR
     expect(r.clouds?.elements).toHaveLength(1); // OVC033
     expect(r.cavok).toBe(false);
-    // 基况零告警；首个 TEMPO 起 14 个 token 全部 unknown-token（批 2 接管前）
-    expect(r.warnings.filter((w) => w.code !== "unknown-token")).toHaveLength(0);
-    expect(r.warnings.filter((w) => w.code === "unknown-token")).toHaveLength(14);
+    // 批 2.2 起：三条变化组（TEMPO×2 + BECMG）全结构化，零 unknown-token
+    expect(r.changes.map((c) => c.kind)).toEqual(["TEMPO", "TEMPO", "BECMG"]);
+    expect(r.warnings).toHaveLength(0);
     expect(rawSlice(f.raw, r.clouds?.elements[0]?.span)).toBe("OVC033");
   });
 
@@ -304,9 +304,11 @@ describe("TAF 批 1.5：基况段四要素 + CAVOK", () => {
     const r = parseTaf(fx("aw-amd-zgsz-20260910").raw);
     expect(r.visibility?.kind).toBe("value");
     expect(r.clouds?.elements?.[0]).toMatchObject({ amount: "SCT" });
-    // TX32×2 + TN25 在 TEMPO 界前后均属批 2/3.4 未接管 token
+    // TX32×2 + TN25 三 token 属批 3.4（C6）未接管；TEMPO 变化组已结构化
+    expect(r.changes).toHaveLength(1);
+    expect(r.changes[0]).toMatchObject({ kind: "TEMPO" });
     const unknowns = r.warnings.filter((w) => w.code === "unknown-token");
-    expect(unknowns.length).toBeGreaterThan(6);
+    expect(unknowns).toHaveLength(3);
   });
 
   it("CAVOK：三关让位（vis/weather/clouds 为省略态）+ 词位标记", () => {
@@ -335,6 +337,66 @@ describe("TAF 批 1.5：基况段四要素 + CAVOK", () => {
     const metar = parse("METAR ZBAA 010340Z 17004MPS 2400 FEW030 29/24 Q1010", { spans: false });
     expect(taf.wind).toEqual(metar.wind);
     expect(taf.visibility).toEqual(metar.visibility);
+  });
+});
+
+describe("TAF 批 2.2：变化组结构化（清单 B4★/B5★/B8/B9）", () => {
+  it("ZSOF 实证：BECMG 只列变化要素，cloud-only BECMG 单层入册（B5 token 层）", () => {
+    const r = parseTaf(fx("ogimet-zsof-20250125-0913z").raw);
+    const kinds = r.changes.map((c) => c.kind);
+    expect(kinds).toEqual(["BECMG", "TEMPO", "BECMG", "BECMG", "BECMG"]);
+    const cloudOnly = r.changes[2];
+    expect(cloudOnly?.window).toMatchObject({
+      startDay: 25,
+      startHour: 19,
+      endDay: 25,
+      endHour: 20,
+    });
+    expect(cloudOnly?.elements?.clouds?.elements).toHaveLength(1); // BKN004 单层
+    expect(cloudOnly?.elements?.wind).toBeUndefined(); // 只列云
+    expect(cloudOnly?.elements?.weather).toHaveLength(0);
+  });
+
+  it("ZYTL 实证：风-only BECMG 与 TEMPO 窗内组值（含阵风与云）落位", () => {
+    const r = parseTaf(fx("ogimet-zytl-20250126-0848z").raw);
+    const windOnly = r.changes.filter((c) => c.kind === "BECMG")[1]; // 2619/2620 风-only
+    expect(windOnly?.window).toMatchObject({ startDay: 26, startHour: 19, endHour: 20 });
+    expect(windOnly?.elements?.wind?.gust).toMatchObject({ value: 14, unit: "mps" });
+    expect(windOnly?.elements?.visibility).toBeUndefined();
+    const tempo = r.changes[0];
+    expect(tempo?.elements?.visibility?.value).toBe(1000);
+    expect(tempo?.elements?.clouds?.elements?.[0]).toMatchObject({ amount: "BKN" });
+  });
+
+  it("B9 中方四位短窗：无日位，日归属回有效期起日；0700 型前向时对方为窗、否则按要素", () => {
+    const r = parseTaf("TAF ZSAM 100301Z 1006/1106 17004MPS 9999 TEMPO 1824 2500 -SHRA=");
+    expect(r.changes[0]?.window).toMatchObject({
+      startDay: 10,
+      startHour: 18,
+      endDay: 10,
+      endHour: 24,
+    });
+    // TEMPO 后 0700 非前向时对（07→00）——按能见度要素处理，不误吞为窗
+    const r2 = parseTaf("TAF ZSAM 100301Z 1006/1106 17004MPS TEMPO 0700 SN=");
+    expect(r2.changes[0]?.window).toBeUndefined();
+    expect(r2.changes[0]?.elements?.visibility?.value).toBe(700);
+  });
+
+  it("B8 组合规则：PROB TEMPO 合法连用；PROB BECMG 违例出声且后者独立成组；PROB50 越界省略概率", () => {
+    const ok = parseTaf("TAF ZBAA 010340Z 0106/0206 PROB30 TEMPO 0106/0109 TSRA=");
+    expect(ok.changes[0]).toMatchObject({ kind: "PROB", probability: 30, withTempo: true });
+    const bad = parseTaf("TAF ZBAA 010340Z 0106/0206 PROB40 BECMG 0106/0107 4000=");
+    expect(bad.warnings.some((w) => w.message.includes("组合违例"))).toBe(true);
+    expect(bad.changes.map((c) => c.kind)).toEqual(["PROB", "BECMG"]);
+    const p50 = parseTaf("TAF ZBAA 010340Z 0106/0206 PROB50 TEMPO 0106/0109 TSRA=");
+    expect(p50.changes[0]?.probability).toBeUndefined();
+    expect(p50.warnings.some((w) => w.message.includes("概率越界"))).toBe(true);
+  });
+
+  it("FM 硬时刻（B4 token 层）：GGgg 到分钟；ZGGG/ZGSG 方言样本（清单 fixture 依据）", () => {
+    const r = parseTaf("TAF ZGGG 010000Z 0106/0206 17004MPS FM0730 9999 SCT030=");
+    expect(r.changes[0]).toMatchObject({ kind: "FM", at: { hour: 7, minute: 30 } });
+    expect(r.changes[0]?.elements?.clouds?.elements?.[0]).toMatchObject({ amount: "SCT" });
   });
 });
 

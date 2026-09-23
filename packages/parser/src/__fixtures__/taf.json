@@ -1,6 +1,6 @@
 {
   "schema": "metweave-taf-fixtures/1",
-  "count": 6,
+  "count": 9,
   "fixtures": [
     {
       "id": "ogimet-plain-zbaa-20090801",
@@ -61,6 +61,36 @@
       "hash": null,
       "traps": ["cnl"],
       "note": "取消 CNL 占风组位（有效期 0306/0406 保留）；报头 AMD＝对修订报的取消；教材 §2 真实形态三例之一"
+    },
+    {
+      "id": "ogimet-zppp-20250125-1518z",
+      "raw": "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 BKN033 TX02/2518Z TNM02/2523Z TNM04/2623Z TEMPO 2520/2524 2500 -SHRASN BR BECMG 2605/2606 2000 -SN BR BECMG 2609/2610 04004MPS BECMG 2611/2612 4000 BR=",
+      "station": "ZPPP",
+      "source": "ogimet",
+      "obsTime": "2025-01-25T15:18:00Z",
+      "hash": "814912cbeb98",
+      "traps": ["golden-timeline", "multi-becmg"],
+      "note": "黄金三例之一（taf-timeline §3.1 双 BECMG 继承链主考）：42h 窗、双 TEMPO 竖排后三条 BECMG——展开器逐时刻表的权威样本"
+    },
+    {
+      "id": "ogimet-zsof-20250125-0913z",
+      "raw": "TAF ZSOF 250913Z 2512/2612 05004MPS 6000 BKN006 OVC020 TX05/2512Z TN00/2522Z BECMG 2516/2517 34005MPS 2500 -SN BR TEMPO 2518/2520 0700 SN BECMG 2519/2520 BKN004 BECMG 2600/2601 3000 BR BECMG 2602/2603 BKN020=",
+      "station": "ZSOF",
+      "source": "ogimet",
+      "obsTime": "2025-01-25T09:13:00Z",
+      "hash": "a8be606080f2",
+      "traps": ["golden-timeline", "cloud-only-becmg"],
+      "note": "黄金三例之二（§3.2 云例外双弹）：两条 cloud-only BECMG（BKN004/BKN020 单层全重报）——B5 云例外规则的权威样本"
+    },
+    {
+      "id": "ogimet-zytl-20250126-0848z",
+      "raw": "TAF AMD ZYTL 260848Z 2606/2706 28004MPS 3000 BR FEW033 TX02/2606Z TNM07/2623Z TEMPO 2608/2612 1000 -SN BR BKN010 BECMG 2614/2615 2000 -SN BR BKN010 TEMPO 2615/2619 0700 SN BECMG 2619/2620 35007G14MPS BECMG 2622/2623 3000 BR=",
+      "station": "ZYTL",
+      "source": "ogimet",
+      "obsTime": "2026-01-26T08:48:00Z",
+      "hash": "c6251c475c9f",
+      "traps": ["golden-timeline", "wind-only-becmg"],
+      "note": "黄金三例之三（§3.3 强度三档+风接棒收口）：风-only BECMG（35007G14MPS）与发作/间歇双态"
     }
   ]
 }

@@ -14,6 +14,11 @@ import type {
   CloudCondition,
   CloudElement,
   ParseWarning,
+  TafChangeAt,
+  TafChangeGroup,
+  TafChangeKind,
+  TafChangeWindow,
+  TrendElements,
   SkyClearCode,
   Span,
   TafParseOptions,
@@ -30,6 +35,7 @@ import {
   parseVisibilityToken,
   parseWindToken,
   spanOf,
+  structureTrendElements,
   tokenize,
   tryWeatherToken,
   validateWindGroup,
@@ -47,7 +53,7 @@ const isChangeBoundary = (text: string): boolean =>
   /^FM\d{4}$/.test(text) ||
   text === "BECMG" ||
   text === "TEMPO" ||
-  /^PROB[34]0$/.test(text) ||
+  /^PROB\d{2}$/.test(text) ||
   text.startsWith("TX") ||
   text.startsWith("TN");
 
@@ -156,6 +162,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       nil: true,
       flags: { amended, corrected },
       cavok: false,
+      changes: [],
       remarks: [],
       warnings,
     });
@@ -230,6 +237,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       nil: true,
       flags: { amended, corrected },
       cavok: false,
+      changes: [],
       remarks: [],
       warnings,
     });
@@ -284,6 +292,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       cancelled: true,
       flags: { amended, corrected },
       cavok: false,
+      changes: [],
       remarks: [],
       warnings,
     });
@@ -425,8 +434,155 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     i += 1;
   }
 
-  // 变化组/气温组界之后的 token：批 2/3.4 接管前一律 unknown-token 出声
-  collectTailAsUnknown(tokens, i, warnings);
+  // —— 变化组序列（2.2）：FM/BECMG/TEMPO/PROB 结构化（B4/B5 token 层 + B8 组合规则 + B9 短窗）——
+  // 语义边界：解析层只收「组内所列要素」（TrendElements，与 METAR 趋势段同构）；
+  // 未列要素继承/回溯、云例外、过渡带、间歇双态属展开器（2.3），解析层不越权代判
+  const changes: TafChangeGroup[] = [];
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (t === undefined) break;
+    const text = t.text;
+
+    if (text.startsWith("TX") || text.startsWith("TN")) {
+      warnings.push({
+        code: "unknown-token",
+        severity: "info",
+        message: `TAF 气温组暂未解析（${text}）——批 3.4（C6）接管`,
+        span: spanOf(t),
+      });
+      i += 1;
+      continue;
+    }
+
+    const fm = /^FM(\d{2})(\d{2})$/.exec(text);
+    const prob = /^PROB(\d{2})$/.exec(text);
+    if (fm === null && prob === null && text !== "BECMG" && text !== "TEMPO") {
+      warnings.push({
+        code: "unknown-token",
+        severity: "info",
+        message: `TAF 变化组段未识别组（${text}）`,
+        span: spanOf(t),
+      });
+      i += 1;
+      continue;
+    }
+
+    const startTok = t;
+    i += 1;
+
+    if (fm !== null) {
+      // FM 硬时刻（B4）：GGgg 到分钟；日归属由展开层在有效期语境内锚定
+      const at: TafChangeAt = {
+        hour: Number(fm[1]),
+        minute: Number(fm[2]),
+        raw: text,
+        span: spanOf(startTok),
+      };
+      const [elements, next] = collectChangeElements(tokens, i);
+      changes.push({
+        kind: "FM",
+        at,
+        ...(elements !== undefined ? { elements } : {}),
+        ...groupExtent(raw, tokens, startTok, next),
+      });
+      i = next;
+      continue;
+    }
+
+    let kind: TafChangeKind;
+    let probability: 30 | 40 | undefined;
+    let withTempo = false;
+    if (prob !== null) {
+      kind = "PROB";
+      const p = Number(prob[1]);
+      if (p === 30 || p === 40) probability = p;
+      else {
+        warnings.push({
+          code: "invalid-format",
+          severity: "warning",
+          message: `PROB 概率越界（${text}——C2C2 须为 30 或 40，清单 B8）：概率位省略，组照常解析`,
+          span: spanOf(startTok),
+        });
+      }
+      const nx = tokens[i];
+      if (nx?.text === "TEMPO") {
+        withTempo = true;
+        i += 1;
+      } else if (nx?.text === "BECMG" || /^FM\d{4}$/.test(nx?.text ?? "")) {
+        // B8 违例：PROB 只可独立/连 TEMPO，禁与 BECMG/FM——出声后 PROB 空收、后者独立成组
+        warnings.push({
+          code: "invalid-format",
+          severity: "warning",
+          message: `PROB 组合违例（PROB 与 ${nx?.text} 并用——只可独立或连 TEMPO，清单 B8）：PROB 段空收，后者独立成组`,
+          span: spanOf(startTok),
+        });
+        changes.push({
+          kind: "PROB",
+          ...(probability !== undefined ? { probability } : {}),
+          raw: text,
+          span: spanOf(startTok),
+        });
+        continue;
+      }
+    } else {
+      kind = text === "TEMPO" ? "TEMPO" : "BECMG";
+    }
+
+    // 窗口：ddHH/ddHH 全窗；或中方四位短窗（B9：无日位，日归属回有效期起日；
+    // 仅接受后时>前时的前向时对——0700 一类回退按要素（能见度）处理，杜绝误吞）
+    let window: TafChangeWindow | undefined;
+    const winTok = tokens[i];
+    if (winTok !== undefined) {
+      const w = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(winTok.text);
+      const s = /^(\d{2})(\d{2})$/.exec(winTok.text);
+      if (w !== null) {
+        window = {
+          startDay: Number(w[1]),
+          startHour: Number(w[2]),
+          endDay: Number(w[3]),
+          endHour: Number(w[4]),
+          raw: winTok.text,
+          span: spanOf(winTok),
+        };
+        i += 1;
+      } else if (
+        s !== null &&
+        validity !== undefined &&
+        Number(s[2]) > Number(s[1]) &&
+        Number(s[2]) <= 24 &&
+        Number(s[1]) <= 23
+      ) {
+        window = {
+          startDay: validity.startDay,
+          startHour: Number(s[1]),
+          endDay: validity.startDay,
+          endHour: Number(s[2]),
+          raw: winTok.text,
+          span: spanOf(winTok),
+        };
+        i += 1;
+      }
+    }
+    if (window === undefined && kind !== "PROB") {
+      warnings.push({
+        code: "invalid-format",
+        severity: "info",
+        message: `${kind} 组缺窗（变化词后未随 ddHH/ddHH 窗口组）——要素照常收`,
+        span: spanOf(startTok),
+      });
+    }
+
+    const [elements, next] = collectChangeElements(tokens, i);
+    changes.push({
+      kind,
+      ...(probability !== undefined ? { probability } : {}),
+      ...(withTempo ? { withTempo } : {}),
+      ...(window !== undefined ? { window } : {}),
+      ...(elements !== undefined ? { elements } : {}),
+      ...groupExtent(raw, tokens, startTok, next),
+    });
+    i = next;
+  }
 
   const clouds: CloudCondition | undefined =
     cloudElements.length > 0 || clearCode !== undefined
@@ -446,9 +602,38 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     clouds,
     cavok,
     cavokSpan,
+    changes,
     remarks: [],
     warnings,
   });
+}
+
+/** 变化组要素收集：从 from 起收到下一个组界（变化词/气温组/末尾），交 structureTrendElements 结构化 */
+function collectChangeElements(
+  tokens: readonly Token[],
+  from: number,
+): [TrendElements | undefined, number] {
+  const collected: Token[] = [];
+  let k = from;
+  while (k < tokens.length) {
+    const t = tokens[k];
+    if (t === undefined || isChangeBoundary(t.text)) break;
+    collected.push(t);
+    k += 1;
+  }
+  return [structureTrendElements(collected, 0), k];
+}
+
+/** 组的外包络（raw 切片 + span）：变化词 token 起至 next 前一 token 止 */
+function groupExtent(
+  raw: string,
+  tokens: readonly Token[],
+  startTok: Token,
+  next: number,
+): { raw: string; span: Span } {
+  const last = tokens[next - 1] ?? startTok;
+  const span = { start: startTok.start, end: last.end };
+  return { raw: raw.slice(span.start, span.end), span };
 }
 
 /** NIL/CNL/批 1 骨架共用的尾部处理：剩余 token 一律 unknown-token 出声（不静默纪律） */
