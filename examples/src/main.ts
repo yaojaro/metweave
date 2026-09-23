@@ -267,8 +267,8 @@ const loadTaf = async (): Promise<void> => {
       PROB: "概率",
     };
     const renderPanel = (): void => {
+      refreshPanel = renderPanel; // 定义即登记（首跑可能在面板未开时早退，登记不得依赖渲染路径）
       if (!listOpen || tafLayer === undefined || tafItems === undefined) return;
-      refreshPanel = renderPanel;
       const body = modeBar.panelBody;
       if (body === null) return;
       body.replaceChildren();
