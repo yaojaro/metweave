@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 import * as L from "leaflet";
-import { parse } from "@metweave/parser";
-import { addMetarLayer } from "./index";
+import { parse, parseTaf } from "@metweave/parser";
+import { addMetarLayer, addTafLayer, type AddTafLayerOptions } from "./index";
 
 const report = parse("METAR ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG");
 
@@ -418,6 +418,87 @@ describe("addMetarLayer 顶层 locale 速记与未知选项校验", () => {
     await expect(addMetarLayer(map2, [{ report, position: [40.0, 116.6] }], bad)).rejects.toThrow(
       /colour/,
     );
+    map2.remove();
+  });
+});
+
+// ---------------------------------------------------------------- TAF 图层（渲染层①：预报当观测渲）
+
+const freshMap = (): L.Map => {
+  document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
+  return L.map("map", { center: [35.5, 105], zoom: 4 });
+};
+const firstDot = (g: L.LayerGroup): string | null | undefined =>
+  (g.getLayers()[0] as L.Marker | undefined)?.getElement()?.querySelector(".mw-dot")?.className ??
+  null;
+const firstTipText = (g: L.LayerGroup): string =>
+  (
+    (g.getLayers()[0] as L.Marker | undefined)?.getTooltip()?.getContent() as
+      | HTMLElement
+      | undefined
+  )?.textContent ?? "";
+
+describe("addTafLayer（v0.2 渲染层①）", () => {
+  const goodBase =
+    "TAF ZBAA 010340Z 0106/0206 17004MPS 9999 SCT030 BECMG 0110/0111 1200 -SN OVC008=";
+  const tempoRaw =
+    "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 BKN033 TEMPO 2520/2524 2500 -SHRASN BR BECMG 2605/2606 2000 -SN BR=";
+
+  it("预报当观测渲：基况时刻绿档；BECMG 生效时刻升红（与 METAR 同一判据管线）", async () => {
+    const r = parseTaf(goodBase);
+    const map1 = freshMap();
+    const g1 = await addTafLayer(map1, [{ report: r, position: [40, 116] }], {
+      at: { day: 1, hour: 8, minute: 0 },
+    });
+    expect(firstDot(g1)).toContain("mw-dot-good");
+    map1.remove();
+    const map2 = freshMap();
+    const g2 = await addTafLayer(map2, [{ report: r, position: [40, 116] }], {
+      at: { day: 1, hour: 12, minute: 0 },
+    });
+    expect(firstDot(g2)).toContain("mw-dot-poor"); // BECMG 后 1200 m + OVC008 → 红
+    map2.remove();
+  });
+
+  it("缺省展开时刻＝有效期起点；aria-label 带「预报」标注", async () => {
+    const map = freshMap();
+    const g = await addTafLayer(map, [{ report: parseTaf(goodBase), position: [40, 116] }]);
+    expect(firstDot(g)).toContain("mw-dot-good");
+    expect(
+      (g.getLayers()[0] as L.Marker)
+        .getElement()
+        ?.querySelector('[role="img"]')
+        ?.getAttribute("aria-label"),
+    ).toContain("预报");
+    map.remove();
+  });
+
+  it("TEMPO 发作可能入 tooltip；BECMG 窗内时刻带「过渡带」", async () => {
+    const map1 = freshMap();
+    const g1 = await addTafLayer(map1, [{ report: parseTaf(tempoRaw), position: [25, 102] }], {
+      at: { day: 25, hour: 21, minute: 0 },
+    });
+    expect(firstTipText(g1)).toContain("TEMPO 发作可能");
+    expect(firstTipText(g1)).toContain("2500");
+    map1.remove();
+    const map2 = freshMap();
+    const g2 = await addTafLayer(map2, [{ report: parseTaf(tempoRaw), position: [25, 102] }], {
+      at: { day: 26, hour: 5, minute: 30 },
+    });
+    expect(firstTipText(g2)).toContain("过渡带");
+    map2.remove();
+  });
+
+  it("NIL 不展开：灰 unknown + 缺报提示；未知选项运行时抛错（不静默纪律）", async () => {
+    const map = freshMap();
+    const g = await addTafLayer(map, [{ report: parseTaf("TAF ZSAM NIL="), position: [24, 113] }]);
+    expect(firstDot(g)).toContain("mw-dot-unknown");
+    expect(firstTipText(g)).toContain("缺报");
+    map.remove();
+    const map2 = freshMap();
+    await expect(
+      addTafLayer(map2, [], { conditonColors: true } as unknown as AddTafLayerOptions),
+    ).rejects.toThrow("未知选项");
     map2.remove();
   });
 });

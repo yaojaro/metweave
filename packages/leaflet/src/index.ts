@@ -7,9 +7,25 @@
  * 也不推荐或代理任何底图服务——底图由使用者按自己的授权自行选择。
  */
 import type * as Leaflet from "leaflet";
-import type { CloudElement, MetarReport, WeatherGroup } from "@metweave/core";
-import { toValues } from "@metweave/core";
+import type {
+  CloudCondition,
+  CloudElement,
+  MetarReport,
+  Observed,
+  RunwayStateGroup,
+  VisibilityGroup,
+  WeatherGroup,
+  WindGroup,
+} from "@metweave/core";
+import { toValues, unwrap } from "@metweave/core";
 import { renderCard } from "@metweave/render";
+import { expandTaf } from "@metweave/parser";
+import type {
+  TafExpandAt,
+  TafMonthAnchor,
+  TafReport,
+  TafResolvedConditions,
+} from "@metweave/parser";
 
 /**
  * leaflet 惰性装载：import 本包时不再静态加载 leaflet——peer 库是浏览器专属实现，
@@ -137,9 +153,27 @@ const toMps = (value: number, unit: "kt" | "mps" | "kmh"): number =>
  * - good（绿）= 其余（含 CAVOK）
  * 缺测要素不参与限制（按可得要素判，见 conditionOf 内 unknown 判据的例外）；阈值细则随口径审定后修订。
  */
-function conditionOf(report: MetarReport): ConditionTier {
+/** 判据输入面（结构子集）：METAR 报与 TAF 展开结果皆可喂（渲染层①，2026-09-23）——
+ *  MetarReport 结构性满足本接口；TAF 侧由展开结果投影构造（runwayStates 恒缺省） */
+interface ConditionInput {
+  readonly nil?: boolean;
+  readonly cavok: boolean;
+  readonly wind?: Observed<WindGroup>;
+  readonly visibility?: Observed<VisibilityGroup>;
+  readonly weather?: Observed<readonly WeatherGroup[]>;
+  readonly clouds?: CloudCondition;
+  readonly runwayStates?: readonly RunwayStateGroup[];
+}
+
+function conditionOf(report: ConditionInput): ConditionTier {
   if (report.nil === true) return "unknown";
-  const v = toValues(report);
+  const v = {
+    wind: unwrap(report.wind),
+    visibility: unwrap(report.visibility),
+    weather: unwrap(report.weather),
+    clouds: report.clouds,
+    runwayStates: report.runwayStates ?? [],
+  };
   // 关键组全缺测：能见度与云均缺测（云组每个体均为全缺测形态）且天气缺测/无——判读无从下手，灰而非绿
   const visMissing = report.visibility?.kind === "missing";
   const elements = v.clouds?.elements ?? [];
@@ -399,6 +433,205 @@ export async function addMetarLayer(
   if (!escapeBoundMaps.has(map)) {
     escapeBoundMaps.add(map);
     // 地图容器键盘路径：Escape 关闭已开弹窗（closePopup 对未开弹窗是空操作）
+    map.getContainer().addEventListener("keydown", (event) => {
+      if (event.key === "Escape") map.closePopup();
+    });
+  }
+  group.addTo(map);
+  return group;
+}
+
+// ---------------------------------------------------------------- TAF 图层（v0.2 渲染层①：预报当观测渲）
+
+/** TAF 展开结果 → 判据输入面投影（runwayStates 恒缺省——TAF 无跑道状态语汇） */
+function asConditionInput(c: TafResolvedConditions, nilLike: boolean): ConditionInput {
+  return {
+    nil: nilLike,
+    cavok: c.cavok,
+    ...(c.wind !== undefined ? { wind: { kind: "value" as const, value: c.wind } } : {}),
+    ...(c.visibility !== undefined
+      ? { visibility: { kind: "value" as const, value: c.visibility } }
+      : {}),
+    ...(c.weather.length > 0 ? { weather: { kind: "value" as const, value: c.weather } } : {}),
+    ...(c.clouds !== undefined ? { clouds: c.clouds } : {}),
+  };
+}
+
+/** 天气组紧凑码（TAF 摘要用）：-SHRA / TSRA / +SN */
+const wxCompact = (g: WeatherGroup): string =>
+  `${g.intensity ?? ""}${g.proximity ? "VC" : ""}${g.descriptor ?? ""}${g.phenomena.join("")}`;
+
+/** TAF 展开摘要（一行）：CAVOK 或 能见度 · 天气 · 云（对齐 summarizeReport 的要素序） */
+function summarizeTaf(c: TafResolvedConditions, locale: "zh" | "en"): string {
+  if (c.cavok) return "CAVOK";
+  const parts: string[] = [];
+  if (c.visibility !== undefined) {
+    const vis = c.visibility;
+    parts.push(
+      vis.unit === "m"
+        ? vis.exact
+          ? `${vis.value} m`
+          : "≥10 km"
+        : `${vis.beyond === "below" ? "<" : vis.beyond === "above" ? ">" : ""}${vis.value} SM`,
+    );
+  }
+  const significant =
+    c.weather.find(
+      (g) => g.descriptor === "TS" || g.phenomena.includes("GR") || g.intensity === "+",
+    ) ?? c.weather[0];
+  if (significant !== undefined) parts.push(wxCompact(significant));
+  let lowest: { e: Extract<CloudElement, { kind: "layer" }>; ft: number } | undefined;
+  for (const e of c.clouds?.elements ?? []) {
+    if (e.kind !== "layer") continue;
+    const ft = e.heightFt.value ?? Number.POSITIVE_INFINITY;
+    if (lowest === undefined || ft < lowest.ft) lowest = { e, ft };
+  }
+  if (lowest !== undefined && lowest.e.amount !== null) {
+    parts.push(
+      `${lowest.e.amount}${String(Math.round(lowest.ft / 100)).padStart(3, "0")}${lowest.e.convective ?? ""}`,
+    );
+  }
+  if (parts.length === 0) return locale === "en" ? "No elements" : "无要素组";
+  return parts.join(" · ");
+}
+
+export interface TafLayerItem {
+  /** 已解析的 TAF 报文 IR */
+  report: TafReport;
+  /** 站点坐标（WGS-84 [lat, lon]） */
+  position: [number, number];
+  /** 站点提示（tooltip 文案，缺省用 IR 站名） */
+  title?: string;
+}
+
+/**
+ * Options for addTafLayer: expansion instant, month anchor, locale, popup.
+ * addTafLayer 的选项：展开时刻、月锚、语言、弹窗。
+ */
+export interface AddTafLayerOptions {
+  /** 显示语言（缺省 zh） */
+  locale?: "zh" | "en";
+  /** 展开时刻（UTC）；缺省 = 有效期起点 */
+  at?: TafExpandAt;
+  /** 月锚天数（B3 跨月回绕，有效期起日所在月）；缺省 31 */
+  anchorDays?: number;
+  /** 点击站点时以弹窗展示预报摘要（缺省开启；层② 的完整 TAF 卡片在后续版本） */
+  popup?: boolean;
+}
+
+const ADD_TAF_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
+  "locale",
+  "at",
+  "anchorDays",
+  "popup",
+]);
+
+/**
+ * Put parsed TAF stations onto a Leaflet map as forecast markers at one instant — the four-tier
+ * dot, tooltip and popup are driven by `expandTaf` (renderer layer ①: forecast-as-observation).
+ * 把一组 TAF 站点按同一时刻的预报值挂上地图：四档圆点/tooltip/弹窗全部由 expandTaf 展开
+ * 结果驱动（渲染层①「预报当观测渲」——判据/圆点/摘要与 METAR 侧同一条管线）。
+ * 档位判据为本库自拟扫视启发式（同 conditionOf 注释）——**预报值套判据同样不得用作运行判据**，
+ * tooltip/弹窗均显式标注「预报」，不与实况混淆。
+ */
+export async function addTafLayer(
+  map: Leaflet.Map,
+  items: readonly TafLayerItem[],
+  options: AddTafLayerOptions = {},
+): Promise<Leaflet.LayerGroup> {
+  for (const key of Object.keys(options)) {
+    if (!ADD_TAF_LAYER_OPTION_KEYS.has(key)) {
+      throw new Error(`addTafLayer 收到未知选项 "${key}"（可用项见 AddTafLayerOptions）`);
+    }
+  }
+  const locale = options.locale ?? "zh";
+  if (locale !== "zh" && locale !== "en") {
+    const bad: string = locale;
+    throw new Error(`addTafLayer 的 locale 选项值 "${bad}" 不受支持（可用："zh" | "en"）`);
+  }
+  const anchor: TafMonthAnchor = { daysIn: options.anchorDays ?? 31 };
+  const L = await loadLeaflet();
+  const group = L.layerGroup();
+  for (const item of items) {
+    const r = item.report;
+    const name = item.title ?? r.station;
+
+    // NIL/CNL 不展开：灰 unknown 圆点 + 缺报/取消提示（对齐 METAR 侧 NIL 口径）
+    const noTimeline = r.nil === true || r.cancelled === true;
+    const v = r.validity;
+    const at: TafExpandAt = noTimeline
+      ? { day: v?.startDay ?? 0, hour: v?.startHour ?? 0, minute: 0 }
+      : (options.at ?? { day: v?.startDay ?? 0, hour: v?.startHour ?? 0, minute: 0 });
+
+    let tier: ConditionTier = "unknown";
+    let summary = r.nil === true ? "缺报（NIL）" : r.cancelled === true ? "预报取消（CNL）" : "";
+    let notes: string[] = [];
+    if (!noTimeline && v !== undefined) {
+      const expansion = expandTaf(r, at, anchor);
+      tier = conditionOf(asConditionInput(expansion.conditions, false));
+      summary = summarizeTaf(expansion.conditions, locale);
+      const atText = `${String(at.day).padStart(2, "0")}日${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`;
+      notes.push(locale === "en" ? `Forecast for ${atText}` : `预报 ${atText} 时刻`);
+      if (expansion.uncertain) {
+        notes.push(
+          locale === "en" ? "Transition band — timing uncertain" : "过渡带（变化时刻不确定）",
+        );
+      }
+      if (expansion.tempo !== undefined) {
+        const tempoSummary = summarizeTaf(
+          {
+            ...expansion.conditions,
+            ...expansion.tempo.conditions,
+            weather: expansion.tempo.conditions.weather ?? [],
+            cavok: expansion.tempo.conditions.cavok,
+          },
+          locale,
+        );
+        notes.push((locale === "en" ? "TEMPO bursts: " : "TEMPO 发作可能：") + tempoSummary);
+      }
+    } else if (v !== undefined) {
+      notes.push(`有效期 ${v.raw}`);
+    }
+
+    const label = `${name} · ${locale === "en" ? "Forecast " : "预报"}${TIER_WORDS[locale][tier]}`;
+    const marker = L.marker(item.position, {
+      icon: L.divIcon({
+        className: "mw-cond-icon",
+        html: `<span role="img" aria-label="${escapeHtml(label)}" class="mw-dot mw-dot-${tier}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${TIER_COLORS[tier]};border:2px solid #fff;box-shadow:0 0 2px rgba(0,0,0,.4)"></span>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      }),
+    });
+    const tip = document.createElement("span");
+    tip.append(textCarrier(`${name} · ${locale === "en" ? "Forecast" : "预报"}`));
+    if (summary !== "") tip.append(document.createElement("br"), textCarrier(summary));
+    for (const n of notes) tip.append(document.createElement("br"), textCarrier(n));
+    marker.bindTooltip(tip);
+
+    if (options.popup ?? true) {
+      const card = document.createElement("div");
+      card.className = "mw-taf-popup";
+      const line = (k: string, val: string): void => {
+        const p = document.createElement("p");
+        p.append(textCarrier(k), textCarrier(val));
+        p.style.margin = "2px 0";
+        card.append(p);
+      };
+      line(locale === "en" ? "Station: " : "站名：", name);
+      if (v !== undefined) {
+        line(locale === "en" ? "Validity: " : "有效期：", v.raw);
+      }
+      if (summary !== "") line(locale === "en" ? "Conditions: " : "预报值：", summary);
+      for (const n of notes) line("", n);
+      if (!noTimeline) {
+        line(locale === "en" ? "Change groups: " : "变化组：", String(r.changes.length));
+      }
+      marker.bindPopup(card, { maxWidth: 420 });
+    }
+    marker.addTo(group);
+  }
+  if (!escapeBoundMaps.has(map)) {
+    escapeBoundMaps.add(map);
     map.getContainer().addEventListener("keydown", (event) => {
       if (event.key === "Escape") map.closePopup();
     });
