@@ -14,6 +14,7 @@
     "check:leaks": "node scripts/check-leaks.mjs --all",
     "check:docs": "node scripts/check-docs-chinese.mjs",
     "replay:corpus": "node scripts/replay-corpus.mjs corpus/*.txt --baseline corpus/snapshot.json",
+    "replay:full": "node scripts/full-replay.mjs",
     "check:knip": "knip",
     "check:artifact": "rm -rf node_modules/.artifacts && pnpm -r --filter '!metweave-monorepo' --filter '!metweave-examples' pack --pack-destination node_modules/.artifacts && for f in node_modules/.artifacts/*.tgz; do publint \"$f\" && attw --profile node16 \"$f\" || exit 1; done && for f in node_modules/.artifacts/*.tgz; do tar -tzf \"$f\" | grep -qx \"package/LICENSE\" || { echo \"缺 LICENSE: $f\"; exit 1; }; done",
     "fuzz": "node scripts/fuzz.mjs",
