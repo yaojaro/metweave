@@ -1600,17 +1600,28 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     const text = card.textContent ?? "";
     expect(card.querySelector("h2")?.textContent).toContain("ZPPP");
     expect(card.querySelector(".mw-taf-badge")?.textContent).toContain("TAF");
-    expect(text).toContain("2518/2624");
+    // 五轮：发布在前（报文语序）、有效期区间化（26日24时→27日00:00 午夜特例换算）、时长保留
+    expect(text.indexOf("发布 25日 15:18")).toBeLessThan(text.indexOf("有效期"));
+    expect(text).toContain("自 25日 18:00Z");
+    expect(text).toContain("至 27日 00:00Z");
     expect(text).toContain("30 小时"); // 2518→2624：(26-25)×24+(24-18)=30h（B2 止时 24 进算术）
-    expect(text).toContain("25日 15:18");
   });
 
-  it("气温极值行（负值 M 前缀）——时间线 ▲▼ 标记随条带移除，极值时刻由文本行承载", () => {
+  it("气温极值：置于分段上方，高温/低温分行（多组并列一行），负值 M 前缀", () => {
     const card = renderTafCard(parseTaf(golden));
     expect(card.querySelectorAll(".mw-taf-strip")).toHaveLength(0); // 四轮移除
-    const text = card.textContent ?? "";
-    expect(text).toContain("最高 2°C");
-    expect(text).toContain("最低 -2°C");
+    const lines = Array.from(card.querySelectorAll(".mw-taf-temp-line"));
+    expect(lines.length).toBe(2); // TX02 一行、TNM02+TNM04 一行（golden 高温 1 组低温 2 组）
+    const labels = lines.map((x) => x.querySelector(".mw-taf-item-label")?.textContent);
+    expect(labels).toEqual(["高温", "低温"]);
+    expect(lines[0]?.textContent).toContain("最高 2°C");
+    expect(lines[1]?.textContent).toContain("最低 -2°C");
+    expect(lines[1]?.textContent).toContain("最低 -4°C");
+    // 位置：气温区在分段天气之前（owner 五轮：基本固定信息置顶）
+    const children = Array.from(card.children);
+    expect(children.findIndex((c) => c.classList.contains("mw-taf-temps"))).toBeLessThan(
+      children.findIndex((c) => c.classList.contains("mw-taf-periods")),
+    );
   });
 
   it("分段天气明细：基况/TEMPO/渐变中/转变后逐段人话，电码入悬停（专业/小白双受众）", () => {
@@ -1653,9 +1664,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(segs.length).toBe(21);
     // 版式序：气温极值行在 RAW 之前（owner 三轮指令）
     const children = Array.from(card.children);
-    const tempsAt = children.findIndex(
-      (c) => c.classList.contains("mw-taf-meta") && (c.textContent ?? "").includes("气温极值"),
-    );
+    const tempsAt = children.findIndex((c) => c.classList.contains("mw-taf-temps"));
     const rawAt = children.findIndex((c) => c.classList.contains("mw-taf-raw"));
     expect(tempsAt).toBeGreaterThanOrEqual(0);
     expect(tempsAt).toBeLessThan(rawAt);

@@ -3,7 +3,7 @@
  *
  * 结构：头行（站名 + TAF 徽章 + AMD/COR/NIL/CNL 标志）→ 元信息（有效期 + 时长 / 发布时刻）→
  * **分段天气明细**（tafSegments 逐段「时间窗 + 类型徽 + 人话要素」，
- * 悬停=电码紧凑串——owner 9/23 指令：按拆分时间段给具体天气，专业/小白双受众）→ 气温组行 → 可选 RAW 对照。
+ * 悬停=电码紧凑串——owner 9/23 指令：按拆分时间段给具体天气，专业/小白双受众）→ 气温极值（多组分行，置于分段上方——owner 五轮）→ 可选 RAW 对照。
  * 与 card.ts 同纪律：纯 DOM 构建（createElement/textContent，无 innerHTML 注入面）、
  * 样式随组件注入（STYLE_ID 单次）、双语文案集中一张 locale 表、宿主 className 可叠加。
  * 预报警示：档位/摘要是扫视辅助，不得用作运行判据（沿 METAR 卡口径）。
@@ -54,6 +54,11 @@ const LOCALE = {
     validity: "有效期",
     duration: (h: number): string => `${h} 小时`,
     issued: "发布",
+    validityFrom: (day: string, hm: string): string => `自 ${day}日 ${hm}`,
+    validityTo: (day: string, hm: string): string => `至 ${day}日 ${hm}`,
+    validityZone: "UTC",
+    labelHigh: "高温",
+    labelLow: "低温",
     change: "变化组",
     prob: (p: number): string => `概率 ${p}%`,
     temps: "气温极值",
@@ -88,6 +93,11 @@ const LOCALE = {
     validity: "Validity",
     duration: (h: number): string => `${h} h`,
     issued: "Issued",
+    validityFrom: (day: string, hm: string): string => `from Day ${day}, ${hm}`,
+    validityTo: (day: string, hm: string): string => `to Day ${day}, ${hm}`,
+    validityZone: "UTC",
+    labelHigh: "High",
+    labelLow: "Low",
     change: "Change groups",
     prob: (p: number): string => `PROB ${p}%`,
     temps: "Temperature extremes",
@@ -129,6 +139,8 @@ const STYLE_TEXT = `
   font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   white-space: pre-wrap; word-break: break-all; }
 .mw-taf-periods-title { margin: 8px 0 2px; font-size: 11px; color: #6b7785; font-weight: 600; }
+.mw-taf-temps { margin: 2px 0; }
+.mw-taf-temp-line { margin: 0; font-size: 12px; color: #1c2733; }
 .mw-taf-periods { margin: 0; padding: 0; list-style: none; }
 .mw-taf-period { padding: 4px 2px; border-top: 1px dashed #e3e8ee; font-size: 12px; border-radius: 4px; }
 .mw-taf-period:first-child { border-top: none; }
@@ -182,6 +194,11 @@ const tempLine = (t: TafTemperatureGroup, L: LocaleTable): string =>
   `${t.extremum === "max" ? L.max(t.celsius) : L.min(t.celsius)}${t.at.day !== undefined ? ` @ ${String(t.at.day).padStart(2, "0")}日${String(t.at.hour).padStart(2, "0")}Z` : ` @ ${String(t.at.hour).padStart(2, "0")}Z`}`;
 
 // ---------------------------------------------------------------- 分段明细拼装（gloss 词表共用，与 METAR 卡同口径）
+
+/** 元信息时钟（整点补零）：06:00Z */
+const clockOf = (hour: number): string => `${String(hour).padStart(2, "0")}:00Z`;
+/** 元信息日号补零：23 */
+const dayOf = (day: number): string => String(day).padStart(2, "0");
 
 /** 分段行时刻标签（zh：23日06Z / en：23/06Z） */
 const fmtSegAt = (at: TafExpandAt, locale: "zh" | "en"): string =>
@@ -463,9 +480,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     });
     self.addEventListener("mouseleave", clearHl);
   };
-  const validityEl = el("p", "mw-taf-meta", `${t.validity} ${v.raw}（${t.duration(hours)}）`);
-  link.validityEl = validityEl;
-  card.append(validityEl);
+  // 发布在前、有效期在后（owner 五轮：按报文语序 ddHHMMZ → ddHH/ddHH）
   if (report.issueTime !== undefined) {
     card.append(
       el(
@@ -474,6 +489,32 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         `${t.issued} ${String(report.issueTime.day).padStart(2, "0")}日 ${String(report.issueTime.hour).padStart(2, "0")}:${String(report.issueTime.minute).padStart(2, "0")} Z`,
       ),
     );
+  }
+  // 有效期直说具体日期时间（不用 ddHH/ddHH 短码）：止时 24＝次日 00:00（B2 午夜特例的显示位换算）
+  const endClock =
+    v.endHour === 24 ? { day: (v.endDay % 31) + 1, hour: 0 } : { day: v.endDay, hour: v.endHour };
+  const validityText = `${t.validity} ${t.validityFrom(dayOf(v.startDay), clockOf(v.startHour))} ${t.validityTo(dayOf(endClock.day), clockOf(endClock.hour))}（${t.validityZone}，${t.duration(hours)}）`;
+  const validityEl = el("p", "mw-taf-meta", validityText);
+  link.validityEl = validityEl;
+  card.append(validityEl);
+
+  // 气温极值（owner 五轮：置于分段天气上方的基本固定信息；多组分行——组标题 + 高温一行 + 低温一行）
+  if (report.temperatures.length > 0) {
+    const box = el("div", "mw-taf-temps");
+    box.append(el("p", "mw-taf-meta", `${t.temps}：`));
+    const maxes = report.temperatures.filter((x) => x.extremum === "max");
+    const mins = report.temperatures.filter((x) => x.extremum === "min");
+    const tempRow = (label: string, list: TafTemperatureGroup[]): void => {
+      if (list.length === 0) return;
+      const row = el("p", "mw-taf-temp-line");
+      row.append(el("span", "mw-taf-item-label", label));
+      row.append(document.createTextNode(list.map((x) => tempLine(x, t)).join("　｜　")));
+      box.append(row);
+    };
+    tempRow(t.labelHigh, maxes);
+    tempRow(t.labelLow, mins);
+    card.append(box);
+    link.tempsEl = box;
   }
 
   // —— 分段天气明细（owner 9/23 指令「按拆分时间段给具体天气」；三轮版式：两列一行两条、组级联动）
@@ -553,14 +594,6 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     card.append(title, ol);
   }
 
-  // 气温组行（置于 RAW 之上——owner 三轮版式指令）
-  if (report.temperatures.length > 0) {
-    const p = el("p", "mw-taf-meta", `${t.temps}：`);
-    p.append(document.createTextNode(report.temperatures.map((x) => tempLine(x, t)).join(" ｜ ")));
-    card.append(p);
-    link.tempsEl = p;
-  }
-
   // —— RAW 对照（METAR 卡同款独立盒区置底）+ 行↔原文组级双向联动：
   // 已知组在原文逐组包 span（变化组内所列要素再嵌套子片）；悬停条目只点亮其来源组，悬停组片点亮对应条目/行头
   if (options.raw === true && rows.length > 0) {
@@ -578,7 +611,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         end: v.span.end,
         rowIdx: null,
         key: "validity",
-        hint: `${t.validity} ${v.raw}`,
+        hint: validityText,
       });
     const baseRowIdx = rows.findIndex((r) => r.kind === "base");
     const baseHint = baseRowIdx >= 0 ? (rowEls[baseRowIdx]?.textContent ?? "") : "";
