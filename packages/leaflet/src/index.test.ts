@@ -549,3 +549,21 @@ it("层③：setTafLayerTime 全图换时刻（同一图层实例原地重建，
   expect(ctrl.querySelector("span")?.textContent ?? "").toContain("01日 12:00");
   map.remove();
 });
+
+it("层③竞态回归：同步连拨两次不叠点（clearLayers 与 populate 之间的 await 窗口），末次拨动生效", async () => {
+  const raw = "TAF ZBAA 010340Z 0106/0206 17004MPS 9999 SCT030 BECMG 0110/0111 1200 -SN OVC008=";
+  const items = [{ report: parseTaf(raw), position: [40, 116] as [number, number] }];
+  const map = freshMap();
+  const g = await addTafLayer(map, items);
+  const ctrl = createTafTimeControl(map, { layer: g, items, onTime: undefined });
+  const input = ctrl.querySelector("input");
+  await new Promise((r) => setTimeout(r, 20)); // 控件初始 apply 先落定
+  (input as HTMLInputElement).value = "2"; // 08Z：BECMG 前，绿档（旧代）
+  input?.dispatchEvent(new Event("input"));
+  (input as HTMLInputElement).value = "6"; // 12:00Z：BECMG 后，红档（末代）
+  input?.dispatchEvent(new Event("input"));
+  await new Promise((r) => setTimeout(r, 20));
+  expect(g.getLayers()).toHaveLength(1); // 叠加点＝旧代 populate 未作废（38→114 实测同型）
+  expect(firstDot(g)).toContain("mw-dot-poor");
+  map.remove();
+});

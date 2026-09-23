@@ -889,14 +889,23 @@ async function populateTafLayer(
  * 全图统一换时刻：整层按新时刻原地重建（展开是纯函数，几十站毫秒级）——地图级时间轴的功能核。
  * 层对象保持同一实例（图层引用不失效）；过渡带与 TEMPO 标注随新时刻更新。
  */
+/** 层级重建代际令牌：clearLayers 同步、populate 隔一个 await——同步连拨多次换时刻时，
+ * 各次 clear 都清在空层上、随后多批 populate 叠加（demo 实测 38 站连拨三下变 114 点）。
+ * 代际不符的旧调用在 await 后作废，末次拨动独占重建 */
+const tafLayerGen = new WeakMap<Leaflet.LayerGroup, object>();
+
 export async function setTafLayerTime(
   map: Leaflet.Map,
   layer: Leaflet.LayerGroup,
   items: readonly TafLayerItem[],
   options: AddTafLayerOptions = {},
 ): Promise<Leaflet.LayerGroup> {
+  const gen = {};
+  tafLayerGen.set(layer, gen);
   layer.clearLayers();
-  await populateTafLayer(map, layer, items, options, await loadLeaflet());
+  const L = await loadLeaflet();
+  if (tafLayerGen.get(layer) !== gen) return layer;
+  await populateTafLayer(map, layer, items, options, L);
   return layer;
 }
 
