@@ -1343,6 +1343,36 @@ export interface TafTimeControlOptions {
 |---|---|---|---|---|
 | sources.msg07 | 报文解析失败 ${failures.length} 条（network=${network}）——${failures.slice(0, 3).join("；")}${failures.length > 3 ? "……" : ""} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
+## sources.msg08（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| sources.msg08 | aviationweather TAF 请求超时（>${options.timeoutMs}ms） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## sources.msg09（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| sources.msg09 | 网络请求失败（源：aviationweather TAF）：请检查网络连通性后重试（${reason}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## sources.msg10（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| sources.msg10 | aviationweather TAF 响应读取失败：${reason} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## sources.msg11（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| sources.msg11 | aviationweather TAF 返回空数据——请核对 ids 站码（如 ZBAA,ZBAD；端点 format=raw） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## sources.msg12（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| sources.msg12 | TAF 解析失败 ${failures.length} 条（aviationweather）——${failures.slice(0, 3).join("；")}${failures.length > 3 ? "……" : ""} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
 ## parser.msg001（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |

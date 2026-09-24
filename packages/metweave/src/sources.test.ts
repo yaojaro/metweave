@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MetarSourceError } from "@metweave/core";
-import { getMetarReports, getMetars, iemCurrentsUrl } from "./sources";
+import {
+  awTafUrl,
+  getMetarReports,
+  getMetars,
+  getTafReports,
+  getTafs,
+  iemCurrentsUrl,
+} from "./sources";
 import { MetarParseError, MetarSourceError as MetarSourceErrorFromSources } from "./sources";
 
 /** 捕获 getMetars/getMetarReports 的失败实体（供机读码断言） */
@@ -23,6 +30,9 @@ const hangingFetch = () =>
 
 const okFetch = (body: unknown) =>
   vi.fn(async (_url: string) => ({ ok: true, status: 200, json: async () => body }));
+
+const textFetch = (body: string) =>
+  vi.fn(async (_url: string) => ({ ok: true, status: 200, text: async () => body }));
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -364,5 +374,145 @@ describe("A 批：取数与子路径错误面", () => {
     );
     const caught = await getMetars("CN__ASOS").catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(MetarSourceErrorFromSources);
+  });
+});
+
+// ---------------------------------------------------------------- TAF 取数线（owner 9/24「收进 sources」指令）
+
+describe("awTafUrl（端点模板：内网镜像只换根，路径与查询由本层拼装）", () => {
+  it("缺省官方端点：ids 逗号连接 + format=raw；数组与字符串 ids 等价", () => {
+    const byArray = awTafUrl(["ZBAA", "ZBAD"]);
+    const byString = awTafUrl("ZBAA,ZBAD");
+    expect(byArray).toBe(byString);
+    const u = new URL(byArray);
+    expect(`${u.origin}${u.pathname}`).toBe("https://aviationweather.gov/api/data/taf");
+    expect(u.searchParams.get("ids")).toBe("ZBAA,ZBAD");
+    expect(u.searchParams.get("format")).toBe("raw");
+    expect(u.searchParams.has("date")).toBe(false);
+  });
+
+  it("baseUrl 覆盖（内网代理根，如 examples 的 /aw-taf）；date：Date→ISO、字符串原样透传", () => {
+    const s = awTafUrl("ZBAA", { baseUrl: "/aw-taf" });
+    expect(s.startsWith("/aw-taf?")).toBe(true);
+    const iso = awTafUrl("ZBAA", { date: new Date(Date.UTC(2026, 8, 24, 1, 2, 3)) });
+    expect(iso).toContain("date=2026-09-24T01%3A02%3A03.000Z"); // ISO 经查询串编码
+    const raw = awTafUrl("ZBAA", { date: "202609240000" });
+    expect(raw).toContain("date=202609240000");
+  });
+});
+
+describe("getTafs 取数侧整理（raw 格式续行归并 + 站码提取）与失败面", () => {
+  it("续行归并回所属报文；站码剥离 TAF/AMD/COR 电头词；剥不出站码的行 station 为空串", async () => {
+    const body = [
+      "TAF ZBAA 240000Z 2400/2506 32004MPS 9999 FEW030 TX25/2412Z TN14/2403Z=",
+      "      TEMPO 2406/2409 4000 -SHRA=", // 缩进续行 → 并回上一份
+      "",
+      "TAF AMD ZBAD 240000Z 2400/2506 33003MPS 9999 SCT020=",
+      "NOT A TAF REPORT", // 无 4 位站码 → station=""
+    ].join("\n");
+    vi.stubGlobal("fetch", textFetch(body));
+    const rows = await getTafs("ZBAA,ZBAD");
+    expect(rows.length).toBe(3);
+    expect(rows[0]?.station).toBe("ZBAA");
+    expect(rows[0]?.raw).toContain("TEMPO 2406/2409"); // 续行已并回（不再丢在行外）
+    expect(rows[1]?.station).toBe("ZBAD"); // TAF AMD 前缀剥除
+    expect(rows[2]?.station).toBe("");
+  });
+
+  it("date 选项进查询串（上一发布周期回看——examples 报池方案B 的取数面）", async () => {
+    const f = textFetch("TAF ZBAA 240000Z 2400/2506 32004MPS 9999=");
+    vi.stubGlobal("fetch", f);
+    await getTafs(["ZBAA"], { date: new Date(0) });
+    expect(String(f.mock.calls[0]?.[0])).toContain("date=1970-01-01");
+  });
+
+  it("空文本 → MetarSourceError{code:'empty-data'}（200 + 空体＝ids 写错的典型形态，不静默）", async () => {
+    vi.stubGlobal("fetch", textFetch("  \n  "));
+    const err = (await errorOf(getTafs("ZZZZ"))) as MetarSourceError;
+    expect(err).toBeInstanceOf(MetarSourceError);
+    expect(err.code).toBe("empty-data");
+  });
+
+  it("非 2xx → MetarSourceError{code:'http-error'}（含状态码）", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: false, status: 503, text: async () => "" })),
+    );
+    const err = (await errorOf(getTafs("ZBAA"))) as MetarSourceError;
+    expect(err.code).toBe("http-error");
+    expect(err.message).toMatch(/503/);
+  });
+
+  it("断网 → MetarSourceError{code:'network'}（原始 message 保留在文末）", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("fetch failed");
+      }),
+    );
+    const err = (await errorOf(getTafs("ZBAA"))) as MetarSourceError;
+    expect(err.code).toBe("network");
+    expect(err.message).toMatch(/fetch failed/);
+  });
+
+  it("timeoutMs 超时中止 → MetarSourceError{code:'timeout', network:'aviationweather'}；外部取消原因透传", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", hangingFetch());
+    const pending = getTafs("ZBAA", { timeoutMs: 5000 });
+    const errP = errorOf(pending);
+    await vi.advanceTimersByTimeAsync(5000);
+    const err = (await errP) as MetarSourceError;
+    expect(err).toBeInstanceOf(MetarSourceError);
+    expect(err.code).toBe("timeout");
+    expect(err.network).toBe("aviationweather");
+  });
+});
+
+describe("getTafReports（取数→解析→定位一步到位，契约沿 getMetarReports）", () => {
+  const stations = [{ icao: "ZBAA", lat: 40.07, lon: 116.58, name: "北京首都" }];
+  const body = [
+    "TAF ZBAA 240000Z 2400/2506 32004MPS 9999 FEW030 TN14/2403Z=",
+    "TAF ZZZZ 240000Z 2400/2506 32004MPS 9999=", // 站表未命中 → 跳过（端点无坐标可回落）
+  ].join("\n");
+
+  it("stations 联表定位与标题；未命中站表跳过", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, status: 200, text: async () => body })),
+    );
+    const items = await getTafReports(["ZBAA", "ZZZZ"], { stations });
+    expect(items.length).toBe(1);
+    expect(items[0]?.report.station).toBe("ZBAA");
+    expect(items[0]?.position).toEqual([40.07, 116.58]);
+    expect(items[0]?.title).toBe("ZBAA 北京首都");
+  });
+
+  it("解析失败：缺省聚合抛 batch-parse-failed；onUnparseable 逐行容错回调", async () => {
+    const dirty = "TAF ZBAA 240000Z 2400/2506 32004MPS 9999=\n这是一份坏报文";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, status: 200, text: async () => dirty })),
+    );
+    await expect(getTafReports("ZBAA", { stations })).rejects.toThrow(/TAF 解析失败 1 条/);
+    const seen: string[] = [];
+    const items = await getTafReports("ZBAA", {
+      stations,
+      onUnparseable: (f) => seen.push(f.code),
+    });
+    expect(items.length).toBe(1);
+    expect(seen).toContain("missing-station");
+  });
+});
+
+describe("getMetars 换源（baseUrl 覆盖——owner 9/24「内网切换自有数据源」指令）", () => {
+  it("baseUrl 生效：请求打到覆盖根，路径与查询串仍由本层拼装", async () => {
+    const f = okFetch({
+      data: [{ station: "ZGGG", raw: "ZGGG 120000Z 9999 26/22 Q1009", lat: 23.4, lon: 113.5 }],
+    });
+    vi.stubGlobal("fetch", f);
+    await getMetars("CN__ASOS", { baseUrl: "https://iem-mirror.internal" });
+    expect(String(f.mock.calls[0]?.[0])).toBe(
+      "https://iem-mirror.internal/api/1/currents.json?network=CN__ASOS",
+    );
   });
 });

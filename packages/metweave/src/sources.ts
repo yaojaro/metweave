@@ -1,17 +1,19 @@
 /**
- * metweave/sources — 取数 helper（伞包子路径）。
+ * metweave/sources — 取数 helper（伞包子路径）。双线：IEM METAR 实况 + aviationweather TAF 预报。
  *
  * 纪律：只做端点模板 + fetch + 取数侧整理（解析、定位联表）——缓存/质控/归档等
  * 数据管理逻辑永不进入开源包；核心包（core/parser/render）零网络代码。
+ * 换源口径（owner 9/24「内网的人切换到自己的数据源」指令）：两条线各留 baseUrl 覆盖位
+ * （IEM＝站点根、TAF＝端点根）——内网镜像/自建网关只换根、路径与查询串由本层拼装。
  * 不静默：HTTP 失败、响应 schema 不符、报文解析失败一律 throw，绝不吞错返回空数组。
  * 错误面机读化：五路失败一律抛 MetarSourceError（code 稳定契约 + network 网络名字段；
  * message 权威文案为中文；英文用 @metweave/core 导出的 EN_MESSAGES[code] 查表，
  * 或渲染层 locale:"en" 整卡切换（card locale 已内置 code→英文映射））。
  */
-import type { MetarReport } from "@metweave/core";
+import type { MetarReport, TafReport } from "@metweave/core";
 import type { MetarParseErrorCode } from "@metweave/core";
 import { MetarParseError, MetarSourceError } from "@metweave/core";
-import { parse } from "@metweave/parser";
+import { parse, parseTaf } from "@metweave/parser";
 
 // 错误类复出（API 完整性）：消费方从 sources 子路径 import 即可 catch 两类错误，
 // 不必再从伞包主入口双入口引入（类实体与 core 同一，instanceof 双向成立）。
@@ -39,6 +41,11 @@ export interface GetMetarsOptions {
   signal?: AbortSignal;
   /** 请求超时毫秒数（触发即中止并抛出超时错误） */
   timeoutMs?: number;
+  /**
+   * IEM 站点根覆盖（缺省官方 https://mesonet.agron.iastate.edu）：内网镜像/自建网关
+   * 只换根——/api/1/currents.json 路径与查询串由本层拼装（换源口径，见文件头）。
+   */
+  baseUrl?: string;
 }
 
 /**
@@ -115,9 +122,10 @@ const IEM_BASE = "https://mesonet.agron.iastate.edu";
  * The IEM whole-network currents endpoint (CORS-open, direct browser access). Defaults to the China ASOS network (39 stations).
  * IEM 整网实况端点（CORS 全开，浏览器可直连）。缺省中国 ASOS 网（39 站）。
  * @param network - IEM network name (e.g. CN__ASOS, RU__ASOS, IA_ASOS). IEM 网络名。
+ * @param baseUrl - IEM 站点根覆盖（内网镜像/自建网关——换源口径，见 GetMetarsOptions.baseUrl）。
  */
-export function iemCurrentsUrl(network = "CN__ASOS"): string {
-  return `${IEM_BASE}/api/1/currents.json?network=${encodeURIComponent(network)}`;
+export function iemCurrentsUrl(network = "CN__ASOS", baseUrl = IEM_BASE): string {
+  return `${baseUrl}/api/1/currents.json?network=${encodeURIComponent(network)}`;
 }
 
 /** 观测记录守卫：station/raw 均须为字符串（只查键不查类型是旧洞）。 */
@@ -167,7 +175,7 @@ export async function getMetars(
   try {
     let res: Response;
     try {
-      res = await fetch(iemCurrentsUrl(network), { signal: controller.signal });
+      res = await fetch(iemCurrentsUrl(network, options.baseUrl), { signal: controller.signal });
     } catch (err) {
       // 取消/超时引发的拒绝（controller 已中止）原样透传——保持 AbortSignal 语义
       //（超时场景透传的即上方 MetarSourceError "timeout"）；
@@ -286,6 +294,224 @@ export async function getMetarReports(
       "batch-parse-failed",
       summary,
       `报文解析失败 ${failures.length} 条（network=${network}）——${failures.slice(0, 3).join("；")}${failures.length > 3 ? "……" : ""}`,
+    );
+  }
+  return items;
+}
+
+// ---------------------------------------------------------------- TAF 取数线（owner 9/24「收进 sources」指令）
+
+/** aviationweather TAF 数据端点（上游无 CORS 头：浏览器直连须自建代理/镜像——baseUrl 覆盖即为此用） */
+export const AW_TAF_ENDPOINT = "https://aviationweather.gov/api/data/taf";
+
+/**
+ * One fetched TAF row: station (best-effort) and the verbatim report (continuation lines already merged).
+ * 单条 TAF 取数行：站码（best-effort）与报文原文（续行已归并）。
+ */
+export interface TafObservation {
+  /** 站码：剥 TAF/AMD/COR 电头词后的首枚 4 位码；剥不出为 ""（解析层 missing-station 兜底出声） */
+  station: string;
+  /** 报文原文（上游 raw 格式的缩进续行已并回所属报文；report.raw 语义一致——原文保真） */
+  raw: string;
+}
+
+/** Options for getTafs: fetch options plus the TAF endpoint-root override and the as-of date. */
+export interface GetTafsOptions {
+  /** 外部取消信号（与超时组合，任一触发即中止） */
+  signal?: AbortSignal;
+  /** 请求超时毫秒数（触发即中止并抛出超时错误） */
+  timeoutMs?: number;
+  /**
+   * TAF 端点根覆盖（缺省官方 https://aviationweather.gov/api/data/taf）：内网镜像/自建代理
+   * 只换根——?ids=&format=raw 查询串由本层拼装（换源口径，见文件头；examples 即用 /aw-taf 代理根）。
+   */
+  baseUrl?: string;
+  /**
+   * 「该时刻已发布的最新报」（上游 date 参数语义）：回看上一发布周期用（examples 报池即 date=now-4h）。
+   * Date 转 ISO；字符串原样透传（上游亦收相对形态）。
+   */
+  date?: Date | string;
+}
+
+/**
+ * The aviationweather TAF endpoint (raw format). ids joined as given; date serialized when present.
+ * aviationweather TAF 端点模板（format=raw）。ids 数组逗号连接；date 存在时序列化为查询参数。
+ */
+export function awTafUrl(
+  ids: string | readonly string[],
+  options: { baseUrl?: string; date?: Date | string } = {},
+): string {
+  const idList = typeof ids === "string" ? ids : ids.join(",");
+  const params = new URLSearchParams({ ids: idList, format: "raw" });
+  const d = options.date;
+  if (d !== undefined) params.set("date", d instanceof Date ? d.toISOString() : d);
+  return `${options.baseUrl ?? AW_TAF_ENDPOINT}?${params.toString()}`;
+}
+
+/** raw 文本 → 整份报文行（缩进续行并回上一份；与报池语义同源）+ best-effort 站码提取 */
+function mergeTafLines(text: string): TafObservation[] {
+  const merged: string[] = [];
+  for (const line of text.split("\n")) {
+    if (line.trim() === "") continue;
+    if (/^\s/.test(line) && merged.length > 0) merged[merged.length - 1] += ` ${line.trim()}`;
+    else merged.push(line.trim());
+  }
+  return merged.map((raw) => {
+    const toks = raw.split(/\s+/);
+    let k = toks[0] === "TAF" ? 1 : 0;
+    while (toks[k] === "AMD" || toks[k] === "COR") k += 1;
+    const head = toks[k] ?? "";
+    return { station: /^[A-Z0-9]{4}$/.test(head) ? head : "", raw };
+  });
+}
+
+/**
+ * Fetch aviationweather TAFs (raw format) with station extracted and continuation lines merged.
+ * 拉取 aviationweather TAF（raw 格式）：续行归并 + 站码提取的取数侧整理。
+ * 失败语义与 getMetars 同族（不静默）：timeout/network/http-error/empty-data 一律 MetarSourceError
+ * 机读码；上游对未知 ids 也返回 200 + 空体，空数据显式 throw 而非空数组静默。
+ */
+export async function getTafs(
+  ids: string | readonly string[],
+  options: GetTafsOptions = {},
+): Promise<TafObservation[]> {
+  // 手工组合超时与外部信号（与 getMetars 同款：不依赖 AbortSignal.any，兼容 Node 20；假时钟可测）
+  const controller = new AbortController();
+  const external = options.signal;
+  const forward = (): void => {
+    controller.abort(external?.reason);
+  };
+  if (external !== undefined) {
+    if (external.aborted) forward();
+    else external.addEventListener("abort", forward, { once: true });
+  }
+  const timer =
+    options.timeoutMs === undefined
+      ? undefined
+      : setTimeout(
+          () =>
+            controller.abort(
+              new MetarSourceError(
+                "timeout",
+                "aviationweather",
+                `aviationweather TAF 请求超时（>${options.timeoutMs}ms）`,
+              ),
+            ),
+          options.timeoutMs,
+        );
+  try {
+    let res: Response;
+    try {
+      res = await fetch(awTafUrl(ids, options), { signal: controller.signal });
+    } catch (err) {
+      // 取消/超时引发的拒绝原样透传（AbortSignal 语义）；断网/DNS 包装为 network（原始 message 留文末与 cause）
+      if (controller.signal.aborted) throw err;
+      const reason = err instanceof Error ? err.message : String(err);
+      throw new MetarSourceError(
+        "network",
+        "aviationweather",
+        `网络请求失败（源：aviationweather TAF）：请检查网络连通性后重试（${reason}）`,
+        { cause: err },
+      );
+    }
+    if (!res.ok) {
+      throw new MetarSourceError(
+        "http-error",
+        "aviationweather",
+        `aviationweather TAF HTTP ${res.status}`,
+      );
+    }
+    let text: string;
+    try {
+      text = await res.text();
+    } catch (err) {
+      if (controller.signal.aborted) throw err;
+      const reason = err instanceof Error ? err.message : String(err);
+      throw new MetarSourceError(
+        "network",
+        "aviationweather",
+        `aviationweather TAF 响应读取失败：${reason}`,
+        { cause: err },
+      );
+    }
+    const rows = mergeTafLines(text);
+    if (rows.length === 0) {
+      throw new MetarSourceError(
+        "empty-data",
+        "aviationweather",
+        "aviationweather TAF 返回空数据——请核对 ids 站码（如 ZBAA,ZBAD；端点 format=raw）",
+      );
+    }
+    return rows;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    external?.removeEventListener("abort", forward);
+  }
+}
+
+/** Options for getTafReports: fetch options plus station metadata and the per-row tolerance callback. */
+export interface GetTafReportsOptions extends GetTafsOptions {
+  /** 按 icao 联表的站点元数据（TAF 端点不提供坐标——stations 是定位的唯一来源，缺省将得空数组） */
+  stations?: readonly StationRef[];
+  /** 逐行容错（缺省关闭）：传入时解析失败的行跳过并逐条回调；不传时聚合抛出（全有或全无） */
+  onUnparseable?: (failure: UnparseableReport) => void;
+  /** 紧凑模式：parseTaf 产物剥除全部 span 字段（存储场景推荐）；缺省完整模式 */
+  spans?: false;
+}
+
+/**
+ * A map-ready TAF item (structurally compatible with TafLayerItem's report/position/title triple).
+ * 可直接喂给地图适配器（如 addTafLayer）的预报项：{ report, position, title } 三件套。
+ */
+export interface TafReportItem {
+  /** 已解析的 TAF IR（原文经 report.raw 原样保真） */
+  report: TafReport;
+  /** 站点坐标（WGS-84 [lat, lon]；TAF 端点无坐标，来自 stations 联表） */
+  position: [number, number];
+  /** 站点提示（「ICAO 站名」；适配器缺省回落 IR 站名） */
+  title: string;
+}
+
+/**
+ * TAF 版的取数 → 解析 → 定位一步到位（契约沿 getMetarReports）：stations 命中的站带精确坐标与站名，
+ * 未命中跳过（TAF 端点无坐标可回落，与 getMetarReports 的无坐标跳行同规则）；解析失败两种模式
+ * （缺省聚合抛出 batch-parse-failed、传 onUnparseable 逐行容错）。报池等数据管理逻辑不进本层。
+ */
+export async function getTafReports(
+  ids: string | readonly string[],
+  options: GetTafReportsOptions = {},
+): Promise<TafReportItem[]> {
+  const { stations, onUnparseable, spans, ...fetchOptions } = options;
+  const table = new Map((stations ?? []).map((s) => [s.icao, s] as const));
+  const observations = await getTafs(ids, fetchOptions);
+  const items: TafReportItem[] = [];
+  const failures: string[] = [];
+  for (const obs of observations) {
+    try {
+      const report = parseTaf(obs.raw, spans === false ? { spans: false } : undefined);
+      const station = table.get(report.station);
+      if (station === undefined) continue; // 站表未命中（端点无坐标可回落）——跳过，规则同 getMetarReports
+      items.push({
+        report,
+        position: [station.lat, station.lon],
+        title: `${report.station}${station.name ? ` ${station.name}` : ""}`,
+      });
+    } catch (err) {
+      // parseTaf 对字符串输入只抛 MetarParseError；其他异常属编程错误直接上抛
+      if (!(err instanceof MetarParseError)) throw err;
+      if (onUnparseable !== undefined) {
+        onUnparseable({ station: obs.station, raw: obs.raw, code: err.code, error: err.message });
+        continue;
+      }
+      failures.push(`${obs.station}: ${err.message}`);
+    }
+  }
+  if (failures.length > 0) {
+    const summary = `source=aviationweather; failures=${failures.length}; ${failures.join("; ")}`;
+    throw new MetarParseError(
+      "batch-parse-failed",
+      summary,
+      `TAF 解析失败 ${failures.length} 条（aviationweather）——${failures.slice(0, 3).join("；")}${failures.length > 3 ? "……" : ""}`,
     );
   }
   return items;

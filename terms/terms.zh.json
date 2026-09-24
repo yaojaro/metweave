@@ -3170,7 +3170,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 162
+   "line": 170
   },
   "sources.msg02": {
    "kind": "product",
@@ -3186,7 +3186,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 180
+   "line": 188
   },
   "sources.msg03": {
    "kind": "product",
@@ -3202,7 +3202,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 202
+   "line": 210
   },
   "sources.msg04": {
    "kind": "product",
@@ -3218,7 +3218,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 215
+   "line": 223
   },
   "sources.msg05": {
    "kind": "product",
@@ -3234,7 +3234,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 223
+   "line": 231
   },
   "sources.msg06": {
    "kind": "product",
@@ -3250,7 +3250,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 231
+   "line": 239
   },
   "sources.msg07": {
    "kind": "product",
@@ -3266,7 +3266,87 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 288
+   "line": 296
+  },
+  "sources.msg08": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "aviationweather TAF 请求超时（>${options.timeoutMs}ms）",
+   "usage": [
+    "packages/metweave/src/sources.ts"
+   ],
+   "zhOnly": true,
+   "line": 397
+  },
+  "sources.msg09": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "网络请求失败（源：aviationweather TAF）：请检查网络连通性后重试（${reason}）",
+   "usage": [
+    "packages/metweave/src/sources.ts"
+   ],
+   "zhOnly": true,
+   "line": 413
+  },
+  "sources.msg10": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "aviationweather TAF 响应读取失败：${reason}",
+   "usage": [
+    "packages/metweave/src/sources.ts"
+   ],
+   "zhOnly": true,
+   "line": 429
+  },
+  "sources.msg11": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "aviationweather TAF 返回空数据——请核对 ids 站码（如 ZBAA,ZBAD；端点 format=raw）",
+   "usage": [
+    "packages/metweave/src/sources.ts"
+   ],
+   "zhOnly": true,
+   "line": 438
+  },
+  "sources.msg12": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "TAF 解析失败 ${failures.length} 条（aviationweather）——${failures.slice(0, 3).join(\"；\")}${failures.length > 3 ? \"……\" : \"\"}",
+   "usage": [
+    "packages/metweave/src/sources.ts"
+   ],
+   "zhOnly": true,
+   "line": 510
   },
   "parser.msg001": {
    "kind": "product",

@@ -3,7 +3,8 @@ import "leaflet/dist/leaflet.css";
 // 主流程分两阶段：① 站点元数据（stations.json，静态可信）立即上图「待更新」态，杜绝空白地图；
 // ② 实况到达后移除待更新层、渲染条件色实况层。取数（含解析与定位联表）→ 卡片上图（底图切换见 basemaps.ts）
 import { parse, parseTaf, renderCard } from "metweave";
-import { getMetarReports } from "metweave/sources";
+import { getMetarReports, getTafs } from "metweave/sources";
+import type { TafObservation } from "metweave/sources";
 import {
   addMetarLayer,
   addTafLayer,
@@ -473,47 +474,29 @@ const loadTaf = async (): Promise<void> => {
   if (tafLoading !== undefined) return tafLoading; // 拉取中：复用在飞请求
   tafLoading = (async () => {
     setStatus("正在拉取 39 站 TAF 预报（aviationweather 公开通路）…", "loading");
-    const ids = stationsFile.stations.map((s) => s.icao).join(",");
-    // 超时 20s（评测工程 P2-4：上游挂死不再无界等待）；错误分层在 catch 判别。
-    // 上一周期并行拉取（owner 9/24 方案B）：上游 api/data/taf 不支持 hours，date 参数＝「该时刻已发布的最新报」
-    // ——date=now-4h 取上一发布周期，与最新周期合并成报池、按查看时刻选在效报；属增强取数，失败静默降级
-    const base = `/aw-taf?ids=${ids}&format=raw`;
-    const prevTextPromise: Promise<string> = fetch(
-      `${base}&date=${new Date(Date.now() - 4 * 3_600_000).toISOString()}`,
-      { signal: AbortSignal.timeout(20_000) },
-    )
-      .then((r) => (r.ok ? r.text() : ""))
-      .catch(() => "");
-    let res: Response;
-    try {
-      res = await fetch(base, { signal: AbortSignal.timeout(20_000) }); // 走 vite 代理（见 vite.config.ts——上游无 CORS 头）
-    } catch (err) {
-      const timedOut = err instanceof DOMException && err.name === "TimeoutError";
-      throw timedOut
-        ? new Error("拉取超时（20 秒），请稍后重试")
-        : new Error("网络请求失败，请检查网络后重试");
-    }
-    if (!res.ok) throw new Error(`上游返回异常状态 ${res.status}，请稍后重试`);
-    const latestText = await res.text();
-    const prevText = await prevTextPromise;
+    const ids = stationsFile.stations.map((s) => s.icao);
+    // 取数统一走 sources getTafs（owner 9/24「收进 sources」指令）：端点根=/aw-taf（vite 代理——上游无 CORS 头，
+    // 见 vite.config.ts；内网镜像只改这一处 baseUrl 即整条切换）、超时 20s（评测工程 P2-4）、失败面走 sources 权威中文文案。
+    // 上一周期并行拉取（owner 9/24 方案B）：上游 date 参数＝「该时刻已发布的最新报」——date=now-4h
+    // 取上一发布周期，与最新周期合并成报池、按查看时刻选在效报；属增强取数，失败静默降级
+    const prevPromise: Promise<TafObservation[]> = getTafs(ids, {
+      baseUrl: "/aw-taf",
+      timeoutMs: 20_000,
+      date: new Date(Date.now() - 4 * 3_600_000),
+    }).catch(() => []);
+    const latest = await getTafs(ids, { baseUrl: "/aw-taf", timeoutMs: 20_000 });
+    const prevRows = await prevPromise;
     const byIcao = new Map(stationsFile.stations.map((s) => [s.icao, s]));
     let failed = 0;
-    // aviationweather raw 格式：新报行从行首起，续行以空白缩进续接——先归并再解析；
-    // 两代周期合并进按站报池（raw 去重、生效起点升序——同起点晚发布者在后）
+    // 两代周期合并进按站报池（raw 去重、生效起点升序——同起点晚发布者在后）；
+    // 续行归并与站码提取已在 sources getTafs 完成（取数侧整理），这里只解析+入池
     const seen = new Set<string>();
-    /** 归并+解析+去重入池，返回「未被去重挡下的新报数」（批4#22：上一周期整体缺失的可观测降级） */
-    const ingest = (text: string): number => {
-      const reports: string[] = [];
-      for (const line of text.split("\n")) {
-        if (line.trim() === "") continue;
-        if (/^\s/.test(line) && reports.length > 0)
-          reports[reports.length - 1] += ` ${line.trim()}`;
-        else reports.push(line.trim());
-      }
+    /** 解析+去重入池，返回「未被去重挡下的新报数」（批4#22：上一周期整体缺失的可观测降级） */
+    const ingest = (rows: readonly TafObservation[]): number => {
       let added = 0;
-      for (const raw of reports) {
+      for (const obs of rows) {
         try {
-          const taf = parseTaf(raw);
+          const taf = parseTaf(obs.raw);
           if (byIcao.get(taf.station) === undefined || seen.has(taf.raw)) continue;
           seen.add(taf.raw);
           added += 1;
@@ -526,8 +509,8 @@ const loadTaf = async (): Promise<void> => {
       }
       return added;
     };
-    const latestAdded = ingest(latestText);
-    const prevAdded = ingest(prevText);
+    const latestAdded = ingest(latest);
+    const prevAdded = ingest(prevRows);
     const nowMs = Date.now();
     for (const pool of reportsByStation.values()) sortTafPool(pool, nowMs);
     // 初始即取「现在」的在效报——首屏不再整片灰「未生效」（owner 9/24 方案B 的直接目的）；
