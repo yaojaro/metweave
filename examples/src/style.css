@@ -19,7 +19,7 @@ body {
 /* 底图 key 提示：未配置天地图 key 时就地说明配置方式（不静默换底图） */
 #basemap-hint {
   position: fixed;
-  top: 83px;
+  top: 10px;
   right: 10px;
   z-index: 1000;
   max-width: 420px;
@@ -34,11 +34,12 @@ body {
 }
 
 /* 批4#16：页面导览一句（小白第一眼看懂本页干什么）；
-  top 83＝缩放控件底边 75 + 8 间隙（owner 9/24「重叠了，需要错开」——原 10/10 与 +/− 控件同角压叠） */
+  top 回 10、left 52＝缩放控件右缘 44 + 8 间隙（owner 9/24 二次裁定：高度复原、只横向错开；
+  首版 top 10/left 10 与控件同角压叠，二版下移 83 被否回） */
 #guide {
   position: absolute;
-  top: 83px;
-  left: 10px;
+  top: 10px;
+  left: 52px;
   z-index: 900;
   max-width: 340px;
   background: rgba(255, 255, 255, 0.94);
@@ -231,7 +232,7 @@ body {
  * bottom 抬高到时间轴条与免责声明栏之上 */
 #status {
   position: fixed;
-  left: 10px;
+  left: 52px;
   bottom: 104px;
   z-index: 1000;
   display: flex;
@@ -314,7 +315,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 83px;
+  margin-top: 10px;
   align-items: flex-start;
 }
 
@@ -328,7 +329,7 @@ body {
 /* 模式切换条（TAF 预报演示，v0.2 渲染层） */
 #mode-bar {
   position: absolute;
-  top: 83px;
+  top: 10px;
   right: 10px;
   z-index: 1000;
   display: flex;

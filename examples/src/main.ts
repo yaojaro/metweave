@@ -70,9 +70,10 @@ if (guideBox !== null) {
 }
 
 // 弹窗自动避让边（owner 9/24 指令：卡片不与固定悬浮层重叠）：autoPan 只认这两角留白——
-// 顶部让开模式切换条 + 导览卡（导览下移到缩放控件下方后实测 bottom≈174）；底部让开免责声明栏+时间轴条+图例+状态条（时间轴批后合计≈140）
+// 左上让开缩放控件+导览卡（导览横移后占 52..418 × 10..101 → 避让 426/110＝其右/下缘 + 8）；
+// 底部让开免责声明栏+时间轴条+图例+状态条（时间轴批后合计≈140）
 const POPUP_AUTOPAN = {
-  autoPanPaddingTopLeft: L.point(12, 182),
+  autoPanPaddingTopLeft: L.point(426, 110),
   autoPanPaddingBottomRight: L.point(16, 150),
 };
 
