@@ -33,6 +33,64 @@ body {
     sans-serif;
 }
 
+/* 批4#16：页面导览一句（地图左上角——小白第一眼看懂本页干什么） */
+#guide {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 900;
+  max-width: 340px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font:
+    12px/1.6 system-ui,
+    sans-serif;
+  color: #4a5560;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* 批4#17：回到现在小按钮（时间轴「现在」锚旁） */
+#taf-timeline .tl-backnow {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid #c3ccd6;
+  background: #fff;
+  color: #1c2733;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#taf-timeline .tl-backnow:hover {
+  background: #f2f6fa;
+}
+
+/* 批4#23：相对「现在」变差的站圆点醒目描边（橙圈；变好不描边只进面板列） */
+.mw-dot.mw-dot-worse {
+  outline: 2px solid #ff8c00;
+  outline-offset: 1px;
+}
+
+/* 批4#23：面板「相对现在」列 */
+#taf-panel .p-change {
+  color: #6b7785;
+  white-space: nowrap;
+}
+
+#taf-panel .p-change-worse {
+  color: #b3541e;
+  font-weight: 600;
+}
+
+#taf-panel .p-change-better {
+  color: #1e6b40;
+}
+
 /* 免责声明：常驻页脚（演示用途与无隶属关系），不随交互消失 */
 #disclaimer {
   position: fixed;

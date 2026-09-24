@@ -10,6 +10,7 @@ import {
   reanchorOf,
   selectReport,
   sortTafPool,
+  tierChangeOf,
   zonedDayHour,
 } from "./timeline-core";
 
@@ -102,5 +103,22 @@ describe("「现在」锚漂移重锚（评测批3#13）", () => {
     expect(reanchorOf(anchor, anchor + 20 * 60_000)).toBeUndefined();
     const next = reanchorOf(anchor, anchor + 45 * 60_000);
     expect(next).toBe(Math.floor((anchor + 45 * 60_000) / 600_000) * 600_000);
+  });
+});
+
+describe("tierChangeOf 变化可见性基准对比（评测批4#23）", () => {
+  it("三档有序比较：good→caution/poor＝变差、caution→good＝变好、同级＝无变化", () => {
+    expect(tierChangeOf("good", "caution")).toBe("worse");
+    expect(tierChangeOf("good", "poor")).toBe("worse");
+    expect(tierChangeOf("caution", "poor")).toBe("worse");
+    expect(tierChangeOf("caution", "good")).toBe("better");
+    expect(tierChangeOf("poor", "good")).toBe("better");
+    expect(tierChangeOf("good", "good")).toBe("none");
+  });
+
+  it("unknown（无数据/未生效/已过期）不参与比较——面板列显示「—」", () => {
+    expect(tierChangeOf("unknown", "poor")).toBe("none");
+    expect(tierChangeOf("good", "unknown")).toBe("none");
+    expect(tierChangeOf("unknown", "unknown")).toBe("none");
   });
 });

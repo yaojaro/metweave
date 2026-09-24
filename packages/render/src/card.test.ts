@@ -1886,7 +1886,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(bjText).toContain("发布 北京时23日11:03");
     expect(bjText).toContain("查看时刻 北京时23日11:00");
     expect(bjText).toContain("自 北京时23日14:00 至 北京时24日20:00（北京时，30 小时）");
-    expect(bjText).toContain("北京时23日14:00–北京时23日17:00"); // TEMPO 段头（风险行同格式）
+    expect(bjText).toContain("北京时23日14:00–23日17:00"); // TEMPO 段头（风险行同格式；批4#18 尾端前缀收敛）
     expect(bjText).not.toMatch(/\d{2}Z/); // 无 UTC 残留（单制互斥锁）
     // UTC 缺省卡：无任何京字
     const text = card.textContent ?? "";
@@ -2118,5 +2118,25 @@ describe("METAR 卡限高契约（评测批3#10：对齐 TAF 卡——多跑道�
     expect(cardRule).toContain("max-height: min(65vh, 680px)");
     expect(cardRule).toContain("overflow-y: auto");
     expect(cardRule).toContain("position: relative");
+  });
+});
+
+describe("METAR 卡 RAW 区身份行（评测批4#19：与 TAF 卡统一——裸贴电码像乱码报错）", () => {
+  it("raw:true 时原文区上方带「报文原文（专业人员核对用）」标题与提示；en 同款；raw 缺省无此行", () => {
+    const card = renderCard(parse("ZBAA 121253Z 30015KT 9999 FEW010 21/12 Q1013"), { raw: true });
+    expect(card.querySelector(".mw-raw-title")?.textContent).toContain(
+      "报文原文（专业人员核对用）",
+    );
+    expect(card.querySelector(".mw-raw-title")?.textContent).toContain("悬停或 Tab 聚焦");
+    const en = renderCard(parse("ZBAA 121253Z 30015KT 9999 FEW010 21/12 Q1013"), {
+      locale: "en",
+      raw: true,
+    });
+    expect(en.querySelector(".mw-raw-title")?.textContent).toContain(
+      "Raw report (for professional cross-check)",
+    );
+    const none = renderCard(parse("ZBAA 121253Z 30015KT 9999 FEW010 21/12 Q1013"));
+    expect(none.querySelector(".mw-raw-title")).toBeNull();
+    expect(none.querySelector(".mw-raw")).toBeNull();
   });
 });

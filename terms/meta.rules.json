@@ -1263,6 +1263,8 @@
     "card.cloud.heightUnknown",
     "card.decode.title",
     "card.decode.code",
-    "card.decode.basisLabel"
+    "card.decode.basisLabel",
+    "card.rawTitle",
+    "card.rawHint"
   ]
 }

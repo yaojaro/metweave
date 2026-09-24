@@ -9,6 +9,8 @@
   </head>
   <body>
     <div id="map"></div>
+    <!-- 批4#16：小白第一眼导览（一句看懂本页 + 实况/预报时点不同的解释）；文案由 main.ts 注入（站数动态） -->
+    <div id="guide" role="note"></div>
     <!-- 图例色值由 main.ts 从 @metweave/leaflet 的 TIER_COLORS 注入（单一来源——批2#3：旧内联色与圆点两套色系） -->
     <div id="map-legend" aria-label="圆点状态图例">
       <span class="lg-item"><i data-tier="good"></i>良好</span>
@@ -24,17 +26,39 @@
             <th>档</th>
             <th>站点</th>
             <th>下一变化</th>
+            <th>相对现在</th>
           </tr>
         </thead>
         <tbody id="taf-panel-body"></tbody>
       </table>
     </aside>
     <div id="mode-bar" role="toolbar" aria-label="演示模式">
-      <button type="button" id="mode-metar" class="mode-btn active" aria-pressed="true">
+      <button
+        type="button"
+        id="mode-metar"
+        class="mode-btn active"
+        aria-pressed="true"
+        title="机场此刻的天气实况观测报告（每半小时左右更新一次）"
+      >
         METAR 实况
       </button>
-      <button type="button" id="mode-taf" class="mode-btn" aria-pressed="false">TAF 预报</button>
-      <button type="button" id="mode-list" class="mode-btn" aria-pressed="false" hidden>
+      <button
+        type="button"
+        id="mode-taf"
+        class="mode-btn"
+        aria-pressed="false"
+        title="机场未来一天的天气预报——配合底部时间轴查看任意时刻"
+      >
+        TAF 预报
+      </button>
+      <button
+        type="button"
+        id="mode-list"
+        class="mode-btn"
+        aria-pressed="false"
+        hidden
+        title="按当前查看时刻的天气好坏排序的机场清单（点击行飞到该机场并打开详情）"
+      >
         站点列表
       </button>
       <button
@@ -62,6 +86,15 @@
         ▶
       </button>
       <span class="tl-now" title="时间轴起点＝当前时刻">现在</span>
+      <button
+        type="button"
+        id="tl-back-now"
+        class="tl-backnow"
+        aria-label="回到现在"
+        title="时间轴跳回当前时刻（第 0 格）"
+      >
+        ↺
+      </button>
       <div class="tl-strip">
         <input id="tl-input" type="range" min="0" max="144" step="1" aria-label="预报时刻" />
         <div class="tl-ticks" id="tl-ticks" aria-hidden="true"></div>
@@ -69,7 +102,8 @@
       <span class="tl-value" id="tl-value"></span>
     </div>
     <footer id="disclaimer">
-      演示用途：数据来自公开通路（IEM / NOAA 等），按现状提供、无 SLA，可能延迟或缺失；
+      演示用途：数据来自公开通路（IEM / NOAA
+      等），按现状提供、不保证随时可用或即时更新，可能延迟或缺失；
       本页及本库均<strong>不得用于飞行决策或任何运行决策</strong>。圆点色仅为扫视参考，
       非标准分级。本演示与 IEM、NOAA/NWS、天地图均无隶属或背书关系。
     </footer>

@@ -323,6 +323,18 @@
 |---|---|---|---|---|
 | card.dash |  —  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
 
+## card.rawTitle (1 entries)
+
+| key | Text | kind | Usage | Standard · Document · Clause |
+|---|---|---|---|---|
+| card.rawTitle | Raw report (for professional cross-check) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+
+## card.rawHint (1 entries)
+
+| key | Text | kind | Usage | Standard · Document · Clause |
+|---|---|---|---|---|
+| card.rawHint | hover or Tab-focus to cross-link with the plain-language rows | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+
 ## leaflet.tier (4 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |

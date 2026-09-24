@@ -7,7 +7,7 @@
  * （±3 天窗口内按真实月历找吻合日号）归一到同一毫秒序；TafExpandAt 的 day 采用
  * 「自层锚月 1 日起的连续日序」（可超月长），与 @metweave/leaflet 的 calendarAnchor 归一协议对接。
  */
-import type { TafExpandAt, TafReport } from "@metweave/leaflet";
+import type { ConditionTier, TafExpandAt, TafReport } from "@metweave/leaflet";
 
 /** 展示月锚（与 @metweave/render 的 TafCalendarAnchor 同形：month 1–12） */
 export interface CalendarAnchor {
@@ -138,4 +138,16 @@ export const selectReport = (
     if (dayHourMs(v.startDay, v.startHour, 0, nowMs) <= tMs) sel = r; // 池已升序，留最晚命中
   }
   return sel ?? last;
+};
+
+/**
+ * 相对基准（「现在」格）的档位变化（评测批4#23：变化可见性——拖动/播放时「谁变差了」自己说话）。
+ * 三档有序（差 < 注意 < 好）；unknown（无数据/未生效/已过期）不参与比较，面板列显示「—」。
+ */
+export type TierChange = "worse" | "better" | "none";
+const TIER_RANK: Record<"poor" | "caution" | "good", number> = { poor: 0, caution: 1, good: 2 };
+export const tierChangeOf = (base: ConditionTier, cur: ConditionTier): TierChange => {
+  if (base === "unknown" || cur === "unknown") return "none";
+  const d = TIER_RANK[cur] - TIER_RANK[base];
+  return d < 0 ? "worse" : d > 0 ? "better" : "none";
 };

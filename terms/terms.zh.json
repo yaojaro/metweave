@@ -2944,6 +2944,34 @@
     "packages/render/src/card.ts#LOCALE"
    ]
   },
+  "card.rawTitle": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "报文原文（专业人员核对用）",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rawHint": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "悬停或 Tab 聚焦可与人话对照",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
   "leaflet.tier.unknown": {
    "kind": "product",
    "refs": [

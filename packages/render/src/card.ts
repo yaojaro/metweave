@@ -272,6 +272,9 @@ interface LocaleTable {
   /** 悬停拼接标点（原码 与 解读 之间 / 解读 与 注释 之间） */
   colon: string;
   dash: string;
+  /** RAW 对照区身份行（批4#19：与 TAF 卡统一——裸贴电码像乱码报错） */
+  rawTitle: string;
+  rawHint: string;
 }
 
 /**
@@ -425,6 +428,8 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
     },
     colon: "：",
     dash: "——",
+    rawTitle: "报文原文（专业人员核对用）",
+    rawHint: "悬停或 Tab 聚焦可与人话对照",
   },
   en: {
     label: {
@@ -563,6 +568,8 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
     },
     colon: ": ",
     dash: " — ",
+    rawTitle: "Raw report (for professional cross-check)",
+    rawHint: "hover or Tab-focus to cross-link with the plain-language rows",
   },
 };
 
@@ -699,7 +706,9 @@ const CARD_CSS = `
 .mw-rows dd .mw-rwy-closed { color: #a02c2c; font-weight: 600; }
 .mw-card .mw-danger { color: #a02c2c; font-weight: 600; }
 .mw-card .mw-caution { color: #8a5a12; font-weight: 600; }
-.mw-raw { margin: 10px 0 0; padding: 8px; border-radius: 6px; background: #f6f8fa;
+.mw-raw-title { margin: 10px 0 0; font-size: 11px; color: #6b7785; font-weight: 600; }
+.mw-raw-hint { font-weight: 400; }
+.mw-raw { margin: 4px 0 0; padding: 8px; border-radius: 6px; background: #f6f8fa;
   font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   white-space: pre-wrap; word-break: break-all; }
 /* 已知组虚线（RAW 对照唯一可见通道）：#b6c2ce 对 #f6f8fa 背景 1.70:1（WCAG 1.4.11 AA 失败）
@@ -1412,6 +1421,10 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
 
   // —— RAW 对照视图：按 span 切原文，已知组与告警高亮（span 缺席的组优雅降级：不高亮不炸）
   if (options.raw === true) {
+    // 身份行（批4#19：与 TAF 卡统一——原文区无标题＝裸贴电码像乱码报错）
+    const rawHead = el("p", "mw-raw-title", T.rawTitle);
+    rawHead.append(el("span", "mw-raw-hint", `　·　${T.rawHint}`));
+    root.append(rawHead);
     const rawBox = el("div", "mw-raw");
     const marks: Array<{
       start: number;

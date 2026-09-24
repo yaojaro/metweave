@@ -2589,6 +2589,34 @@
     "packages/render/src/card.ts#LOCALE"
    ]
   },
+  "card.rawTitle": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "Raw report (for professional cross-check)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rawHint": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "hover or Tab-focus to cross-link with the plain-language rows",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
   "leaflet.tier.unknown": {
    "kind": "product",
    "refs": [

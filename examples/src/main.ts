@@ -26,6 +26,7 @@ import {
   reanchorOf,
   selectReport,
   sortTafPool,
+  tierChangeOf,
   zonedDayHour,
   type CalendarAnchor,
 } from "./timeline-core";
@@ -44,10 +45,28 @@ const hasBasemap = setupBasemap(map);
 // 图例项由 main.ts 启动时注入（index.html 不再内联色值，两套色系并存的根因收口）
 const legendBox = document.getElementById("map-legend");
 if (legendBox !== null) {
-  for (const chip of Array.from(legendBox.querySelectorAll<HTMLElement>(".lg-item i"))) {
-    const tier = chip.dataset.tier;
-    if (tier !== undefined && isTier(tier)) chip.style.background = TIER_COLORS[tier];
+  // 批4#20：图例项悬停给一句判据（从 conditionOf 注释提炼——「多差算差」有答案；措辞注明本库自拟）
+  const TIER_CRITERIA: Record<ConditionTier, string> = {
+    good: "良好＝能见度好、无显著天气（本库自拟扫视判据，非运行标准）",
+    caution:
+      "注意＝有降水或雾、能见度 1500–5000 米、多云/阴云底 1000–3000 英尺、或阵风 15–25 米/秒（本库自拟扫视判据，非运行标准）",
+    poor: "差＝雷暴/冰雹/冻降水等危险天气、能见度低于 1500 米、云底低于 1000 英尺、含积雨云/浓积云、或阵风 ≥25 米/秒（本库自拟扫视判据，非运行标准）",
+    unknown: "无数据＝该站暂无有效报文或要素缺测无法判读",
+  };
+  for (const item of Array.from(legendBox.querySelectorAll<HTMLElement>(".lg-item"))) {
+    const chip = item.querySelector("i");
+    const tier = chip?.getAttribute("data-tier");
+    if (chip instanceof HTMLElement && tier !== null && tier !== undefined && isTier(tier)) {
+      chip.style.background = TIER_COLORS[tier];
+      item.title = TIER_CRITERIA[tier];
+    }
   }
+}
+
+// 批4#16：页面导览一句（左上角）——看懂本页干什么 + 实况/预报时点不同的解释（化解红绿打架困惑）
+const guideBox = document.getElementById("guide");
+if (guideBox !== null) {
+  guideBox.textContent = `${stationsFile.stations.length} 个主要机场的天气一图速览：圆点颜色＝天气好坏。METAR 实况＝此刻的观测，TAF 预报＝未来 24 小时的趋势——两者时点不同，颜色不一致是正常的；切到 TAF 后可拖动底部时间轴看未来变化。`;
 }
 
 // 弹窗自动避让边（owner 9/24 指令：卡片不与固定悬浮层重叠）：autoPan 只认这两角留白——
@@ -258,6 +277,7 @@ const tlPlayBtn = document.getElementById("tl-play");
 let layerCal: CalendarAnchor | undefined; // 层锚月（loadTaf 时定格）
 let tlAnchorMs: number | undefined; // 窗零点（「现在」向下取整 10 分钟；initTimeline 定格）
 let curAt: TafExpandAt | undefined; // 当前查看时刻（连续序；面板档位数据直读用——批3#14）
+let baseTiers: Map<string, ConditionTier> | undefined; // 「现在」格（index 0）各站基准档位（批4#23 变化可见性）
 let tlPlaying = false;
 let tlTimer: number | undefined;
 /** 格 → 查看时刻毫秒 */
@@ -316,11 +336,35 @@ const tlApply = (rawIndex: number): void => {
   const text = fmtTl(tMs, tzOffset);
   if (tlValue !== null) tlValue.textContent = text;
   tlInput?.setAttribute("aria-valuetext", text); // 读屏不朗读裸格值
+  const tierOpts: Parameters<typeof tafTierOf>[2] =
+    layerCal === undefined ? {} : { calendarAnchor: layerCal };
+  if (index === 0) {
+    // 「现在」格＝变化可见性的基准（拖回/循环回 0 时刷新——数据可能已换报）
+    baseTiers = new Map(tafItems.map((it) => [it.report.station, tafTierOf(it, at, tierOpts)]));
+  }
+  const layerNow = tafLayer;
+  const itemsNow = tafItems;
   void setTafLayerTime(map, tafLayer, tafItems, {
     at,
     ...(layerCal === undefined ? {} : { calendarAnchor: layerCal }),
     card: { utcOffsetMinutes: tzOffset },
-  }).then(() => window.setTimeout(() => refreshPanel?.(), 60)); // 等原地更新图标落地后刷新列表
+  }).then(() => {
+    // 批4#23：相对基准「变差」的站圆点加醒目描边（变好不描边只进面板列）——原地更新落地后标记
+    if (layerNow === undefined || itemsNow === undefined) return;
+    const markers = layerNow.getLayers();
+    itemsNow.forEach((it, i) => {
+      const ml = markers[i];
+      const dot =
+        ml instanceof L.Marker ? (ml.getElement()?.querySelector(".mw-dot") ?? null) : null;
+      if (dot === null) return;
+      const base = baseTiers?.get(it.report.station);
+      dot.classList.toggle(
+        "mw-dot-worse",
+        base !== undefined && tierChangeOf(base, tafTierOf(it, at, tierOpts)) === "worse",
+      );
+    });
+    window.setTimeout(() => refreshPanel?.(), 60); // 等原地更新图标落地后刷新列表
+  });
 };
 /** 刻度线（叠滑道、pointer-events 放行点击，毫秒序判整点/日界——真实月历跨月正确）：
  *  整点小刻度 / 3 小时主刻度 / 展示时区日界高刻度 */
@@ -363,6 +407,11 @@ tlPlayBtn?.addEventListener("click", () => {
     const cur = Number(tlInput.value);
     tlApply(cur >= TL_STEPS ? 0 : cur + 1); // 到尾循环回「现在」
   }, 300); // ~3 格/秒：24 小时约 50 秒扫完一轮
+});
+// 批4#17：回到现在——跳回第 0 格（手动介入语义：停播＋落格）
+document.getElementById("tl-back-now")?.addEventListener("click", () => {
+  tlStopPlay();
+  tlApply(0);
 });
 let tlRafPending = false;
 tlInput?.addEventListener("input", () => {
@@ -444,30 +493,40 @@ const loadTaf = async (): Promise<void> => {
         : new Error("网络请求失败，请检查网络后重试");
     }
     if (!res.ok) throw new Error(`上游返回异常状态 ${res.status}，请稍后重试`);
-    const text = (await res.text()) + "\n" + (await prevTextPromise);
+    const latestText = await res.text();
+    const prevText = await prevTextPromise;
     const byIcao = new Map(stationsFile.stations.map((s) => [s.icao, s]));
     let failed = 0;
     // aviationweather raw 格式：新报行从行首起，续行以空白缩进续接——先归并再解析；
     // 两代周期合并进按站报池（raw 去重、生效起点升序——同起点晚发布者在后）
-    const reports: string[] = [];
-    for (const line of text.split("\n")) {
-      if (line.trim() === "") continue;
-      if (/^\s/.test(line) && reports.length > 0) reports[reports.length - 1] += ` ${line.trim()}`;
-      else reports.push(line.trim());
-    }
     const seen = new Set<string>();
-    for (const raw of reports) {
-      try {
-        const taf = parseTaf(raw);
-        if (byIcao.get(taf.station) === undefined || seen.has(taf.raw)) continue;
-        seen.add(taf.raw);
-        const pool = reportsByStation.get(taf.station) ?? [];
-        pool.push(taf);
-        reportsByStation.set(taf.station, pool);
-      } catch {
-        failed += 1;
+    /** 归并+解析+去重入池，返回「未被去重挡下的新报数」（批4#22：上一周期整体缺失的可观测降级） */
+    const ingest = (text: string): number => {
+      const reports: string[] = [];
+      for (const line of text.split("\n")) {
+        if (line.trim() === "") continue;
+        if (/^\s/.test(line) && reports.length > 0)
+          reports[reports.length - 1] += ` ${line.trim()}`;
+        else reports.push(line.trim());
       }
-    }
+      let added = 0;
+      for (const raw of reports) {
+        try {
+          const taf = parseTaf(raw);
+          if (byIcao.get(taf.station) === undefined || seen.has(taf.raw)) continue;
+          seen.add(taf.raw);
+          added += 1;
+          const pool = reportsByStation.get(taf.station) ?? [];
+          pool.push(taf);
+          reportsByStation.set(taf.station, pool);
+        } catch {
+          failed += 1;
+        }
+      }
+      return added;
+    };
+    const latestAdded = ingest(latestText);
+    const prevAdded = ingest(prevText);
     const nowMs = Date.now();
     for (const pool of reportsByStation.values()) sortTafPool(pool, nowMs);
     // 初始即取「现在」的在效报——首屏不再整片灰「未生效」（owner 9/24 方案B 的直接目的）；
@@ -540,7 +599,8 @@ const loadTaf = async (): Promise<void> => {
               : undefined;
         const next =
           ch !== undefined ? `${CHANGE_WORD[ch.kind] ?? ch.kind} ${winText ?? ""}`.trim() : "—";
-        return { it, tier, next };
+        const change = tierChangeOf(baseTiers?.get(it.report.station) ?? "unknown", tier);
+        return { it, tier, next, change };
       });
       // 批3#12：播放期间冻结行序（每 300ms 全量重建时行序随档位跳动——眼睛跟不上）；
       // 停播后下一次刷新恢复按档位排序（panelOrder 同时更新为最新序）
@@ -580,7 +640,11 @@ const loadTaf = async (): Promise<void> => {
         const tdNext = document.createElement("td");
         tdNext.className = "p-next";
         tdNext.textContent = r.next;
-        tr.append(tdDot, tdName, tdNext);
+        const tdChange = document.createElement("td");
+        tdChange.className = `p-change${r.change === "worse" ? " p-change-worse" : r.change === "better" ? " p-change-better" : ""}`;
+        tdChange.textContent = r.change === "worse" ? "变差" : r.change === "better" ? "变好" : "—";
+        tdChange.title = "与「现在」时刻（时间轴第 0 格）相比";
+        tr.append(tdDot, tdName, tdNext, tdChange);
         const fly = (): void => {
           const idx = tafItems?.findIndex((x) => x.report.station === r.it.report.station) ?? -1;
           const found = markers[idx];
@@ -641,6 +705,10 @@ const loadTaf = async (): Promise<void> => {
     statusOk = () =>
       `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 下方时间轴可拖动/播放换时刻`;
     setStatus(statusOk(), "ok");
+    // 批4#22：上一周期整体缺失（空响应或全部与最新周期重复）——附一句可见降级（评测签派：宁可标一句「上一周期缺」）
+    if (latestAdded > 0 && prevAdded === 0) {
+      show("上一周期预报不可用：新报生效时刻前的间隙将显示「未生效」");
+    }
   })();
   try {
     await tafLoading;

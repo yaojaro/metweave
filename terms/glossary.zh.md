@@ -318,6 +318,18 @@
 |---|---|---|---|---|
 | card.dash | —— | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
+## card.rawTitle（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| card.rawTitle | 报文原文（专业人员核对用） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## card.rawHint（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| card.rawHint | 悬停或 Tab 聚焦可与人话对照 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
 ## leaflet.tier（4 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |

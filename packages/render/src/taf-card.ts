@@ -706,9 +706,14 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     zone === null
       ? `${String(day).padStart(2, "0")}日${String(hour).padStart(2, "0")}Z`
       : `${tag}${ltClock(day, hour, minute, zone, calAnchor, minDay)}`;
-  /** 段区间：dd日HHZ–dd日HHZ / 京dd日HH:00–dd日HH:00 */
+  /** 段界时刻·不带时区前缀（批4#18：区间尾端「北京时」收敛——首处保留，降低扫读噪音） */
+  const segClockBare = (day: number, hour: number, minute: number): string =>
+    zone === null
+      ? `${String(day).padStart(2, "0")}日${String(hour).padStart(2, "0")}Z`
+      : ltClock(day, hour, minute, zone, calAnchor, minDay);
+  /** 段区间：dd日HHZ–dd日HHZ / 北京时M月D日 HH:00–M月D日 HH:00（尾端不再重复前缀） */
   const segRangeOf = (from: TafExpandAt, to: TafExpandAt): string =>
-    `${segClock(from.day, from.hour, from.minute)}–${segClock(to.day, to.hour, to.minute)}`;
+    `${segClock(from.day, from.hour, from.minute)}–${segClockBare(to.day, to.hour, to.minute)}`;
   /** 时区名（有效期行）：UTC / 北京时 */
   const zoneName = zone === null ? t.validityZone : t.zoneLocal;
   const card = el(
