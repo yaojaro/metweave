@@ -810,7 +810,7 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     options.utcOffsetMinutes !== undefined &&
     options.utcOffsetMinutes !== null &&
     options.locale !== "en"
-      ? `京${localClockOf(v.time, options.utcOffsetMinutes)}`
+      ? `北京时${localClockOf(v.time, options.utcOffsetMinutes)}`
       : T.timeText(v.time);
   const timeEl = el("div", "mw-time", timeText);
   const observedAt = observeTimeOf(v.time, now);

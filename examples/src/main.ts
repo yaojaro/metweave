@@ -66,7 +66,7 @@ let metarItems: Awaited<ReturnType<typeof getMetarReports>> | undefined; // 时�
 const zonedClock = (utc: Date): string =>
   tzOffset === null
     ? `${utc.toISOString().slice(11, 16)} UTC`
-    : `京${new Date(utc.getTime() + tzOffset * 60000).toISOString().slice(11, 16)}`;
+    : `北京时${new Date(utc.getTime() + tzOffset * 60000).toISOString().slice(11, 16)}`;
 let statusOk: (() => string) | undefined; // 最近一条 ok 状态的再渲染函数（时区切换时按新制重写）
 
 const panel = document.getElementById("panel");
@@ -250,7 +250,7 @@ const tlPad = (n: number): string => String(n).padStart(2, "0");
 const tlFmt = (at: TafExpandAt): string => {
   if (tzOffset === null) return `${tlPad(at.day)}日 ${tlPad(at.hour)}:${tlPad(at.minute)}Z`;
   const z = tlAtOf(tlAbsOf(at) + tzOffset);
-  return `京${tlPad(((z.day - 1) % 31) + 1)}日${tlPad(z.hour)}:${tlPad(z.minute)}`;
+  return `北京时${tlPad(((z.day - 1) % 31) + 1)}日${tlPad(z.hour)}:${tlPad(z.minute)}`;
 };
 let tlSpan: { from: number; to: number } | undefined; // 绝对分钟序窗（from＝现在取整 10 分钟）
 let tlPlaying = false;
@@ -505,7 +505,7 @@ const loadTaf = async (): Promise<void> => {
                 const [, d1, h1, d2, h2] = m;
                 const a = hourWordOf(Number(d1), Number(h1));
                 const b = hourWordOf(Number(d2), Number(h2));
-                const tag = tzOffset === null ? "" : "京";
+                const tag = tzOffset === null ? "" : "北京时";
                 return a.d === b.d
                   ? `${tag}${dayHourOf(a)}–${String(b.h).padStart(2, "0")}时`
                   : `${tag}${dayHourOf(a)}时–${dayHourOf(b)}时`;

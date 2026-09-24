@@ -662,7 +662,7 @@ it("评测批 B：常显站码标签（zoom≥5）/card 透传/滑杆窗对齐+�
     utcOffsetMinutes: 480,
   });
   const bjLabel = ctrlBj.querySelector("input")?.getAttribute("aria-valuetext") ?? "";
-  expect(bjLabel).toContain("京01日14:00");
+  expect(bjLabel).toContain("北京时01日14:00");
   expect(bjLabel).not.toMatch(/Z|（/);
   map.remove();
 });
@@ -722,8 +722,8 @@ it("复测修复：出窗灰态（超有效期＝unknown 灰点+「已过期」�
   expect(ticks?.textContent ?? "").not.toContain("京");
   const ctrlBj = createTafTimeControl(map, { layer: g, items, utcOffsetMinutes: 480 });
   const ticksBj = Array.from(ctrlBj.querySelectorAll("div")).find((d) => d.children.length === 2);
-  expect(ticksBj?.textContent ?? "").toContain("京01日14:00");
-  expect(ticksBj?.textContent ?? "").toContain("京02日14:00");
+  expect(ticksBj?.textContent ?? "").toContain("北京时01日14:00");
+  expect(ticksBj?.textContent ?? "").toContain("北京时02日14:00");
   map.remove();
 });
 
@@ -820,12 +820,12 @@ describe("C15：时区单制切换（owner 9/24——一个开关控全图时间
       Array.from(pane?.querySelectorAll(".mw-taf-meta") ?? [])
         .map((x) => x.textContent ?? "")
         .find((x) => x.includes("有效期")) ?? "";
-    expect(metaRow()).toContain("查看时刻 京26日05:00");
+    expect(metaRow()).toContain("查看时刻 北京时26日05:00");
     expect(metaRow()).not.toContain("Z");
-    expect(validityLine()).toContain("自 京26日02:00 至 京27日08:00（北京时，30 小时）");
+    expect(validityLine()).toContain("自 北京时26日02:00 至 北京时27日08:00（北京时，30 小时）");
     // 滑杆换时刻（不带 card）：京制保持不回退——覆盖被 at-only 调用清掉即红
     await setTafLayerTime(map, g, items, { at: { day: 25, hour: 22, minute: 0 } });
-    expect(metaRow()).toContain("查看时刻 京26日06:00");
+    expect(metaRow()).toContain("查看时刻 北京时26日06:00");
     map.remove();
   });
 
@@ -842,7 +842,7 @@ describe("C15：时区单制切换（owner 9/24——一个开关控全图时间
     });
     const input = ctrl.querySelector("input");
     expect(input?.value).toBe("3");
-    expect(input?.getAttribute("aria-valuetext") ?? "").toContain("京26日05:00");
+    expect(input?.getAttribute("aria-valuetext") ?? "").toContain("北京时26日05:00");
     map.remove();
   });
 
@@ -870,7 +870,7 @@ describe("C15：时区单制切换（owner 9/24——一个开关控全图时间
     expect(labels).toContain("25日"); // 25日00:00Z 日界
     expect(labels).toContain("03:00"); // 25日03:00Z
     expect(labels).toContain("14:30"); // 终点
-    // 京时：刻度随展示时区换算（15:00Z→京23:00、终点→京22:30），UTC 式裸标签不再出现
+    // 京时：刻度随展示时区换算（15:00Z→北京时23:00、终点→北京时22:30），UTC 式裸标签不再出现
     const ctrlBj = createTafTimeControl(map, {
       layer: g,
       items,
@@ -883,10 +883,10 @@ describe("C15：时区单制切换（owner 9/24——一个开关控全图时间
     const bjLabels = Array.from(ctrlBj.querySelectorAll("div span")).map(
       (s) => s.textContent ?? "",
     );
-    expect(bjLabels).toContain("京23:00");
-    expect(bjLabels).toContain("京02:00"); // 24日18:00Z → 京25日02:00（跨日换算正确、非日界不打日号）
-    expect(bjLabels).toContain("京22:30"); // 终点 25日14:30Z → 京22:30
-    expect(bjLabels.every((x) => x.startsWith("京"))).toBe(true);
+    expect(bjLabels).toContain("北京时23:00");
+    expect(bjLabels).toContain("北京时02:00"); // 24日18:00Z → 北京时25日02:00（跨日换算正确、非日界不打日号）
+    expect(bjLabels).toContain("北京时22:30"); // 终点 25日14:30Z → 北京时22:30
+    expect(bjLabels.every((x) => x.startsWith("北京时"))).toBe(true);
     map.remove();
   });
 });

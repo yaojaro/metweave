@@ -920,7 +920,9 @@ export function createTafTimeControl(
   const locale = options.locale ?? "zh";
   const ltOffset = options.utcOffsetMinutes ?? null; // owner 9/24 单制：缺省 UTC（旧 zh 缺省京时括注退役）
   const zoneText = (at: TafExpandAt): string =>
-    ltOffset !== null && locale === "zh" ? fmtTafZone(at, ltOffset, "京") : fmtTafAt(at, locale);
+    ltOffset !== null && locale === "zh"
+      ? fmtTafZone(at, ltOffset, "北京时")
+      : fmtTafAt(at, locale);
   const box = document.createElement("div");
   box.className = "mw-taf-timectrl";
   box.style.cssText =
@@ -1016,8 +1018,8 @@ export function createTafTimeControl(
         const z = tafAtOfAbs(tafAbsOf(at) + ltOffset);
         const day = ((z.day - 1) % 31) + 1; // TAF 无月语境日回绕 31 折回（与卡内 ltClock 同口径）
         return z.hour === 0 && z.minute === 0
-          ? `京${String(day).padStart(2, "0")}日`
-          : `京${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")}`;
+          ? `北京时${String(day).padStart(2, "0")}日`
+          : `北京时${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")}`;
       }
       return at.hour === 0 && at.minute === 0
         ? `${String(at.day).padStart(2, "0")}日`

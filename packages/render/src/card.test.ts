@@ -1576,7 +1576,7 @@ describe("renderCard 云底单位（heightUnit / en 缺省英尺）与未知选�
       now: new Date(Date.UTC(2026, 8, 11, 7, 40)),
     });
     const timeText = bj.querySelector(".mw-time")?.textContent ?? "";
-    expect(timeText).toContain("京11日 15:00");
+    expect(timeText).toContain("北京时11日 15:00");
     expect(timeText).toContain("40 分钟前"); // 观测 07:00Z、now 07:40Z——龄期不随展示时区换算
   });
 });
@@ -1769,10 +1769,10 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
       utcOffsetMinutes: 480,
     });
     const bjText = bj.textContent ?? "";
-    expect(bjText).toContain("发布 京23日11:03");
-    expect(bjText).toContain("查看时刻 京23日11:00");
-    expect(bjText).toContain("自 京23日14:00 至 京24日20:00（北京时，30 小时）");
-    expect(bjText).toContain("京23日14:00–京23日17:00"); // TEMPO 段头（风险行同格式）
+    expect(bjText).toContain("发布 北京时23日11:03");
+    expect(bjText).toContain("查看时刻 北京时23日11:00");
+    expect(bjText).toContain("自 北京时23日14:00 至 北京时24日20:00（北京时，30 小时）");
+    expect(bjText).toContain("北京时23日14:00–北京时23日17:00"); // TEMPO 段头（风险行同格式）
     expect(bjText).not.toMatch(/\d{2}Z/); // 无 UTC 残留（单制互斥锁）
     // UTC 缺省卡：无任何京字
     const text = card.textContent ?? "";

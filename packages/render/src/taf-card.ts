@@ -77,7 +77,7 @@ const LOCALE = {
     issued: "发布",
     atLabel: "查看时刻",
     atSuffix: "",
-    localTag: "京",
+    localTag: "北京时",
     validityFrom: (day: string, hm: string): string => `自 ${day}日 ${hm}`,
     validityTo: (day: string, hm: string): string => `至 ${day}日 ${hm}`,
     validityFromZone: (clock: string): string => `自 ${clock}`,

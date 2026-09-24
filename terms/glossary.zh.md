@@ -1139,7 +1139,7 @@ export interface TafTimeControlOptions {
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg02 | 京 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg02 | 北京时 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg03（1 条）
 
@@ -1151,13 +1151,13 @@ export interface TafTimeControlOptions {
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg04 | 京${String(day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg04 | 北京时${String(day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg05（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg05 | 京${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")} | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg05 | 北京时${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")} | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg06（1 条）
 

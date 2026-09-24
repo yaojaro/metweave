@@ -3025,12 +3025,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "京",
+   "text": "北京时",
    "usage": [
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 923
+   "line": 924
   },
   "leaflet.msg03": {
    "kind": "product",
@@ -3046,7 +3046,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 933
+   "line": 935
   },
   "leaflet.msg04": {
    "kind": "product",
@@ -3057,12 +3057,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "京${String(day).padStart(2, \"0\")}日",
+   "text": "北京时${String(day).padStart(2, \"0\")}日",
    "usage": [
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1019
+   "line": 1021
   },
   "leaflet.msg05": {
    "kind": "product",
@@ -3073,12 +3073,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "京${String(z.hour).padStart(2, \"0\")}:${String(z.minute).padStart(2, \"0\")}",
+   "text": "北京时${String(z.hour).padStart(2, \"0\")}:${String(z.minute).padStart(2, \"0\")}",
    "usage": [
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1020
+   "line": 1022
   },
   "leaflet.msg06": {
    "kind": "product",
@@ -3094,7 +3094,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1023
+   "line": 1025
   },
   "sources.msg01": {
    "kind": "product",
