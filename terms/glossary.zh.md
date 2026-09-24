@@ -1107,6 +1107,21 @@ async function populateTafLayer(
   if (options.at !== undefined) tafLayerAt.set(group, options.at);
 }
 
+/**
+ * 单站某时刻的档位（数据直读，2026-09-24 评测批3#14）：与地图圆点同一判据管线
+ * （含出窗灰、TEMPO 发作窗升档、NIL/CNL 灰）——宿主面板/对比基准不再从 marker DOM
+ * className 正则回读（状态经渲染产物回流的工程债收口），DOM 只做展示。
+ * at 语义同 addTafLayer：calendarAnchor 在位时为层连续序（逐报归一），否则为报锚内日号。
+ */
+export function tafTierOf(
+  item: TafLayerItem,
+  at: TafExpandAt,
+  options: { anchorDays?: number; calendarAnchor?: TafCalendarAnchor } = {},
+): ConditionTier {
+  const norm = stationNorm(item, at, options.calendarAnchor, options.anchorDays ?? 31);
+  return tafMarkerState(item, norm.at, { daysIn: norm.daysIn }, "zh").tier;
+}
+
 // ---------------------------------------------------------------- TAF 时间轴（v0.2 渲染层③：全图统一时刻）
 
 /**

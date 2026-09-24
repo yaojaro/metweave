@@ -8,6 +8,7 @@ import {
   addMetarLayer,
   addTafLayer,
   setTafLayerTime,
+  tafTierOf,
   TIER_COLORS,
   type ConditionTier,
   type TafExpandAt,
@@ -22,6 +23,7 @@ import {
   dayHourMs,
   fmtTl,
   monthAnchorOf,
+  reanchorOf,
   selectReport,
   sortTafPool,
   zonedDayHour,
@@ -178,6 +180,7 @@ const report = async (): Promise<void> => {
   const items = await getMetarReports("CN__ASOS", {
     stations: stationsFile.stations,
     onUnparseable: (failure) => skipped.push(failure.station),
+    timeoutMs: 60_000, // 批3#9：上游挂死不再无界等待（超时报错走 sources 权威中文文案）
   });
   map.removeLayer(pendingLayer);
   // 站名中文化（批2#5）：卡片标题/tooltip/marker 名统一「ICAO 中文（英文）」——原始 items 留作数据面
@@ -254,6 +257,7 @@ const tlPlayBtn = document.getElementById("tl-play");
 // @metweave/leaflet calendarAnchor 归一协议对接——层内逐报归一到各自锚月）。
 let layerCal: CalendarAnchor | undefined; // 层锚月（loadTaf 时定格）
 let tlAnchorMs: number | undefined; // 窗零点（「现在」向下取整 10 分钟；initTimeline 定格）
+let curAt: TafExpandAt | undefined; // 当前查看时刻（连续序；面板档位数据直读用——批3#14）
 let tlPlaying = false;
 let tlTimer: number | undefined;
 /** 格 → 查看时刻毫秒 */
@@ -285,12 +289,20 @@ const tlStopPlay = (): void => {
 };
 /** 落格并全图重渲：label/aria 即时更新，走 setTafLayerTime（滑杆换时刻持续以当前时区刷新）；
  *  先按查看时刻原位换在效报文（方案B——item.report 与图层 WeakMap 共享同一对象，setTafLayerTime 现读重渲；
- *  换报同步更新 item.monthAnchor（新月报的真实锚月，跨 00Z 边界的 10 月报归一到 10 月锚） */
-const tlApply = (index: number): void => {
+ *  换报同步更新 item.monthAnchor（新月报的真实锚月，跨 00Z 边界的 10 月报归一到 10 月锚）；
+ *  「现在」锚漂移重锚（批3#13）：真实时刻越过窗尾或漂移超 30 分钟时重算窗、保当前查看时刻格位 */
+const tlApply = (rawIndex: number): void => {
   if (tlAnchorMs === undefined || tafLayer === undefined || tafItems === undefined) return;
+  const nextAnchor = reanchorOf(tlAnchorMs, Date.now());
+  if (nextAnchor !== undefined) {
+    tlAnchorMs = nextAnchor;
+    tlBuildTicks(); // 刻度随新窗重画；格位＝相对新「现在」的偏移保持（index 不动，观看不被打断）
+  }
+  const index = rawIndex;
   if (tlInput !== null) tlInput.value = String(index);
   const tMs = tlMsOf(index);
   const at = tlAtOfMs(tMs);
+  curAt = at; // 面板数据直读的当前查看时刻（批3#14：不再从 marker DOM className 回读档位）
   const nowMs = Date.now();
   if (reportsByStation.size > 0) {
     for (const it of tafItems) {
@@ -366,6 +378,7 @@ let metarLayer: LeafletNS.LayerGroup | undefined;
 let tafLayer: LeafletNS.LayerGroup | undefined;
 let tafItems: readonly TafLayerItem[] | undefined;
 let listOpen = false;
+let panelOrder: string[] | undefined; // 播放期间冻结的面板行序（批3#12：停播后下次刷新恢复档位排序）
 let refreshPanel: (() => void) | undefined; // TAF 载入后由 loadTaf 赋值（列表渲染入口，面板开关直呼）
 let pendingFlyOpen: (() => void) | undefined; // 行点击「先飞后开卡」的在途回调（换行连点时解绑防开错站）
 
@@ -383,7 +396,10 @@ const setMode = (mode: "metar" | "taf"): void => {
   modeBar.taf?.setAttribute("aria-pressed", String(active));
   if (timelineBar !== null) timelineBar.hidden = !active;
   if (modeBar.list !== null) modeBar.list.hidden = !active;
-  if (!active) setListOpen(false);
+  if (!active) {
+    setListOpen(false);
+    tlStopPlay(); // 批3#8：切回实况停播——否则播放循环每 300ms 对已摘除图层的 39 marker 空转
+  }
 };
 
 /** 站点列表开关（评测签派 P2-7：38 站扫读列表态） */
@@ -490,12 +506,13 @@ const loadTaf = async (): Promise<void> => {
       const body = modeBar.panelBody;
       if (body === null) return;
       body.replaceChildren();
-      const markers = tafLayer.getLayers();
-      const rowsData = tafItems.map((it, i) => {
-        const ml = markers[i];
-        const dot = ml instanceof L.Marker ? ml.getElement()?.querySelector(".mw-dot") : undefined;
-        const tierRaw = dot?.className.match(/mw-dot-(\w+)/)?.[1] ?? "unknown";
-        const tier: ConditionTier = isTier(tierRaw) ? tierRaw : "unknown";
+      // 批3#14：档位数据直读——tafTierOf 与圆点同一判据管线（含 TEMPO 升档/出窗灰），
+      // 不再从 marker DOM className 正则回读（状态经渲染产物回流的工程债收口），DOM 只做展示
+      const atNow = curAt ?? tlAtOfMs(Math.floor(Date.now() / 600_000) * 600_000);
+      const tierOpts: Parameters<typeof tafTierOf>[2] =
+        layerCal === undefined ? {} : { calendarAnchor: layerCal };
+      const rowsData = tafItems.map((it) => {
+        const tier: ConditionTier = tafTierOf(it, atNow, tierOpts);
         const ch = it.report.changes[0];
         // 人话化窗口（复测小白#1/#面板 + 月界批真实月历 + 批4 前缀降噪）：ddHH/ddHH →
         // 当前时区单制「M月D日HH时–HH时」（同日尾端只显小时，「北京时」前缀首处保留）
@@ -525,11 +542,22 @@ const loadTaf = async (): Promise<void> => {
           ch !== undefined ? `${CHANGE_WORD[ch.kind] ?? ch.kind} ${winText ?? ""}`.trim() : "—";
         return { it, tier, next };
       });
-      rowsData.sort(
-        (a, b) =>
-          TIER_ORDER[a.tier] - TIER_ORDER[b.tier] ||
-          a.it.report.station.localeCompare(b.it.report.station),
-      );
+      // 批3#12：播放期间冻结行序（每 300ms 全量重建时行序随档位跳动——眼睛跟不上）；
+      // 停播后下一次刷新恢复按档位排序（panelOrder 同时更新为最新序）
+      const frozen = tlPlaying ? panelOrder : undefined;
+      if (frozen !== undefined) {
+        rowsData.sort(
+          (a, b) => frozen.indexOf(a.it.report.station) - frozen.indexOf(b.it.report.station),
+        );
+      } else {
+        rowsData.sort(
+          (a, b) =>
+            TIER_ORDER[a.tier] - TIER_ORDER[b.tier] ||
+            a.it.report.station.localeCompare(b.it.report.station),
+        );
+        panelOrder = rowsData.map((r) => r.it.report.station);
+      }
+      const markers = tafLayer.getLayers(); // 行点击「先飞后开卡」用（档位已数据直读，DOM 仅展示）
       const colors = TIER_COLORS; // 批2#3：面板色点与地图圆点同一张表（两套色系的根因收口）
       for (const r of rowsData) {
         const tr = document.createElement("tr");

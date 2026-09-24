@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>metweave · 公开气象报文可视化</title>
+    <!-- favicon：空 data URI 显式声明（消除浏览器默认 /favicon.ico 404；无二进制资产、无痕） -->
+    <link rel="icon" href="data:," />
   </head>
   <body>
     <div id="map"></div>
@@ -27,7 +29,7 @@
         <tbody id="taf-panel-body"></tbody>
       </table>
     </aside>
-    <div id="mode-bar" role="tablist" aria-label="演示模式">
+    <div id="mode-bar" role="toolbar" aria-label="演示模式">
       <button type="button" id="mode-metar" class="mode-btn active" aria-pressed="true">
         METAR 实况
       </button>

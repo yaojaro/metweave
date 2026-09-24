@@ -666,7 +666,10 @@ const STYLE_ID = "mw-card-style";
 
 const CARD_CSS = `
 .mw-card { font: 13px/1.6 system-ui, sans-serif; color: #1c2733; background: #fff;
-  border: 1px solid #d8dee4; border-radius: 10px; padding: 12px 14px; max-width: 420px; position: relative; }
+  border: 1px solid #d8dee4; border-radius: 10px; padding: 12px 14px; max-width: 420px; position: relative;
+  /* 限高契约对齐 TAF 卡（owner 9/24 只落了 TAF 侧——多跑道状态组长卡可超视口，批3#10）：
+     卡内上下滚动，滚轮隔离由 Leaflet 弹窗内建 disableScrollPropagation 提供 */
+  max-height: min(65vh, 680px); overflow-y: auto; }
 .mw-card h2 { margin: 0; font-size: 15px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .mw-card .mw-time { color: #6b7785; margin: 2px 0 8px; font-size: 12px; }
 .mw-card .mw-time.mw-stale { color: #8a5a12; font-weight: 600; }

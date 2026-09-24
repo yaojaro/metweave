@@ -86,6 +86,18 @@ export const zonedDayHour = (
   return `${z.getUTCMonth() + 1}月${z.getUTCDate()}日${String(z.getUTCHours()).padStart(2, "0")}时`;
 };
 
+/**
+ * 「现在」锚漂移重锚（评测批3#13）：真实当前时刻越过窗尾（长会话）或锚漂移超 30 分钟时重算窗，
+ * 返回新窗零点；未触发返回 undefined。格位语义＝「相对现在的偏移格数」——重锚不打断观看
+ * （用户在看 +3h，重锚后仍是新「现在」+3h；index 天然保持，无需平移）。
+ */
+export const reanchorOf = (anchorMs: number, nowMs: number): number | undefined => {
+  if (!(nowMs > anchorMs + 24 * DAY_MS || Math.abs(nowMs - anchorMs) > 30 * 60_000)) {
+    return undefined;
+  }
+  return Math.floor(nowMs / 600_000) * 600_000;
+};
+
 // ---------------------------------------------------------------- 报池（owner 9/24 方案B：现在永远有在效报）
 
 /** 报文发布毫秒序（次序键；无发布时刻排最前） */

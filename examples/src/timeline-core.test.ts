@@ -7,6 +7,7 @@ import {
   dayOffsetOf,
   fmtTl,
   monthAnchorOf,
+  reanchorOf,
   selectReport,
   sortTafPool,
   zonedDayHour,
@@ -86,5 +87,20 @@ describe("报池（月界批）：日号经真实月历定位（%31 折回在月
     });
     expect(contAtOf(Date.UTC(2026, 9, 1, 6, 0), CAL_9)).toEqual({ day: 31, hour: 6, minute: 0 });
     expect(contAtOf(Date.UTC(2026, 9, 2, 0, 10), CAL_9)).toEqual({ day: 32, hour: 0, minute: 10 });
+  });
+});
+
+describe("「现在」锚漂移重锚（评测批3#13）", () => {
+  it("越过窗尾（长会话 24h+）：重算窗零点（格位＝相对新「现在」的偏移，天然保持）", () => {
+    const anchor = Date.UTC(2026, 8, 24, 12, 0);
+    const now = anchor + 24 * 86_400_000 + 5 * 3_600_000; // 一天多以后
+    expect(reanchorOf(anchor, now)).toBe(Math.floor(now / 600_000) * 600_000);
+  });
+
+  it("漂移超 30 分钟（系统休眠等）也重锚；30 分钟内不动（无谓重算不发生）", () => {
+    const anchor = Date.UTC(2026, 8, 24, 12, 0);
+    expect(reanchorOf(anchor, anchor + 20 * 60_000)).toBeUndefined();
+    const next = reanchorOf(anchor, anchor + 45 * 60_000);
+    expect(next).toBe(Math.floor((anchor + 45 * 60_000) / 600_000) * 600_000);
   });
 });

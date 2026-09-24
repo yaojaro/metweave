@@ -2109,3 +2109,14 @@ describe("TAF 卡月锚（2026-09-24 评测 P1 月界批：monthAnchor 在位时
     expect(feb.textContent).not.toContain("3月"); // 越界日号守卫回退折回、不静默滑到下月
   });
 });
+
+describe("METAR 卡限高契约（评测批3#10：对齐 TAF 卡——多跑道状态组长卡不超视口）", () => {
+  it("样式锁：max-height: min(65vh, 680px) + overflow-y: auto（卡片根已有 position:relative 定位上下文）", () => {
+    renderCard(parse("ZBAA 121253Z 30015KT 9999 FEW010 21/12 Q1013"), { raw: true });
+    const css = document.querySelector("#mw-card-style")?.textContent ?? "";
+    const cardRule = css.split(".mw-card {")[1]?.split("}")[0] ?? "";
+    expect(cardRule).toContain("max-height: min(65vh, 680px)");
+    expect(cardRule).toContain("overflow-y: auto");
+    expect(cardRule).toContain("position: relative");
+  });
+});

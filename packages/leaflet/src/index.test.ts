@@ -972,3 +972,30 @@ describe("TIER_COLORS 单一来源导出（评测批2#3：图例/面板与圆点
     expect(TIER_COLORS.unknown).toBe("#8a94a0");
   });
 });
+
+describe("tafTierOf 数据直读（评测批3#14：面板不再从 marker DOM className 正则回读）", () => {
+  const r = parseTaf(
+    "TAF ZGGG 230303Z 2306/2412 21004MPS 8000 BKN040 TEMPO 2306/2309 TSRA FEW020CB BKN040=",
+  );
+  const item: TafLayerItem = { report: r, position: [23, 113] };
+
+  it("与圆点同一判据管线：发作窗内 poor、窗前窗后回主导档；跨月连续序经 calendarAnchor 归一", async () => {
+    const { tafTierOf } = await import("./index");
+    expect(tafTierOf(item, { day: 23, hour: 7, minute: 0 })).toBe("poor"); // TEMPO 窗内升档
+    expect(tafTierOf(item, { day: 23, hour: 12, minute: 0 })).toBe("good"); // 回主导段（8000 m/BKN040 均好档）
+    // 跨月：10 月报（item 锚 10 月）+ 层锚 9 月，连续序 31＝10/1 06Z——归一到报锚内 day=1，poor 判据正常落地
+    const octR = parseTaf("TAF ZBAA 302300Z 0100/0206 17004MPS 0800 -SN OVC008=");
+    const octItem: TafLayerItem = {
+      report: octR,
+      position: [40, 116],
+      monthAnchor: { year: 2026, month: 10 },
+    };
+    expect(
+      tafTierOf(
+        octItem,
+        { day: 31, hour: 6, minute: 0 },
+        { calendarAnchor: { year: 2026, month: 9 } },
+      ),
+    ).toBe("poor");
+  });
+});
