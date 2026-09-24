@@ -53,8 +53,7 @@ body {
   color: #ffd9a0;
 }
 
-/* TAF 时间轴条（owner 9/24 时间轴批）：免责声明栏上方独立通栏——现在起 24h、10 分钟一格，
- * 左端「现在」锚 + 滑杆与刻度；顶部操作栏由此回归一行纯按钮 */
+/* TAF 时间轴条（owner 9/24 窄条批）：免责声明栏上方的一条窄轴——播放键 + 现在 + 带刻度滑道 + 当前时刻 */
 #taf-timeline {
   position: fixed;
   left: 0;
@@ -63,43 +62,92 @@ body {
   z-index: 1050;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 16px;
+  gap: 10px;
+  padding: 4px 14px;
   background: rgba(244, 246, 249, 0.96);
   border-top: 1px solid #d8dee6;
 }
 
+#taf-timeline .tl-play {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid #c3ccd6;
+  background: #fff;
+  color: #1c2733;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#taf-timeline .tl-play[aria-pressed="true"] {
+  background: #3d5a80;
+  border-color: #3d5a80;
+  color: #fff;
+}
+
 #taf-timeline .tl-now {
   flex: none;
-  font:
-    12px/1.4 system-ui,
-    sans-serif;
-  font-weight: 600;
-  color: #1c2733;
-  background: #dfe9f5;
-  border: 1px solid #b9cadd;
-  border-radius: 6px;
-  padding: 2px 8px;
+  font-size: 10px;
+  color: #6b7785;
 }
 
-#taf-timeline .tl-ctrl {
+#taf-timeline .tl-strip {
+  position: relative;
   flex: 1;
   min-width: 0;
+  height: 26px;
 }
 
-#taf-timeline .mw-taf-timectrl {
+#taf-timeline .tl-strip input[type="range"] {
   width: 100%;
+  margin: 0;
 }
 
-#taf-timeline .mw-taf-timectrl input[type="range"] {
-  flex: 1 1 auto;
-  min-width: 0;
+/* 刻度线叠在滑道上（pointer-events 放行点击给滑杆）：整点小刻度、3 小时主刻度、日界高刻度 */
+#taf-timeline .tl-ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1px;
+  height: 9px;
+  pointer-events: none;
 }
 
-#taf-timeline .mw-taf-timectrl span {
+#taf-timeline .tl-ticks i {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  background: #c3ccd6;
+}
+
+#taf-timeline .tl-ticks i.major {
+  height: 7px;
+  background: #7d92a5;
+}
+
+#taf-timeline .tl-ticks i.minor {
+  height: 4px;
+  background: #b3c0cd;
+}
+
+#taf-timeline .tl-ticks i.day {
+  height: 10px;
+  width: 2px;
+  background: #3d5a80;
+}
+
+#taf-timeline .tl-value {
   flex: none;
-  font-weight: 600;
+  min-width: 100px;
+  text-align: right;
+  font:
+    600 12px/1.2 system-ui,
+    sans-serif;
   font-variant-numeric: tabular-nums;
+  color: #1c2733;
   white-space: nowrap;
 }
 

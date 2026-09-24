@@ -7,7 +7,6 @@ import { getMetarReports } from "metweave/sources";
 import {
   addMetarLayer,
   addTafLayer,
-  createTafTimeControl,
   setTafLayerTime,
   type TafExpandAt,
   type TafLayerItem,
@@ -59,7 +58,6 @@ if (!hasBasemap) mountPreviewCards();
 // 卡片/滑杆/站点面板/状态条统一读此一处；480＝北京时（+8）
 let tzOffset: number | null = null;
 let metarItems: Awaited<ReturnType<typeof getMetarReports>> | undefined; // 时区切换重建实况层的数据面
-let lastTafAt: TafExpandAt | undefined; // 滑杆当前时刻（时区切换重建控件时经 initialAt 保位）
 /** 状态条时钟（单一时区）：UTC＝HH:MM UTC；京时＝京HH:MM（仅换显示，时刻本身仍 UTC 基准） */
 const zonedClock = (utc: Date): string =>
   tzOffset === null
@@ -213,9 +211,13 @@ const modeBar = {
   panelTitle: document.getElementById("taf-panel-title"),
   panelBody: document.getElementById("taf-panel-body"),
 };
-// TAF 时间轴条（owner 9/24 时间轴批）：提示栏上方独立通栏；控件挂载点与整条显隐分离
+// TAF 时间轴条（owner 9/24 窄条批）：提示栏上方一条窄轴——播放键 + 现在 + 带刻度滑道 + 当前时刻；
+// 点刻度/拖动跳时刻（手动介入即停播），播放自动按 10 分钟步进扫过 24 小时（到尾循环）
 const timelineBar = document.getElementById("taf-timeline");
-const timelineMount = timelineBar?.querySelector<HTMLElement>(".tl-ctrl") ?? null;
+const tlInput = document.getElementById("tl-input") as HTMLInputElement | null;
+const tlValue = document.getElementById("tl-value");
+const tlTicksBox = document.getElementById("tl-ticks");
+const tlPlayBtn = document.getElementById("tl-play");
 /** 时间轴窗：零点＝当前时刻向下取整到 10 分钟刻度，跨度 24 小时（owner 定口径；默认锚「现在」） */
 const timelineWindow = (): { from: TafExpandAt; to: TafExpandAt } => {
   const floor = new Date(Math.floor(Date.now() / 600_000) * 600_000);
@@ -227,6 +229,97 @@ const timelineWindow = (): { from: TafExpandAt; to: TafExpandAt } => {
   });
   return { from: atOf(floor), to: atOf(end) };
 };
+// —— 时间轴状态与驱动（10 分钟一格；apply 与图层 setTafLayerTime 同路，拖/点/播全图重渲级别）——
+const tlAbsOf = (at: TafExpandAt): number => (at.day - 1) * 1440 + at.hour * 60 + at.minute;
+const tlAtOf = (abs: number): TafExpandAt => ({
+  day: Math.floor(abs / 1440) + 1,
+  hour: Math.floor((abs % 1440) / 60),
+  minute: abs % 60,
+});
+const tlPad = (n: number): string => String(n).padStart(2, "0");
+/** 时刻文本（随时区单制）：UTC＝dd日 HH:MMZ；京＝京dd日HH:MM（日回绕 31 折回） */
+const tlFmt = (at: TafExpandAt): string => {
+  if (tzOffset === null) return `${tlPad(at.day)}日 ${tlPad(at.hour)}:${tlPad(at.minute)}Z`;
+  const z = tlAtOf(tlAbsOf(at) + tzOffset);
+  return `京${tlPad(((z.day - 1) % 31) + 1)}日${tlPad(z.hour)}:${tlPad(z.minute)}`;
+};
+let tlSpan: { from: number; to: number } | undefined; // 绝对分钟序窗（from＝现在取整 10 分钟）
+let tlPlaying = false;
+let tlTimer: number | undefined;
+const tlSetPlayBtn = (): void => {
+  if (tlPlayBtn === null) return;
+  tlPlayBtn.textContent = tlPlaying ? "❚❚" : "▶";
+  tlPlayBtn.setAttribute("aria-pressed", String(tlPlaying));
+  tlPlayBtn.setAttribute("aria-label", tlPlaying ? "暂停播放" : "播放：自动扫过未来 24 小时");
+};
+const tlStopPlay = (): void => {
+  if (!tlPlaying) return;
+  tlPlaying = false;
+  window.clearInterval(tlTimer);
+  tlTimer = undefined;
+  tlSetPlayBtn();
+};
+/** 落格并全图重渲：label/aria 即时更新，走 setTafLayerTime（滑杆换时刻持续以当前时区刷新） */
+const tlApply = (index: number): void => {
+  if (tlSpan === undefined || tafLayer === undefined || tafItems === undefined) return;
+  if (tlInput !== null) tlInput.value = String(index);
+  const at = tlAtOf(tlSpan.from + index * 10);
+  const text = tlFmt(at);
+  if (tlValue !== null) tlValue.textContent = text;
+  tlInput?.setAttribute("aria-valuetext", text); // 读屏不朗读裸格值
+  void setTafLayerTime(map, tafLayer, tafItems, { at, card: { utcOffsetMinutes: tzOffset } });
+  window.setTimeout(() => refreshPanel?.(), 60); // 等原地更新图标落地后刷新列表
+};
+/** 刻度线（叠滑道、pointer-events 放行点击）：整点小刻度 / 3 小时主刻度 / 展示时区日界高刻度 */
+const tlBuildTicks = (): void => {
+  if (tlTicksBox === null || tlSpan === undefined) return;
+  tlTicksBox.replaceChildren();
+  const total = tlSpan.to - tlSpan.from;
+  for (let a = tlSpan.from; a <= tlSpan.to; a += 10) {
+    if (a % 60 !== 0 && a !== tlSpan.from && a !== tlSpan.to) continue; // 非整点只保留两端
+    const zoneA = a + (tzOffset ?? 0);
+    const tick = document.createElement("i");
+    tick.className = zoneA % 1440 === 0 ? "day" : a % 180 === 0 ? "major" : "minor"; // 日界＞主刻度＞小刻度
+    tick.style.left = `${(((a - tlSpan.from) / total) * 100).toFixed(3)}%`;
+    tlTicksBox.append(tick);
+  }
+};
+/** TAF 载入后初始化时间轴：建窗（现在取整 10 分钟 + 24h）、画刻度、默认落「现在」 */
+const initTimeline = (): void => {
+  const w = timelineWindow();
+  tlSpan = { from: tlAbsOf(w.from), to: tlAbsOf(w.to) };
+  if (tlInput !== null) tlInput.max = String(Math.round((tlSpan.to - tlSpan.from) / 10));
+  tlBuildTicks();
+  tlApply(0);
+};
+tlPlayBtn?.addEventListener("click", () => {
+  if (tlPlaying) {
+    tlStopPlay();
+    return;
+  }
+  if (tlSpan === undefined) return;
+  tlPlaying = true;
+  tlSetPlayBtn();
+  tlTimer = window.setInterval(() => {
+    if (tlSpan === undefined || tlInput === null) {
+      tlStopPlay();
+      return;
+    }
+    const max = Number(tlInput.max);
+    const cur = Number(tlInput.value);
+    tlApply(cur >= max ? 0 : cur + 1); // 到尾循环回「现在」
+  }, 300); // ~3 格/秒：24 小时约 50 秒扫完一轮
+});
+let tlRafPending = false;
+tlInput?.addEventListener("input", () => {
+  tlStopPlay(); // 手动介入即停播
+  if (tlRafPending) return; // rAF 合帧：拖动高频 input 每帧至多一次全图更新
+  tlRafPending = true;
+  requestAnimationFrame(() => {
+    tlRafPending = false;
+    tlApply(Number(tlInput?.value ?? 0));
+  });
+});
 let metarLayer: LeafletNS.LayerGroup | undefined;
 let tafLayer: LeafletNS.LayerGroup | undefined;
 let tafItems: readonly TafLayerItem[] | undefined;
@@ -440,27 +533,12 @@ const loadTaf = async (): Promise<void> => {
         modeBar.panelTitle.append(legend);
       }
     };
-    // 时间轴（owner 9/24）：现在起 24h、10 分钟一格、3 小时整点刻度；缺省锚「现在」（第 0 格）
-    const tl = timelineWindow();
-    const ctrl = createTafTimeControl(map, {
-      layer: tafLayer,
-      items,
-      layerOptions: { card: { utcOffsetMinutes: tzOffset } }, // 滑杆换时刻持续以当前时区刷新（与层内可变覆盖一致）
-      utcOffsetMinutes: tzOffset,
-      stepMinutes: 10,
-      from: tl.from,
-      to: tl.to,
-      tickEveryMinutes: 180,
-      onTime: (at) => {
-        lastTafAt = at; // 时区切换重建控件时经 initialAt 保位
-        window.setTimeout(renderPanel, 60); // 等 setTafLayerTime 原地更新图标落地后刷新列表
-      },
-    });
-    timelineMount?.replaceChildren(ctrl);
+    // 时间轴（owner 9/24 窄条批）：现在起 24h、10 分钟一格、默认锚「现在」；初始化后拖/点/播都走 tlApply
+    initTimeline();
     setMode("taf");
     renderPanel();
     statusOk = () =>
-      `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 拖动下方时间轴换时刻`;
+      `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 下方时间轴可拖动/播放换时刻`;
     setStatus(statusOk(), "ok");
   })();
   try {
@@ -519,29 +597,14 @@ tzBtn?.addEventListener("click", () => {
     }
   }
   // 预报层：不重建——可变 card 覆盖经 setTafLayerTime 即时生效（已开弹窗原地换时区，图标/列表不受影响）；
-  // 时间轴标签/刻度随区重建，initialAt 保住当前拨动位置（窗零点重取「现在」，格网随 10 分钟基准稳定）
-  const tLayer = tafLayer;
-  const tItems = tafItems;
-  if (tLayer !== undefined && tItems !== undefined) {
-    const tl = timelineWindow();
-    void setTafLayerTime(map, tLayer, tItems, { card: { utcOffsetMinutes: tzOffset } }).then(() => {
-      const ctrl = createTafTimeControl(map, {
-        layer: tLayer,
-        items: tItems,
-        layerOptions: { card: { utcOffsetMinutes: tzOffset } },
-        utcOffsetMinutes: tzOffset,
-        stepMinutes: 10,
-        from: tl.from,
-        to: tl.to,
-        tickEveryMinutes: 180,
-        ...(lastTafAt !== undefined ? { initialAt: lastTafAt } : {}),
-        onTime: (at) => {
-          lastTafAt = at;
-          window.setTimeout(() => refreshPanel?.(), 60);
-        },
-      });
-      timelineMount?.replaceChildren(ctrl);
-    });
+  // 时间轴不重建：刻度线按新制重画、当前格标签按新制重写（格位不动，手动位置天然保留）
+  if (tafLayer !== undefined && tafItems !== undefined) {
+    void setTafLayerTime(map, tafLayer, tafItems, { card: { utcOffsetMinutes: tzOffset } }).then(
+      () => {
+        tlBuildTicks();
+        tlApply(Number(tlInput?.value ?? 0));
+      },
+    );
   }
   refreshPanel?.(); // 面板「下一变化」按新区重算
   if (statusOk !== undefined) setStatus(statusOk(), "ok"); // 状态条时钟按新区重写（顺带确认切换生效）

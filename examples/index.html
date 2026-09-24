@@ -46,10 +46,24 @@
     </div>
     <div id="basemap-hint" role="note" hidden></div>
     <aside id="panel" role="alert" hidden></aside>
-    <!-- TAF 时间轴（owner 9/24 时间轴批）：现在起 24h、10 分钟一格，默认锚「现在」；拖动全图按该时刻重渲级别 -->
+    <!-- TAF 时间轴（owner 9/24 窄条批）：现在起 24h、10 分钟一格的一条窄轴——点刻度/拖动跳时刻，播放自动扫过 -->
     <div id="taf-timeline" hidden aria-label="预报时间轴">
+      <button
+        type="button"
+        id="tl-play"
+        class="tl-play"
+        aria-pressed="false"
+        aria-label="播放：自动扫过未来 24 小时"
+        title="播放：自动按 10 分钟步进扫过未来 24 小时（再点暂停）"
+      >
+        ▶
+      </button>
       <span class="tl-now" title="时间轴起点＝当前时刻">现在</span>
-      <div class="tl-ctrl"></div>
+      <div class="tl-strip">
+        <input id="tl-input" type="range" min="0" max="144" step="1" aria-label="预报时刻" />
+        <div class="tl-ticks" id="tl-ticks" aria-hidden="true"></div>
+      </div>
+      <span class="tl-value" id="tl-value"></span>
     </div>
     <footer id="disclaimer">
       演示用途：数据来自公开通路（IEM / NOAA 等），按现状提供、无 SLA，可能延迟或缺失；
