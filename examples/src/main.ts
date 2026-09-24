@@ -431,6 +431,9 @@ let tafItems: readonly TafLayerItem[] | undefined;
 let listOpen = false;
 let panelOrder: string[] | undefined; // 播放期间冻结的面板行序（批3#12：停播后下次刷新恢复档位排序）
 let refreshPanel: (() => void) | undefined; // TAF 载入后由 loadTaf 赋值（列表渲染入口，面板开关直呼）
+// 播放中面板 hover 闪动收口（owner 9/24 工程债批）：行序冻结已做，但行内容仍每 300ms 重渲——
+// 悬停态与点击目标被打掉。播放期间指针在面板内时跳过重渲（保持最后一帧），移出即恢复刷新。
+let panelHover = false;
 let pendingFlyOpen: (() => void) | undefined; // 行点击「先飞后开卡」的在途回调（换行连点时解绑防开错站）
 
 // —— TAF 报池（owner 9/24 方案B：现在永远有在效报）——
@@ -462,6 +465,13 @@ const setListOpen = (open: boolean): void => {
 };
 
 let tafLoading: Promise<void> | undefined; // 防重入（评测工程 P2-4：连点不重复拉取）
+
+for (const ev of ["pointerenter", "pointerleave"] as const) {
+  modeBar.panelBody?.addEventListener(ev, () => {
+    panelHover = ev === "pointerenter";
+    if (!panelHover && tlPlaying) refreshPanel?.(); // 移出面板：立刻补一帧追上当前时刻
+  });
+}
 
 const loadTaf = async (): Promise<void> => {
   if (tafLayer !== undefined && tafItems !== undefined) {
@@ -546,6 +556,7 @@ const loadTaf = async (): Promise<void> => {
     const renderPanel = (): void => {
       refreshPanel = renderPanel; // 定义即登记（首跑可能在面板未开时早退，登记不得依赖渲染路径）
       if (!listOpen || tafLayer === undefined || tafItems === undefined) return;
+      if (panelHover && tlPlaying) return; // 播放中悬停面板：冻结当前帧，移出/停播即恢复
       const body = modeBar.panelBody;
       if (body === null) return;
       body.replaceChildren();

@@ -27,6 +27,7 @@ import type {
   WeatherGroup,
   WindShearGroup,
 } from "@metweave/core";
+import { ariaClose, ariaOpen, positionBubbleAt, positionChipNear } from "./linkage";
 import { toValues } from "@metweave/core";
 import {
   CAVOK_SHORT,
@@ -1556,8 +1557,7 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     bubble.classList.remove("mw-hint-on");
     for (const on of Array.from(root.querySelectorAll<HTMLElement>(".mw-hint.mw-hint-on"))) {
       on.classList.remove("mw-hint-on");
-      on.removeAttribute("aria-expanded");
-      on.removeAttribute("aria-describedby");
+      ariaClose(on);
     }
   };
   const openBubble = (hint: HTMLElement): void => {
@@ -1585,15 +1585,13 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
         bubble.append(el("div", "mw-decode-basis", `${T.decode.basisLabel}${T.decode.cite[cite]}`));
       }
     }
-    const hr = hint.getBoundingClientRect();
-    const rr = root.getBoundingClientRect();
-    bubble.style.left = `${Math.max(0, hr.left - rr.left)}px`;
-    bubble.style.top = `${hr.bottom - rr.top + 4}px`;
-    if (bubble.id === "") bubble.id = `mw-hint-pop-${++bubbleSeq}`;
-    hint.setAttribute("aria-expanded", "true");
-    hint.setAttribute("aria-describedby", bubble.id);
-    hint.classList.add("mw-hint-on");
+    // 共享落位（owner 9/24 工程债批）：先显形（display:block）再量宽高——下方优先、放不下翻上方、
+    // 卡内钳制 + 滚动补偿（旧实现无补偿无翻转：卡滚动后气泡错位、底部溢出——随统一修复）
     bubble.classList.add("mw-hint-on");
+    positionBubbleAt(root, bubble, hint);
+    if (bubble.id === "") bubble.id = `mw-hint-pop-${++bubbleSeq}`;
+    ariaOpen(hint, bubble, bubble.id);
+    hint.classList.add("mw-hint-on");
   };
   /** 开合入口（click 与键盘 Enter/Space 共用）：点已开的收起、点别的换文案 */
   const toggleBubble = (hint: HTMLElement): void => {
@@ -1630,13 +1628,7 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
   const showChip = (near: HTMLElement, codes: string): void => {
     codeChip.textContent = codes;
     codeChip.style.display = "inline-block";
-    const rr = root.getBoundingClientRect();
-    const nr = near.getBoundingClientRect();
-    const chipW = codeChip.offsetWidth;
-    const left = Math.max(4, Math.min(nr.right - rr.left - chipW, root.clientWidth - chipW - 4));
-    const top = Math.max(0, nr.top - rr.top - codeChip.offsetHeight - 2);
-    codeChip.style.left = `${left}px`;
-    codeChip.style.top = `${top}px`;
+    positionChipNear(root, codeChip, near); // 共享几何（owner 9/24 工程债批）：滚动补偿+钳制单一来源
   };
   const setLinked = (key: string | null, near: HTMLElement | null = null): void => {
     const codes: string[] = [];

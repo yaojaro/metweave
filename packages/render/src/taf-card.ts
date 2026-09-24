@@ -24,6 +24,7 @@ import type {
   WindGroup,
 } from "@metweave/core";
 import { tafSegments } from "@metweave/parser";
+import { ariaClose, ariaOpen, positionBubbleAt, positionChipNear } from "./linkage";
 import type { TafExpandAt, TafResolvedConditions } from "@metweave/parser";
 import {
   CAVOK_SHORT,
@@ -784,16 +785,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   const showCodeChip = (target: HTMLElement): void => {
     codeChip.textContent = target.dataset.code ?? "";
     codeChip.style.display = "inline-block";
-    const cardR = card.getBoundingClientRect();
-    const tR = target.getBoundingClientRect();
-    const chipW = codeChip.offsetWidth;
-    const left = Math.max(
-      4,
-      Math.min(tR.right - cardR.left - chipW + card.scrollLeft, card.clientWidth - chipW - 4),
-    );
-    const top = Math.max(0, tR.top - cardR.top - codeChip.offsetHeight - 2 + card.scrollTop);
-    codeChip.style.left = `${left}px`;
-    codeChip.style.top = `${top}px`;
+    positionChipNear(card, codeChip, target); // 共享几何（owner 9/24 工程债批）：与 METAR 卡同一实现
   };
   const hideCodeChip = (): void => {
     codeChip.style.display = "none";
@@ -809,10 +801,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   let decodeOpenFor: HTMLElement | null = null;
   let decodeSeq = 0;
   const hideDecode = (): void => {
-    if (decodeOpenFor !== null) {
-      decodeOpenFor.removeAttribute("aria-expanded");
-      decodeOpenFor.removeAttribute("aria-describedby");
-    }
+    ariaClose(decodeOpenFor);
     decodeBubble.style.display = "none";
     decodeOpenFor = null;
   };
@@ -834,24 +823,10 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       decodeBubble.append(el("p", "mw-taf-decode-cite", TAF_DECODE_CITES[cite][locale]));
     }
     decodeBubble.style.display = "block";
-    // 定位：条目下方优先，卡内钳制（卡可滚动，坐标作滚动补偿；先落位再量宽高）
-    decodeBubble.style.left = "4px";
-    decodeBubble.style.top = "0px";
-    const cardR = card.getBoundingClientRect();
-    const iR = item.getBoundingClientRect();
-    const bw = Math.min(decodeBubble.offsetWidth, card.clientWidth - 8);
-    const bh = decodeBubble.offsetHeight;
-    const left = Math.max(4, Math.min(iR.left - cardR.left, card.clientWidth - bw - 4));
-    const below = iR.bottom - cardR.top + 4 + card.scrollTop;
-    const top =
-      below + bh <= card.clientHeight - 4
-        ? below
-        : Math.max(0, iR.top - cardR.top - bh - 2 + card.scrollTop);
-    decodeBubble.style.left = `${left}px`;
-    decodeBubble.style.top = `${top}px`;
+    // 共享落位（owner 9/24 工程债批）：下方优先/翻上方/钳制/滚动补偿与 METAR 卡同一实现
+    positionBubbleAt(card, decodeBubble, item);
     if (decodeBubble.id === "") decodeBubble.id = `mw-taf-decode-${++decodeSeq}`;
-    item.setAttribute("aria-expanded", "true");
-    item.setAttribute("aria-describedby", decodeBubble.id);
+    ariaOpen(item, decodeBubble, decodeBubble.id);
     decodeOpenFor = item;
   };
   /** 解码载荷（条目单条 / 行头合并）→ 开合入口：已开者收起、否则开 */
