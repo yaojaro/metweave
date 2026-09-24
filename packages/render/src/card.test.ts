@@ -1677,11 +1677,35 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(text).toContain("转为：");
     expect(text).toContain("2000 m");
     expect(text).toContain("转变时刻不确定");
-    // 电码走悬停/读屏（沿 METAR 卡口径：主表人话、原码悬停）：基况段=展开电码，TEMPO 段附组原文
-    expect(rows[0]?.getAttribute("title") ?? "").toContain("04009G16MPS");
-    expect(rows[0]?.getAttribute("title") ?? "").toContain("9999");
-    expect(rows[1]?.getAttribute("title") ?? "").toContain("2500 -SHRASN BR");
+    // 电码悬停只挂行头（owner 9/24 交互批：整段挂 title 时读人话也弹整段电码串，映射被浮层压住）；
+    // 行体条目的对应电码改 data-code 就地去显（悬停/聚焦行尾出现），读屏读人话正文不变
+    expect(rows[0]?.getAttribute("title")).toBeNull();
+    expect(rows[0]?.querySelector(".mw-taf-period-head")?.getAttribute("title") ?? "").toContain(
+      "04009G16MPS",
+    );
+    expect(rows[0]?.querySelector(".mw-taf-period-head")?.getAttribute("title") ?? "").toContain(
+      "9999",
+    );
+    expect(rows[1]?.querySelector(".mw-taf-period-head")?.getAttribute("title") ?? "").toContain(
+      "2500 -SHRASN BR",
+    );
     expect(rows[0]?.getAttribute("aria-label")).toBeNull(); // 电码只走 title（读屏读人话正文——评测工程 P0-2）
+  });
+
+  it("就地电码（owner 9/24 交互批）：联动条目携带 data-code＝其值来源的原文片段，样式契约定样（悬停/聚焦显出）", () => {
+    const card = renderTafCard(parseTaf(golden), { raw: true });
+    // 基况「风」条目 → 风组整组 token 跨度；「能见度」→ 9999
+    const items = Array.from(card.querySelectorAll<HTMLElement>(".mw-taf-item[data-code]"));
+    const codeOf = (label: string): string | undefined =>
+      items.find((x) => x.querySelector(".mw-taf-item-label")?.textContent === label)?.dataset.code;
+    expect(codeOf("风")).toBe("04009G16MPS");
+    expect(codeOf("能见度")).toBe("9999");
+    // 样式契约：:hover/:focus-visible 经 ::after 显出 attr(data-code)（丢规则即红）
+    const css = document.querySelector("#mw-taf-card-style")?.textContent ?? "";
+    const rule =
+      css.split(".mw-taf-item.mw-taf-link[data-code]:hover::after")[1]?.split("}")[0] ?? "";
+    expect(rule).toContain("attr(data-code)");
+    expect(css).toContain(".mw-taf-item.mw-taf-link[data-code]:focus-visible::after");
   });
 
   it("RAW 对照（独立盒区置底、气温行在其上）+ 组级联动：悬停「天气」只点亮天气组片，反向亦然", () => {

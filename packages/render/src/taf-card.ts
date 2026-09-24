@@ -237,6 +237,13 @@ const STYLE_TEXT = `
 .mw-taf-rawseg-caution { color: #8a5a12; }
 /* 联动可达性（评测工程 P0/P1）：tabIndex 聚焦通道 + 虚线 affordance + 激活时非相关项压暗（focus+context） */
 .mw-taf-item.mw-taf-link, .mw-taf-period-head.mw-taf-link { border-bottom: 1px dashed #7f8c9a; cursor: help; }
+/* 就地电码（owner 9/24 交互批）：悬停/聚焦带 data-code 的条目即在行尾显出对应原文片段——
+   映射词就地可见，替代「整段 title 浮层抢先弹出」的旧交互；raw:false 无联动时自然无此层 */
+.mw-taf-item.mw-taf-link[data-code]:hover::after,
+.mw-taf-item.mw-taf-link[data-code]:focus-visible::after {
+  content: attr(data-code); margin-left: 6px; white-space: nowrap;
+  font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #44546a; background: #f2f6fa; border: 1px solid #e3e8ee; border-radius: 3px; padding: 0 4px; }
 .mw-taf-item:focus-visible, .mw-taf-rawseg:focus-visible, .mw-taf-period-head:focus-visible
   { outline: 2px solid #4a90d9; outline-offset: 1px; }
 .mw-taf-raw.mw-taf-dim .mw-taf-rawseg:not(.mw-taf-hl) { opacity: .35; }
@@ -829,7 +836,12 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
                 ? [src.span]
                 : []
               : originSpansOf(report, row.sourceIndex, it.key);
-          if (spans.length > 0) link.items.push({ el: item, spans });
+          if (spans.length > 0) {
+            link.items.push({ el: item, spans });
+            // 就地电码（owner 9/24 交互批）：该条目值对应的原文片段，悬停/聚焦时经 CSS ::after 显出——
+            // 对应关系在行内即可见，不再只靠卡底 RAW 区的高亮（滚动后常在视区外）
+            item.dataset.code = spans.map((sp) => report.raw.slice(sp.start, sp.end)).join(" ");
+          }
         }
         body.append(item);
       }
@@ -838,9 +850,10 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       else if (row.kind === "TEMPO" || row.overlay?.withTempo === true)
         body.append(el("span", "mw-taf-period-note mw-taf-item-full", `（${t.tempoNote}）`));
       li.append(head, body);
-      // 悬停/读屏＝电码（专业面）：该段紧凑电码；挂载/过渡带行附来源组原文
+      // 电码悬停只挂行头（owner 9/24 交互批：此前整段挂 title，读人话行也弹整段电码串——
+      // 映射词没看到、报头式浮层先跳出来）；行体条目的对应电码改就地去显（data-code，悬停/聚焦才出现）
       const code = `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}｜${conditionsCodeOf(shown)}${row.overlay !== undefined && src !== undefined ? ` ｜ ${src.raw}` : ""}`;
-      li.title = code; // 电码走 title（读屏读人话正文，不再 aria-label 覆盖——评测工程 P0-2）
+      head.title = code; // 读屏读人话正文不变（评测工程 P0-2：title 不配 aria-label 覆盖）
       ol.append(li);
     }
     card.append(title, ol);
