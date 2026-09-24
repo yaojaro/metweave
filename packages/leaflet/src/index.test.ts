@@ -670,3 +670,52 @@ it("层③竞态回归：同步连拨两次不叠点（clearLayers 与 populate 
   expect(firstDot(g)).toContain("mw-dot-poor");
   map.remove();
 });
+
+describe("C14：超高卡版式（owner 9/24 指令——卡不占满屏/不压固定悬浮层/段间距）", () => {
+  const tall =
+    "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 BKN033 TEMPO 2520/2524 2500 -SHRASN BR BECMG 2605/2606 2000 -SN BR=";
+
+  it("TAF 弹窗 maxWidth 480（卡片加宽后的设计宽）+ popupOptions 透传（宿主避让边直达 bindPopup；METAR 缺省 420 不变）", async () => {
+    const map = freshMap();
+    const g = await addTafLayer(map, [{ report: parseTaf(tall), position: [25, 102] }], {
+      popupOptions: {
+        autoPanPaddingTopLeft: L.point(12, 84),
+        autoPanPaddingBottomRight: L.point(16, 92),
+      },
+    });
+    const marker = g.getLayers()[0];
+    if (!(marker instanceof L.Marker)) throw new Error("应为 Marker");
+    expect(marker.getPopup()?.options.maxWidth).toBe(480);
+    expect(marker.getPopup()?.options.autoPanPaddingTopLeft).toEqual(L.point(12, 84));
+    expect(marker.getPopup()?.options.autoPanPaddingBottomRight).toEqual(L.point(16, 92));
+    map.remove();
+    const map2 = freshMap();
+    const g2 = await addMetarLayer(map2, [{ report, position: [40, 116] }], {
+      popupOptions: { autoPanPaddingBottomRight: L.point(16, 92) },
+    });
+    const m2 = g2.getLayers()[0];
+    if (!(m2 instanceof L.Marker)) throw new Error("应为 Marker");
+    expect(m2.getPopup()?.options.maxWidth).toBe(420);
+    expect(m2.getPopup()?.options.autoPanPaddingBottomRight).toEqual(L.point(16, 92));
+    map2.remove();
+  });
+
+  it("卡内滚轮不冒泡地图容器（行为锁：限高内滚的卡滚动时地图不跟着缩放——Leaflet 弹窗内建 disableScrollPropagation 提供，升级/重构破坏即红）", async () => {
+    const map = freshMap();
+    const g = await addTafLayer(map, [{ report: parseTaf(tall), position: [25, 102] }], {
+      at: { day: 25, hour: 21, minute: 0 },
+    });
+    const marker = g.getLayers()[0];
+    if (!(marker instanceof L.Marker)) throw new Error("应为 Marker");
+    marker.openPopup();
+    const card = document.querySelector(".leaflet-popup .mw-taf-card");
+    if (!(card instanceof HTMLElement)) throw new Error("弹窗内应有 TAF 卡");
+    let reached = 0;
+    map.getContainer().addEventListener("wheel", () => {
+      reached += 1;
+    });
+    card.dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+    expect(reached).toBe(0); // 冒泡到容器即地图被缩放（产品行为红线；实测断点在 .leaflet-popup-content）
+    map.remove();
+  });
+});

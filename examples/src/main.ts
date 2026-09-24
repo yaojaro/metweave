@@ -18,6 +18,14 @@ import "./style.css";
 const map = L.map("map", { center: [35.5, 105], zoom: 4 });
 const hasBasemap = setupBasemap(map);
 
+// 弹窗自动避让边（owner 9/24 指令：卡片不与固定悬浮层重叠）：autoPan 只认这两角留白——
+// 顶部让开模式切换条（实测 bottom≈68），底部让开免责声明栏+图例+状态条（合计≈85），
+// 弹窗永远落在其间的可视带内（超高卡另有卡内限高滚动兜底）
+const POPUP_AUTOPAN = {
+  autoPanPaddingTopLeft: L.point(12, 84),
+  autoPanPaddingBottomRight: L.point(16, 92),
+};
+
 // —— 无 key 预览态（2026-09-15 五角色评测批）：底图缺席时不让首屏停留在「灰点+空底」，
 // 就地渲染两份本地静态示例报文的真实卡片（本地解析、零请求，明确标注非实况）——
 // 「如何配置 key」与「这个库产出什么」同时可见，第一印象不再只有一张空底图。
@@ -140,7 +148,11 @@ const report = async (): Promise<void> => {
     onUnparseable: (failure) => skipped.push(failure.station),
   });
   map.removeLayer(pendingLayer);
-  const group = await addMetarLayer(map, items, { card: { raw: true }, conditionColors: true });
+  const group = await addMetarLayer(map, items, {
+    card: { raw: true },
+    conditionColors: true,
+    popupOptions: POPUP_AUTOPAN,
+  });
   metarLayer = group;
   const updatedClock = new Date().toISOString().slice(11, 16);
   setStatus(
@@ -193,6 +205,7 @@ let tafLayer: LeafletNS.LayerGroup | undefined;
 let tafItems: readonly TafLayerItem[] | undefined;
 let listOpen = false;
 let refreshPanel: (() => void) | undefined; // TAF 载入后由 loadTaf 赋值（列表渲染入口，面板开关直呼）
+let pendingFlyOpen: (() => void) | undefined; // 行点击「先飞后开卡」的在途回调（换行连点时解绑防开错站）
 
 const mapLegend = document.getElementById("map-legend");
 
@@ -264,7 +277,7 @@ const loadTaf = async (): Promise<void> => {
     }
     if (items.length === 0) throw new Error("上游返回的报文全部解析失败（数据异常），请稍后重试");
     tafItems = items;
-    tafLayer = await addTafLayer(map, items);
+    tafLayer = await addTafLayer(map, items, { popupOptions: POPUP_AUTOPAN });
     if (metarLayer !== undefined) map.removeLayer(metarLayer);
     else map.removeLayer(pendingLayer);
     // 站点列表（档色点＋下一变化；滑杆换时刻即刷新；行点击飞行并开卡——评测签派 P2-7）
@@ -343,8 +356,25 @@ const loadTaf = async (): Promise<void> => {
           const found = markers[idx];
           if (!(found instanceof L.Marker)) return;
           const marker = found;
+          // 先飞到位再开卡：飞行中开弹窗＝autoPan 按中间帧算避让、动画随后把地图带走，
+          // 限高后的卡仍会被推出视口/压住固定悬浮层（owner 9/24 版式批实测）。
+          // 换行连点时先解绑上一行未触发的开卡回调，防陈旧回调开错站（Leaflet once 存原 fn 引用，off 可解）
+          if (pendingFlyOpen !== undefined) {
+            map.off("moveend", pendingFlyOpen);
+            pendingFlyOpen = undefined;
+          }
+          // 已在目标视图则 flyTo 无位移、moveend 未必发——直接开卡
+          if (map.getZoom() === 6 && map.getCenter().distanceTo(L.latLng(r.it.position)) < 1) {
+            if (!marker.isPopupOpen()) marker.openPopup();
+            return;
+          }
+          const open = (): void => {
+            if (pendingFlyOpen === open) pendingFlyOpen = undefined;
+            if (!marker.isPopupOpen()) marker.openPopup();
+          };
+          pendingFlyOpen = open;
           map.flyTo(r.it.position, 6);
-          marker.openPopup();
+          map.once("moveend", open);
         };
         tr.addEventListener("click", fly);
         tr.addEventListener("keydown", (e) => {

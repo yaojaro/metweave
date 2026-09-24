@@ -68,6 +68,9 @@ export interface AddMetarLayerOptions {
    *  开启时 tooltip 同时追加一行要素摘要（能见度/天气/最差云；NIL 与关键组全缺测站显示「缺报/数据缺测」），
    *  圆点 aria-label 追加档位词（zh「天气好/差…」/ en「Weather …」，语言随 card.locale） */
   conditionColors?: boolean;
+  /** bindPopup 选项透传（autoPanPadding 族等——宿主为固定悬浮层留避让边时用；
+   *  本库缺省只设 maxWidth=卡片设计宽，宿主显式键覆盖之） */
+  popupOptions?: Leaflet.PopupOptions;
 }
 
 /** addMetarLayer 的合法选项键（运行时校验用——拼错的选项键静默忽略违反本库不静默纪律） */
@@ -76,6 +79,7 @@ const ADD_METAR_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
   "popup",
   "card",
   "conditionColors",
+  "popupOptions",
 ]);
 
 /**
@@ -417,7 +421,10 @@ export async function addMetarLayer(
       if (cardOpts.stationTitle === undefined && stationName !== undefined) {
         cardOpts.stationTitle = stationName;
       }
-      marker.bindPopup(renderCard(item.report, cardOpts), { maxWidth: 420 });
+      marker.bindPopup(renderCard(item.report, cardOpts), {
+        maxWidth: 420,
+        ...options.popupOptions,
+      });
       marker.on("popupopen", () => {
         // 触屏双浮层消除：弹窗打开即收起 tooltip
         marker.closeTooltip();
@@ -520,6 +527,9 @@ export interface AddTafLayerOptions {
   popup?: boolean;
   /** renderTafCard 透传（raw/className/stationTitle/utcOffsetMinutes——宿主定制 TAF 卡；at 由图层按当前时刻注入） */
   card?: Omit<RenderTafCardOptions, "locale" | "at">;
+  /** bindPopup 选项透传（autoPanPadding 族等——宿主为固定悬浮层留避让边时用；
+   *  本库缺省只设 maxWidth=卡片设计宽 480，宿主显式键覆盖之） */
+  popupOptions?: Leaflet.PopupOptions;
 }
 
 const ADD_TAF_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
@@ -528,6 +538,7 @@ const ADD_TAF_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
   "anchorDays",
   "popup",
   "card",
+  "popupOptions",
 ]);
 
 /**
@@ -712,8 +723,9 @@ async function populateTafLayer(
     marker.bindTooltip(tip);
 
     if (options.popup ?? true) {
-      // 惰性弹窗（评测工程 P2-1）：占位 DOM 只在 popupopen 时换真卡——滑杆换时刻不清层，重开即见新时刻卡
-      marker.bindPopup(document.createElement("div"), { maxWidth: 420 });
+      // 惰性弹窗（评测工程 P2-1）：占位 DOM 只在 popupopen 时换真卡——滑杆换时刻不清层，重开即见新时刻卡；
+      // maxWidth 480 = 卡片设计宽（owner 9/24 加宽指令，renderTafCard max-width 同步）
+      marker.bindPopup(document.createElement("div"), { maxWidth: 480, ...options.popupOptions });
       // 刷新函数（复测 N1/N2）：按层当前时刻重展开取 notes（置顶提示随换时刻更新，与 tooltip 同源），
       // 只重建卡片内容不动焦点——焦点移入仅发生在真实 popupopen（键盘拖滑杆不再被抢焦）
       const refresh = (popup: Leaflet.Popup): void => {
@@ -732,6 +744,8 @@ async function populateTafLayer(
           if (stationName !== undefined) cardOpts.stationTitle = stationName;
         }
         const card = renderTafCard(r, cardOpts);
+        // 卡内限高滚动（owner 9/24）的滚轮隔离由 Leaflet 弹窗内建 disableScrollPropagation(contentNode)
+        // 提供（只截传播不拦默认滚动——实测勿再叠加自带监听：纯冗余）；行为锁见 index.test.ts C14
         if (fresh.notes.length > 0) {
           const lead = document.createElement("p");
           lead.style.margin = "0 0 4px";

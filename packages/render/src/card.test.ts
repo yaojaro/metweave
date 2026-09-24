@@ -1833,4 +1833,19 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(en.textContent).toContain("30 h");
     expect(en.querySelector(".mw-taf-raw")?.textContent).toContain(golden.slice(0, 20));
   });
+
+  it("版式契约（owner 9/24 指令）：卡宽 480 / 卡高上限 min(65vh, 680px) 内滚 / 分段行间距 7px", () => {
+    renderTafCard(parseTaf(golden), { raw: true });
+    const css = document.querySelector("#mw-taf-card-style")?.textContent ?? "";
+    // 卡片本体：加宽 + 限高（超高不再占满整屏/被视口裁顶）+ 超高内容卡内上下滚动
+    const cardRule = css.split(".mw-taf-card {")[1]?.split("}")[0] ?? "";
+    expect(cardRule).toContain("max-width: 480px");
+    expect(cardRule).toContain("max-height: min(65vh, 680px)");
+    expect(cardRule).toContain("overflow-y: auto");
+    // 分段行：段与段保留间距不贴死；首段无分隔线沿旧例，末段不吃尾距
+    const periodRule = css.split(".mw-taf-period {")[1]?.split("}")[0] ?? "";
+    expect(periodRule).toContain("margin-bottom: 7px");
+    const lastRule = css.split(".mw-taf-period:last-child {")[1]?.split("}")[0] ?? "";
+    expect(lastRule).toContain("margin-bottom: 0");
+  });
 });

@@ -6,6 +6,8 @@
  * 悬停=电码紧凑串——owner 9/23 指令：按拆分时间段给具体天气，专业/小白双受众）→ 气温极值（多组分行，置于分段上方——owner 五轮）→ 可选 RAW 对照。
  * 与 card.ts 同纪律：纯 DOM 构建（createElement/textContent，无 innerHTML 注入面）、
  * 样式随组件注入（STYLE_ID 单次）、双语文案集中一张 locale 表、宿主 className 可叠加。
+ * 版式契约（owner 9/24 指令）：卡宽 480、卡高上限 min(65vh, 680px) 且超高卡内上下滚动
+ * （超高弹窗不再占满整屏/被视口裁顶）、分段行间距 7px（段与段不贴死）。
  * 预报警示：档位/摘要是扫视辅助，不得用作运行判据（沿 METAR 卡口径）。
  */
 import type {
@@ -170,7 +172,8 @@ type LocaleTable = (typeof LOCALE)[keyof typeof LOCALE];
 const STYLE_ID = "mw-taf-card-style";
 const STYLE_TEXT = `
 .mw-taf-card { font: 13px/1.6 system-ui, sans-serif; color: #1c2733; background: #fff;
-  border: 1px solid #d8dee6; border-radius: 8px; padding: 10px 12px; max-width: 420px; }
+  border: 1px solid #d8dee6; border-radius: 8px; padding: 10px 12px; max-width: 480px;
+  max-height: min(65vh, 680px); overflow-y: auto; }
 .mw-taf-card h2 { margin: 0 0 4px; font-size: 15px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .mw-taf-badge { font-size: 11px; font-weight: 600; color: #fff; background: #3d5a80;
   border-radius: 4px; padding: 1px 6px; }
@@ -184,8 +187,10 @@ const STYLE_TEXT = `
 .mw-taf-temps { margin: 2px 0; }
 .mw-taf-temp-line { margin: 0; font-size: 12px; color: #1c2733; }
 .mw-taf-periods { margin: 0; padding: 0; list-style: none; }
-.mw-taf-period { padding: 4px 2px; border-top: 1px dashed #e3e8ee; font-size: 12px; border-radius: 4px; }
+.mw-taf-period { padding: 5px 6px 6px; border-top: 1px dashed #e3e8ee; font-size: 12px; border-radius: 4px;
+  margin-bottom: 7px; }
 .mw-taf-period:first-child { border-top: none; }
+.mw-taf-period:last-child { margin-bottom: 0; }
 .mw-taf-period-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .mw-taf-period-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2px 16px; margin: 2px 0 0 14px; }
