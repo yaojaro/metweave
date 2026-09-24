@@ -8,6 +8,7 @@ import {
   createTafTimeControl,
   setTafLayerTime,
   type AddTafLayerOptions,
+  type TafLayerItem,
 } from "./index";
 
 const report = parse("METAR ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG");
@@ -494,6 +495,33 @@ describe("addTafLayer（v0.2 渲染层①）", () => {
       ?.querySelector('[role="img"]')
       ?.getAttribute("aria-label");
     expect(label).toContain("预报天气差");
+    map.remove();
+  });
+
+  it("换报数据面（owner 9/24 方案B）：宿主原位换 item.report 后 setTafLayerTime 圆点与已开弹窗即时跟随新报", async () => {
+    // 旧周期报（00Z 生效、全程好）建层开卡 → 原位换新周期报（06Z 生效、TEMPO 18–22Z 雷雨）→ 同层换时刻重渲
+    const item: TafLayerItem = {
+      report: parseTaf("TAF ZGGG 232106Z 2400/2506 13003MPS 8000 BKN040="),
+      position: [23, 113],
+    };
+    const map = freshMap();
+    const g = await addTafLayer(map, [item], { at: { day: 24, hour: 2, minute: 0 } });
+    const marker = g.getLayers()[0];
+    if (!(marker instanceof L.Marker)) throw new Error("应为 Marker");
+    marker.openPopup();
+    const pane = map.getPane?.("popupPane");
+    const cardText = (): string => pane?.querySelector(".mw-taf-card")?.textContent ?? "";
+    expect(cardText()).toContain("发布 23日21:06Z"); // 旧报
+    expect(cardText()).toContain("自 24日 00:00Z");
+    expect(firstDot(g)).toContain("mw-dot-good");
+    // 原位换新报（同站、6 小时后周期）——弹窗刷新闭包现读 item.report（捕获建层旧报即红）
+    item.report = parseTaf(
+      "TAF ZGGG 240303Z 2406/2512 14003MPS 8000 BKN040 TEMPO 2418/2422 TSRA FEW030CB BKN033=",
+    );
+    await setTafLayerTime(map, g, [item], { at: { day: 24, hour: 19, minute: 0 } });
+    expect(cardText()).toContain("发布 24日03:03Z"); // 已开弹窗即时跟随新报
+    expect(cardText()).toContain("自 24日 06:00Z");
+    expect(firstDot(g)).toContain("mw-dot-poor"); // 圆点按新报发作窗升红
     map.remove();
   });
 

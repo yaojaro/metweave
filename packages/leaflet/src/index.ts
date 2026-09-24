@@ -28,9 +28,9 @@ import type {
   TafResolvedConditions,
 } from "@metweave/parser";
 
-// 公开选项（AddTafLayerOptions.at / TafTimeControlOptions.initialAt）以 TafExpandAt 为形参——
-// 类型随包再导出，宿主（如 examples）不必穿透到 @metweave/parser 取型
-export type { TafExpandAt };
+// 公开选项（AddTafLayerOptions.at / TafTimeControlOptions.initialAt）以 TafExpandAt 为形参、
+// TafLayerItem.report 以 TafReport 为形参——类型随包再导出，宿主（如 examples）不必穿透到 @metweave/parser 取型
+export type { TafExpandAt, TafReport };
 
 /**
  * leaflet 惰性装载：import 本包时不再静态加载 leaflet——peer 库是浏览器专属实现，
@@ -739,23 +739,27 @@ async function populateTafLayer(
       marker.bindPopup(document.createElement("div"), { maxWidth: 480, ...options.popupOptions });
       // 刷新函数（复测 N1/N2）：按层当前时刻重展开取 notes（置顶提示随换时刻更新，与 tooltip 同源），
       // 只重建卡片内容不动焦点——焦点移入仅发生在真实 popupopen（键盘拖滑杆不再被抢焦）；
-      // card 选项读层的可变覆盖（tafLayerCard）而非建层闭包——切时区后已开弹窗即时换内容（owner 9/24）
+      // card 选项读层的可变覆盖（tafLayerCard）而非建层闭包——切时区后已开弹窗即时换内容（owner 9/24）；
+      // 报文数据面同样现读 item.report（owner 9/24 方案B：宿主原位换报——如按查看时刻切换上一周期在效报——
+      // 换报后已开弹窗即时跟随新报，捕获建层时的 r/noTimeline 会停在旧报）
       const refresh = (popup: Leaflet.Popup): void => {
+        const rNow = item.report;
+        const noTimelineNow = rNow.nil === true || rNow.cancelled === true;
         const current = tafLayerAt.get(group) ?? at;
-        const fresh = tafMarkerState(item, noTimeline ? at : current, anchor, locale);
+        const fresh = tafMarkerState(item, noTimelineNow ? at : current, anchor, locale);
         const cardOpts: RenderTafCardOptions = {
           locale,
           raw: true,
-          ...(noTimeline ? {} : { at: current }),
+          ...(noTimelineNow ? {} : { at: current }),
           ...tafLayerCard.get(group),
         };
         if (cardOpts.stationTitle === undefined && item.title !== undefined) {
-          const stationName = item.title.startsWith(`${r.station} `)
-            ? item.title.slice(r.station.length + 1)
+          const stationName = item.title.startsWith(`${rNow.station} `)
+            ? item.title.slice(rNow.station.length + 1)
             : undefined;
           if (stationName !== undefined) cardOpts.stationTitle = stationName;
         }
-        const card = renderTafCard(r, cardOpts);
+        const card = renderTafCard(rNow, cardOpts);
         // 卡内限高滚动（owner 9/24）的滚轮隔离由 Leaflet 弹窗内建 disableScrollPropagation(contentNode)
         // 提供（只截传播不拦默认滚动——实测勿再叠加自带监听：纯冗余）；行为锁见 index.test.ts C14
         if (fresh.notes.length > 0) {

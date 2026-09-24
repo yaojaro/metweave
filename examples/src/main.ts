@@ -10,6 +10,7 @@ import {
   setTafLayerTime,
   type TafExpandAt,
   type TafLayerItem,
+  type TafReport,
 } from "@metweave/leaflet";
 import type * as LeafletNS from "leaflet";
 import stationsFile from "../stations.json";
@@ -267,11 +268,19 @@ const tlStopPlay = (): void => {
   tlTimer = undefined;
   tlSetPlayBtn();
 };
-/** 落格并全图重渲：label/aria 即时更新，走 setTafLayerTime（滑杆换时刻持续以当前时区刷新） */
+/** 落格并全图重渲：label/aria 即时更新，走 setTafLayerTime（滑杆换时刻持续以当前时区刷新）；
+ *  先按查看时刻原位换在效报文（方案B——item.report 与图层 WeakMap 共享同一对象，setTafLayerTime 现读重渲） */
 const tlApply = (index: number): void => {
   if (tlSpan === undefined || tafLayer === undefined || tafItems === undefined) return;
   if (tlInput !== null) tlInput.value = String(index);
-  const at = tlAtOf(tlSpan.from + index * 10);
+  const tAbs = tlSpan.from + index * 10;
+  const at = tlAtOf(tAbs);
+  if (reportsByStation.size > 0) {
+    for (const it of tafItems) {
+      const sel = selectReport(it.report.station, tAbs);
+      if (sel !== undefined && sel !== it.report) it.report = sel;
+    }
+  }
   const text = tlFmt(at);
   if (tlValue !== null) tlValue.textContent = text;
   tlInput?.setAttribute("aria-valuetext", text); // 读屏不朗读裸格值
@@ -335,6 +344,42 @@ let listOpen = false;
 let refreshPanel: (() => void) | undefined; // TAF 载入后由 loadTaf 赋值（列表渲染入口，面板开关直呼）
 let pendingFlyOpen: (() => void) | undefined; // 行点击「先飞后开卡」的在途回调（换行连点时解绑防开错站）
 
+// —— TAF 报池（owner 9/24 方案B：现在永远有在效报）——
+// 最新周期 + 上一周期（date=now-4h 取「该时刻已发布的最新报」）合并进按站报池；
+// 查看时刻落在最新报生效前（发布后 2–3 小时的空档）时自动用仍在效的上一份补位
+const reportsByStation = new Map<string, TafReport[]>();
+/** 报池按生效起点升序整理（同起点晚发布在后；NIL/CNL 无有效期排尾；跨月大日号差按 ±31 折回对齐） */
+const sortTafPool = (pool: TafReport[]): void => {
+  const refDay = Math.max(...pool.map((x) => x.validity?.startDay ?? 0), 1);
+  const keyOf = (r: TafReport): number => {
+    const v = r.validity;
+    if (v === undefined) return Number.POSITIVE_INFINITY;
+    const day = v.startDay < refDay - 15 ? v.startDay + 31 : v.startDay;
+    const from = (day - 1) * 1440 + v.startHour * 60;
+    const i = r.issueTime;
+    const issue = i === undefined ? -1 : i.day * 1440 + i.hour * 60 + i.minute;
+    return from * 10_000 + issue; // 起点为主序、发布时刻为次序（起点基数放大防串位）
+  };
+  pool.sort((a, b) => keyOf(a) - keyOf(b));
+};
+/** 按查看时刻选在效报文：生效起点 ≤ T 的最新一份；最新为 NIL/CNL＝权威「无预报」；
+ *  全部未生效 → 最新一份（灰「未生效」语义保留——上一周期也缺时的诚实降级） */
+const selectReport = (station: string, tAbs: number): TafReport | undefined => {
+  const pool = reportsByStation.get(station);
+  const last = pool?.[pool.length - 1];
+  if (pool === undefined || last === undefined) return undefined;
+  if (last.nil === true || last.cancelled === true) return last;
+  const refDay = Math.floor(tAbs / 1440) + 1;
+  let sel: TafReport | undefined;
+  for (const r of pool) {
+    const v = r.validity;
+    if (v === undefined || r.nil === true || r.cancelled === true) continue;
+    const day = v.startDay > refDay + 15 ? v.startDay - 31 : v.startDay; // 报自上月 → 折回本月序
+    if ((day - 1) * 1440 + v.startHour * 60 <= tAbs) sel = r; // 池已升序，留最晚命中
+  }
+  return sel ?? last;
+};
+
 const setMode = (mode: "metar" | "taf"): void => {
   const active = mode === "taf";
   modeBar.metar?.classList.toggle("active", !active);
@@ -368,10 +413,19 @@ const loadTaf = async (): Promise<void> => {
   tafLoading = (async () => {
     setStatus("正在拉取 39 站 TAF 预报（aviationweather 公开通路）…", "loading");
     const ids = stationsFile.stations.map((s) => s.icao).join(",");
-    // 超时 20s（评测工程 P2-4：上游挂死不再无界等待）；错误分层在 catch 判别
+    // 超时 20s（评测工程 P2-4：上游挂死不再无界等待）；错误分层在 catch 判别。
+    // 上一周期并行拉取（owner 9/24 方案B）：上游 api/data/taf 不支持 hours，date 参数＝「该时刻已发布的最新报」
+    // ——date=now-4h 取上一发布周期，与最新周期合并成报池、按查看时刻选在效报；属增强取数，失败静默降级
+    const base = `/aw-taf?ids=${ids}&format=raw`;
+    const prevTextPromise: Promise<string> = fetch(
+      `${base}&date=${new Date(Date.now() - 4 * 3_600_000).toISOString()}`,
+      { signal: AbortSignal.timeout(20_000) },
+    )
+      .then((r) => (r.ok ? r.text() : ""))
+      .catch(() => "");
     let res: Response;
     try {
-      res = await fetch(`/aw-taf?ids=${ids}&format=raw`, { signal: AbortSignal.timeout(20_000) }); // 走 vite 代理（见 vite.config.ts——上游无 CORS 头）
+      res = await fetch(base, { signal: AbortSignal.timeout(20_000) }); // 走 vite 代理（见 vite.config.ts——上游无 CORS 头）
     } catch (err) {
       const timedOut = err instanceof DOMException && err.name === "TimeoutError";
       throw timedOut
@@ -379,26 +433,39 @@ const loadTaf = async (): Promise<void> => {
         : new Error("网络请求失败，请检查网络后重试");
     }
     if (!res.ok) throw new Error(`上游返回异常状态 ${res.status}，请稍后重试`);
-    const text = await res.text();
+    const text = (await res.text()) + "\n" + (await prevTextPromise);
     const byIcao = new Map(stationsFile.stations.map((s) => [s.icao, s]));
-    const items: TafLayerItem[] = [];
     let failed = 0;
-    // aviationweather raw 格式：新报行从行首起，续行以空白缩进续接——先归并再解析
+    // aviationweather raw 格式：新报行从行首起，续行以空白缩进续接——先归并再解析；
+    // 两代周期合并进按站报池（raw 去重、生效起点升序——同起点晚发布者在后）
     const reports: string[] = [];
     for (const line of text.split("\n")) {
       if (line.trim() === "") continue;
       if (/^\s/.test(line) && reports.length > 0) reports[reports.length - 1] += ` ${line.trim()}`;
       else reports.push(line.trim());
     }
+    const seen = new Set<string>();
     for (const raw of reports) {
       try {
         const taf = parseTaf(raw);
-        const st = byIcao.get(taf.station);
-        if (st === undefined) continue;
-        items.push({ report: taf, position: [st.lat, st.lon], title: `${st.icao} ${st.name}` });
+        if (byIcao.get(taf.station) === undefined || seen.has(taf.raw)) continue;
+        seen.add(taf.raw);
+        const pool = reportsByStation.get(taf.station) ?? [];
+        pool.push(taf);
+        reportsByStation.set(taf.station, pool);
       } catch {
         failed += 1;
       }
+    }
+    for (const pool of reportsByStation.values()) sortTafPool(pool);
+    // 初始即取「现在」的在效报——首屏不再整片灰「未生效」（owner 9/24 方案B 的直接目的）
+    const nowFloor = new Date(Math.floor(Date.now() / 600_000) * 600_000);
+    const nowAbs = tlAbsOf(dateToAt(nowFloor));
+    const items: TafLayerItem[] = [];
+    for (const s of stationsFile.stations) {
+      const r = selectReport(s.icao, nowAbs);
+      if (r !== undefined)
+        items.push({ report: r, position: [s.lat, s.lon], title: `${s.icao} ${s.name}` });
     }
     if (items.length === 0) throw new Error("上游返回的报文全部解析失败（数据异常），请稍后重试");
     tafItems = items;
