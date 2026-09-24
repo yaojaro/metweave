@@ -566,13 +566,12 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
   },
 };
 
-/** 悬停解释统一挂载：title 与 aria-label 同挂同文。
- *  title 单押触屏无 hover、键盘不可聚焦、默认读屏不朗读（三重不可达）；
- *  aria-label 让同一文案进入可编程访问面（读屏/辅助技术可读）。
- *  键盘契约（评测工程 P1 修复批）：可聚焦元素 Enter/Space 开合气泡、Esc 关闭、
- *  aria-expanded 挂触发元素、气泡经 aria-describedby 接入读屏；联动点亮 mouseover 与 focusin 同路。 */
+/** 悬停解释统一挂载：aria-label 承载读屏通道，点击/Enter/Space 切换气泡（见 root 委托），
+ *  悬停联动随行显电码浮签（owner 9/24 统一批）。
+ *  原生 title 已移除（2026-09-24 评测批2#6：title 悬停与电码浮签同屏双气泡叠出——TAF 卡此前
+ *  已把 title 移行头收口，METAR 卡对齐；人话解读走 aria-label（读屏）＋点击/键盘解码气泡，
+ *  电码走浮签，三通道各司其职不再叠出） */
 const attachHint = (node: HTMLElement, hint: string): void => {
-  node.title = hint; // 桌面悬停原生气泡保留
   node.setAttribute("aria-label", hint); // 读屏通道
   node.classList.add("mw-hint"); // 点击/键盘切换气泡（见 root 委托与 .mw-hint-pop 样式）
   node.tabIndex = 0; // 键盘 Tab 可达（Enter/Space 开合气泡）
@@ -850,9 +849,7 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
       // 提示双挂载：内联 span 承载 affordance（下划线贴文字 + 点击气泡），
       // dd 保留原生 title（悬停面更大，行级语义兼容）
       if (title !== undefined && title !== "") {
-        attachHint(text, title);
-        dd.title = title;
-        dd.setAttribute("aria-label", title); // C1 三重可达契约：title 必同挂 aria-label
+        attachHint(text, title); // 词级承载全部通道（aria-label/气泡/浮签）——行级 title 一并退役（批2#6 双气泡收口）
       }
     } else {
       dd.append(value);

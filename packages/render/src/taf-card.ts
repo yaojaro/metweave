@@ -506,6 +506,24 @@ const decodeRowsOf = (
 
 const wxJoin = (locale: "zh" | "en"): string => (locale === "zh" ? "、" : ", ");
 
+/**
+ * 一组展开条件 → 人话要素串（2026-09-24 评测批2#4：tooltip/置顶提示的电码浓汤人话化）。
+ * 词表与分段行同一来源（gloss 单一真相）：「能见度 ≥10 km · 雷暴伴雨（飞行威胁大） · 疏云，云底约 700 米」；
+ * 与分段行值的差别仅在不带标签（「风：」等）。空条件返回空串（调用方自行占位）。
+ */
+export function summarizeTafConditions(c: TafResolvedConditions, locale: "zh" | "en"): string {
+  if (c.cavok) return cavokText(locale);
+  const parts: string[] = [];
+  const w = segmentWindText(c.wind, locale);
+  if (w !== undefined) parts.push(w);
+  const v = segmentVisText(c.visibility);
+  if (v !== undefined) parts.push(v);
+  if (c.weather.length > 0)
+    parts.push(c.weather.map((g) => weatherGloss(g, WX_GLOSS[locale])).join(wxJoin(locale)));
+  for (const cloud of segmentCloudTexts(c.clouds, locale)) parts.push(cloud);
+  return parts.join(locale === "zh" ? " · " : ", ");
+}
+
 /** 展开四要素 → 带标签条目；CAVOK 独立成句（其让位语义下 vis/weather/clouds 缺席） */
 const conditionItems = (
   c: TafResolvedConditions,

@@ -489,7 +489,8 @@ describe("addTafLayer（v0.2 渲染层①）", () => {
     const g = await addTafLayer(map, [{ report: r, position: [23, 113] }], {
       at: { day: 24, hour: 19, minute: 0 },
     });
-    expect(firstTipText(g)).toContain("TSRA");
+    // 批2#4：tooltip 摘要/TEMPO 提示改人话（电码浓汤退役——「雷暴伴雨（飞行威胁大）」）
+    expect(firstTipText(g)).toContain("雷暴伴雨");
     const label = (g.getLayers()[0] as L.Marker)
       .getElement()
       ?.querySelector('[role="img"]')
@@ -959,5 +960,15 @@ describe("月界批：calendarAnchor + item.monthAnchor（层连续序 at 归一
     const val = ctrl.querySelector("input")?.getAttribute("aria-valuetext") ?? "";
     expect(val).toContain("北京时10月1日07:50"); // 9/30 23:50Z +8h（真月历跨月、无回绕）
     map.remove();
+  });
+});
+
+describe("TIER_COLORS 单一来源导出（评测批2#3：图例/面板与圆点同表）", () => {
+  it("四档色值锁定（宿主图例引用此表；值漂移即红）", async () => {
+    const { TIER_COLORS } = await import("./index");
+    expect(TIER_COLORS.poor).toBe("#d05656");
+    expect(TIER_COLORS.caution).toBe("#e0a13c");
+    expect(TIER_COLORS.good).toBe("#3aa657");
+    expect(TIER_COLORS.unknown).toBe("#8a94a0");
   });
 });

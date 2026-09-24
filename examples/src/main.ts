@@ -8,6 +8,8 @@ import {
   addMetarLayer,
   addTafLayer,
   setTafLayerTime,
+  TIER_COLORS,
+  type ConditionTier,
   type TafExpandAt,
   type TafLayerItem,
   type TafReport,
@@ -25,11 +27,26 @@ import {
   zonedDayHour,
   type CalendarAnchor,
 } from "./timeline-core";
+import { stationTitleOf } from "./zh-stations";
 import { setupBasemap } from "./basemaps";
 import "./style.css";
 
+/** 档名字符串守卫（DOM 回读值收窄到 ConditionTier，免类型断言） */
+const isTier = (x: string): x is ConditionTier =>
+  x === "good" || x === "caution" || x === "poor" || x === "unknown";
+
 const map = L.map("map", { center: [35.5, 105], zoom: 4 });
 const hasBasemap = setupBasemap(map);
+
+// 图例/面板色值单一来源（评测批2#3）：@metweave/leaflet 的 TIER_COLORS——与地图圆点同表取色，
+// 图例项由 main.ts 启动时注入（index.html 不再内联色值，两套色系并存的根因收口）
+const legendBox = document.getElementById("map-legend");
+if (legendBox !== null) {
+  for (const chip of Array.from(legendBox.querySelectorAll<HTMLElement>(".lg-item i"))) {
+    const tier = chip.dataset.tier;
+    if (tier !== undefined && isTier(tier)) chip.style.background = TIER_COLORS[tier];
+  }
+}
 
 // 弹窗自动避让边（owner 9/24 指令：卡片不与固定悬浮层重叠）：autoPan 只认这两角留白——
 // 顶部让开模式切换条（实测 bottom≈68）；底部让开免责声明栏+时间轴条+图例+状态条（时间轴批后合计≈140）
@@ -130,6 +147,7 @@ const pendingByMarker = new Map<L.CircleMarker, { icao: string; name: string }>(
 let openedIcao: string | null = null;
 
 for (const s of stationsFile.stations) {
+  const zhName = stationTitleOf(s.icao, s.name); // 中文在前（批2#5：ZWSH 对小白毫无意义）
   const marker = L.circleMarker([s.lat, s.lon], {
     radius: 5,
     color: "#64748b",
@@ -137,12 +155,12 @@ for (const s of stationsFile.stations) {
     fillColor: "#94a3b8",
     fillOpacity: 0.55,
     className: "mw-demo-pending",
-  }).bindTooltip(`${s.icao} ${s.name} · 实况获取中`);
-  marker.bindPopup(loadingContent(s.icao, s.name), { maxWidth: 420 });
+  }).bindTooltip(`${s.icao} ${zhName} · 实况获取中`);
+  marker.bindPopup(loadingContent(s.icao, zhName), { maxWidth: 420 });
   marker.on("popupopen", () => {
     openedIcao = s.icao;
   });
-  pendingByMarker.set(marker, { icao: s.icao, name: s.name });
+  pendingByMarker.set(marker, { icao: s.icao, name: zhName });
   pendingLayer.addLayer(marker);
 }
 
@@ -162,8 +180,13 @@ const report = async (): Promise<void> => {
     onUnparseable: (failure) => skipped.push(failure.station),
   });
   map.removeLayer(pendingLayer);
-  metarItems = items; // 时区切换 / 模式回切重建实况层的数据面
-  const group = await addMetarLayer(map, items, {
+  // 站名中文化（批2#5）：卡片标题/tooltip/marker 名统一「ICAO 中文（英文）」——原始 items 留作数据面
+  const zhItems = items.map((it) => ({
+    ...it,
+    title: `${it.report.station} ${stationTitleOf(it.report.station, it.title.slice(it.report.station.length + 1))}`,
+  }));
+  metarItems = zhItems; // 时区切换 / 模式回切重建实况层的数据面
+  const group = await addMetarLayer(map, zhItems, {
     card: { raw: true, utcOffsetMinutes: tzOffset },
     conditionColors: true,
     popupOptions: POPUP_AUTOPAN,
@@ -441,7 +464,7 @@ const loadTaf = async (): Promise<void> => {
         items.push({
           report: r,
           position: [s.lat, s.lon],
-          title: `${s.icao} ${s.name}`,
+          title: `${s.icao} ${stationTitleOf(s.icao, s.name)}`,
           monthAnchor: monthAnchorOf(r, nowMs),
         });
     }
@@ -454,7 +477,7 @@ const loadTaf = async (): Promise<void> => {
     if (metarLayer !== undefined) map.removeLayer(metarLayer);
     else map.removeLayer(pendingLayer);
     // 站点列表（档色点＋下一变化；滑杆换时刻即刷新；行点击飞行并开卡——评测签派 P2-7）
-    const TIER_ORDER: Record<string, number> = { danger: 0, caution: 1, good: 2, unknown: 3 };
+    const TIER_ORDER: Record<ConditionTier, number> = { poor: 0, caution: 1, good: 2, unknown: 3 };
     const CHANGE_WORD: Record<string, string> = {
       FM: "自此",
       BECMG: "渐变",
@@ -471,7 +494,8 @@ const loadTaf = async (): Promise<void> => {
       const rowsData = tafItems.map((it, i) => {
         const ml = markers[i];
         const dot = ml instanceof L.Marker ? ml.getElement()?.querySelector(".mw-dot") : undefined;
-        const tier = dot?.className.match(/mw-dot-(\w+)/)?.[1] ?? "unknown";
+        const tierRaw = dot?.className.match(/mw-dot-(\w+)/)?.[1] ?? "unknown";
+        const tier: ConditionTier = isTier(tierRaw) ? tierRaw : "unknown";
         const ch = it.report.changes[0];
         // 人话化窗口（复测小白#1/#面板 + 月界批真实月历 + 批4 前缀降噪）：ddHH/ddHH →
         // 当前时区单制「M月D日HH时–HH时」（同日尾端只显小时，「北京时」前缀首处保留）
@@ -503,22 +527,17 @@ const loadTaf = async (): Promise<void> => {
       });
       rowsData.sort(
         (a, b) =>
-          (TIER_ORDER[a.tier] ?? 9) - (TIER_ORDER[b.tier] ?? 9) ||
+          TIER_ORDER[a.tier] - TIER_ORDER[b.tier] ||
           a.it.report.station.localeCompare(b.it.report.station),
       );
-      const colors: Record<string, string> = {
-        danger: "#c2504a",
-        caution: "#d99a2b",
-        good: "#2f9e63",
-        unknown: "#94a3b8",
-      };
+      const colors = TIER_COLORS; // 批2#3：面板色点与地图圆点同一张表（两套色系的根因收口）
       for (const r of rowsData) {
         const tr = document.createElement("tr");
         tr.tabIndex = 0;
         const tdDot = document.createElement("td");
         const dot = document.createElement("span");
         dot.className = "p-dot";
-        dot.style.background = colors[r.tier] ?? colors.unknown ?? "#94a3b8";
+        dot.style.background = colors[r.tier] ?? colors.unknown;
         tdDot.append(dot);
         const tdName = document.createElement("td");
         const code = document.createElement("span");
@@ -569,8 +588,8 @@ const loadTaf = async (): Promise<void> => {
         modeBar.panelTitle.textContent = `站点预报 · ${rowsData.length} 站（按当前时刻状态排序）`;
         const legend = document.createElement("span");
         legend.className = "p-legend";
-        const legendItems: Array<[string, string]> = [
-          ["danger", "差"],
+        const legendItems: Array<[ConditionTier, string]> = [
+          ["poor", "差"],
           ["caution", "注意"],
           ["good", "良好"],
           ["unknown", "无数据"],
@@ -580,7 +599,7 @@ const loadTaf = async (): Promise<void> => {
           chip.className = "p-legend-item";
           const dot = document.createElement("span");
           dot.className = "p-dot";
-          dot.style.background = colors[key] ?? colors.unknown ?? "#94a3b8";
+          dot.style.background = colors[key] ?? colors.unknown;
           chip.append(dot, document.createTextNode(word));
           legend.append(chip);
         }

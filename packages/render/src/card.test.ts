@@ -19,9 +19,9 @@ const CLOUD_MISSING = "METAR RJTT 080800Z 18012KT 9999 FEW010 BKN025 BKN/// 28/2
 const glossOf = (raw: string, code: string): string => {
   const card = renderCard(parse(raw));
   const span = [...card.querySelectorAll("dd span")].find((s) =>
-    s.getAttribute("title")?.includes(code),
+    s.getAttribute("aria-label")?.includes(code),
   );
-  return span?.getAttribute("title") ?? "";
+  return span?.getAttribute("aria-label") ?? "";
 };
 
 /** 点击卡片上一个带提示的元素，断言气泡弹出并返回气泡全文（转换说明 + 依据行的断言基底） */
@@ -42,7 +42,7 @@ const rawSpanByTitle = (
   prefix: string,
 ): HTMLElement | undefined =>
   [...card.querySelectorAll<HTMLElement>(".mw-raw span.mw-hint")].find((s) =>
-    s.getAttribute("title")?.startsWith(prefix),
+    s.getAttribute("aria-label")?.startsWith(prefix),
   );
 
 describe("术语修订五条（已按专业评测修订，待 owner 终审）", () => {
@@ -50,7 +50,9 @@ describe("术语修订五条（已按专业评测修订，待 owner 终审）", 
     const card = renderCard(
       parse("METAR ZGGG 120000Z 27008KT 9999 FEW020CB FEW030TCU 26/22 Q1009"),
     );
-    const titles = [...card.querySelectorAll("dd span")].map((s) => s.getAttribute("title") ?? "");
+    const titles = [...card.querySelectorAll("dd span")].map(
+      (s) => s.getAttribute("aria-label") ?? "",
+    );
     expect(titles.some((t) => t.includes("浓积云"))).toBe(true);
     expect(titles.some((t) => t.includes("积雨云"))).toBe(true);
     expect(titles.some((t) => t.includes("耸积云"))).toBe(false);
@@ -85,21 +87,23 @@ describe("术语修订五条（已按专业评测修订，待 owner 终审）", 
     const cavok = [...card.querySelectorAll(".mw-badge")].find((b) =>
       b.textContent?.startsWith("CAVOK"),
     );
-    expect(cavok?.getAttribute("title")).toContain("任意高度无积雨云/浓积云");
+    expect(cavok?.getAttribute("aria-label")).toContain("任意高度无积雨云/浓积云");
   });
 
   it("en 同步：TCU towering cumulus 不回归、VCSH 含 type indistinguishable、CAVOK 补 no CB/TCU", () => {
     const card = renderCard(parse("ZGGG 120000Z 27008KT 9999 VCSH FEW030TCU 26/22 Q1009"), {
       locale: "en",
     });
-    const titles = [...card.querySelectorAll("dd span")].map((n) => n.getAttribute("title") ?? "");
+    const titles = [...card.querySelectorAll("dd span")].map(
+      (n) => n.getAttribute("aria-label") ?? "",
+    );
     expect(titles.some((t) => t.includes("towering cumulus"))).toBe(true);
     expect(titles.some((t) => t.includes("type indistinguishable"))).toBe(true);
     const cavokCard = renderCard(parse(RAW), { locale: "en" });
     const cavok = [...cavokCard.querySelectorAll(".mw-badge")].find((b) =>
       b.textContent?.startsWith("CAVOK"),
     );
-    expect(cavok?.getAttribute("title")).toContain("no CB/TCU at any height");
+    expect(cavok?.getAttribute("aria-label")).toContain("no CB/TCU at any height");
     expect(cavokCard.outerHTML).not.toMatch(HAN);
     expect(card.outerHTML).not.toMatch(HAN);
   });
@@ -133,9 +137,9 @@ describe("renderCard", () => {
     expect(bads.length).toBeGreaterThan(0);
     const bkn = bads.find((b) => b.textContent === "BKN///");
     expect(bkn).toBeDefined();
-    expect(bkn?.getAttribute("title")).toContain("云高缺测");
+    expect(bkn?.getAttribute("aria-label")).toContain("云高缺测");
     // 悬停不再是裸组名「云」，而是缺测解释
-    expect(bkn?.getAttribute("title")).not.toBe("云");
+    expect(bkn?.getAttribute("aria-label")).not.toBe("云");
   });
 
   it("SPECI + 更正报徽章（业务惯用语）：SPECI 不再双挂「例行报告」", () => {
@@ -178,7 +182,7 @@ describe("渲染 D 批：风组缺测行 / 术语微调 / 字段值人话悬停"
     expect(cavokBadge?.querySelector(".mw-badge-sub")?.textContent).toBe(
       "能见度佳、低云与天气无碍",
     );
-    expect(cavokBadge?.getAttribute("title")).toContain("5000ft 以下无云");
+    expect(cavokBadge?.getAttribute("aria-label")).toContain("5000ft 以下无云");
   });
 
   it("站名行：stationTitle 传入时渲染 muted 行，缺省不渲染（IR 无此信息不捏造）", () => {
@@ -199,21 +203,23 @@ describe("渲染 D 批：风组缺测行 / 术语微调 / 字段值人话悬停"
   it("云量人话悬停：SCT 层 title 含档位说明与米制换算（SCT033 → 疏云 + 约 1006 米），并声明米值为换算约值", () => {
     const card = renderCard(parse("METAR ZGGG 120000Z 27008KT 9999 SCT033 26/22 Q1009"));
     const piece = [...card.querySelectorAll("dd span")].find((s) =>
-      s.getAttribute("title")?.includes("SCT033"),
+      s.getAttribute("aria-label")?.includes("SCT033"),
     );
     expect(piece).toBeDefined();
-    expect(piece?.getAttribute("title")?.length ?? 0).toBeGreaterThan(0);
-    expect(piece?.getAttribute("title")).toContain("疏云");
+    expect(piece?.getAttribute("aria-label")?.length ?? 0).toBeGreaterThan(0);
+    expect(piece?.getAttribute("aria-label")).toContain("疏云");
     // 3300 ft × 0.3048 = 1005.84 → 精确换算取整 1006（不再圆整到 50 米档位）
-    expect(piece?.getAttribute("title")).toContain("3300 英尺 ≈ 1006 米");
+    expect(piece?.getAttribute("aria-label")).toContain("3300 英尺 ≈ 1006 米");
     // 米是本库换算所得（报文只编英尺）——悬停必须把这一点说出来
-    expect(piece?.getAttribute("title")).toContain("报文只编英尺");
+    expect(piece?.getAttribute("aria-label")).toContain("报文只编英尺");
   });
 
   it("云量四档悬停各有文案（FEW/SCT/BKN/OVC），对流云与缺测位不悬停崩溃", () => {
     const raw = "METAR ZGGG 120000Z 27008KT 9999 FEW030 SCT050 BKN080 OVC150 FEW020CB 26/22 Q1009";
     const card = renderCard(parse(raw));
-    const titles = [...card.querySelectorAll("dd span")].map((s) => s.getAttribute("title") ?? "");
+    const titles = [...card.querySelectorAll("dd span")].map(
+      (s) => s.getAttribute("aria-label") ?? "",
+    );
     const cloudTitles = titles.filter((t) => t.includes("个量"));
     expect(cloudTitles.length).toBe(5);
     expect(cloudTitles.some((t) => t.includes("少云"))).toBe(true);
@@ -224,7 +230,7 @@ describe("渲染 D 批：风组缺测行 / 术语微调 / 字段值人话悬停"
     // 缺测位（BKN///）无档位可释但不抛错：主表给「云量缺测」，原码在悬停 title
     const withMissing = renderCard(parse(CLOUD_MISSING));
     const missingSpan = [...withMissing.querySelectorAll("dd span")].some((s) =>
-      s.getAttribute("title")?.includes("BKN///"),
+      s.getAttribute("aria-label")?.includes("BKN///"),
     );
     expect(missingSpan).toBe(true);
   });
@@ -232,7 +238,7 @@ describe("渲染 D 批：风组缺测行 / 术语微调 / 字段值人话悬停"
   it("风速单位人话悬停：风行 title 含单位说明（mps = 米/秒）", () => {
     const card = renderCard(parse(RAW)); // VRB02MPS
     const dd = [...card.querySelectorAll("dd")].find((d) => d.textContent?.includes("mps"));
-    expect(dd?.querySelector("span[title]")?.getAttribute("title")).toContain("米/秒");
+    expect(dd?.querySelector("span[aria-label]")?.getAttribute("aria-label")).toContain("米/秒");
   });
 });
 
@@ -278,7 +284,9 @@ describe("渲染 B 批（第二轮复评）：静风 / SM 阈值 / RVR 保真 / 
     expect(weatherRow?.textContent).not.toContain("+TSRA");
     const pieces = [...(weatherRow?.querySelectorAll("span") ?? [])];
     const titleOf = (code: string): string =>
-      pieces.find((p) => p.getAttribute("title")?.includes(code))?.getAttribute("title") ?? "";
+      pieces
+        .find((p) => p.getAttribute("aria-label")?.includes(code))
+        ?.getAttribute("aria-label") ?? "";
     expect(titleOf("+TSRA")).toContain("强雷暴伴雨");
     expect(titleOf("VA")).toContain("火山灰");
     expect(titleOf("GR")).toContain("冰雹");
@@ -292,7 +300,7 @@ describe("渲染 B 批（第二轮复评）：静风 / SM 阈值 / RVR 保真 / 
     const cbPiece = [...card.querySelectorAll("dd span")].find((p) =>
       p.textContent?.includes("CB"),
     );
-    expect(cbPiece?.getAttribute("title")).toContain("雷暴、冰雹、强颠簸风险");
+    expect(cbPiece?.getAttribute("aria-label")).toContain("雷暴、冰雹、强颠簸风险");
   });
 });
 
@@ -340,7 +348,7 @@ describe("locale:'en' 完整兑现（半兑现比没有更糟——行标签/悬
     expect(badges).toContain("AUTO");
     expect(card.querySelector(".mw-warnings")?.textContent).toContain("Missing-value code");
     // RAW 对照视图的告警悬停也走英文映射
-    const badTitle = card.querySelector(".mw-raw .mw-bad")?.getAttribute("title") ?? "";
+    const badTitle = card.querySelector(".mw-raw .mw-bad")?.getAttribute("aria-label") ?? "";
     expect(badTitle).not.toMatch(HAN);
     expect(card.outerHTML).not.toMatch(HAN);
   });
@@ -350,7 +358,7 @@ describe("locale:'en' 完整兑现（半兑现比没有更糟——行标签/悬
       locale: "en",
     });
     const titles = [...card.querySelectorAll("dd, dd span")]
-      .map((n) => n.getAttribute("title") ?? "")
+      .map((n) => n.getAttribute("aria-label") ?? "")
       .join("\n");
     expect(titles).toContain("Scattered: 3–4 oktas");
     expect(titles).toContain("base 3300 ft ≈ 1006 m");
@@ -370,7 +378,7 @@ describe("locale:'en' 完整兑现（半兑现比没有更糟——行标签/悬
     const cavok = [...card.querySelectorAll(".mw-badge")].find((b) =>
       b.textContent?.startsWith("CAVOK"),
     );
-    expect(cavok?.getAttribute("title")).toContain("no cloud below 5000 ft");
+    expect(cavok?.getAttribute("aria-label")).toContain("no cloud below 5000 ft");
     expect(card.outerHTML).not.toMatch(HAN);
   });
 
@@ -398,15 +406,15 @@ describe("跑道状态卡片渲染（解析了不让 UI 蒸发——签派员最
     expect(row?.textContent).toContain("深度 2 mm");
     expect(row?.textContent).toContain("摩擦系数 0.37");
     const piece = row?.querySelector("span");
-    expect(piece?.getAttribute("title")).toContain("R13R/550237");
-    expect(piece?.getAttribute("title")).toContain("WMO 306 FM15 §15.13.6");
-    expect(piece?.getAttribute("title")).toContain("待 owner 终审");
+    expect(piece?.getAttribute("aria-label")).toContain("R13R/550237");
+    expect(piece?.getAttribute("aria-label")).toContain("WMO 306 FM15 §15.13.6");
+    expect(piece?.getAttribute("aria-label")).toContain("待 owner 终审");
     // RAW 对照视图跑道状态组也有高亮与悬停
     const rawPiece = [...card.querySelectorAll(".mw-raw span")].find((s) =>
       s.textContent?.startsWith("R13R/"),
     );
-    expect(rawPiece?.getAttribute("title")).toContain("跑道状态");
-    expect(rawPiece?.getAttribute("title")).toContain("R13R"); // 逐要素解码：不再只有行标签
+    expect(rawPiece?.getAttribute("aria-label")).toContain("跑道状态");
+    expect(rawPiece?.getAttribute("aria-label")).toContain("R13R"); // 逐要素解码：不再只有行标签
   });
 
   it("深度 92–98 段折厘米显示 + 制动作用五档（R01/529295 → 深度 10 cm、制动作用 好）", () => {
@@ -428,7 +436,7 @@ describe("跑道状态卡片渲染（解析了不让 UI 蒸发——签派员最
     expect(row?.textContent).toContain("R31L 跑道关闭");
     const closedPiece = row?.querySelector("span");
     expect(closedPiece?.classList.contains("mw-rwy-closed")).toBe(true);
-    expect(closedPiece?.getAttribute("title")).toContain("不可用");
+    expect(closedPiece?.getAttribute("aria-label")).toContain("不可用");
     const allClosed = renderCard(
       parse("METAR UUDD 150000Z 36001MPS 9999 SCT030 M02/M05 Q1019 R/SNOCLO"),
     );
@@ -443,7 +451,7 @@ describe("跑道状态卡片渲染（解析了不让 UI 蒸发——签派员最
     expect(row?.textContent).toContain("已清除");
     expect(row?.textContent).toContain("摩擦系数 0.65");
     const piece = row?.querySelector("span");
-    expect(piece?.getAttribute("title")).toContain("CLRD");
+    expect(piece?.getAttribute("aria-label")).toContain("CLRD");
   });
 
   it("无跑道状态组时不渲染该行（不出现空行噪音）", () => {
@@ -460,7 +468,7 @@ describe("跑道状态卡片渲染（解析了不让 UI 蒸发——签派员最
     expect(row?.textContent).toContain("depth 2 mm");
     expect(row?.textContent).toContain("friction 0.37");
     const piece = row?.querySelector("span");
-    expect(piece?.getAttribute("title")).toContain("pending owner review");
+    expect(piece?.getAttribute("aria-label")).toContain("pending owner review");
     expect(card.outerHTML).not.toMatch(HAN);
   });
 });
@@ -469,24 +477,17 @@ describe("跑道状态卡片渲染（解析了不让 UI 蒸发——签派员最
 
 const THUNDERSTORM = "ZGGG 120000Z 00000KT 0800 R36/M0050D +TSRA BKN030CB 26/22 Q1009";
 
-describe("C1：悬停解释三重可达（title 同挂 aria-label）", () => {
-  it("全部带 title 的节点同时有 aria-label 且内容一致（含 RAW 对照视图）", () => {
+describe("C1：悬停解释可达契约（批2#6 后：零原生 title、aria-label 承载读屏）", () => {
+  it("整卡零原生 title（双气泡收口——title 悬停与电码浮签不再同屏叠出）；aria-label 承载读屏通道", () => {
     const card = renderCard(parse(THUNDERSTORM), { raw: true });
-    const titled = [...card.querySelectorAll("[title]")];
-    expect(titled.length).toBeGreaterThan(3); // 风行/天气/云/跑道状态/RAW 高亮均有挂载点
-    for (const node of titled) {
-      expect(
-        node.getAttribute("aria-label"),
-        `节点「${node.getAttribute("title")}」缺 aria-label`,
-      ).toBe(node.getAttribute("title"));
-    }
+    expect(card.querySelectorAll("[title]").length).toBe(0); // 原生 title 全量退役（突变回流即红）
+    const labeled = [...card.querySelectorAll("[aria-label]")];
+    expect(labeled.length).toBeGreaterThan(3); // 风行/天气/云/RAW 高亮均有读屏挂载点
   });
 
-  it("en 卡片同规则成立（悬停文案对读屏可编程访问，零中文）", () => {
+  it("en 卡片同规则成立（零原生 title，零中文）", () => {
     const card = renderCard(parse(THUNDERSTORM), { locale: "en", raw: true });
-    for (const node of card.querySelectorAll("[title]")) {
-      expect(node.getAttribute("aria-label")).toBe(node.getAttribute("title"));
-    }
+    expect(card.querySelectorAll("[title]").length).toBe(0);
     expect(card.outerHTML).not.toMatch(HAN);
   });
 });
@@ -736,7 +737,9 @@ describe("下阶段：风切变行（WS RWY——危险级着色 + 双语悬停�
     const row = [...card.querySelectorAll("dd")][labels.indexOf("风切变")];
     expect(row?.textContent).toContain("跑道 36R 受影响");
     expect(row?.classList.contains("mw-danger")).toBe(true);
-    expect(row?.getAttribute("title")).toContain("低空风切变——起降阶段重大危害");
+    expect(row?.querySelector("span")?.getAttribute("aria-label")).toContain(
+      "低空风切变——起降阶段重大危害",
+    );
     // 行序：跑道状态之后、趋势之前
     expect(labels.indexOf("风切变")).toBeLessThan(labels.indexOf("趋势"));
     // RAW 对照视图风切变组有高亮
@@ -764,7 +767,9 @@ describe("下阶段：风切变行（WS RWY——危险级着色 + 双语悬停�
     const row = [...card.querySelectorAll("dd")].find(
       (d) => d.textContent === "runways 36R affected",
     );
-    expect(row?.getAttribute("title")).toContain("major hazard during takeoff and landing");
+    expect(row?.querySelector("span")?.getAttribute("aria-label")).toContain(
+      "major hazard during takeoff and landing",
+    );
     expect(card.outerHTML).not.toMatch(HAN);
   });
 
@@ -809,21 +814,21 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
       parse("CYOW 041700Z 28015KT 1 1/2SM -SN R07R/1800V2200FT VV002 M08/M12 A3006"),
     );
     const vSpan = [...varying.querySelectorAll("dd span")].find((s) =>
-      s.getAttribute("title")?.startsWith("R07R/"),
+      s.getAttribute("aria-label")?.startsWith("R07R/"),
     );
-    expect(vSpan?.getAttribute("title")).toContain("两极值间波动");
+    expect(vSpan?.getAttribute("aria-label")).toContain("两极值间波动");
     const trend = renderCard(parse("ZGGG 120000Z 00000KT 0800 R36/M0050D 26/22 Q1009"));
     const tSpan = [...trend.querySelectorAll("dd span")].find((s) =>
-      s.getAttribute("title")?.startsWith("R36/"),
+      s.getAttribute("aria-label")?.startsWith("R36/"),
     );
-    expect(tSpan?.getAttribute("title")).toContain("上升/下降/无变化");
-    expect(tSpan?.getAttribute("title")).toContain("超出上限/低于下限");
+    expect(tSpan?.getAttribute("aria-label")).toContain("上升/下降/无变化");
+    expect(tSpan?.getAttribute("aria-label")).toContain("超出上限/低于下限");
     // 无 RVR 要素提示的纯值组悬停不带趋势/超界句
     const plain = renderCard(parse("ZGGG 120000Z 00000KT 0800 R36/0500 26/22 Q1009"));
     const pSpan = [...plain.querySelectorAll("dd span")].find((s) =>
-      s.getAttribute("title")?.startsWith("R36/"),
+      s.getAttribute("aria-label")?.startsWith("R36/"),
     );
-    expect(pSpan?.getAttribute("title") ?? "").not.toContain("上升/下降");
+    expect(pSpan?.getAttribute("aria-label") ?? "").not.toContain("上升/下降");
   });
 
   it("RVR 悬停 en：varying trend beyond 英文，零中文", () => {
@@ -832,10 +837,10 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
       { locale: "en" },
     );
     const span = [...card.querySelectorAll("dd span")].find((s) =>
-      s.getAttribute("title")?.startsWith("R36/"),
+      s.getAttribute("aria-label")?.startsWith("R36/"),
     );
-    expect(span?.getAttribute("title")).toContain("up/down/no change");
-    expect(span?.getAttribute("title")).toContain("above the upper / below the lower limit");
+    expect(span?.getAttribute("aria-label")).toContain("up/down/no change");
+    expect(span?.getAttribute("aria-label")).toContain("above the upper / below the lower limit");
     expect(card.outerHTML).not.toMatch(HAN);
   });
 
@@ -846,11 +851,13 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
       ),
     );
     const trendRow = [...card.querySelectorAll("dd")].find((d) =>
-      d.querySelector("span")?.getAttribute("title")?.startsWith("NOSIG"),
+      d.querySelector("span")?.getAttribute("aria-label")?.startsWith("NOSIG"),
     );
     const pieces = [...(trendRow?.querySelectorAll("span") ?? [])];
     const titleOf = (code: string): string =>
-      pieces.find((p) => p.getAttribute("title")?.startsWith(code))?.getAttribute("title") ?? "";
+      pieces
+        .find((p) => p.getAttribute("aria-label")?.startsWith(code))
+        ?.getAttribute("aria-label") ?? "";
     expect(titleOf("NOSIG")).toContain("无重要变化");
     expect(titleOf("BECMG")).toContain("渐变");
     // 预计时刻 = 具体时间点（HHMM 折 HH:MM，不重复 AT/TL/FM 原词）
@@ -862,14 +869,14 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
     expect(titleOf("TEMPO")).toContain("短时波动");
     expect(titleOf("TEMPO")).toContain("雷暴伴雨");
     // 趋势后 WS RWY（2026-09-14 趋势收窄改约）：WS 交回正文认组，渲染为独立风切变行（mw-danger）；
-    // BECMG 趋势行不再含 WS（行标签在 dt，行级 title 承载悬停语义——按 dd[title] 查找）
+    // BECMG 趋势行不再含 WS（行标签在 dt，悬停语义按词级 span 的 aria-label 查找）
     const wsTrend = renderCard(
       parse("ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 BECMG AT0130 4000 WS RWY02L"),
     );
     const wsRow = [...wsTrend.querySelectorAll("dd")].find((d) =>
-      d.getAttribute("title")?.includes("风切变"),
+      d.querySelector("span")?.getAttribute("aria-label")?.includes("风切变"),
     );
-    expect(wsRow?.querySelector("span")?.getAttribute("title")).toContain("风切变");
+    expect(wsRow?.querySelector("span")?.getAttribute("aria-label")).toContain("风切变");
     const becmgRow = [...wsTrend.querySelectorAll("dd")].find((d) =>
       d.textContent?.includes("BECMG"),
     );
@@ -882,10 +889,10 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
       { locale: "en" },
     );
     const trendRow = [...card.querySelectorAll("dd")].find((d) =>
-      d.querySelector("span")?.getAttribute("title")?.startsWith("NOSIG"),
+      d.querySelector("span")?.getAttribute("aria-label")?.startsWith("NOSIG"),
     );
     const titles = [...(trendRow?.querySelectorAll("span") ?? [])]
-      .map((p) => p.getAttribute("title") ?? "")
+      .map((p) => p.getAttribute("aria-label") ?? "")
       .join("\n");
     expect(titles).toContain("no significant change expected");
     expect(titles).toContain("gradual change");
@@ -899,39 +906,39 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
       parse("ZGOW 120700Z 14006MPS SCT040 32/25 Q1011 BECMG AT0730 FEW023CB BKN033"),
     );
     const trendRow = [...card.querySelectorAll("dd")].find((d) =>
-      d.querySelector("span")?.getAttribute("title")?.startsWith("BECMG"),
+      d.querySelector("span")?.getAttribute("aria-label")?.startsWith("BECMG"),
     );
-    const title = trendRow?.querySelector("span")?.getAttribute("title") ?? "";
+    const title = trendRow?.querySelector("span")?.getAttribute("aria-label") ?? "";
     expect(title).toContain("预计时刻 07:30");
     expect(title).toContain("少云，云底约 701 米（CB 积雨云：雷暴、冰雹、强颠簸风险）");
     expect(title).toContain("多云，云底约 1006 米");
     // NSW（趋势时段内无重要天气）/ NSC（无显著云）/ CAVOK（趋势内顶替三族）
     const nsw = renderCard(parse("ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 BECMG AT0840 NSW"));
     const nswTitle = [...nsw.querySelectorAll("dd span")]
-      .find((p) => p.getAttribute("title")?.includes("BECMG"))
-      ?.getAttribute("title");
+      .find((p) => p.getAttribute("aria-label")?.includes("BECMG"))
+      ?.getAttribute("aria-label");
     expect(nswTitle).toContain("无重要天气");
     const nsc = renderCard(parse("ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 BECMG TL1700 NSC"));
     const nscTitle = [...nsc.querySelectorAll("dd span")]
-      .find((p) => p.getAttribute("title")?.includes("BECMG"))
-      ?.getAttribute("title");
+      .find((p) => p.getAttribute("aria-label")?.includes("BECMG"))
+      ?.getAttribute("aria-label");
     expect(nscTitle).toContain("持续至 17:00");
     expect(nscTitle).toContain("无显著云");
     const cavok = renderCard(
       parse("ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 BECMG AT0600 CAVOK"),
     );
     const cavokTitle = [...cavok.querySelectorAll("dd span")]
-      .find((p) => p.getAttribute("title")?.includes("BECMG"))
-      ?.getAttribute("title");
+      .find((p) => p.getAttribute("aria-label")?.includes("BECMG"))
+      ?.getAttribute("aria-label");
     expect(cavokTitle).toContain("CAVOK：能见度 ≥10km");
   });
 
   it("趋势风组人话：unspecified 磨损段的风组照样解释（原词保留 + 风向风速人话）", () => {
     const card = renderCard(parse("ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 TL0730 11005MPS"));
     const trendRow = [...card.querySelectorAll("dd")].find((d) =>
-      d.querySelector("span")?.getAttribute("title")?.startsWith("TL0730"),
+      d.querySelector("span")?.getAttribute("aria-label")?.startsWith("TL0730"),
     );
-    const title = trendRow?.querySelector("span")?.getAttribute("title") ?? "";
+    const title = trendRow?.querySelector("span")?.getAttribute("aria-label") ?? "";
     expect(title).toContain("趋向：风 110° 5 mps");
   });
 
@@ -940,11 +947,11 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
       parse("ZGGG 120000Z 27008KT 9999 BKN008 BKN020 OVC150 VV002 26/22 Q1009"),
     );
     const cloudRow = [...card.querySelectorAll("dd")].find((d) =>
-      d.querySelector("span")?.getAttribute("title")?.includes("BKN008"),
+      d.querySelector("span")?.getAttribute("aria-label")?.includes("BKN008"),
     );
     const pieceOf = (code: string): HTMLElement | null =>
       [...(cloudRow?.querySelectorAll("span") ?? [])].find(
-        (p) => p.getAttribute("title")?.includes(code) ?? false,
+        (p) => p.getAttribute("aria-label")?.includes(code) ?? false,
       ) ?? null;
     expect(pieceOf("BKN008")?.classList.contains("mw-danger")).toBe(true);
     expect(pieceOf("BKN020")?.classList.contains("mw-caution")).toBe(true);
@@ -953,7 +960,7 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
     expect(pieceOf("VV002")?.classList.contains("mw-danger")).toBe(true);
     const vvCaution = renderCard(parse("ZGGG 120000Z 27008KT 9999 VV010 26/22 Q1009"));
     const vvRow = [...vvCaution.querySelectorAll("dd")].find((d) =>
-      d.querySelector("span")?.getAttribute("title")?.includes("VV010"),
+      d.querySelector("span")?.getAttribute("aria-label")?.includes("VV010"),
     );
     expect(vvRow?.querySelector("span")?.classList.contains("mw-caution")).toBe(true);
     // CB/TCU 仍红不回归；SCT/FEW 不按云底着色
@@ -964,7 +971,7 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
     expect(cbRow?.querySelector("span")?.classList.contains("mw-danger")).toBe(true);
     const few = cbRow
       ? [...cb.querySelectorAll("dd span")].find(
-          (p) => p.getAttribute("title")?.includes("FEW008") ?? false,
+          (p) => p.getAttribute("aria-label")?.includes("FEW008") ?? false,
         )
       : null;
     expect(few?.classList.contains("mw-caution")).toBe(false);
@@ -979,18 +986,22 @@ describe("官方标准核对修订（WMO 306 卷 I.1（2019）FM15 原文 + 民�
       parse("ZBAA 111630Z 32009G14MPS 290V350 7000 BLDU NSC 19/M12 Q1010 WS RWY36R NOSIG"),
     );
     const row = [...card.querySelectorAll("dd")].find((d) =>
-      d.getAttribute("title")?.includes("WS RWY36R"),
+      d.querySelector("span")?.getAttribute("aria-label")?.includes("WS RWY36R"),
     );
-    expect(row?.getAttribute("title")).toContain("WMO 306 FM15 §15.13.3");
-    expect(row?.getAttribute("title") ?? "").not.toContain("15.4");
+    expect(row?.querySelector("span")?.getAttribute("aria-label")).toContain(
+      "WMO 306 FM15 §15.13.3",
+    );
+    expect(row?.querySelector("span")?.getAttribute("aria-label") ?? "").not.toContain("15.4");
     const en = renderCard(
       parse("ZBAA 111630Z 32009G14MPS 290V350 7000 NSC 19/M12 Q1010 WS RWY36R NOSIG"),
       { locale: "en" },
     );
     const enRow = [...en.querySelectorAll("dd")].find((d) =>
-      d.getAttribute("title")?.includes("WS RWY36R"),
+      d.querySelector("span")?.getAttribute("aria-label")?.includes("WS RWY36R"),
     );
-    expect(enRow?.getAttribute("title")).toContain("WMO 306 FM15 §15.13.3");
+    expect(enRow?.querySelector("span")?.getAttribute("aria-label")).toContain(
+      "WMO 306 FM15 §15.13.3",
+    );
   });
 
   it("RVR 的 V 悬停更正：观测时段内在两极值间波动（非「两跑段间」）", () => {
@@ -998,23 +1009,23 @@ describe("官方标准核对修订（WMO 306 卷 I.1（2019）FM15 原文 + 民�
       parse("CYOW 041700Z 28015KT 1 1/2SM -SN R07R/1800V2200FT VV002 M08/M12 A3006"),
     );
     const vSpan = [...zh.querySelectorAll("dd span")].find((s) =>
-      s.getAttribute("title")?.startsWith("R07R/"),
+      s.getAttribute("aria-label")?.startsWith("R07R/"),
     );
-    expect(vSpan?.getAttribute("title")).toContain("V = 观测时段内在两极值间波动");
+    expect(vSpan?.getAttribute("aria-label")).toContain("V = 观测时段内在两极值间波动");
     const en = renderCard(
       parse("ZGGG 120000Z 00000KT 0800 R36/M0050D R07R/1800V2200FT 26/22 Q1009"),
       { locale: "en" },
     );
     // 逐跑道按在场要素拼装：R36 只有 U/D/N 与 P/M；V 波动句归 R07R（own-elements 口径）
     const enSpan36 = [...en.querySelectorAll("dd span")].find((s) =>
-      s.getAttribute("title")?.startsWith("R36/"),
+      s.getAttribute("aria-label")?.startsWith("R36/"),
     );
-    expect(enSpan36?.getAttribute("title")).toContain("up/down/no change");
-    expect(enSpan36?.getAttribute("title")).not.toContain("varying");
+    expect(enSpan36?.getAttribute("aria-label")).toContain("up/down/no change");
+    expect(enSpan36?.getAttribute("aria-label")).not.toContain("varying");
     const enSpan07 = [...en.querySelectorAll("dd span")].find((s) =>
-      s.getAttribute("title")?.startsWith("R07R/"),
+      s.getAttribute("aria-label")?.startsWith("R07R/"),
     );
-    expect(enSpan07?.getAttribute("title")).toContain("varying between two extreme values");
+    expect(enSpan07?.getAttribute("aria-label")).toContain("varying between two extreme values");
   });
 
   it("趋势时段词按官方语义分述 + 折具体时刻：AT 预计时刻 / TL 持续至 / FM 自…起（WMO §15.14.3 + 观测规范附录六）", () => {
@@ -1022,31 +1033,33 @@ describe("官方标准核对修订（WMO 306 卷 I.1（2019）FM15 原文 + 民�
       parse("ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 BECMG TL1700 0800 FG"),
     );
     const tlRow = [...tl.querySelectorAll("dd")].find((d) =>
-      d.querySelector("span")?.getAttribute("title")?.includes("BECMG"),
+      d.querySelector("span")?.getAttribute("aria-label")?.includes("BECMG"),
     );
-    expect(tlRow?.querySelector("span")?.getAttribute("title")).toContain("持续至 17:00");
-    expect(tlRow?.querySelector("span")?.getAttribute("title")).toContain("趋向：能见度 800 m");
+    expect(tlRow?.querySelector("span")?.getAttribute("aria-label")).toContain("持续至 17:00");
+    expect(tlRow?.querySelector("span")?.getAttribute("aria-label")).toContain(
+      "趋向：能见度 800 m",
+    );
     const fm = renderCard(parse("ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 BECMG FM1030 4000"));
     const fmRow = [...fm.querySelectorAll("dd")].find((d) =>
-      d.querySelector("span")?.getAttribute("title")?.includes("BECMG"),
+      d.querySelector("span")?.getAttribute("aria-label")?.includes("BECMG"),
     );
-    expect(fmRow?.querySelector("span")?.getAttribute("title")).toContain("自 10:30 起");
+    expect(fmRow?.querySelector("span")?.getAttribute("aria-label")).toContain("自 10:30 起");
     const en = renderCard(
       parse("ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 BECMG TL1700 0800 FG"),
       { locale: "en" },
     );
     const enRow = [...en.querySelectorAll("dd")].find((d) =>
-      d.querySelector("span")?.getAttribute("title")?.includes("BECMG"),
+      d.querySelector("span")?.getAttribute("aria-label")?.includes("BECMG"),
     );
-    expect(enRow?.querySelector("span")?.getAttribute("title")).toContain("until 17:00");
+    expect(enRow?.querySelector("span")?.getAttribute("aria-label")).toContain("until 17:00");
     const enFm = renderCard(
       parse("ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 BECMG FM1030 4000"),
       { locale: "en" },
     );
     const enFmRow = [...enFm.querySelectorAll("dd")].find((d) =>
-      d.querySelector("span")?.getAttribute("title")?.includes("BECMG"),
+      d.querySelector("span")?.getAttribute("aria-label")?.includes("BECMG"),
     );
-    expect(enFmRow?.querySelector("span")?.getAttribute("title")).toContain("from 10:30");
+    expect(enFmRow?.querySelector("span")?.getAttribute("aria-label")).toContain("from 10:30");
   });
 
   it("天气现象表对齐观测规范附录十五：GS 小雹和/或霰、PO 尘/沙旋风（尘卷风）；PY 浪花（无民航官方对应）", () => {
@@ -1054,7 +1067,9 @@ describe("官方标准核对修订（WMO 306 卷 I.1（2019）FM15 原文 + 民�
     expect(glossOf("ZGGG 120000Z 27008KT 9999 PO 26/22 Q1009", "PO")).toContain("尘/沙旋风");
     expect(glossOf("ZGGG 120000Z 27008KT 9999 PY 26/22 Q1009", "PY")).toContain("浪花");
     const en = renderCard(parse("ZGGG 120000Z 27008KT 9999 GS PO 26/22 Q1009"), { locale: "en" });
-    const titles = [...en.querySelectorAll("dd span")].map((s) => s.getAttribute("title") ?? "");
+    const titles = [...en.querySelectorAll("dd span")].map(
+      (s) => s.getAttribute("aria-label") ?? "",
+    );
     expect(titles.some((t) => t.includes("small hail and/or snow pellets"))).toBe(true);
     expect(titles.some((t) => t.includes("dust devils"))).toBe(true);
   });
@@ -1097,13 +1112,13 @@ describe("官方标准核对修订（WMO 306 卷 I.1（2019）FM15 原文 + 民�
       parse("METAR UUDD 150000Z 36001MPS 9999 SCT030 M02/M05 Q1019 R/SNOCLO"),
     );
     const closedRow = [...card.querySelectorAll("dd")].find((d) => d.textContent?.includes("关闭"));
-    expect(closedRow?.querySelector("span")?.getAttribute("title")).toContain("大量积雪关闭");
-    expect(closedRow?.querySelector("span")?.getAttribute("title")).toContain("深度位 99");
+    expect(closedRow?.querySelector("span")?.getAttribute("aria-label")).toContain("大量积雪关闭");
+    expect(closedRow?.querySelector("span")?.getAttribute("aria-label")).toContain("深度位 99");
     const en = renderCard(parse("METAR UUDD 150000Z 36001MPS 9999 SCT030 M02/M05 Q1019 R/SNOCLO"), {
       locale: "en",
     });
     const enRow = [...en.querySelectorAll("dd")].find((d) => d.textContent?.includes("closed"));
-    expect(enRow?.querySelector("span")?.getAttribute("title")).toContain(
+    expect(enRow?.querySelector("span")?.getAttribute("aria-label")).toContain(
       "extreme deposit of snow",
     );
   });
@@ -1116,10 +1131,10 @@ describe("趋势后 WS 四形态渲染（2026-09-14 趋势收窄改约：WS 交�
         parse(`ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 TEMPO 3000 TSRA ${tail}`),
       );
       const wsRow = [...card.querySelectorAll("dd")].find((d) =>
-        d.getAttribute("title")?.includes("风切变"),
+        d.querySelector("span")?.getAttribute("aria-label")?.includes("风切变"),
       );
       expect(wsRow, `形态 ${tail} 缺风切变行`).toBeDefined();
-      expect(wsRow?.querySelector("span")?.getAttribute("title")).toContain("风切变");
+      expect(wsRow?.querySelector("span")?.getAttribute("aria-label")).toContain("风切变");
       // TEMPO 趋势行不再吞 WS（raw 截于 WS 前）
       const tempoRow = [...card.querySelectorAll("dd")].find((d) =>
         d.textContent?.includes("TEMPO"),
@@ -1131,9 +1146,9 @@ describe("趋势后 WS 四形态渲染（2026-09-14 趋势收窄改约：WS 交�
     );
     const title =
       [...zh.querySelectorAll("dd")]
-        .find((d) => d.getAttribute("title")?.includes("风切变"))
+        .find((d) => d.querySelector("span")?.getAttribute("aria-label")?.includes("风切变"))
         ?.querySelector("span")
-        ?.getAttribute("title") ?? "";
+        ?.getAttribute("aria-label") ?? "";
     expect(title).toContain("风切变");
     expect(title).toContain("起降");
   });
@@ -1199,7 +1214,7 @@ describe("RAW/卡片提示点击通道（触屏与键盘可达：title 悬停之
       raw: true,
     });
     const trendSpan = [...card.querySelectorAll("dd span.mw-hint")].find((s) =>
-      s.getAttribute("title")?.startsWith("NOSIG"),
+      s.getAttribute("aria-label")?.startsWith("NOSIG"),
     );
     expect(trendSpan).toBeDefined();
     trendSpan!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -1259,13 +1274,13 @@ describe("RAW 词组逐要素解码（问号气泡从行标签升级为具体解
     expect(hint).toMatch(/≈ \d+ 米/); // 折米
     // 主表云行同文案（点击气泡同源）——主表纯译文后按悬停 title 中的原码定位
     const cloudDd = [...card.querySelectorAll("dd span.mw-hint")].find((s) =>
-      s.getAttribute("title")?.startsWith("FEW014"),
+      s.getAttribute("aria-label")?.startsWith("FEW014"),
     );
-    expect(cloudDd?.getAttribute("title")).toContain("1400 英尺");
+    expect(cloudDd?.getAttribute("aria-label")).toContain("1400 英尺");
     // ftToMeters = 1 ft × 0.3048 精确换算取整（426.72 → 427），不再按 50 米档位圆整；
     // 米值是本库换算所得，悬停同时说明来源口径
-    expect(cloudDd?.getAttribute("title")).toContain("≈ 427 米");
-    expect(cloudDd?.getAttribute("title")).toContain("报文只编英尺");
+    expect(cloudDd?.getAttribute("aria-label")).toContain("≈ 427 米");
+    expect(cloudDd?.getAttribute("aria-label")).toContain("报文只编英尺");
   });
 
   it("风/能见度/温露/QNH 逐 token 解码 + 最低能见度方向组独立标注", () => {
@@ -1360,7 +1375,7 @@ describe("天气/云行纯译文（原码只在 RAW 视图与悬停提示）", (
     expect(cloudRow?.textContent).toContain("疏云，云底约 427 米");
     // 原码锚点仍在：悬停 title 以原码开头（桥接 RAW 对照视图）
     const codeSpan = [...(cloudRow?.querySelectorAll("span") ?? [])].find((s) =>
-      s.getAttribute("title")?.startsWith("SCT014"),
+      s.getAttribute("aria-label")?.startsWith("SCT014"),
     );
     expect(codeSpan?.classList.contains("mw-hint")).toBe(true);
   });
@@ -1437,8 +1452,8 @@ describe("天气/云行纯译文（原码只在 RAW 视图与悬停提示）", (
       parse("ZGGG 120000Z 27008MPS 9999 SCT030 26/22 Q1009 BECMG AT0730 FEW///CB"),
     );
     const title = [...card.querySelectorAll("dd span")]
-      .find((p) => p.getAttribute("title")?.includes("BECMG"))
-      ?.getAttribute("title");
+      .find((p) => p.getAttribute("aria-label")?.includes("BECMG"))
+      ?.getAttribute("aria-label");
     expect(title).toContain("少云（CB 积雨云：雷暴、冰雹、强颠簸风险）");
   });
 });
@@ -1454,10 +1469,10 @@ describe("主表/RAW 提示语一致性（2026-09-14 复评：两边各拼一套
       { raw: true },
     );
     const ddTitles = new Set(
-      [...card.querySelectorAll("dd [title], dd[title]")].map((n) => n.getAttribute("title")),
+      [...card.querySelectorAll<HTMLElement>("dd span[data-hint]")].map((n) => n.dataset.hint),
     );
     const rawTitles = new Set(
-      [...card.querySelectorAll(".mw-raw span[title]")].map((n) => n.getAttribute("title")),
+      [...card.querySelectorAll<HTMLElement>(".mw-raw span[data-hint]")].map((n) => n.dataset.hint),
     );
     // 集合恒等 = 覆盖率与文案双重一致：主表可点的 RAW 必标，RAW 标的主表必可点，文案逐字相同
     expect(ddTitles.size).toBeGreaterThan(10);
@@ -1469,10 +1484,10 @@ describe("主表/RAW 提示语一致性（2026-09-14 复评：两边各拼一套
       raw: true,
     });
     const ddTitles = new Set(
-      [...nsc.querySelectorAll("dd [title], dd[title]")].map((n) => n.getAttribute("title")),
+      [...nsc.querySelectorAll<HTMLElement>("dd span[data-hint]")].map((n) => n.dataset.hint),
     );
     const rawTitles = new Set(
-      [...nsc.querySelectorAll(".mw-raw span[title]")].map((n) => n.getAttribute("title")),
+      [...nsc.querySelectorAll<HTMLElement>(".mw-raw span[data-hint]")].map((n) => n.dataset.hint),
     );
     expect([...ddTitles].some((t) => t?.startsWith("NSC："))).toBe(true);
     expect(rawTitles).toEqual(ddTitles);
@@ -1480,12 +1495,14 @@ describe("主表/RAW 提示语一致性（2026-09-14 复评：两边各拼一套
       raw: true,
     });
     const cavokDdTitles = new Set(
-      [...cavok.querySelectorAll("dd [title], dd[title], h2 [title]")].map((n) =>
-        n.getAttribute("title"),
+      [...cavok.querySelectorAll<HTMLElement>("dd span[data-hint], h2 span[data-hint]")].map(
+        (n) => n.dataset.hint,
       ),
     );
     const cavokRawTitles = new Set(
-      [...cavok.querySelectorAll(".mw-raw span[title]")].map((n) => n.getAttribute("title")),
+      [...cavok.querySelectorAll<HTMLElement>(".mw-raw span[data-hint]")].map(
+        (n) => n.dataset.hint,
+      ),
     );
     expect(cavokRawTitles).toEqual(cavokDdTitles);
     // CAVOK 标注提示语 = 徽章同一句（cavokHint）
@@ -1509,7 +1526,7 @@ describe("转换说明气泡的规范依据行（每组族标注规范名称/版
     const trendText = clickHintText(
       card,
       [...card.querySelectorAll<HTMLElement>("dd span.mw-hint")].find((s) =>
-        s.getAttribute("title")?.startsWith("NOSIG"),
+        s.getAttribute("aria-label")?.startsWith("NOSIG"),
       ),
     );
     expect(trendText).toContain("FM 15 §15.14");
@@ -1573,8 +1590,8 @@ describe("renderCard 云底单位（heightUnit / en 缺省英尺）与未知选�
     );
     expect(vvRow?.textContent).toContain("vertical visibility 200 ft");
     const hint = [...card.querySelectorAll("dd span")]
-      .find((s) => s.getAttribute("title")?.startsWith("BKN035"))
-      ?.getAttribute("title");
+      .find((s) => s.getAttribute("aria-label")?.startsWith("BKN035"))
+      ?.getAttribute("aria-label");
     expect(hint).toContain("base 3500 ft ≈ 1067 m");
   });
 
@@ -1819,7 +1836,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     const tempoGroup = segs.find((x) => (x.textContent ?? "").startsWith("TEMPO"));
     rows[1]?.querySelector(".mw-taf-period-head")?.dispatchEvent(new MouseEvent("mouseenter"));
     expect(tempoGroup?.classList.contains("mw-taf-hl")).toBe(true);
-    // 悬停原文片的人话（title）＝该组行文本
+    // 悬停原文片的人话（title——TAF RAW 片保留原生气泡，专业通道既有决策）＝该组行文本
     expect(shrasn?.getAttribute("title") ?? "").toContain("小阵雨、雪");
   });
 

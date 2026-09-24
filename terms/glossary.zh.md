@@ -338,15 +338,20 @@
     }
   });
 
-/** 四档条件色（与卡片 mw-danger/mw-caution 同族色相：灰=不明、红=差、琥珀=注意、绿=好） */
-const TIER_COLORS: Record<ConditionTier, string> = {
+/** 四档条件档位名（与 TIER_COLORS 的键一致；宿主面板/图例数据直读用，2026-09-24 评测批2#3） */
+export type ConditionTier = "unknown" \| "poor" \| "caution" \| "good";
+
+/**
+ * 四档条件色单一来源（2026-09-24 评测批2#3：图例/面板/圆点色值不一致——两套色系并存）。
+ * 宿主图例与列表色点应引用本表而非自抄色值（编译期同源，显示层永不漂移）；
+ * 与卡片 mw-danger/mw-caution 同族色相：灰=不明、红=差、琥珀=注意、绿=好
+ */
+export const TIER_COLORS: Record<ConditionTier, string> = {
   unknown: "#8a94a0",
   poor: "#d05656",
   caution: "#e0a13c",
   good: "#3aa657",
 };
-
-type ConditionTier = "unknown" \| "poor" \| "caution" \| "good";
 
 /** 档位可读名（aria-label 追加词——a11y 1.4.1：档位信息不只靠颜色传达） */
 const TIER_WORDS: Record<"zh" \| "en", Record<ConditionTier, string>> = {
@@ -694,42 +699,16 @@ function asConditionInput(c: TafResolvedConditions, nilLike: boolean): Condition
   };
 }
 
-/** 天气组紧凑码（TAF 摘要用）：-SHRA / TSRA / +SN */
-const wxCompact = (g: WeatherGroup): string =>
-  `${g.intensity ?? ""}${g.proximity ? "VC" : ""}${g.descriptor ?? ""}${g.phenomena.join("")}`;
-
-/** TAF 展开摘要（一行）：CAVOK 或 能见度 · 天气 · 云（对齐 summarizeReport 的要素序） */
+/**
+ * TAF 展开摘要（一行，人话优先——2026-09-24 评测批2#4：旧电码串「≥10 km · -TSRA · SCT040」
+ * 对非专业是密码；现复用 @metweave/render 的 gloss 词表单一来源，tooltip/置顶提示同款）：
+ * 「能见度 ≥10 km · 雷暴伴雨（飞行威胁大） · 疏云，云底约 700 米」；电码在卡内 RAW 区可查。
+ */
 function summarizeTaf(c: TafResolvedConditions, locale: "zh" \| "en"): string {
   if (c.cavok) return "CAVOK";
-  const parts: string[] = [];
-  if (c.visibility !== undefined) {
-    const vis = c.visibility;
-    parts.push(
-      vis.unit === "m"
-        ? vis.exact
-          ? `${vis.value} m`
-          : "≥10 km"
-        : `${vis.beyond === "below" ? "<" : vis.beyond === "above" ? ">" : ""}${vis.value} SM`,
-    );
-  }
-  const significant =
-    c.weather.find(
-      (g) => g.descriptor === "TS" \|\| g.phenomena.includes("GR") \|\| g.intensity === "+",
-    ) ?? c.weather[0];
-  if (significant !== undefined) parts.push(wxCompact(significant));
-  let lowest: { e: Extract<CloudElement, { kind: "layer" }>; ft: number } \| undefined;
-  for (const e of c.clouds?.elements ?? []) {
-    if (e.kind !== "layer") continue;
-    const ft = e.heightFt.value ?? Number.POSITIVE_INFINITY;
-    if (lowest === undefined \|\| ft < lowest.ft) lowest = { e, ft };
-  }
-  if (lowest !== undefined && lowest.e.amount !== null) {
-    parts.push(
-      `${lowest.e.amount}${String(Math.round(lowest.ft / 100)).padStart(3, "0")}${lowest.e.convective ?? ""}`,
-    );
-  }
-  if (parts.length === 0) return locale === "en" ? "No elements" : "无要素组";
-  return parts.join(" · ");
+  const text = summarizeTafConditions(c, locale);
+  if (text !== "") return text;
+  return locale === "en" ? "No elements" : "无要素组";
 }
 
 export interface TafLayerItem {
