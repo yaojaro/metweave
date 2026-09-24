@@ -327,15 +327,15 @@ const ltClock = (
   anchor?: TafCalendarAnchor,
   minDay?: number,
 ): string => {
-  if (anchor !== undefined) {
+  if (anchor !== undefined && day >= 1) {
+    // 守卫只剩 day ≥ 1：日号超锚月长度（如 9 月锚的 31）是连续序进位＝10 月 1 日，Date.UTC
+    // 自动进位、数学恒等（UI 月界实测曾把进位误判病态回退折回——2026-09-24 复验收口）；
+    // 报文原生电码日号不会超出当月（编报规范约束），无需月吻合守卫
     const prev = minDay !== undefined && day >= minDay + 16; // 发布等前月尾日号 → 锚月前一月
     const y = prev && anchor.month === 1 ? anchor.year - 1 : anchor.year;
     const m = prev ? (anchor.month === 1 ? 12 : anchor.month - 1) : anchor.month;
-    const base = new Date(Date.UTC(y, m - 1, day, hour, minute));
-    if (day > 31 || base.getUTCMonth() === m - 1) {
-      const z = new Date(base.getTime() + offset * 60_000);
-      return `${z.getUTCMonth() + 1}月${z.getUTCDate()}日 ${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
-    }
+    const z = new Date(Date.UTC(y, m - 1, day, hour, minute) + offset * 60_000);
+    return `${z.getUTCMonth() + 1}月${z.getUTCDate()}日 ${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
   }
   const total = (day - 1) * 1440 + hour * 60 + minute + offset;
   const d = (Math.floor(total / 1440) % 31) + 1;

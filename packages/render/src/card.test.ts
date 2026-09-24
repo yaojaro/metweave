@@ -2140,3 +2140,14 @@ describe("METAR 卡 RAW 区身份行（评测批4#19：与 TAF 卡统一——�
     expect(none.querySelector(".mw-raw")).toBeNull();
   });
 });
+
+describe("月锚进位（2026-09-24 UI 复验收口：连续序 day 超锚月长度曾被月吻合守卫误判病态回退折回）", () => {
+  it("9 月锚 day=31（连续序第 31 天＝10 月 1 日）显示「10月1日」而非回退「31日」无月位折回", () => {
+    const card = renderTafCard(parseTaf("TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023="), {
+      utcOffsetMinutes: 480,
+      monthAnchor: { year: 2026, month: 9 },
+      at: { day: 31, hour: 10, minute: 0 },
+    });
+    expect(card.textContent).toContain("查看时刻 北京时10月1日 18:00");
+  });
+});

@@ -1204,12 +1204,13 @@ const fmtTafZone = (
   tag: string,
   cal?: TafCalendarAnchor,
 ): string => {
-  if (cal !== undefined) {
-    const base = new Date(Date.UTC(cal.year, cal.month - 1, at.day, at.hour, at.minute));
-    if (at.day > 31 \|\| base.getUTCMonth() === cal.month - 1) {
-      const z = new Date(base.getTime() + offset * 60_000);
-      return `${tag}${z.getUTCMonth() + 1}月${z.getUTCDate()}日${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
-    }
+  if (cal !== undefined && at.day >= 1) {
+    // 日号超锚月长度（如 9 月锚的 31）＝连续序进位（10 月 1 日），Date.UTC 自动进位恒正确
+    //（月吻合守卫曾把进位误判病态回退折回——2026-09-24 复验收口；电码日号不超当月，无需守卫）
+    const z = new Date(
+      Date.UTC(cal.year, cal.month - 1, at.day, at.hour, at.minute) + offset * 60_000,
+    );
+    return `${tag}${z.getUTCMonth() + 1}月${z.getUTCDate()}日${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
   }
   const total = (at.day - 1) * 1440 + at.hour * 60 + at.minute + offset;
   const d = (Math.floor(total / 1440) % 31) + 1;

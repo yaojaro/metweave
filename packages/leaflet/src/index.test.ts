@@ -999,3 +999,30 @@ describe("tafTierOf 数据直读（评测批3#14：面板不再从 marker DOM cl
     ).toBe("poor");
   });
 });
+
+describe("控件月锚进位（UI 复验收口：day=31 在 9 月锚＝10/1，不得回退折回）", () => {
+  it("createTafTimeControl 京时标签：连续序 31 日 23:50（9 月锚）显示「北京时10月1日07:50」", () => {
+    const map = freshMap();
+    const ctrl = createTafTimeControl(map, {
+      layer: L.layerGroup(),
+      items: [
+        {
+          report: parseTaf("TAF ZBAA 291100Z 2912/3012 17004MPS 9999 SCT030="),
+          position: [40, 116],
+        },
+      ],
+      stepMinutes: 10,
+      from: { day: 30, hour: 23, minute: 50 },
+      utcOffsetMinutes: 480,
+      calendarAnchor: { year: 2026, month: 9 },
+    });
+    const input = ctrl.querySelector("input");
+    expect(input).not.toBeNull();
+    if (input === null) return;
+    input.value = "6"; // 30日23:50 + 60min = 31日00:50（连续序）
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    // 拨动后标签经 rAF 合帧更新（happy-dom 即时）——进位日号不得回退折回
+    expect(input.getAttribute("aria-valuetext") ?? "").toMatch(/北京时10月1日/);
+    map.remove();
+  });
+});
