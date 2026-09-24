@@ -14,6 +14,17 @@ import {
 } from "@metweave/leaflet";
 import type * as LeafletNS from "leaflet";
 import stationsFile from "../stations.json";
+import {
+  TL_STEPS,
+  contAtOf,
+  dayHourMs,
+  fmtTl,
+  monthAnchorOf,
+  selectReport,
+  sortTafPool,
+  zonedDayHour,
+  type CalendarAnchor,
+} from "./timeline-core";
 import { setupBasemap } from "./basemaps";
 import "./style.css";
 
@@ -46,27 +57,14 @@ const mountPreviewCards = (): void => {
   for (const raw of samples) box.append(renderCard(parse(raw), { raw: true }));
   hint.append(box);
 };
-/** dd/hh → 当前时区整点词：UTC＝dd日HH时；京时＝京dd日HH时（+8，日回绕 31 折回——面板「下一变化」用） */
-const hourWordOf = (d: number, h: number): { d: number; h: number } => {
-  if (tzOffset === null) return { d, h };
-  const total = (d - 1) * 1440 + h * 60 + tzOffset;
-  return { d: (Math.floor(total / 1440) % 31) + 1, h: Math.floor((total % 1440) / 60) };
-};
-/** {日,时} → dd日HH（面板窗口文案的时刻段） */
-const dayHourOf = (x: { d: number; h: number }): string =>
-  `${String(x.d).padStart(2, "0")}日${String(x.h).padStart(2, "0")}`;
-
 if (!hasBasemap) mountPreviewCards();
 
 // —— 全局时区单制（owner 9/24 指令：全页只显一个时间，UTC/北京时一键切换；缺省 UTC）——
 // 卡片/滑杆/站点面板/状态条统一读此一处；480＝北京时（+8）
 let tzOffset: number | null = null;
 let metarItems: Awaited<ReturnType<typeof getMetarReports>> | undefined; // 时区切换重建实况层的数据面
-/** 状态条时钟（单一时区）：UTC＝HH:MM UTC；京时＝京HH:MM（仅换显示，时刻本身仍 UTC 基准） */
-const zonedClock = (utc: Date): string =>
-  tzOffset === null
-    ? `${utc.toISOString().slice(11, 16)} UTC`
-    : `北京时${new Date(utc.getTime() + tzOffset * 60000).toISOString().slice(11, 16)}`;
+/** 状态条时钟（单一时区、真实月历带月位）：UTC＝M月D日 HH:MM UTC；京＝北京时M月D日 HH:MM */
+const zonedClock = (utc: Date): string => fmtTl(utc.getTime(), tzOffset).replace(/Z$/, " UTC");
 let statusOk: (() => string) | undefined; // 最近一条 ok 状态的再渲染函数（时区切换时按新制重写）
 
 const panel = document.getElementById("panel");
@@ -227,34 +225,28 @@ const tlInput = inputById("tl-input");
 const tlValue = document.getElementById("tl-value");
 const tlTicksBox = document.getElementById("tl-ticks");
 const tlPlayBtn = document.getElementById("tl-play");
-/** Date → TafExpandAt（UTC 日/时/分直读） */
-const dateToAt = (d: Date): TafExpandAt => ({
-  day: d.getUTCDate(),
-  hour: d.getUTCHours(),
-  minute: d.getUTCMinutes(),
-});
-/** 时间轴窗：零点＝当前时刻向下取整到 10 分钟刻度，跨度 24 小时（owner 定口径；默认锚「现在」） */
-const timelineWindow = (): { from: TafExpandAt; to: TafExpandAt } => {
-  const floor = new Date(Math.floor(Date.now() / 600_000) * 600_000);
-  return { from: dateToAt(floor), to: dateToAt(new Date(floor.getTime() + 86_400_000)) };
-};
-// —— 时间轴状态与驱动（10 分钟一格；apply 与图层 setTafLayerTime 同路，拖/点/播全图重渲级别）——
-const tlAbsOf = (at: TafExpandAt): number => (at.day - 1) * 1440 + at.hour * 60 + at.minute;
-const tlAtOf = (abs: number): TafExpandAt => ({
-  day: Math.floor(abs / 1440) + 1,
-  hour: Math.floor((abs % 1440) / 60),
-  minute: abs % 60,
-});
-const tlPad = (n: number): string => String(n).padStart(2, "0");
-/** 时刻文本（随时区单制）：UTC＝dd日 HH:MMZ；京＝京dd日HH:MM（日回绕 31 折回） */
-const tlFmt = (at: TafExpandAt): string => {
-  if (tzOffset === null) return `${tlPad(at.day)}日 ${tlPad(at.hour)}:${tlPad(at.minute)}Z`;
-  const z = tlAtOf(tlAbsOf(at) + tzOffset);
-  return `北京时${tlPad(((z.day - 1) % 31) + 1)}日${tlPad(z.hour)}:${tlPad(z.minute)}`;
-};
-let tlSpan: { from: number; to: number } | undefined; // 绝对分钟序窗（from＝现在取整 10 分钟）
+// —— 时间轴状态与驱动（2026-09-24 评测 P1 月界批：真实毫秒序，跨月不回绕）——
+// 旧实现把日号折成 (day-1)*1440 绝对分钟序，跨月 to<from → 滑杆 max 为负、刻度循环恒假、播放停 0；
+// 现全链毫秒序（Date 真月历），TafExpandAt 的 day 为「自层锚月 1 日起的连续日序」（与
+// @metweave/leaflet calendarAnchor 归一协议对接——层内逐报归一到各自锚月）。
+let layerCal: CalendarAnchor | undefined; // 层锚月（loadTaf 时定格）
+let tlAnchorMs: number | undefined; // 窗零点（「现在」向下取整 10 分钟；initTimeline 定格）
 let tlPlaying = false;
 let tlTimer: number | undefined;
+/** 格 → 查看时刻毫秒 */
+const tlMsOf = (index: number): number => {
+  if (tlAnchorMs === undefined) return 0;
+  return tlAnchorMs + index * 600_000;
+};
+/** 查看时刻的连续序 TafExpandAt（层锚月基；层锚在位前的建层初值直接用日号） */
+const tlAtOfMs = (ms: number): TafExpandAt =>
+  layerCal === undefined
+    ? {
+        day: new Date(ms).getUTCDate(),
+        hour: new Date(ms).getUTCHours(),
+        minute: new Date(ms).getUTCMinutes(),
+      }
+    : contAtOf(ms, layerCal);
 const tlSetPlayBtn = (): void => {
   if (tlPlayBtn === null) return;
   tlPlayBtn.textContent = tlPlaying ? "❚❚" : "▶";
@@ -269,43 +261,54 @@ const tlStopPlay = (): void => {
   tlSetPlayBtn();
 };
 /** 落格并全图重渲：label/aria 即时更新，走 setTafLayerTime（滑杆换时刻持续以当前时区刷新）；
- *  先按查看时刻原位换在效报文（方案B——item.report 与图层 WeakMap 共享同一对象，setTafLayerTime 现读重渲） */
+ *  先按查看时刻原位换在效报文（方案B——item.report 与图层 WeakMap 共享同一对象，setTafLayerTime 现读重渲；
+ *  换报同步更新 item.monthAnchor（新月报的真实锚月，跨 00Z 边界的 10 月报归一到 10 月锚） */
 const tlApply = (index: number): void => {
-  if (tlSpan === undefined || tafLayer === undefined || tafItems === undefined) return;
+  if (tlAnchorMs === undefined || tafLayer === undefined || tafItems === undefined) return;
   if (tlInput !== null) tlInput.value = String(index);
-  const tAbs = tlSpan.from + index * 10;
-  const at = tlAtOf(tAbs);
+  const tMs = tlMsOf(index);
+  const at = tlAtOfMs(tMs);
+  const nowMs = Date.now();
   if (reportsByStation.size > 0) {
     for (const it of tafItems) {
-      const sel = selectReport(it.report.station, tAbs);
-      if (sel !== undefined && sel !== it.report) it.report = sel;
+      const sel = selectReport(reportsByStation.get(it.report.station), tMs, nowMs);
+      if (sel !== undefined && sel !== it.report) {
+        it.report = sel;
+        it.monthAnchor = monthAnchorOf(sel, nowMs);
+      }
     }
   }
-  const text = tlFmt(at);
+  const text = fmtTl(tMs, tzOffset);
   if (tlValue !== null) tlValue.textContent = text;
   tlInput?.setAttribute("aria-valuetext", text); // 读屏不朗读裸格值
-  void setTafLayerTime(map, tafLayer, tafItems, { at, card: { utcOffsetMinutes: tzOffset } });
-  window.setTimeout(() => refreshPanel?.(), 60); // 等原地更新图标落地后刷新列表
+  void setTafLayerTime(map, tafLayer, tafItems, {
+    at,
+    ...(layerCal === undefined ? {} : { calendarAnchor: layerCal }),
+    card: { utcOffsetMinutes: tzOffset },
+  }).then(() => window.setTimeout(() => refreshPanel?.(), 60)); // 等原地更新图标落地后刷新列表
 };
-/** 刻度线（叠滑道、pointer-events 放行点击）：整点小刻度 / 3 小时主刻度 / 展示时区日界高刻度 */
+/** 刻度线（叠滑道、pointer-events 放行点击，毫秒序判整点/日界——真实月历跨月正确）：
+ *  整点小刻度 / 3 小时主刻度 / 展示时区日界高刻度 */
 const tlBuildTicks = (): void => {
-  if (tlTicksBox === null || tlSpan === undefined) return;
+  if (tlTicksBox === null || tlAnchorMs === undefined) return;
   tlTicksBox.replaceChildren();
-  const total = tlSpan.to - tlSpan.from;
-  for (let a = tlSpan.from; a <= tlSpan.to; a += 10) {
-    if (a % 60 !== 0 && a !== tlSpan.from && a !== tlSpan.to) continue; // 非整点只保留两端
-    const zoneA = a + (tzOffset ?? 0);
+  for (let i = 0; i <= TL_STEPS; i += 1) {
+    const ms = tlAnchorMs + i * 600_000;
+    if (ms % 3_600_000 !== 0 && i !== 0 && i !== TL_STEPS) continue; // 非整点只保留两端
+    const zoneMs = ms + (tzOffset ?? 0) * 60_000;
     const tick = document.createElement("i");
-    tick.className = zoneA % 1440 === 0 ? "day" : a % 180 === 0 ? "major" : "minor"; // 日界＞主刻度＞小刻度
-    tick.style.left = `${(((a - tlSpan.from) / total) * 100).toFixed(3)}%`;
+    tick.className = zoneMs % 86_400_000 === 0 ? "day" : i % 18 === 0 ? "major" : "minor"; // 日界＞主刻度＞小刻度
+    tick.style.left = `${((i / TL_STEPS) * 100).toFixed(3)}%`;
     tlTicksBox.append(tick);
   }
 };
-/** TAF 载入后初始化时间轴：建窗（现在取整 10 分钟 + 24h）、画刻度、默认落「现在」 */
+/** TAF 载入后初始化时间轴：定格层锚月与窗零点（现在取整 10 分钟 + 24h）、画刻度、默认落「现在」 */
 const initTimeline = (): void => {
-  const w = timelineWindow();
-  tlSpan = { from: tlAbsOf(w.from), to: tlAbsOf(w.to) };
-  if (tlInput !== null) tlInput.max = String(Math.round((tlSpan.to - tlSpan.from) / 10));
+  const nowMs = Date.now();
+  const d = new Date(nowMs);
+  layerCal = { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
+  tlAnchorMs = Math.floor(nowMs / 600_000) * 600_000;
+  if (tlInput !== null) tlInput.max = String(TL_STEPS);
   tlBuildTicks();
   tlApply(0);
 };
@@ -314,17 +317,16 @@ tlPlayBtn?.addEventListener("click", () => {
     tlStopPlay();
     return;
   }
-  if (tlSpan === undefined) return;
+  if (tlAnchorMs === undefined) return;
   tlPlaying = true;
   tlSetPlayBtn();
   tlTimer = window.setInterval(() => {
-    if (tlSpan === undefined || tlInput === null) {
+    if (tlAnchorMs === undefined || tlInput === null) {
       tlStopPlay();
       return;
     }
-    const max = Number(tlInput.max);
     const cur = Number(tlInput.value);
-    tlApply(cur >= max ? 0 : cur + 1); // 到尾循环回「现在」
+    tlApply(cur >= TL_STEPS ? 0 : cur + 1); // 到尾循环回「现在」
   }, 300); // ~3 格/秒：24 小时约 50 秒扫完一轮
 });
 let tlRafPending = false;
@@ -346,39 +348,9 @@ let pendingFlyOpen: (() => void) | undefined; // 行点击「先飞后开卡」�
 
 // —— TAF 报池（owner 9/24 方案B：现在永远有在效报）——
 // 最新周期 + 上一周期（date=now-4h 取「该时刻已发布的最新报」）合并进按站报池；
-// 查看时刻落在最新报生效前（发布后 2–3 小时的空档）时自动用仍在效的上一份补位
+// 查看时刻落在最新报生效前（发布后 2–3 小时的空档）时自动用仍在效的上一份补位。
+// 排序/选择的纯函数内核在 timeline-core（真实月历毫秒序——月界批收口，跨月不再 %31 折回）
 const reportsByStation = new Map<string, TafReport[]>();
-/** 报池按生效起点升序整理（同起点晚发布在后；NIL/CNL 无有效期排尾；跨月大日号差按 ±31 折回对齐） */
-const sortTafPool = (pool: TafReport[]): void => {
-  const refDay = Math.max(...pool.map((x) => x.validity?.startDay ?? 0), 1);
-  const keyOf = (r: TafReport): number => {
-    const v = r.validity;
-    if (v === undefined) return Number.POSITIVE_INFINITY;
-    const day = v.startDay < refDay - 15 ? v.startDay + 31 : v.startDay;
-    const from = (day - 1) * 1440 + v.startHour * 60;
-    const i = r.issueTime;
-    const issue = i === undefined ? -1 : i.day * 1440 + i.hour * 60 + i.minute;
-    return from * 10_000 + issue; // 起点为主序、发布时刻为次序（起点基数放大防串位）
-  };
-  pool.sort((a, b) => keyOf(a) - keyOf(b));
-};
-/** 按查看时刻选在效报文：生效起点 ≤ T 的最新一份；最新为 NIL/CNL＝权威「无预报」；
- *  全部未生效 → 最新一份（灰「未生效」语义保留——上一周期也缺时的诚实降级） */
-const selectReport = (station: string, tAbs: number): TafReport | undefined => {
-  const pool = reportsByStation.get(station);
-  const last = pool?.[pool.length - 1];
-  if (pool === undefined || last === undefined) return undefined;
-  if (last.nil === true || last.cancelled === true) return last;
-  const refDay = Math.floor(tAbs / 1440) + 1;
-  let sel: TafReport | undefined;
-  for (const r of pool) {
-    const v = r.validity;
-    if (v === undefined || r.nil === true || r.cancelled === true) continue;
-    const day = v.startDay > refDay + 15 ? v.startDay - 31 : v.startDay; // 报自上月 → 折回本月序
-    if ((day - 1) * 1440 + v.startHour * 60 <= tAbs) sel = r; // 池已升序，留最晚命中
-  }
-  return sel ?? last;
-};
 
 const setMode = (mode: "metar" | "taf"): void => {
   const active = mode === "taf";
@@ -457,15 +429,21 @@ const loadTaf = async (): Promise<void> => {
         failed += 1;
       }
     }
-    for (const pool of reportsByStation.values()) sortTafPool(pool);
-    // 初始即取「现在」的在效报——首屏不再整片灰「未生效」（owner 9/24 方案B 的直接目的）
-    const nowFloor = new Date(Math.floor(Date.now() / 600_000) * 600_000);
-    const nowAbs = tlAbsOf(dateToAt(nowFloor));
+    const nowMs = Date.now();
+    for (const pool of reportsByStation.values()) sortTafPool(pool, nowMs);
+    // 初始即取「现在」的在效报——首屏不再整片灰「未生效」（owner 9/24 方案B 的直接目的）；
+    // 每报附真实锚月（item.monthAnchor——leaflet 层内归一到各报锚月，跨月报池正确）
+    const nowFloorMs = Math.floor(nowMs / 600_000) * 600_000;
     const items: TafLayerItem[] = [];
     for (const s of stationsFile.stations) {
-      const r = selectReport(s.icao, nowAbs);
+      const r = selectReport(reportsByStation.get(s.icao), nowFloorMs, nowMs);
       if (r !== undefined)
-        items.push({ report: r, position: [s.lat, s.lon], title: `${s.icao} ${s.name}` });
+        items.push({
+          report: r,
+          position: [s.lat, s.lon],
+          title: `${s.icao} ${s.name}`,
+          monthAnchor: monthAnchorOf(r, nowMs),
+        });
     }
     if (items.length === 0) throw new Error("上游返回的报文全部解析失败（数据异常），请稍后重试");
     tafItems = items;
@@ -495,7 +473,9 @@ const loadTaf = async (): Promise<void> => {
         const dot = ml instanceof L.Marker ? ml.getElement()?.querySelector(".mw-dot") : undefined;
         const tier = dot?.className.match(/mw-dot-(\w+)/)?.[1] ?? "unknown";
         const ch = it.report.changes[0];
-        // 人话化窗口（复测小白#1/#面板）：ddHH/ddHH → 当前时区单制的 dd日HH–HH时（UTC 直读；京时 +8 换算）
+        // 人话化窗口（复测小白#1/#面板 + 月界批真实月历 + 批4 前缀降噪）：ddHH/ddHH →
+        // 当前时区单制「M月D日HH时–HH时」（同日尾端只显小时，「北京时」前缀首处保留）
+        const nowMsPanel = Date.now();
         const win = ch?.window;
         const winText =
           win !== undefined && /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.test(win.raw)
@@ -503,12 +483,16 @@ const loadTaf = async (): Promise<void> => {
                 const m = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(win.raw);
                 if (m === null) return win.raw;
                 const [, d1, h1, d2, h2] = m;
-                const a = hourWordOf(Number(d1), Number(h1));
-                const b = hourWordOf(Number(d2), Number(h2));
                 const tag = tzOffset === null ? "" : "北京时";
-                return a.d === b.d
-                  ? `${tag}${dayHourOf(a)}–${String(b.h).padStart(2, "0")}时`
-                  : `${tag}${dayHourOf(a)}时–${dayHourOf(b)}时`;
+                const aFull = zonedDayHour(Number(d1), Number(h1), tzOffset, nowMsPanel);
+                const bZ = new Date(
+                  dayHourMs(Number(d2), Number(h2), 0, nowMsPanel) + (tzOffset ?? 0) * 60_000,
+                );
+                const bDay = `${bZ.getUTCMonth() + 1}月${bZ.getUTCDate()}日`;
+                const bHm = `${String(bZ.getUTCHours()).padStart(2, "0")}时`;
+                return aFull.slice(0, -3) === bDay
+                  ? `${tag}${aFull}–${bHm}`
+                  : `${tag}${aFull}–${bDay}${bHm}`;
               })()
             : ch?.at !== undefined
               ? `${String(ch.at.hour).padStart(2, "0")}:${String(ch.at.minute).padStart(2, "0")}Z`

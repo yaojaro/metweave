@@ -890,3 +890,74 @@ describe("C15：时区单制切换（owner 9/24——一个开关控全图时间
     map.remove();
   });
 });
+
+// ---------------------------------------------------------------- 月界批（2026-09-24 评测 P1：跨月报池）
+
+describe("月界批：calendarAnchor + item.monthAnchor（层连续序 at 归一到各报锚月，跨月报池展开/显示各报正确）", () => {
+  const poorSept = "TAF ZBAA 291100Z 2912/3012 17004MPS 0800 -SN OVC008="; // 9 月报（29 日 12Z 起，差天）
+  const poorOct = "TAF ZBAA 302300Z 0100/0206 17004MPS 0800 -SN OVC008="; // 10 月报（10/1 00Z 起）
+  const octItem = (popup = false): TafLayerItem => ({
+    report: parseTaf(poorOct),
+    position: [40, 116],
+    monthAnchor: { year: 2026, month: 10 },
+    ...(popup ? {} : {}),
+  });
+  const septItem = (): TafLayerItem => ({
+    report: parseTaf(poorSept),
+    position: [39, 116],
+    monthAnchor: { year: 2026, month: 9 },
+  });
+
+  it("9 月锚层 + 连续序 at 跨月（day=31＝10 月 1 日）：10 月报在生效窗内红点、9 月报出窗灰（旧 %31 回绕会把 10 月报判未生效）", async () => {
+    const map = freshMap();
+    const items = [septItem(), octItem()];
+    const g = await addTafLayer(map, items, {
+      calendarAnchor: { year: 2026, month: 9 },
+      at: { day: 31, hour: 6, minute: 0 }, // 连续序：9 月锚起第 31 天＝10 月 1 日 06Z
+    });
+    // 9 月报有效期至 30 日 12Z → 连续序 10/1 06Z 已出窗＝灰 unknown；10 月报 10/1 00Z 起在效＝红 poor
+    expect(firstDot(g)).toContain("mw-dot-unknown");
+    const octDot = (g.getLayers()[1] as L.Marker).getElement()?.querySelector(".mw-dot")?.className;
+    expect(octDot).toContain("mw-dot-poor");
+    map.remove();
+  });
+
+  it("无锚（anchorDays 兼容路径）行为不变：连续序大日号按 %31 折回（残余近似路径回归锁）", async () => {
+    const map = freshMap();
+    const g = await addTafLayer(map, [octItem()], {
+      at: { day: 31, hour: 6, minute: 0 },
+    });
+    expect(firstDot(g)).toContain("mw-dot-unknown"); // 31 折回＝1 日 → 06Z 早于 10/1 00Z 起点判未生效（旧近似口径）
+    map.remove();
+  });
+
+  it("弹窗卡显示真月历：连续序 at 经归一后卡片「查看时刻」显示北京时 10月1日（不回绕 31 日）", async () => {
+    const map = freshMap();
+    const g = await addTafLayer(map, [octItem()], {
+      calendarAnchor: { year: 2026, month: 9 },
+      at: { day: 31, hour: 10, minute: 0 },
+      card: { utcOffsetMinutes: 480 },
+    });
+    const marker = g.getLayers()[0] as L.Marker;
+    marker.fire("popupopen", { popup: marker.getPopup()! });
+    const content = marker.getPopup()?.getContent() as HTMLElement;
+    expect(content.textContent).toContain("查看时刻 北京时10月1日 18:00"); // 连续序 31日10Z＝10/1 10Z，+8h
+    map.remove();
+  });
+
+  it("createTafTimeControl calendarAnchor：京时标签走真月历（from 9/30 23:50 连续序、跨月显 10月1日）", () => {
+    const map = freshMap();
+    const ctrl = createTafTimeControl(map, {
+      layer: L.layerGroup(),
+      items: [octItem()],
+      stepMinutes: 10,
+      from: { day: 30, hour: 23, minute: 50 },
+      to: { day: 31, hour: 23, minute: 50 },
+      utcOffsetMinutes: 480,
+      calendarAnchor: { year: 2026, month: 9 },
+    });
+    const val = ctrl.querySelector("input")?.getAttribute("aria-valuetext") ?? "";
+    expect(val).toContain("北京时10月1日07:50"); // 9/30 23:50Z +8h（真月历跨月、无回绕）
+    map.remove();
+  });
+});

@@ -5,6 +5,6 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     // fuzz 自身行为锁（scripts/fuzz.test.ts）与包测试同套跑——scripts 内联测试不受包 tsconfig 管
-    include: ["packages/*/src/**/*.test.ts", "scripts/*.test.ts"],
+    include: ["packages/*/src/**/*.test.ts", "examples/src/*.test.ts", "scripts/*.test.ts"],
   },
 });

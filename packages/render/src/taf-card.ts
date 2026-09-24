@@ -55,6 +55,17 @@ export interface RenderTafCardOptions {
   /** 展示时区偏移（分钟）——owner 9/24 单制指令：全卡只显一个时区（旧「UTC+京时双括注」退役）。
    *  缺省 null＝UTC 单制；zh 传 480＝北京时单制（京dd日HH:MM 全卡统一）；en 无本地时词表恒 UTC */
   utcOffsetMinutes?: number | null;
+  /** 月锚（真实年月，2026-09-24 评测 P1 月界批）：报文日号（或自该月 1 日起的连续日序）归属的日历月。
+   *  在位时北京时制换算走真实月历——跨月显示「10月1日」而非「31日」回绕；缺席时按 31 天折回显示
+   *  （残余近似仅显示位：TAF 报文本身无月份，无从判读真实月份；档位/展开判读不依赖显示串，无害）。
+   *  month 为 1–12；连续日序 day > 31 按「锚月起第 N 天」进位（数学上恒正确，不受短月影响） */
+  monthAnchor?: TafCalendarAnchor | null;
+}
+
+/** TAF 卡月锚：报文日号归属的真实年月（month 取 1–12）——北京时制真月历换算的日历上下文 */
+export interface TafCalendarAnchor {
+  readonly year: number;
+  readonly month: number;
 }
 
 /** renderTafCard 合法选项键（运行时校验——拼错键不静默，沿 renderCard 不静默纪律） */
@@ -65,6 +76,7 @@ const RENDER_TAF_CARD_OPTION_KEYS: ReadonlySet<string> = new Set([
   "className",
   "stationTitle",
   "utcOffsetMinutes",
+  "monthAnchor",
 ]);
 
 const LOCALE = {
@@ -295,20 +307,36 @@ const dayOf = (day: number): string => String(day).padStart(2, "0");
 /** 元信息时钟（整点补零）：06:00Z——有效期行 UTC 单制的时刻段 */
 const clockHmOf = (hour: number): string => `${String(hour).padStart(2, "0")}:00Z`;
 
-/** 分段行时刻标签（zh：23日06Z / en：23/06Z）——UTC 单制的人话行与电码悬停共用 */
-const fmtSegAt = (at: TafExpandAt, locale: "zh" | "en"): string =>
-  locale === "zh"
-    ? `${String(at.day).padStart(2, "0")}日${String(at.hour).padStart(2, "0")}Z`
-    : `${String(at.day).padStart(2, "0")}/${String(at.hour).padStart(2, "0")}Z`;
-
 const cavokText = (locale: "zh" | "en"): string =>
   locale === "zh" ? `${CAVOK_SHORT.zh}（CAVOK）` : `${CAVOK_SHORT.en} (CAVOK)`;
 
 /** 日时 → 分钟序（出界比较用；TAF 无月，同报文语境内日号自洽） */
 const absDayHour = (day: number, hour: number): number => (day - 1) * 1440 + hour * 60;
 
-/** UTC → 本地时显示序（评测共识①：全卡关键时间括注北京时；日回绕按 31 折回——TAF 本无月，显示位近似） */
-const ltClock = (day: number, hour: number, minute: number, offset: number): string => {
+/** UTC → 本地时显示序（2026-09-24 评测 P1 月界批）：monthAnchor 在位时经 Date.UTC 真月历换算，
+ *  跨月显示「10月1日」而非「31日」回绕；连续日序 day > 31 按「锚月起第 N 天」进位（恒正确）。
+ *  报文日号可跨两月（如 9/30 23Z 发布、10/1 00Z 生效的报：发布日号 30 在生效月前一月）——
+ *  minDay（生效起点日号）在位时，day ≥ minDay+16 判前一月（日号序在月内连续，跨月邻接差恒 ≈30）。
+ *  无锚（TAF 报文无月份、宿主未传）或病态日号（锚月不含该日——守卫：月漂移即回退）时按 31 天折回，
+ *  残余近似仅显示位：档位/展开判读不依赖显示串，且缺锚时无从判读真实月份 */
+const ltClock = (
+  day: number,
+  hour: number,
+  minute: number,
+  offset: number,
+  anchor?: TafCalendarAnchor,
+  minDay?: number,
+): string => {
+  if (anchor !== undefined) {
+    const prev = minDay !== undefined && day >= minDay + 16; // 发布等前月尾日号 → 锚月前一月
+    const y = prev && anchor.month === 1 ? anchor.year - 1 : anchor.year;
+    const m = prev ? (anchor.month === 1 ? 12 : anchor.month - 1) : anchor.month;
+    const base = new Date(Date.UTC(y, m - 1, day, hour, minute));
+    if (day > 31 || base.getUTCMonth() === m - 1) {
+      const z = new Date(base.getTime() + offset * 60_000);
+      return `${z.getUTCMonth() + 1}月${z.getUTCDate()}日 ${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
+    }
+  }
   const total = (day - 1) * 1440 + hour * 60 + minute + offset;
   const d = (Math.floor(total / 1440) % 31) + 1;
   const h = Math.floor((total % 1440) / 60);
@@ -646,17 +674,20 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     t.localTag !== null
       ? options.utcOffsetMinutes
       : null;
+  const calAnchor = options.monthAnchor ?? undefined; // 真月历锚（缺省 %31 折回近似，见 ltClock 注释）
+  /** 生效起点日号（发布等前月尾日号的跨月判据；无有效期报无此语境） */
+  const minDay = report.validity?.startDay;
   const tag = t.localTag;
-  /** 主显钟点：UTC＝dd日HH:MMZ；京＝京dd日HH:MM（发布/查看时刻、有效期端点） */
+  /** 主显钟点：UTC＝dd日HH:MMZ；京＝北京时M月D日 HH:MM（真月历，月界批） */
   const clockAt = (day: number, hour: number, minute: number): string =>
     zone === null
       ? `${String(day).padStart(2, "0")}日${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}Z`
-      : `${tag}${ltClock(day, hour, minute, zone)}`;
-  /** 段界时刻（整点）：UTC＝dd日HHZ；京＝京dd日HH:00（段头/风险行/气温时刻） */
+      : `${tag}${ltClock(day, hour, minute, zone, calAnchor, minDay)}`;
+  /** 段界时刻（整点）：UTC＝dd日HHZ；京＝北京时M月D日 HH:00（段头/风险行/气温时刻） */
   const segClock = (day: number, hour: number, minute: number): string =>
     zone === null
       ? `${String(day).padStart(2, "0")}日${String(hour).padStart(2, "0")}Z`
-      : `${tag}${ltClock(day, hour, minute, zone)}`;
+      : `${tag}${ltClock(day, hour, minute, zone, calAnchor, minDay)}`;
   /** 段区间：dd日HHZ–dd日HHZ / 京dd日HH:00–dd日HH:00 */
   const segRangeOf = (from: TafExpandAt, to: TafExpandAt): string =>
     `${segClock(from.day, from.hour, from.minute)}–${segClock(to.day, to.hour, to.minute)}`;
@@ -698,10 +729,17 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     (v.endHour - v.startHour);
   // —— 联动注册表（owner 9/23 三轮：着色细化到组级——条目/行头/原文片/元信息行双向点亮）
   const HL = "mw-taf-hl";
+  /** 解码气泡依据键（FM 51 条款族——见 TAF_DECODE_CITES） */
+  type TafCiteKey = keyof typeof TAF_DECODE_CITES;
   /** 条目 → 解码气泡载荷（电码→人话行 + 依据键；点击条目时弹——owner 9/24 统一批） */
   const itemDecode = new Map<
     HTMLElement,
-    { rows: Array<{ code: string; text: string }>; cite?: "wind" | "vis" | "wx" | "clouds" }
+    { rows: Array<{ code: string; text: string }>; cites: TafCiteKey[] }
+  >();
+  /** 行头 → 该行全部条目的合并解码载荷（键盘 Enter/Space 开——行头代表段，评测 P1 键盘批） */
+  const headDecode = new Map<
+    HTMLElement,
+    { rows: Array<{ code: string; text: string }>; cites: TafCiteKey[] }
   >();
   const link = {
     items: [] as { el: HTMLElement; spans: Span[] }[],
@@ -738,18 +776,27 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     codeChip.style.display = "none";
   };
   // —— 解码气泡（owner 9/24 统一批：点击条目弹「电码→人话」逐行 + FM 51 依据行——METAR 卡同款点击契约；
-  // 切换语义与 METAR 一致：点已开的收起、点别的换内容、点空白处收起）
+  // 切换语义与 METAR 一致：点已开的收起、点别的换内容、点空白处收起。
+  // 键盘契约（2026-09-24 评测 P1 键盘批，两卡同款）：可聚焦元素（行头，代表段）Enter/Space 开合该行
+  // 合并解码气泡、Esc 关闭；条目保持不入 Tab 序（复测工程 N3「行头代表段、Tab stop 减半」决策不推翻），
+  // 鼠标点击条目仍开其单条气泡；aria-expanded 挂触发元素、气泡经 aria-describedby 接入读屏
   const decodeBubble = el("div", "mw-taf-decode");
   decodeBubble.setAttribute("role", "tooltip");
   card.append(decodeBubble);
   let decodeOpenFor: HTMLElement | null = null;
+  let decodeSeq = 0;
   const hideDecode = (): void => {
+    if (decodeOpenFor !== null) {
+      decodeOpenFor.removeAttribute("aria-expanded");
+      decodeOpenFor.removeAttribute("aria-describedby");
+    }
     decodeBubble.style.display = "none";
     decodeOpenFor = null;
   };
-  const showDecode = (item: HTMLElement): void => {
-    const payload = itemDecode.get(item);
-    if (payload === undefined) return;
+  const showDecode = (
+    item: HTMLElement,
+    payload: { rows: Array<{ code: string; text: string }>; cites: TafCiteKey[] },
+  ): void => {
     decodeBubble.replaceChildren();
     for (const r of payload.rows) {
       const line = el("div", "mw-taf-decode-row");
@@ -760,8 +807,8 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       );
       decodeBubble.append(line);
     }
-    if (payload.cite !== undefined) {
-      decodeBubble.append(el("p", "mw-taf-decode-cite", TAF_DECODE_CITES[payload.cite][locale]));
+    for (const cite of payload.cites) {
+      decodeBubble.append(el("p", "mw-taf-decode-cite", TAF_DECODE_CITES[cite][locale]));
     }
     decodeBubble.style.display = "block";
     // 定位：条目下方优先，卡内钳制（卡可滚动，坐标作滚动补偿；先落位再量宽高）
@@ -779,17 +826,43 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         : Math.max(0, iR.top - cardR.top - bh - 2 + card.scrollTop);
     decodeBubble.style.left = `${left}px`;
     decodeBubble.style.top = `${top}px`;
+    if (decodeBubble.id === "") decodeBubble.id = `mw-taf-decode-${++decodeSeq}`;
+    item.setAttribute("aria-expanded", "true");
+    item.setAttribute("aria-describedby", decodeBubble.id);
     decodeOpenFor = item;
+  };
+  /** 解码载荷（条目单条 / 行头合并）→ 开合入口：已开者收起、否则开 */
+  const toggleDecode = (
+    item: HTMLElement,
+    payload: { rows: Array<{ code: string; text: string }>; cites: TafCiteKey[] },
+  ): void => {
+    if (decodeOpenFor === item) hideDecode();
+    else showDecode(item, payload);
   };
   card.addEventListener("click", (ev) => {
     const target = ev.target instanceof HTMLElement ? ev.target : null;
     const item = target?.closest<HTMLElement>(".mw-taf-item[data-code]") ?? null;
-    if (item !== null && itemDecode.has(item)) {
-      if (decodeOpenFor === item) hideDecode();
-      else showDecode(item);
+    const payload = item !== null ? itemDecode.get(item) : undefined;
+    if (item !== null && payload !== undefined) {
+      toggleDecode(item, payload);
       return;
     }
     if (target?.closest(".mw-taf-decode") === null) hideDecode();
+  });
+  card.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") {
+      hideDecode();
+      return;
+    }
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    // 行头代表段（可聚焦）：Enter/Space 开该行全部条目的合并解码表（键盘通道，评测 P1）
+    const target = ev.target instanceof HTMLElement ? ev.target : null;
+    const head = target?.closest<HTMLElement>(".mw-taf-period-head") ?? null;
+    const payload = head !== null ? headDecode.get(head) : undefined;
+    if (head !== null && payload !== undefined) {
+      ev.preventDefault(); // Space 不滚动页面
+      toggleDecode(head, payload);
+    }
   });
   const clearHl = (): void => {
     for (const c of link.cuts) c.el.classList.remove(HL);
@@ -887,7 +960,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       if (zone === null) return tempValueOf(x);
       const atText =
         x.at.day !== undefined
-          ? `${tag}${ltClock(x.at.day, x.at.hour, 0, zone)}`
+          ? `${tag}${ltClock(x.at.day, x.at.hour, 0, zone, calAnchor, minDay)}`
           : `${tag}${String(Math.floor(((x.at.hour * 60 + zone) % 1440) / 60)).padStart(2, "0")}:00`;
       return `${x.celsius}°C @ ${atText}`;
     };
@@ -985,6 +1058,11 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
             ]
           : conditionItems(shown, locale, t);
       if (items.length === 0) items.push({ label: "", text: t.emptySegment, full: true });
+      /** 本行有解码载荷的条目（行头合并气泡用） */
+      const rowDecoded: Array<{
+        rows: Array<{ code: string; text: string }>;
+        cites: TafCiteKey[];
+      }> = [];
       for (const it of items) {
         const item = el("span", `mw-taf-item${it.full === true ? " mw-taf-item-full" : ""}`);
         if (it.label !== "") item.append(el("span", "mw-taf-item-label", it.label));
@@ -1007,10 +1085,12 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
           // 逐组/逐层成对「电码→人话」+ 依据键——点击条目时弹（见卡级 click 委托）
           const dRows = decodeRowsOf(it.key, row.uncertain ? src?.elements : shown, locale);
           if (dRows.length > 0) {
-            itemDecode.set(item, {
+            const payload = {
               rows: dRows,
-              ...(it.key !== "group" ? { cite: it.key } : {}),
-            });
+              cites: it.key !== "group" ? [it.key] : [],
+            };
+            itemDecode.set(item, payload);
+            rowDecoded.push(payload);
           }
         }
         body.append(item);
@@ -1020,10 +1100,16 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       else if (row.kind === "TEMPO" || row.overlay?.withTempo === true)
         body.append(el("span", "mw-taf-period-note mw-taf-item-full", `（${t.tempoNote}）`));
       li.append(head, body);
-      // 电码悬停只挂行头（owner 9/24 交互批：此前整段挂 title，读人话行也弹整段电码串——
-      // 映射词没看到、报头式浮层先跳出来）；行体条目的对应电码改就地去显（data-code，悬停/聚焦才出现）
-      const code = `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}｜${conditionsCodeOf(shown)}${row.overlay !== undefined && src !== undefined ? ` ｜ ${src.raw}` : ""}`;
-      head.title = code; // 读屏读人话正文不变（评测工程 P0-2：title 不配 aria-label 覆盖）
+      // 行头电码浮签（评测 P1 键盘批）：行头代表段可聚焦，focus/悬停时浮签显该段展示态电码——
+      // 键盘 Tab 即可看到电码（原 head.title 原生气泡键盘不可达，且与浮签同屏双气泡，退役）
+      head.dataset.code = `${conditionsCodeOf(shown)}${row.overlay !== undefined && src !== undefined ? ` ｜ ${src.raw}` : ""}`;
+      // 行头合并解码载荷（键盘 Enter/Space 开）：本行全部条目的解码行按序合并、依据键去重
+      if (rowDecoded.length > 0) {
+        headDecode.set(head, {
+          rows: rowDecoded.flatMap((p) => p.rows),
+          cites: [...new Set(rowDecoded.flatMap((p) => p.cites))],
+        });
+      }
       ol.append(li);
     }
     card.append(title, ol);

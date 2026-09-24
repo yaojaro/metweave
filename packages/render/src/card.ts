@@ -568,12 +568,14 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
 
 /** 悬停解释统一挂载：title 与 aria-label 同挂同文。
  *  title 单押触屏无 hover、键盘不可聚焦、默认读屏不朗读（三重不可达）；
- *  aria-label 让同一文案进入可编程访问面（读屏/辅助技术可读）。 */
+ *  aria-label 让同一文案进入可编程访问面（读屏/辅助技术可读）。
+ *  键盘契约（评测工程 P1 修复批）：可聚焦元素 Enter/Space 开合气泡、Esc 关闭、
+ *  aria-expanded 挂触发元素、气泡经 aria-describedby 接入读屏；联动点亮 mouseover 与 focusin 同路。 */
 const attachHint = (node: HTMLElement, hint: string): void => {
   node.title = hint; // 桌面悬停原生气泡保留
   node.setAttribute("aria-label", hint); // 读屏通道
   node.classList.add("mw-hint"); // 点击/键盘切换气泡（见 root 委托与 .mw-hint-pop 样式）
-  node.tabIndex = 0; // 键盘 Tab 可达（:focus-visible 显示气泡）
+  node.tabIndex = 0; // 键盘 Tab 可达（Enter/Space 开合气泡）
   node.dataset.hint = hint; // 气泡文案源（不污染 textContent，RAW 对照原样）
 };
 
@@ -598,9 +600,18 @@ function observeTimeOf(t: ReportTime, now: Date): Date | null {
   return null;
 }
 
-/** 观测时刻 → 本地时显示序（单制主显，owner 9/24）：dd日 HH:MM——日回绕按 31 折回（METAR 无月语境的显示位近似，
- *  与 taf-card 的 ltClock 同口径；龄期计算仍走 UTC 的 observeTimeOf，不受展示时区影响） */
-function localClockOf(t: ReportTime, offsetMinutes: number): string {
+/** 真实 Date → 北京时显示串（跨月经 Date 真月历换算，2026-09-24 评测 P1 月界批）：
+ *  「M月D日 HH:MM」——月位显式，跨月不再有「哪个月」的歧义 */
+function zonedClockOf(utc: Date, offsetMinutes: number): string {
+  const z = new Date(utc.getTime() + offsetMinutes * 60_000);
+  return `${z.getUTCMonth() + 1}月${z.getUTCDate()}日 ${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+/** 观测时刻 → 本地时显示序（单制主显，owner 9/24）：北京时制走真实月历（observeTimeOf 已把
+ *  「日/时/分」定到真实 Date——含跨月；跨月显示 10月1日 而非「31日」回绕，2026-09-24 评测 P1 月界批）。
+ *  observeTimeOf 无可吻合候选（7 天内日号不吻合的病态输入）时回退 %31 折回显示——残余近似仅显示位：
+ *  病态日号本就无从判读真实日期，且龄期行不渲染、档位判读不依赖显示串，无害 */
+function fallbackClockOf(t: ReportTime, offsetMinutes: number): string {
   const total = (t.day - 1) * 1440 + t.hour * 60 + t.minute + offsetMinutes;
   const d = (Math.floor(total / 1440) % 31) + 1;
   const h = Math.floor((total % 1440) / 60);
@@ -810,15 +821,16 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
   }
 
   // —— 时间行：电码时刻 + 数据龄期（「43 分钟前」比时刻本身更直接支撑判读；超 60 分钟标橙）
-  // 时刻随展示时区单制（owner 9/24）：UTC＝dd日 HH:MM UTC；京＝京dd日 HH:MM（en 恒 UTC）
+  // 时刻随展示时区单制（owner 9/24）：UTC＝dd日 HH:MM UTC；京＝北京时M月D日 HH:MM（真实月历，en 恒 UTC）；
+  // 北京时制经 observeTimeOf 定到的真实 Date 换算（跨月正确——月界批），病态日号回退 %31 近似显示
+  const observedAt = observeTimeOf(v.time, now);
   const timeText =
     options.utcOffsetMinutes !== undefined &&
     options.utcOffsetMinutes !== null &&
     options.locale !== "en"
-      ? `北京时${localClockOf(v.time, options.utcOffsetMinutes)}`
+      ? `北京时${observedAt !== null ? zonedClockOf(observedAt, options.utcOffsetMinutes) : fallbackClockOf(v.time, options.utcOffsetMinutes)}`
       : T.timeText(v.time);
   const timeEl = el("div", "mw-time", timeText);
-  const observedAt = observeTimeOf(v.time, now);
   if (observedAt !== null) {
     const ageMinutes = Math.round((now.getTime() - observedAt.getTime()) / 60_000);
     if (ageMinutes >= 0) {
@@ -1521,58 +1533,79 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
 
   // 人话提示的点击/键盘通道：title 悬停之外，触屏点击与键盘聚焦同样可读——
   // 单一气泡按提示词定位，监听委托在卡片根上（Leaflet popup 搬移 DOM 时随行生效）。
-  // 切换语义：点已开的收起，点别的换文案，点空白处全收；Esc 收起
+  // 键盘契约（2026-09-24 评测 P1 键盘批，两卡同款）：可聚焦元素（.mw-hint）Enter/Space 开合气泡、
+  // Esc 关闭；aria-expanded 挂触发元素、气泡经 aria-describedby 接入读屏；联动点亮 mouseover 与 focusin 同路。
+  // 切换语义：点已开的收起，点别的换文案，点空白处全收
   const bubble = el("span", "mw-hint-pop");
   bubble.setAttribute("role", "tooltip");
+  let bubbleSeq = 0;
+  const closeBubble = (): void => {
+    bubble.classList.remove("mw-hint-on");
+    for (const on of Array.from(root.querySelectorAll<HTMLElement>(".mw-hint.mw-hint-on"))) {
+      on.classList.remove("mw-hint-on");
+      on.removeAttribute("aria-expanded");
+      on.removeAttribute("aria-describedby");
+    }
+  };
+  const openBubble = (hint: HTMLElement): void => {
+    const hintText = hint.dataset.hint ?? hint.getAttribute("aria-label") ?? "";
+    const decodeRows = decodeByHint.get(hintText);
+    // 先清空历史内容：气泡只展示本次点击的那一份转换说明（append 不清空，必须显式清）
+    bubble.textContent = "";
+    if (decodeRows === undefined) {
+      bubble.textContent = hintText;
+    } else {
+      // 点击 = 「这个结论怎么来的」：逐 token 原码 → 含义 的转换说明表
+      bubble.append(el("strong", "mw-decode-title", T.decode.title));
+      for (const r of decodeRows.rows) {
+        const line = el("div", "mw-decode-row");
+        line.append(
+          el("span", "mw-decode-code", r.code),
+          el("span", "mw-decode-arrow", "→"),
+          el("span", "mw-decode-text", r.text),
+        );
+        bubble.append(line);
+      }
+      // 底部规范依据行：名称/版本/条款号/简要内容——供用户按图索骥核查原文（教学面）
+      const cite = decodeRows.cite;
+      if (cite !== undefined) {
+        bubble.append(el("div", "mw-decode-basis", `${T.decode.basisLabel}${T.decode.cite[cite]}`));
+      }
+    }
+    const hr = hint.getBoundingClientRect();
+    const rr = root.getBoundingClientRect();
+    bubble.style.left = `${Math.max(0, hr.left - rr.left)}px`;
+    bubble.style.top = `${hr.bottom - rr.top + 4}px`;
+    if (bubble.id === "") bubble.id = `mw-hint-pop-${++bubbleSeq}`;
+    hint.setAttribute("aria-expanded", "true");
+    hint.setAttribute("aria-describedby", bubble.id);
+    hint.classList.add("mw-hint-on");
+    bubble.classList.add("mw-hint-on");
+  };
+  /** 开合入口（click 与键盘 Enter/Space 共用）：点已开的收起、点别的换文案 */
+  const toggleBubble = (hint: HTMLElement): void => {
+    const wasOn = hint.classList.contains("mw-hint-on");
+    closeBubble();
+    if (!wasOn) openBubble(hint);
+  };
   root.addEventListener("click", (ev) => {
     const target = ev.target instanceof HTMLElement ? ev.target : null;
     const hint = target?.closest<HTMLElement>(".mw-hint") ?? null;
-    const wasOn = hint?.classList.contains("mw-hint-on") ?? false;
-    for (const on of Array.from(root.querySelectorAll(".mw-hint.mw-hint-on"))) {
-      on.classList.remove("mw-hint-on");
-    }
-    bubble.classList.remove("mw-hint-on");
-    if (hint !== null && !wasOn) {
-      const hintText = hint.dataset.hint ?? hint.getAttribute("aria-label") ?? "";
-      const decodeRows = decodeByHint.get(hintText);
-      // 先清空历史内容：气泡只展示本次点击的那一份转换说明（append 不清空，必须显式清）
-      bubble.textContent = "";
-      if (decodeRows === undefined) {
-        bubble.textContent = hintText;
-      } else {
-        // 点击 = 「这个结论怎么来的」：逐 token 原码 → 含义 的转换说明表
-        bubble.append(el("strong", "mw-decode-title", T.decode.title));
-        for (const r of decodeRows.rows) {
-          const line = el("div", "mw-decode-row");
-          line.append(
-            el("span", "mw-decode-code", r.code),
-            el("span", "mw-decode-arrow", "→"),
-            el("span", "mw-decode-text", r.text),
-          );
-          bubble.append(line);
-        }
-        // 底部规范依据行：名称/版本/条款号/简要内容——供用户按图索骥核查原文（教学面）
-        const cite = decodeRows.cite;
-        if (cite !== undefined) {
-          bubble.append(
-            el("div", "mw-decode-basis", `${T.decode.basisLabel}${T.decode.cite[cite]}`),
-          );
-        }
-      }
-      const hr = hint.getBoundingClientRect();
-      const rr = root.getBoundingClientRect();
-      bubble.style.left = `${Math.max(0, hr.left - rr.left)}px`;
-      bubble.style.top = `${hr.bottom - rr.top + 4}px`;
-      hint.classList.add("mw-hint-on");
-      bubble.classList.add("mw-hint-on");
-    }
+    if (hint !== null) toggleBubble(hint);
+    else closeBubble();
   });
   root.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape") {
-      bubble.classList.remove("mw-hint-on");
-      for (const on of Array.from(root.querySelectorAll(".mw-hint.mw-hint-on"))) {
-        on.classList.remove("mw-hint-on");
-      }
+      closeBubble();
+      return;
+    }
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    // span 无原生 click 合成：Enter/Space 显式触发同一开合逻辑（评测 P1：注释曾宣称 focus 显示气泡实无实现）
+    const target = ev.target instanceof HTMLElement ? ev.target : null;
+    const hint = target?.closest<HTMLElement>(".mw-hint") ?? null;
+    if (hint !== null) {
+      ev.preventDefault(); // Space 不滚动页面
+      toggleBubble(hint);
     }
   });
   root.append(bubble);
@@ -1608,6 +1641,16 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     setLinked(hit === null ? null : (hit.dataset.hint ?? null), hit);
   });
   root.addEventListener("mouseleave", () => setLinked(null));
+  // 键盘联动等价（评测 P1：mouseover 委托无 focusin 等价——Tab 聚焦词时点亮+浮签不可达）
+  root.addEventListener("focusin", (ev) => {
+    const target = ev.target instanceof HTMLElement ? ev.target : null;
+    const hit = target?.closest<HTMLElement>("[data-hint]") ?? null;
+    setLinked(hit === null ? null : (hit.dataset.hint ?? null), hit);
+  });
+  root.addEventListener("focusout", (ev) => {
+    const to = ev.relatedTarget instanceof HTMLElement ? ev.relatedTarget : null;
+    if (to?.closest("[data-hint]") === null || to === null) setLinked(null);
+  });
   root.append(codeChip);
 
   return root;

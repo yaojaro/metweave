@@ -739,6 +739,10 @@ export interface TafLayerItem {
   position: [number, number];
   /** 站点提示（tooltip 文案，缺省用 IR 站名） */
   title?: string;
+  /** 月锚（真实年月，month 1–12）：该报文日号归属的日历月——在位且层带 calendarAnchor 时，
+   *  层连续序 at 在展开/渲染前归一到本报锚月（跨月报池各自正确，2026-09-24 评测 P1 月界批）；
+   *  缺席时走层全局 anchorDays 的 %31 折回（显示位残余近似，见 anchorize 注释） */
+  monthAnchor?: TafCalendarAnchor;
 }
 
 /**
@@ -752,10 +756,15 @@ export interface AddTafLayerOptions {
   at?: TafExpandAt;
   /** 月锚天数（B3 跨月回绕，有效期起日所在月）；缺省 31 */
   anchorDays?: number;
+  /** 日历月锚（2026-09-24 评测 P1 月界批）：at 视为「自该月 1 日起的连续日序」（day 可超月长），
+   *  与各 item.monthAnchor 联用把 at 归一到每报锚月——跨月报池（如 9 月末混入 10 月 1 日生效报）
+   *  展开与显示各报正确；在位时忽略 anchorDays（月天数按真实月历逐报计算） */
+  calendarAnchor?: TafCalendarAnchor;
   /** 点击站点时以弹窗展示预报摘要（缺省开启；层② 的完整 TAF 卡片在后续版本） */
   popup?: boolean;
-  /** renderTafCard 透传（raw/className/stationTitle/utcOffsetMinutes——宿主定制 TAF 卡；at 由图层按当前时刻注入） */
-  card?: Omit<RenderTafCardOptions, "locale" \| "at">;
+  /** renderTafCard 透传（raw/className/stationTitle/utcOffsetMinutes——宿主定制 TAF 卡；
+   *  at/monthAnchor 由图层按当前时刻与各报锚注入，不接受层级传入） */
+  card?: Omit<RenderTafCardOptions, "locale" \| "at" \| "monthAnchor">;
   /** bindPopup 选项透传（autoPanPadding 族等——宿主为固定悬浮层留避让边时用；
    *  本库缺省只设 maxWidth=卡片设计宽 480，宿主显式键覆盖之） */
   popupOptions?: Leaflet.PopupOptions;
@@ -765,6 +774,7 @@ const ADD_TAF_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
   "locale",
   "at",
   "anchorDays",
+  "calendarAnchor",
   "popup",
   "card",
   "popupOptions",
@@ -829,9 +839,14 @@ const bindCodeZoom = (map: Leaflet.Map): void => {
 
 /** 各层当前展开时刻（setTafLayerTime 换时刻不再清层重建——marker 原地 setIcon/setTooltipContent，评测工程 P2-1） */
 const tafLayerAt = new WeakMap<Leaflet.LayerGroup, TafExpandAt>();
+/** 各层的日历月锚（2026-09-24 评测 P1 月界批）：at 连续序「自该月 1 日起」的基准月 */
+const tafLayerCalendar = new WeakMap<Leaflet.LayerGroup, TafCalendarAnchor>();
 /** 各层的可变 card 选项覆盖（owner 9/24 时区单制：setTafLayerTime 带 card 即合并——切时区不清层重建、
  *  滑杆换时刻不带 card 不回退；弹窗刷新读此处而非建层闭包，已开弹窗即时随时区换内容） */
-const tafLayerCard = new WeakMap<Leaflet.LayerGroup, Omit<RenderTafCardOptions, "locale" \| "at">>();
+const tafLayerCard = new WeakMap<
+  Leaflet.LayerGroup,
+  Omit<RenderTafCardOptions, "locale" \| "at" \| "monthAnchor">
+>();
 /** marker → 其 TafLayerItem（换时刻原地更新时的数据面） */
 const tafMarkerItems = new WeakMap<Leaflet.Marker, TafLayerItem>();
 /** marker → 弹窗内容刷新函数（复测 N1/N2：刷新不走合成 popupopen——真实打开才移焦点，刷新按当前时刻重算置顶提示） */
@@ -840,6 +855,87 @@ const tafPopupRefresh = new WeakMap<Leaflet.Marker, (popup: Leaflet.Popup) => vo
 /** 查看时刻是否在该报文有效期外（含窗前/窗后——出窗＝灰点「预报未生效/已过期」） */
 /** 日时 → 分钟序（出窗比较用；TAF 无月，同报文语境内日号自洽） */
 const absDayHour = (d: number, h: number): number => (d - 1) * 1440 + h * 60;
+
+/** 真实月历：某年月的天数（2026-09-24 评测 P1 月界批） */
+const daysInMonthOf = (year: number, month: number): number =>
+  new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+/** 年月 → 序数（锚距比较用） */
+const calendarIndex = (c: TafCalendarAnchor): number => c.year * 12 + (c.month - 1);
+
+/**
+ * 单站时刻归一（2026-09-24 评测 P1 月界批）：
+ * - 显式层时刻 contAt（calendarAnchor 基的连续日序，可超月长）→ 经 anchorize 换算到本报锚月；
+ * - contAt 缺省（层尚无统一时刻）→ 各站自身有效期起点（已在本报锚内，原样直用，月天数按报锚真月历）。
+ * 返回喂 expandTaf/tafMarkerState 的 at+daysIn，cal 供 renderTafCard 走真月历显示。
+ */
+function stationNorm(
+  item: TafLayerItem,
+  contAt: TafExpandAt \| undefined,
+  layerCal: TafCalendarAnchor \| undefined,
+  fallbackDaysIn: number,
+): { at: TafExpandAt; daysIn: number; cal?: TafCalendarAnchor } {
+  const v = item.report.validity;
+  const ownStart: TafExpandAt = { day: v?.startDay ?? 0, hour: v?.startHour ?? 0, minute: 0 };
+  const itemCal = item.monthAnchor;
+  if (contAt === undefined) {
+    return {
+      at: ownStart,
+      daysIn: itemCal !== undefined ? daysInMonthOf(itemCal.year, itemCal.month) : fallbackDaysIn,
+      cal: itemCal,
+    };
+  }
+  return anchorize(item, contAt, layerCal, fallbackDaysIn);
+}
+
+/**
+ * 层连续序 at → 该报锚月内的归一（2026-09-24 评测 P1 月界批，跨月报池收口）：
+ * item.monthAnchor 与层 calendarAnchor 都在位时，把 at 的连续日序（自层锚月 1 日起、可超月长）
+ * 换算到本报锚月内的日号，并按真实月历给该月天数（供报文 validity 回绕）——月末跨月的
+ * 混合报池（9 月末的在效报 + 10 月 1 日生效报）展开与显示各报正确。
+ * 缺任一锚（或锚病态相差超 24 个月）时原样返回 + 层全局 anchorDays 的 %31 折回——残余近似
+ * 仅显示与回绕位：报文本身无月份，无锚即无从换算；档位判读的要素合成不依赖日号显示 */
+function anchorize(
+  item: TafLayerItem,
+  at: TafExpandAt,
+  layerCal: TafCalendarAnchor \| undefined,
+  fallbackDaysIn: number,
+): { at: TafExpandAt; daysIn: number; cal?: TafCalendarAnchor } {
+  const itemCal = item.monthAnchor;
+  if (itemCal === undefined \|\| layerCal === undefined) {
+    return { at, daysIn: fallbackDaysIn };
+  }
+  const diff = calendarIndex(itemCal) - calendarIndex(layerCal);
+  if (diff < -24 \|\| diff > 24) {
+    return { at, daysIn: fallbackDaysIn }; // 病态锚距（脏数据防御）：折回近似兜底
+  }
+  // 报锚月 1 日相对层锚月 1 日的天数（逐月累加，双向）
+  let firstCont = 1;
+  let y = layerCal.year;
+  let m = layerCal.month;
+  for (let i = 0; i < Math.abs(diff); i += 1) {
+    if (diff > 0) {
+      firstCont += daysInMonthOf(y, m);
+      m += 1;
+      if (m > 12) {
+        m = 1;
+        y += 1;
+      }
+    } else {
+      m -= 1;
+      if (m < 1) {
+        m = 12;
+        y -= 1;
+      }
+      firstCont -= daysInMonthOf(y, m);
+    }
+  }
+  return {
+    at: { ...at, day: at.day - (firstCont - 1) },
+    daysIn: daysInMonthOf(itemCal.year, itemCal.month),
+    cal: itemCal,
+  };
+}
 
 const outOfValidity = (r: TafReport, at: TafExpandAt): boolean => {
   const v = r.validity;
@@ -942,17 +1038,15 @@ async function populateTafLayer(
   options: AddTafLayerOptions,
   L: typeof import("leaflet"),
 ): Promise<void> {
-  const anchor: TafMonthAnchor = { daysIn: options.anchorDays ?? 31 };
+  const fallbackDaysIn = options.anchorDays ?? 31;
+  const layerCal = options.calendarAnchor;
   const locale = options.locale ?? "zh";
+  if (layerCal !== undefined) tafLayerCalendar.set(group, layerCal); // 月界批：层连续序 at 的基准月
   tafLayerCard.set(group, options.card ?? {}); // 可变 card 覆盖的初值（setTafLayerTime 带 card 时合并更新）
   for (const item of items) {
-    const r = item.report;
-    const noTimeline = r.nil === true \|\| r.cancelled === true;
-    const v = r.validity;
-    const at: TafExpandAt = noTimeline
-      ? { day: v?.startDay ?? 0, hour: v?.startHour ?? 0, minute: 0 }
-      : (options.at ?? { day: v?.startDay ?? 0, hour: v?.startHour ?? 0, minute: 0 });
-    const state = tafMarkerState(item, at, anchor, locale);
+    // 月界批：显式 at ＝层连续序（calendarAnchor 基）→ 归一到本报锚月；缺省各站自起点（报锚内原值）
+    const norm = stationNorm(item, options.at, layerCal, fallbackDaysIn);
+    const state = tafMarkerState(item, norm.at, { daysIn: norm.daysIn }, locale);
     const { icon, tip } = tafMarkerIcon(L, item, state);
     const marker = L.marker(item.position, { icon });
     tafMarkerItems.set(marker, item);
@@ -966,18 +1060,28 @@ async function populateTafLayer(
       // 只重建卡片内容不动焦点——焦点移入仅发生在真实 popupopen（键盘拖滑杆不再被抢焦）；
       // card 选项读层的可变覆盖（tafLayerCard）而非建层闭包——切时区后已开弹窗即时换内容（owner 9/24）；
       // 报文数据面同样现读 item.report（owner 9/24 方案B：宿主原位换报——如按查看时刻切换上一周期在效报——
-      // 换报后已开弹窗即时跟随新报，捕获建层时的 r/noTimeline 会停在旧报）
+      // 换报后已开弹窗即时跟随新报，捕获建层时的 r/noTimeline 会停在旧报）；
+      // 月界批：层连续序 current 归一到本报锚月再喂展开/渲染（跨月报池各报正确），card 注入本月锚
       const refresh = (popup: Leaflet.Popup): void => {
         const rNow = item.report;
         const noTimelineNow = rNow.nil === true \|\| rNow.cancelled === true;
-        const current = tafLayerAt.get(group) ?? at;
-        const fresh = tafMarkerState(item, noTimelineNow ? at : current, anchor, locale);
+        // 月界批：层连续序 currentCont 归一到本报锚月再喂展开/渲染（跨月报池各报正确），card 注入本月锚；
+        // 层尚无统一时刻（未传 at）→ 各站自身起点（报锚内原值）
+        const currentCont = tafLayerAt.get(group);
+        const normNow = stationNorm(
+          item,
+          noTimelineNow ? undefined : currentCont,
+          tafLayerCalendar.get(group),
+          fallbackDaysIn,
+        );
+        const fresh = tafMarkerState(item, normNow.at, { daysIn: normNow.daysIn }, locale);
         const cardOpts: RenderTafCardOptions = {
           locale,
           raw: true,
-          ...(noTimelineNow ? {} : { at: current }),
+          ...(currentCont === undefined \|\| noTimelineNow ? {} : { at: normNow.at }),
           ...tafLayerCard.get(group),
         };
+        if (normNow.cal !== undefined) cardOpts.monthAnchor = normNow.cal;
         if (cardOpts.stationTitle === undefined && item.title !== undefined) {
           const stationName = item.title.startsWith(`${rNow.station} `)
             ? item.title.slice(rNow.station.length + 1)
@@ -1041,8 +1145,9 @@ export async function setTafLayerTime(
   void map;
   void items; // 签名保留（公开 API 契约）：原地更新路径经 markerItems 拿数据，不再需要整表
   const L = await loadLeaflet();
-  const anchor: TafMonthAnchor = { daysIn: options.anchorDays ?? 31 };
+  const fallbackDaysIn = options.anchorDays ?? 31;
   const locale = options.locale ?? "zh";
+  if (options.calendarAnchor !== undefined) tafLayerCalendar.set(layer, options.calendarAnchor);
   // 缺省 at：保持层当前时刻（不回退到非法 0 日——复测 N5；层尚无时刻时退各站自身有效期起点）
   const at = options.at ??
     tafLayerAt.get(layer) ?? {
@@ -1061,13 +1166,9 @@ export async function setTafLayerTime(
     const marker: Leaflet.Marker = ml;
     const item = tafMarkerItems.get(marker);
     if (item === undefined) return;
-    const r = item.report;
-    const noTimeline = r.nil === true \|\| r.cancelled === true;
-    const v = r.validity;
-    const own: TafExpandAt = noTimeline
-      ? { day: v?.startDay ?? 0, hour: v?.startHour ?? 0, minute: 0 }
-      : at;
-    const state = tafMarkerState(item, own, anchor, locale);
+    // 月界批：显式/既有层连续序 at 归一到本报锚月（缺省回退各站自身有效期起点，报锚内原值）
+    const norm = stationNorm(item, at, tafLayerCalendar.get(layer), fallbackDaysIn);
+    const state = tafMarkerState(item, norm.at, { daysIn: norm.daysIn }, locale);
     const { icon, tip } = tafMarkerIcon(L, item, state);
     marker.setIcon(icon);
     marker.setTooltipContent(tip);
@@ -1088,9 +1189,22 @@ const fmtTafAt = (at: TafExpandAt, locale: "zh" \| "en" = "zh"): string =>
     ? `${String(at.day).padStart(2, "0")}日 ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`
     : `Day ${String(at.day).padStart(2, "0")} ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")} Z`;
 
-/** 控件时刻显示·本地时（owner 9/24 时区单制）：tag+dd日HH:MM——无括注无 Z，与卡片单制同口径；
- *  日回绕按 31 折回（TAF 无月语境的显示位近似） */
-const fmtTafZone = (at: TafExpandAt, offset: number, tag: string): string => {
+/** 控件时刻显示·本地时（owner 9/24 时区单制）：tag+M月D日HH:MM——月位显式（2026-09-24 评测 P1 月界批）：
+ *  calendarAnchor 在位时走真实月历（at 为自锚月 1 日起的连续日序，day>31 按进位恒正确、跨月不回绕）；
+ *  缺席时按 31 天折回（残余近似仅显示位：无月语境无从判读真实月份，控件值本身不受影响） */
+const fmtTafZone = (
+  at: TafExpandAt,
+  offset: number,
+  tag: string,
+  cal?: TafCalendarAnchor,
+): string => {
+  if (cal !== undefined) {
+    const base = new Date(Date.UTC(cal.year, cal.month - 1, at.day, at.hour, at.minute));
+    if (at.day > 31 \|\| base.getUTCMonth() === cal.month - 1) {
+      const z = new Date(base.getTime() + offset * 60_000);
+      return `${tag}${z.getUTCMonth() + 1}月${z.getUTCDate()}日${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
+    }
+  }
   const total = (at.day - 1) * 1440 + at.hour * 60 + at.minute + offset;
   const d = (Math.floor(total / 1440) % 31) + 1;
   const h = Math.floor((total % 1440) / 60);
@@ -1125,6 +1239,9 @@ export interface TafTimeControlOptions {
   locale?: "zh" \| "en";
   /** 展示时区偏移（分钟）——owner 9/24 单制：缺省 null＝UTC 单制；zh 传 480＝北京时单制（标签与两端标注同随） */
   utcOffsetMinutes?: number \| null;
+  /** 日历月锚（2026-09-24 评测 P1 月界批）：滑杆零点所在真实年月（month 1–12）——from/to/at 视为
+   *  自该月 1 日起的连续日序（day 可超月长），北京时标签走真实月历、跨月不回绕；缺省 31 天折回显示 */
+  calendarAnchor?: TafCalendarAnchor;
   /** 初始时刻（缺省＝滑杆零点）；时区切换等重建控件场景用来保住当前拨动位置（落到最近格） */
   initialAt?: TafExpandAt;
   /** 时刻变更回调（拿到当前时刻，供宿主联动外部 UI） */
@@ -1151,19 +1268,31 @@ export interface TafTimeControlOptions {
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg04 | 北京时${String(day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg04 | 北京时${z.getUTCMonth() + 1}月${z.getUTCDate()}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg05（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg05 | 北京时${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")} | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg05 | 北京时${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")} | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg06（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg06 | ${String(at.day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg06 | 北京时${String(day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg07（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg07 | 北京时${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")} | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg08（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg08 | ${String(at.day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg01（1 条）
 

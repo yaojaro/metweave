@@ -1587,7 +1587,7 @@ describe("renderCard 云底单位（heightUnit / en 缺省英尺）与未知选�
     );
   });
 
-  it("时区单制（owner 9/24）：缺省 UTC 原样；utcOffsetMinutes:480 观测时刻行显京钟（龄期仍按 UTC 观测算）", () => {
+  it("时区单制（owner 9/24）：缺省 UTC 原样；utcOffsetMinutes:480 观测时刻行显京钟（真实月历带月位，龄期仍按 UTC 观测算）", () => {
     const T = "METAR ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG";
     const utc = renderCard(parse(T));
     expect(utc.querySelector(".mw-time")?.textContent).toContain("11日 07:00 UTC");
@@ -1596,8 +1596,17 @@ describe("renderCard 云底单位（heightUnit / en 缺省英尺）与未知选�
       now: new Date(Date.UTC(2026, 8, 11, 7, 40)),
     });
     const timeText = bj.querySelector(".mw-time")?.textContent ?? "";
-    expect(timeText).toContain("北京时11日 15:00");
+    expect(timeText).toContain("北京时9月11日 15:00");
     expect(timeText).toContain("40 分钟前"); // 观测 07:00Z、now 07:40Z——龄期不随展示时区换算
+  });
+
+  it("月界批（2026-09-24 评测 P1）：北京时制经真实月历换算——9/30 16:00Z 显示「北京时10月1日 00:00」而非「31日」回绕", () => {
+    const T = "METAR ZBAA 301600Z VRB02MPS CAVOK 25/10 Q1019 NOSIG";
+    const bj = renderCard(parse(T), {
+      utcOffsetMinutes: 480,
+      now: new Date(Date.UTC(2026, 8, 30, 16, 10)),
+    });
+    expect(bj.querySelector(".mw-time")?.textContent).toContain("北京时10月1日 00:00");
   });
 });
 
@@ -1697,19 +1706,15 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(text).toContain("转为：");
     expect(text).toContain("2000 m");
     expect(text).toContain("转变时刻不确定");
-    // 电码悬停只挂行头（owner 9/24 交互批：整段挂 title 时读人话也弹整段电码串，映射被浮层压住）；
-    // 行体条目的对应电码改 data-code 就地去显（悬停/聚焦行尾出现），读屏读人话正文不变
+    // 电码通道改行头浮签（2026-09-24 评测 P1 键盘批：title 原生气泡键盘不可达且与浮签双气泡，退役）；
+    // 行头带 data-code（focus/悬停浮签显电码——键盘 Tab 可达），读屏读人话正文不变
     expect(rows[0]?.getAttribute("title")).toBeNull();
-    expect(rows[0]?.querySelector(".mw-taf-period-head")?.getAttribute("title") ?? "").toContain(
-      "04009G16MPS",
-    );
-    expect(rows[0]?.querySelector(".mw-taf-period-head")?.getAttribute("title") ?? "").toContain(
-      "9999",
-    );
-    expect(rows[1]?.querySelector(".mw-taf-period-head")?.getAttribute("title") ?? "").toContain(
-      "2500 -SHRASN BR",
-    );
-    expect(rows[0]?.getAttribute("aria-label")).toBeNull(); // 电码只走 title（读屏读人话正文——评测工程 P0-2）
+    const head0 = rows[0]?.querySelector<HTMLElement>(".mw-taf-period-head");
+    expect(head0?.dataset.code ?? "").toContain("04009G16MPS");
+    expect(head0?.dataset.code ?? "").toContain("9999");
+    const head1 = rows[1]?.querySelector<HTMLElement>(".mw-taf-period-head");
+    expect(head1?.dataset.code ?? "").toContain("2500 -SHRASN BR");
+    expect(rows[0]?.getAttribute("aria-label")).toBeNull(); // 电码只走 data-code 浮签（读屏读人话正文——评测工程 P0-2）
   });
 
   it("就地电码浮签（owner 9/24 三轮：::after 内联显码撑动布局「跳一跳」→ 改卡内绝对定位浮签）", () => {
@@ -1965,5 +1970,125 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(periodRule).toContain("margin-bottom: 7px");
     const lastRule = css.split(".mw-taf-period:last-child {")[1]?.split("}")[0] ?? "";
     expect(lastRule).toContain("margin-bottom: 0");
+  });
+});
+
+// ---------------------------------------------------------------- 2026-09-24 评测 P1 修复批：键盘通道与月界
+
+describe("键盘通道（2026-09-24 评测 P1：两卡契约一致——可聚焦元素 Enter/Space 开合气泡、Esc 关闭、aria 接线）", () => {
+  it("METAR 卡：主表词 Enter 开合解码气泡（aria-expanded/aria-describedby 接线）、Space 不再滚动页面、Esc 关闭", () => {
+    const card = renderCard(parse("ZBAA 121253Z 30015KT 9999 FEW010 SCT020 21/12 Q1013"), {
+      raw: true,
+    });
+    const bubble = card.querySelector<HTMLElement>(".mw-hint-pop")!;
+    const wind = card.querySelector<HTMLElement>("dd span.mw-hint")!;
+    expect(wind.getAttribute("tabindex")).toBe("0");
+    // Enter 开：span 无原生 click 合成，keydown 显式触发（此前注释宣称 focus 显示气泡、实际无实现）
+    wind.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(bubble.classList.contains("mw-hint-on")).toBe(true);
+    expect(wind.getAttribute("aria-expanded")).toBe("true");
+    expect(wind.getAttribute("aria-describedby")).toBe(bubble.id);
+    expect(bubble.id).not.toBe(""); // 气泡经 id 接入读屏
+    expect(bubble.textContent).toContain("转换说明");
+    // Enter 再按＝收起；aria 状态随关闭摘除
+    wind.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(bubble.classList.contains("mw-hint-on")).toBe(false);
+    expect(wind.getAttribute("aria-expanded")).toBeNull();
+    expect(wind.getAttribute("aria-describedby")).toBeNull();
+    // Space 开（默认行为被拦截——不滚动页面）
+    const ev = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+    wind.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(true);
+    expect(bubble.classList.contains("mw-hint-on")).toBe(true);
+    // Esc 关（焦点在触发元素上）
+    wind.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(bubble.classList.contains("mw-hint-on")).toBe(false);
+  });
+
+  it("METAR 卡：focusin 联动等价（mouseover 委托之外的键盘通道）——Tab 聚焦词即点亮两侧并显电码浮签", () => {
+    const card = renderCard(parse("ZBAA 121253Z 30015KT 9999 FEW010 SCT020 21/12 Q1013"), {
+      raw: true,
+    });
+    const chip = card.querySelector<HTMLElement>(".mw-codechip")!;
+    const wind = card.querySelector<HTMLElement>("dd span.mw-hint")!;
+    wind.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(wind.classList.contains("mw-link")).toBe(true);
+    expect(chip.style.display).not.toBe("none");
+    expect(chip.textContent).toContain("30015KT"); // 浮签显 RAW 侧组电码
+    wind.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    expect(wind.classList.contains("mw-link")).toBe(false);
+    expect(chip.style.display).toBe("none");
+  });
+
+  it("TAF 卡：行头 focus 显段电码浮签、Enter 开该行合并解码表（含依据行）、Esc 关闭（条目保持不入 Tab 序）", () => {
+    const goldenK =
+      "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 BKN033 TX02/2518Z TNM02/2523Z TNM04/2623Z TEMPO 2520/2524 2500 -SHRASN BR BECMG 2605/2606 2000 -SN BR BECMG 2609/2610 04004MPS BECMG 2611/2612 4000 BR=";
+    const card = renderTafCard(parseTaf(goldenK), { raw: true });
+    const chip = card.querySelector<HTMLElement>(".mw-taf-codechip")!;
+    const bubble = card.querySelector<HTMLElement>(".mw-taf-decode")!;
+    const head = card.querySelector<HTMLElement>(".mw-taf-period-head")!;
+    const firstItem = card.querySelector<HTMLElement>(".mw-taf-item")!;
+    expect(firstItem.getAttribute("tabindex")).toBeNull(); // 条目不入 Tab 序（复测工程 N3 决策保留）
+    // focus 行头 → 浮签显该段电码（键盘看得到电码浮签——原 head.title 键盘不可达）
+    head.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(chip.style.display).not.toBe("none");
+    expect(chip.textContent).toContain("04009G16MPS");
+    head.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    expect(chip.style.display).toBe("none");
+    // Enter 开合并解码表：本行各条目的「电码→人话」逐行 + FM 51 依据行
+    head.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(bubble.style.display).toBe("block");
+    expect(bubble.textContent).toContain("04009G16MPS");
+    expect(bubble.textContent).toContain("9999");
+    expect(bubble.textContent).toContain("FM 51");
+    expect(head.getAttribute("aria-expanded")).toBe("true");
+    expect(head.getAttribute("aria-describedby")).toBe(bubble.id);
+    // Esc 关闭
+    head.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(bubble.style.display).toBe("none");
+    expect(head.getAttribute("aria-expanded")).toBeNull();
+    // 鼠标点击条目仍开其单条气泡（点击契约不变）
+    const windItem = [...card.querySelectorAll<HTMLElement>(".mw-taf-item[data-code]")].find((x) =>
+      x.textContent?.startsWith("风"),
+    )!;
+    windItem.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(bubble.style.display).toBe("block");
+    expect(bubble.textContent).toContain("04009G16MPS");
+    expect(windItem.getAttribute("aria-expanded")).toBe("true");
+  });
+});
+
+describe("TAF 卡月锚（2026-09-24 评测 P1 月界批：monthAnchor 在位时北京时制走真实月历）", () => {
+  it("9 月锚跨月：25日18Z +8h 显示「北京时9月26日 02:00」；30日16Z +8h 显示「北京时10月1日 00:00」而非「31日」回绕", () => {
+    const anchor = { year: 2026, month: 9 };
+    const a = renderTafCard(parseTaf("TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023="), {
+      utcOffsetMinutes: 480,
+      monthAnchor: anchor,
+    });
+    // 25日18Z 起效 → 北京时 9月26日 02:00（9 月锚真月历）
+    expect(a.textContent).toContain("北京时9月26日 02:00");
+    // 连续日序 day=31（锚月起第 31 天＝10 月 1 日）→ 真月历进位不回绕「31日」
+    const b = renderTafCard(parseTaf("TAF ZPPP 291518Z 2918/3024 04009G16MPS 9999 SCT023="), {
+      utcOffsetMinutes: 480,
+      monthAnchor: anchor,
+      at: { day: 30, hour: 16, minute: 0 },
+    });
+    expect(b.textContent).toContain("北京时10月1日 00:00"); // 查看 30日16Z +8h
+  });
+
+  it("缺席月锚保持 31 天折回近似（显示位残余，公开面兼容不变）；病态日号（2 月 30 日）守卫回退不静默滑月", () => {
+    const noAnchor = renderTafCard(
+      parseTaf("TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023="),
+      {
+        utcOffsetMinutes: 480,
+      },
+    );
+    expect(noAnchor.textContent).toContain("北京时26日02:00"); // 旧口径（%31 折回、无月位、无空格）不变
+    const feb = renderTafCard(parseTaf("TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023="), {
+      utcOffsetMinutes: 480,
+      monthAnchor: { year: 2027, month: 2 },
+    });
+    expect(feb.textContent).toContain("北京时2月26日 02:00"); // 合法日号（26 ≤ 28）走真月历
+    expect(feb.textContent).not.toContain("3月"); // 越界日号守卫回退折回、不静默滑到下月
   });
 });
