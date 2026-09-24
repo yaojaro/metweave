@@ -22,7 +22,7 @@ import { renderCard } from "@metweave/render";
 import { renderTafCard } from "@metweave/render";
 ```
 
-TAF 卡与 METAR 卡同契约：分段明细（主导段 / BECMG 过渡带 / TEMPO·PROB 挂载行）、气温极值、RAW 对照与组级双向联动、悬停＝点亮＋电码浮签、点击＝解码气泡＋ FM 51 依据行；`utcOffsetMinutes` 切换 UTC/北京时单制展示、`monthAnchor` 支撑跨月有效期。
+TAF 卡与 METAR 卡同契约：分段明细（主导段 / BECMG 过渡带 / TEMPO·PROB 挂载行）、气温极值、RAW 对照与组级双向联动、悬停＝点亮＋电码浮签、点击＝解码气泡＋ FM 51 依据行；`utcOffsetMinutes` 切换 UTC/北京时单制展示、`monthAnchor` 支撑跨月有效期。配套导出：`summarizeTafConditions`（TAF 展开条件的人话摘要——tooltip/图例/面板一句话用）、`DECODE_CITES`（解码气泡的规范依据表，zh/en 双语）。两卡浮层几何与 aria 生命周期同源一个内核（联动语言＝点亮＋浮签、点击＝详解＋依据）。
 
 文档见[主仓库](https://github.com/yaojaro/metweave)。
 

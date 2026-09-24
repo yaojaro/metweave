@@ -1,6 +1,6 @@
 # metweave
 
-把公开气象数据编织成可嵌入产品的图：机场报文（METAR / SPECI）经「解析 → 标准化 → 渲染」一条管道，变成报文卡片与地图图层。数据直连公开源（IEM currents 端点 CORS 全开，浏览器可直连）；解析与渲染全部在浏览器端完成——报文不经过你自己的服务器，无需自建后端。
+把公开气象数据编织成可嵌入产品的图：机场报文（METAR / SPECI 观测与 TAF 预报）经「解析 → 标准化 → 渲染」一条管道，变成报文卡片与地图图层。数据直连公开源（IEM 实况端点 CORS 全开，浏览器可直连；TAF 上游无 CORS 头，需代理或镜像——见下）；解析与渲染全部在浏览器端完成——报文不经过你自己的服务器，无需自建后端。
 
 ### 安装
 
@@ -16,6 +16,7 @@ npm install metweave @metweave/leaflet leaflet
 ```ts
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css"; // 别漏：不引入 CSS 地图不渲染
+import { CN_STATIONS } from "metweave/stations-cn";
 import { getMetarReports } from "metweave/sources"; // 取数 → 解析 → 定位
 import { addMetarLayer } from "@metweave/leaflet";
 
@@ -28,7 +29,21 @@ L.tileLayer(
 await addMetarLayer(map, await getMetarReports(), { conditionColors: true });
 ```
 
-本包再导出 `@metweave/core` / `parser` / `render`（整条管道一个入口，含 `toValues` 与机读错误类）；`metweave/sources` 提供取数 helper。文档与完整示例见[主仓库](https://github.com/yaojaro/metweave)。
+### TAF 预报侧（同样三步）
+
+```ts
+import { getTafReports } from "metweave/sources";
+import { addTafLayer } from "@metweave/leaflet";
+
+// TAF 端点不提供坐标——stations 联表是定位的唯一来源（中国 39 站元数据随包自带）
+const tafItems = await getTafReports(["ZBAA", "ZBAD"], {
+  baseUrl: "/aw-taf", // 上游无 CORS 头：浏览器直连走自建代理/镜像（根因与三条出路见主仓库 README「TAF 取数与 CORS」）
+  stations: CN_STATIONS,
+});
+const tafLayer = await addTafLayer(map, tafItems); // 圆点四档色/悬停摘要/TAF 卡弹窗，与实况层同款
+```
+
+本包再导出 `@metweave/core` / `parser` / `render`（整条管道一个入口，含 `toValues` 与机读错误类）：预报侧 `parseTaf`（tolerant 与 `mode: "strict"` 严判）、`expandTaf` 时间线展开、`tafSegments` 分段明细、`validateTaf` 条文判据校验、`renderTafCard` TAF 卡片。`metweave/sources` 提供双线取数 helper（`getMetars` / `getMetarReports` 与 `getTafs` / `getTafReports`，各带 `baseUrl` 换源位）；`metweave/stations-cn` 提供中国 39 站元数据。文档与完整示例见[主仓库](https://github.com/yaojaro/metweave)。
 
 ## 许可
 
