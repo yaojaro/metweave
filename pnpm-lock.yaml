@@ -54,6 +54,9 @@ importers:
       '@types/leaflet':
         specifier: ^1.9.22
         version: 1.9.22
+      '@types/node':
+        specifier: ^22
+        version: 22.20.2
       vite:
         specifier: ^8.0.0
         version: 8.2.2(@types/node@22.20.2)(jiti@2.7.0)(yaml@2.9.0)

@@ -19,7 +19,7 @@ body {
 /* 底图 key 提示：未配置天地图 key 时就地说明配置方式（不静默换底图） */
 #basemap-hint {
   position: fixed;
-  top: 10px;
+  top: 83px;
   right: 10px;
   z-index: 1000;
   max-width: 420px;
@@ -33,10 +33,11 @@ body {
     sans-serif;
 }
 
-/* 批4#16：页面导览一句（地图左上角——小白第一眼看懂本页干什么） */
+/* 批4#16：页面导览一句（小白第一眼看懂本页干什么）；
+  top 83＝缩放控件底边 75 + 8 间隙（owner 9/24「重叠了，需要错开」——原 10/10 与 +/− 控件同角压叠） */
 #guide {
   position: absolute;
-  top: 10px;
+  top: 83px;
   left: 10px;
   z-index: 900;
   max-width: 340px;
@@ -313,7 +314,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: 83px;
   align-items: flex-start;
 }
 
@@ -327,7 +328,7 @@ body {
 /* 模式切换条（TAF 预报演示，v0.2 渲染层） */
 #mode-bar {
   position: absolute;
-  top: 10px;
+  top: 83px;
   right: 10px;
   z-index: 1000;
   display: flex;
