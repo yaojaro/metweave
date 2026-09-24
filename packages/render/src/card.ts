@@ -656,7 +656,7 @@ const STYLE_ID = "mw-card-style";
 
 const CARD_CSS = `
 .mw-card { font: 13px/1.6 system-ui, sans-serif; color: #1c2733; background: #fff;
-  border: 1px solid #d8dee4; border-radius: 10px; padding: 12px 14px; max-width: 420px; }
+  border: 1px solid #d8dee4; border-radius: 10px; padding: 12px 14px; max-width: 420px; position: relative; }
 .mw-card h2 { margin: 0; font-size: 15px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .mw-card .mw-time { color: #6b7785; margin: 2px 0 8px; font-size: 12px; }
 .mw-card .mw-time.mw-stale { color: #8a5a12; font-weight: 600; }
@@ -667,6 +667,11 @@ const CARD_CSS = `
 .mw-badge.mw-warn { border-color: #e0b478; color: #8a5a12; background: #fdf3e2; }
 .mw-badge.mw-cavok { border-color: #79b791; color: #1e6b40; background: #eaf6ee; }
 .mw-card [data-hint].mw-link { background: #fdeeb9; outline: 1px solid #e0b478; border-radius: 4px; }
+/* 电码浮签（owner 9/24 统一批：与 TAF 卡同款——悬停联动组随行显 RAW 侧电码，零占位零回流） */
+.mw-codechip { position: absolute; display: none; z-index: 3; pointer-events: none; white-space: nowrap;
+  font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #44546a; background: #f7f9fc; border: 1px solid #cdd7e2; border-radius: 3px; padding: 1px 5px;
+  box-shadow: 0 1px 3px rgba(20, 32, 45, 0.15); }
 .mw-decode { margin-top: 6px; padding-top: 6px; border-top: 1px dashed #5a6b7d; }
 .mw-decode-title { display: block; font-weight: 600; margin-bottom: 4px; }
 .mw-decode-row { display: flex; gap: 6px; align-items: baseline; }
@@ -1572,21 +1577,38 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
   });
   root.append(bubble);
 
-  // —— 主表 ↔ RAW 双向对照高亮：同一组的两处 data-hint 同字符串（单一来源锁），
-  // 悬停任一侧即把同组两侧一起点亮——「这个结论从原文哪里来」一眼可见
-  const setLinked = (key: string | null): void => {
+  // —— 主表 ↔ RAW 双向对照高亮 + 电码浮签（owner 9/24 统一批：联动语言＝点亮＋浮签、不做压暗，与 TAF 卡同口径）：
+  // 同一组的两处 data-hint 同字符串（单一来源锁），悬停任一侧即把同组两侧一起点亮，
+  // 浮签随行显出该组在 RAW 侧的电码——「这个结论从原文哪里来」一眼可见
+  const codeChip = el("span", "mw-codechip");
+  const showChip = (near: HTMLElement, codes: string): void => {
+    codeChip.textContent = codes;
+    codeChip.style.display = "inline-block";
+    const rr = root.getBoundingClientRect();
+    const nr = near.getBoundingClientRect();
+    const chipW = codeChip.offsetWidth;
+    const left = Math.max(4, Math.min(nr.right - rr.left - chipW, root.clientWidth - chipW - 4));
+    const top = Math.max(0, nr.top - rr.top - codeChip.offsetHeight - 2);
+    codeChip.style.left = `${left}px`;
+    codeChip.style.top = `${top}px`;
+  };
+  const setLinked = (key: string | null, near: HTMLElement | null = null): void => {
+    const codes: string[] = [];
     for (const node of Array.from(root.querySelectorAll<HTMLElement>("[data-hint]"))) {
-      if (key === null) node.classList.remove("mw-link");
-      else if (node.dataset.hint === key) node.classList.add("mw-link");
-      else node.classList.remove("mw-link");
+      const hit = key !== null && node.dataset.hint === key;
+      node.classList.toggle("mw-link", hit);
+      if (hit && node.closest(".mw-raw") !== null) codes.push(node.textContent ?? "");
     }
+    if (key !== null && near !== null && codes.length > 0) showChip(near, codes.join(" "));
+    else codeChip.style.display = "none";
   };
   root.addEventListener("mouseover", (ev) => {
     const target = ev.target instanceof HTMLElement ? ev.target : null;
     const hit = target?.closest<HTMLElement>("[data-hint]") ?? null;
-    setLinked(hit === null ? null : (hit.dataset.hint ?? null));
+    setLinked(hit === null ? null : (hit.dataset.hint ?? null), hit);
   });
   root.addEventListener("mouseleave", () => setLinked(null));
+  root.append(codeChip);
 
   return root;
 }

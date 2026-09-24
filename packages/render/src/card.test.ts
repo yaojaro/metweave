@@ -1328,6 +1328,26 @@ describe("温露组标注合并 + 气泡单行优先（用户实测反馈修正�
     expect(hintRule).toContain("cursor: help");
     expect(hintRule).toContain("dashed");
   });
+
+  it("电码浮签（owner 9/24 统一批：联动语言＝点亮＋浮签，无压暗）：悬停主表词点亮两侧并随行显 RAW 侧电码，离开即隐", () => {
+    const card = renderCard(parse("METAR ZBAA 110700Z 04009G16MPS 9999 SCT033 25/10 Q1019 NOSIG"), {
+      raw: true,
+    });
+    // 主表风值 span 的提示语形如「风：40° 9 m/s…」（人话格式，电码在 RAW 侧同组 token）
+    const windSpan = [...card.querySelectorAll<HTMLElement>("dd [data-hint]")].find((h) =>
+      (h.dataset.hint ?? "").startsWith("风："),
+    );
+    if (windSpan === undefined) throw new Error("应有风组提示词");
+    windSpan.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    const chip = card.querySelector<HTMLElement>(".mw-codechip");
+    expect(chip).not.toBeNull();
+    expect(chip?.style.display).not.toBe("none");
+    expect(chip?.textContent).toContain("04009G16MPS"); // 浮签显组电码（丢 showChip 接线即红）
+    expect(card.querySelectorAll(".mw-raw .mw-link").length).toBeGreaterThanOrEqual(1); // RAW 侧同组点亮
+    card.dispatchEvent(new MouseEvent("mouseleave"));
+    expect(chip?.style.display).toBe("none");
+    expect(card.querySelectorAll(".mw-link").length).toBe(0);
+  });
 });
 
 describe("天气/云行纯译文（原码只在 RAW 视图与悬停提示）", () => {
@@ -1718,11 +1738,42 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(chipRule).toContain("position: absolute");
     expect(chipRule).toContain("pointer-events: none");
     expect(css).not.toContain("[data-code]:hover::after"); // 旧内联显码方案不得回流
-    // 压暗契约（owner 9/24 二轮）：原文区整盒颜色压淡——报头等未包片文本同样压淡，
-    // 点亮电码为唯一焦点；退回逐片 opacity（报头不吃效果、全场最亮）即红
-    const rawDimRule = css.split(".mw-taf-raw.mw-taf-dim {")[1]?.split("}")[0] ?? "";
-    expect(rawDimRule).toContain("color:");
-    expect(css).not.toContain(".mw-taf-raw.mw-taf-dim .mw-taf-rawseg:not(.mw-taf-hl) { opacity");
+    // 联动语言契约（owner 9/24 统一批定稿）：点亮＋浮签、不做压暗——mw-taf-dim 不得回流
+    expect(css).not.toContain("mw-taf-dim");
+  });
+
+  it("点击解码气泡（owner 9/24 统一批）：条目点击弹「电码→人话」逐行 + FM 51 依据行，再点收起、点空白处收起", () => {
+    const card = renderTafCard(parseTaf(golden), { raw: true });
+    const bubble = card.querySelector<HTMLElement>(".mw-taf-decode");
+    expect(bubble).not.toBeNull();
+    const items = Array.from(card.querySelectorAll<HTMLElement>(".mw-taf-item[data-code]"));
+    const byLabel = (label: string): HTMLElement => {
+      const hit = items.find((x) => x.querySelector(".mw-taf-item-label")?.textContent === label);
+      if (hit === undefined) throw new Error(`无 ${label} 条目`);
+      return hit;
+    };
+    // 风：单行「04009G16MPS → 东北风 5 级…」+ §51.3 依据
+    byLabel("风").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const windText = bubble?.textContent ?? "";
+    expect(bubble?.style.display).toBe("block");
+    expect(windText).toContain("04009G16MPS");
+    expect(windText).toContain("东北风 5 级");
+    expect(windText).toContain("§51.3");
+    // 再点同条目 → 收起
+    byLabel("风").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(bubble?.style.display).toBe("none");
+    // 云：逐层行（SCT023/BKN033 各一行）+ §51.6 依据
+    byLabel("云").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const cloudText = bubble?.textContent ?? "";
+    expect(bubble?.style.display).toBe("block");
+    expect(cloudText).toContain("SCT023");
+    expect(cloudText).toContain("BKN033");
+    expect(cloudText).toContain("§51.6");
+    // 点空白处（分段标题）→ 收起
+    card
+      .querySelector(".mw-taf-periods-title")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(bubble?.style.display).toBe("none");
   });
 
   it("RAW 对照（独立盒区置底、气温行在其上）+ 组级联动：悬停「天气」只点亮天气组片，反向亦然", () => {

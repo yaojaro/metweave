@@ -14,11 +14,13 @@
  */
 import type {
   CloudCondition,
+  CloudElement,
   Span,
   TafReport,
   TafTemperatureGroup,
   TrendElements,
   VisibilityGroup,
+  WeatherGroup,
   WindGroup,
 } from "@metweave/core";
 import { tafSegments } from "@metweave/parser";
@@ -235,7 +237,8 @@ const STYLE_TEXT = `
 .mw-taf-raw-hint { font-weight: 400; color: #6b7785; }
 .mw-taf-rawseg-danger { color: #a02c2c; font-weight: 600; }
 .mw-taf-rawseg-caution { color: #8a5a12; }
-/* 联动可达性（评测工程 P0/P1）：tabIndex 聚焦通道 + 虚线 affordance + 激活时非相关项压暗（focus+context） */
+/* 联动可达性（评测工程 P0/P1）：tabIndex 聚焦通道 + 虚线 affordance；联动语言＝点亮＋浮签
+   （owner 9/24 统一批定稿：不做压暗——原 focus+context 压暗已移除，两卡同口径） */
 .mw-taf-item.mw-taf-link, .mw-taf-period-head.mw-taf-link { border-bottom: 1px dashed #7f8c9a; cursor: help; }
 /* 就地电码浮签（owner 9/24 三轮）：绝对定位悬浮于条目上方——零占位零回流（旧 ::after 内联显码
    内容进文档流，行宽一变就换行回流「跳一跳」）；pointer-events:none 不挡悬停链 */
@@ -243,18 +246,18 @@ const STYLE_TEXT = `
   font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: #44546a; background: #f7f9fc; border: 1px solid #cdd7e2; border-radius: 3px; padding: 1px 5px;
   box-shadow: 0 1px 3px rgba(20, 32, 45, 0.15); }
+/* 解码气泡（owner 9/24 统一批）：点击条目弹「电码→人话」逐行 + FM 51 依据行——METAR 卡同款点击契约 */
+.mw-taf-decode { position: absolute; display: none; z-index: 4; max-width: 300px; background: #fff;
+  border: 1px solid #cdd7e2; border-radius: 6px; padding: 6px 8px; box-shadow: 0 2px 8px rgba(20, 32, 45, 0.18);
+  font: 12px/1.5 system-ui, sans-serif; color: #1c2733; }
+.mw-taf-decode-row { display: flex; gap: 6px; align-items: baseline; }
+.mw-taf-decode-row span:last-child { min-width: 0; }
+.mw-taf-decode-code { flex: none; font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #44546a; background: #f2f6fa; border-radius: 3px; padding: 0 4px; }
+.mw-taf-decode-arrow { color: #8a94a0; flex: none; }
+.mw-taf-decode-cite { margin: 4px 0 0; font-size: 10px; color: #8a94a0; }
 .mw-taf-item:focus-visible, .mw-taf-rawseg:focus-visible, .mw-taf-period-head:focus-visible
   { outline: 2px solid #4a90d9; outline-offset: 1px; }
-/* 联动压暗（owner 9/24 二轮修订）：原文区改「整盒颜色压淡」——旧 opacity 逐片压暗时，报头等
-   未包片的普通文本不在任何 span 里、不吃效果，全场最亮喧宾夺主；颜色经继承可压淡全部未点亮文本，
-   点亮片恢复深色黑字黄底，被引用的电码成为唯一焦点 */
-.mw-taf-raw.mw-taf-dim { color: #b6c1cc; }
-.mw-taf-raw.mw-taf-dim .mw-taf-rawseg:not(.mw-taf-hl) { color: inherit; }
-.mw-taf-raw.mw-taf-dim .mw-taf-rawseg.mw-taf-hl:not(.mw-taf-rawseg-danger):not(.mw-taf-rawseg-caution)
-  { color: #1c2733; }
-.mw-taf-periods.mw-taf-dim .mw-taf-item:not(.mw-taf-hl),
-.mw-taf-periods.mw-taf-dim .mw-taf-period-head:not(.mw-taf-hl),
-.mw-taf-periods.mw-taf-dim .mw-taf-period-note { opacity: .45; }
 .mw-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 `;
 
@@ -365,27 +368,26 @@ const segmentCloudTexts = (c: CloudCondition | undefined, locale: "zh" | "en"): 
   const g = CLOUD_GLOSS[locale];
   if (c.clear !== undefined) return [g.skyClear[c.clear.code] ?? c.clear.code];
   const parts: string[] = [];
-  for (const layer of c.elements) {
-    if (layer.kind === "vertical-visibility") {
-      parts.push(
-        layer.heightFt.value === null
-          ? g.vvMissing
-          : `${g.vvShort}${g.metersShort(Math.round(ftToMeters(layer.heightFt.value) / 100) * 100)}`,
-      );
-      continue;
-    }
-    const amount = layer.amount === null ? g.amountUnknown : (g.shortAmount[layer.amount] ?? "");
-    // 云底台阶化（评测小白#7：914 米的换算残留精度对小白只传达诡异；精确值在悬停电码与 RAW 原文）
-    const meters =
-      layer.heightFt.value === null
-        ? null
-        : Math.round(ftToMeters(layer.heightFt.value) / 100) * 100;
-    const base =
-      meters === null ? "" : locale === "zh" ? `，云底约 ${meters} 米` : g.baseShortMeters(meters);
-    const conv = layer.convective === "CB" ? g.cbNote : layer.convective === "TCU" ? g.tcuNote : "";
-    parts.push(`${amount}${base}${conv}`);
-  }
+  for (const layer of c.elements) parts.push(cloudLayerText(layer, locale));
   return parts;
+};
+
+/** 单层云人话（segmentCloudTexts 与解码气泡行共用——短名 + 云底台阶化折米 + 对流云威胁注） */
+const cloudLayerText = (layer: CloudElement, locale: "zh" | "en"): string => {
+  const g = CLOUD_GLOSS[locale];
+  if (layer.kind === "vertical-visibility") {
+    return layer.heightFt.value === null
+      ? g.vvMissing
+      : `${g.vvShort}${g.metersShort(Math.round(ftToMeters(layer.heightFt.value) / 100) * 100)}`;
+  }
+  const amount = layer.amount === null ? g.amountUnknown : (g.shortAmount[layer.amount] ?? "");
+  // 云底台阶化（评测小白#7：914 米的换算残留精度对小白只传达诡异；精确值在悬停电码与 RAW 原文）
+  const meters =
+    layer.heightFt.value === null ? null : Math.round(ftToMeters(layer.heightFt.value) / 100) * 100;
+  const base =
+    meters === null ? "" : locale === "zh" ? `，云底约 ${meters} 米` : g.baseShortMeters(meters);
+  const conv = layer.convective === "CB" ? g.cbNote : layer.convective === "TCU" ? g.tcuNote : "";
+  return `${amount}${base}${conv}`;
 };
 
 /** 分段行条目：要素标签 + 人话值 + 联动组键（wind/vis/wx/clouds＝四要素组；group＝整变化组；owner 9/23 三轮组级联动） */
@@ -396,6 +398,83 @@ interface SegItem {
   /** 通栏条目（「转为：」引导与注记行） */
   full?: boolean;
 }
+
+// ---------------------------------------------------------------- 解码气泡（owner 9/24 统一批：点击条目出「电码→人话」+ 依据行）
+
+/** TAF 解码依据行文案（条款号核自 WMO-No. 306 卷 I.1（2019 版）FM 51–XV：风 §51.3 / 能见度 §51.4 /
+ *  天气 §51.5（NSW §51.5.1）/ 云 §51.6；变化组条款未核到、不标——与 METAR 卡 DECODE_CITES 同四段式） */
+const TAF_DECODE_CITES: Record<"wind" | "vis" | "wx" | "clouds", { zh: string; en: string }> = {
+  wind: {
+    zh: "依据：WMO-No. 306 卷 I.1（2019）FM 51 §51.3——预报地面平均风向/风速（风向不定 VRB 见 §51.3.4）",
+    en: "Basis: WMO-No. 306 Vol I.1 (2019), FM 51 §51.3 — forecast surface wind (VRB: §51.3.4)",
+  },
+  vis: {
+    zh: "依据：WMO-No. 306 卷 I.1（2019）FM 51 §51.4——预报能见度 VVVV（判据与 METAR 报告值一致，9999＝10 km 及以上）",
+    en: "Basis: WMO-No. 306 Vol I.1 (2019), FM 51 §51.4 — forecast visibility VVVV (same criteria as METAR; 9999 = 10 km or more)",
+  },
+  wx: {
+    zh: "依据：WMO-No. 306 卷 I.1（2019）FM 51 §51.5——预报天气现象（其间无重要天气 NSW 见 §51.5.1）",
+    en: "Basis: WMO-No. 306 Vol I.1 (2019), FM 51 §51.5 — forecast weather (NSW: §51.5.1)",
+  },
+  clouds: {
+    zh: "依据：WMO-No. 306 卷 I.1（2019）FM 51 §51.6——预报云组（逐层云量/云底；显著变化增发条款见 §51.5.2/§51.6.3）",
+    en: "Basis: WMO-No. 306 Vol I.1 (2019), FM 51 §51.6 — forecast clouds (change provisions: §51.5.2/§51.6.3)",
+  },
+};
+
+/** 解码行输入面（TafResolvedConditions 与 TrendElements 的结构公共子集） */
+interface DecodeElems {
+  wind?: WindGroup;
+  visibility?: VisibilityGroup;
+  weather: readonly WeatherGroup[];
+  clouds?: CloudCondition;
+}
+
+/** 解码行：电码 → 人话，按要素族逐组/逐层成对（词表与分段行同一来源 gloss.ts，单一真相） */
+const decodeRowsOf = (
+  key: "wind" | "vis" | "wx" | "clouds" | "group",
+  e: DecodeElems | undefined,
+  locale: "zh" | "en",
+): Array<{ code: string; text: string }> => {
+  if (e === undefined) return [];
+  switch (key) {
+    case "wind":
+      return e.wind === undefined
+        ? []
+        : [{ code: windCodeOf(e.wind), text: segmentWindText(e.wind, locale) ?? "" }];
+    case "vis": {
+      const v = e.visibility;
+      if (v === undefined) return [];
+      return [
+        { code: v.unit === "m" ? `${v.value}` : `${v.value}SM`, text: segmentVisText(v) ?? "" },
+      ];
+    }
+    case "wx":
+      return e.weather.map((g) => ({
+        code: weatherCodeOf(g),
+        text: weatherGloss(g, WX_GLOSS[locale]),
+      }));
+    case "clouds": {
+      const c = e.clouds;
+      if (c === undefined) return [];
+      if (c.clear !== undefined)
+        return [
+          {
+            code: c.clear.code,
+            text: CLOUD_GLOSS[locale].skyClear[c.clear.code] ?? c.clear.code,
+          },
+        ];
+      return c.elements.map((layer) => ({
+        code: cloudCodeOf(layer),
+        text: cloudLayerText(layer, locale),
+      }));
+    }
+    case "group":
+      return [];
+    default:
+      return [];
+  }
+};
 
 const wxJoin = (locale: "zh" | "en"): string => (locale === "zh" ? "、" : ", ");
 
@@ -619,6 +698,11 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     (v.endHour - v.startHour);
   // —— 联动注册表（owner 9/23 三轮：着色细化到组级——条目/行头/原文片/元信息行双向点亮）
   const HL = "mw-taf-hl";
+  /** 条目 → 解码气泡载荷（电码→人话行 + 依据键；点击条目时弹——owner 9/24 统一批） */
+  const itemDecode = new Map<
+    HTMLElement,
+    { rows: Array<{ code: string; text: string }>; cite?: "wind" | "vis" | "wx" | "clouds" }
+  >();
   const link = {
     items: [] as { el: HTMLElement; spans: Span[] }[],
     heads: [] as { el: HTMLElement; rowIdx: number }[],
@@ -631,8 +715,6 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     }[],
     tempsEl: undefined as HTMLElement | undefined,
     validityEl: undefined as HTMLElement | undefined,
-    olEl: undefined as HTMLElement | undefined,
-    rawPEl: undefined as HTMLElement | undefined,
   };
   // —— 就地电码浮签（owner 9/24 三轮）：卡内绝对定位、悬浮于条目上方——零占位零回流
   //（旧 ::after 内联显码内容进文档流，行宽一变就换行回流「跳一跳」）；随联动 activate/clear 显隐
@@ -655,19 +737,72 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   const hideCodeChip = (): void => {
     codeChip.style.display = "none";
   };
+  // —— 解码气泡（owner 9/24 统一批：点击条目弹「电码→人话」逐行 + FM 51 依据行——METAR 卡同款点击契约；
+  // 切换语义与 METAR 一致：点已开的收起、点别的换内容、点空白处收起）
+  const decodeBubble = el("div", "mw-taf-decode");
+  decodeBubble.setAttribute("role", "tooltip");
+  card.append(decodeBubble);
+  let decodeOpenFor: HTMLElement | null = null;
+  const hideDecode = (): void => {
+    decodeBubble.style.display = "none";
+    decodeOpenFor = null;
+  };
+  const showDecode = (item: HTMLElement): void => {
+    const payload = itemDecode.get(item);
+    if (payload === undefined) return;
+    decodeBubble.replaceChildren();
+    for (const r of payload.rows) {
+      const line = el("div", "mw-taf-decode-row");
+      line.append(
+        el("span", "mw-taf-decode-code", r.code),
+        el("span", "mw-taf-decode-arrow", "→"),
+        el("span", undefined, r.text),
+      );
+      decodeBubble.append(line);
+    }
+    if (payload.cite !== undefined) {
+      decodeBubble.append(el("p", "mw-taf-decode-cite", TAF_DECODE_CITES[payload.cite][locale]));
+    }
+    decodeBubble.style.display = "block";
+    // 定位：条目下方优先，卡内钳制（卡可滚动，坐标作滚动补偿；先落位再量宽高）
+    decodeBubble.style.left = "4px";
+    decodeBubble.style.top = "0px";
+    const cardR = card.getBoundingClientRect();
+    const iR = item.getBoundingClientRect();
+    const bw = Math.min(decodeBubble.offsetWidth, card.clientWidth - 8);
+    const bh = decodeBubble.offsetHeight;
+    const left = Math.max(4, Math.min(iR.left - cardR.left, card.clientWidth - bw - 4));
+    const below = iR.bottom - cardR.top + 4 + card.scrollTop;
+    const top =
+      below + bh <= card.clientHeight - 4
+        ? below
+        : Math.max(0, iR.top - cardR.top - bh - 2 + card.scrollTop);
+    decodeBubble.style.left = `${left}px`;
+    decodeBubble.style.top = `${top}px`;
+    decodeOpenFor = item;
+  };
+  card.addEventListener("click", (ev) => {
+    const target = ev.target instanceof HTMLElement ? ev.target : null;
+    const item = target?.closest<HTMLElement>(".mw-taf-item[data-code]") ?? null;
+    if (item !== null && itemDecode.has(item)) {
+      if (decodeOpenFor === item) hideDecode();
+      else showDecode(item);
+      return;
+    }
+    if (target?.closest(".mw-taf-decode") === null) hideDecode();
+  });
   const clearHl = (): void => {
     for (const c of link.cuts) c.el.classList.remove(HL);
     for (const i of link.items) i.el.classList.remove(HL);
     for (const hd of link.heads) hd.el.classList.remove(HL);
     link.tempsEl?.classList.remove(HL);
     link.validityEl?.classList.remove(HL);
-    link.olEl?.classList.remove("mw-taf-dim");
-    link.rawPEl?.classList.remove("mw-taf-dim");
     hideCodeChip();
   };
   /**
-   * 联动三通道（评测工程 P0：mouseenter 之外补 focusin——键盘可达；tabIndex 聚焦 + 虚线 affordance + 激活压暗非相关项）。
-   * focusable=false（分段条目）不入 Tab 序——行头代表整段聚焦，单卡 Tab stop 从 ~27 降半（复测工程 N3 简版）
+   * 联动三通道（评测工程 P0：mouseenter 之外补 focusin——键盘可达；tabIndex 聚焦 + 虚线 affordance）。
+   * 联动语言＝点亮＋浮签（owner 9/24 统一批定稿：不做压暗）。focusable=false（分段条目）不入 Tab 序——
+   * 行头代表整段聚焦，单卡 Tab stop 从 ~27 降半（复测工程 N3 简版）
    */
   const pairHover = (self: HTMLElement, others: () => HTMLElement[], focusable = true): void => {
     self.classList.add("mw-taf-link");
@@ -676,8 +811,6 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       clearHl();
       self.classList.add(HL);
       for (const o of others()) o.classList.add(HL);
-      link.olEl?.classList.add("mw-taf-dim");
-      link.rawPEl?.classList.add("mw-taf-dim");
       if (self.dataset.code !== undefined) showCodeChip(self); // 带 data-code 的条目：浮签随行显码
     };
     self.addEventListener("mouseenter", activate);
@@ -812,7 +945,6 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     }
     const title = el("p", "mw-taf-periods-title", t.periods);
     const ol = el("ol", "mw-taf-periods");
-    link.olEl = ol;
     for (const [rowIdx, row] of rows.entries()) {
       const tone = segmentTone(row.overlay?.conditions ?? row.conditions);
       const li = el("li", `mw-taf-period${tone === "good" ? "" : ` mw-taf-period-${tone}`}`);
@@ -867,9 +999,18 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
               : originSpansOf(report, row.sourceIndex, it.key);
           if (spans.length > 0) {
             link.items.push({ el: item, spans });
-            // 就地电码（owner 9/24 交互批）：该条目值对应的原文片段，悬停/聚焦时经 CSS ::after 显出——
+            // 就地电码（owner 9/24 交互批）：该条目值对应的原文片段，浮签随行显出——
             // 对应关系在行内即可见，不再只靠卡底 RAW 区的高亮（滚动后常在视区外）
             item.dataset.code = spans.map((sp) => report.raw.slice(sp.start, sp.end)).join(" ");
+          }
+          // 解码气泡载荷（owner 9/24 统一批）：行值与分段行同源（过渡带＝组内所列、其余＝展示态合成），
+          // 逐组/逐层成对「电码→人话」+ 依据键——点击条目时弹（见卡级 click 委托）
+          const dRows = decodeRowsOf(it.key, row.uncertain ? src?.elements : shown, locale);
+          if (dRows.length > 0) {
+            itemDecode.set(item, {
+              rows: dRows,
+              ...(it.key !== "group" ? { cite: it.key } : {}),
+            });
           }
         }
         body.append(item);
@@ -1122,7 +1263,6 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     // RAW 区身份行（评测小白#11：原文区无标题=乱码彩蛋；提示联动通道存在）
     const rawTitle = el("p", "mw-taf-raw-title", t.rawTitle);
     rawTitle.append(el("span", "mw-taf-raw-hint", `　·　${t.rawHint}`));
-    link.rawPEl = rawP;
     card.append(rawTitle, rawP);
   }
 
