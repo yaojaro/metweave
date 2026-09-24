@@ -61,7 +61,7 @@ describe("TAF 语料回放锁（corpus/taf × 清单验收：无 unknown-token �
 const smokeRand = (seed: number) => () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
 
 describe("TAF fuzz 冒烟锁（内联变异回放，2000 例）", () => {
-  it("零违例（永不崩/双跑确定/契约字段在位/strict 恒报错）", () => {
+  it("零违例（永不崩/双跑确定/契约字段在位/strict 错误面恒为 strict-violation）", () => {
     const rand = smokeRand(20260923);
     let violations = 0;
     let ok = 0;
@@ -86,11 +86,11 @@ describe("TAF fuzz 冒烟锁（内联变异回放，2000 例）", () => {
       if (r.report.raw !== text) violations++;
       if (r.report.changes === undefined || r.report.temperatures === undefined) violations++;
       if (r.report.nil === true && r.report.validity !== undefined) violations++;
+      // strict 新契约（v0.2 补齐批）：干净报文通过、违例整体拒绝且错误面恒为 strict-violation
       try {
         parseTaf(text, { mode: "strict" });
-        violations++;
       } catch (e) {
-        if (!(e instanceof _MPE) || e.code !== "unsupported-mode") violations++;
+        if (!(e instanceof _MPE) || e.code !== "strict-violation") violations++;
       }
     }
     expect(violations).toBe(0);

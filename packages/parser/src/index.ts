@@ -64,6 +64,14 @@ export { parseTaf, tafDurationHours, tryParseTaf } from "./taf";
 export type { TryParseTafResult } from "./taf";
 // TAF 时间线展开器（v0.2 批 2.3 起）：五步算法的派生层（B4–B7）
 export { expandTaf, tafSegments } from "./expand";
+// TAF 判据校验层（v0.2 补齐批）：C2/C3/C5/C7 四判据——解析期移交至此的条文判据收口
+export { validateTaf } from "./validate";
+export type {
+  TafValidateOptions,
+  TafValidateStandard,
+  TafViolation,
+  TafViolationCode,
+} from "./validate";
 export type {
   TafExpandAt,
   TafExpansion,
@@ -153,7 +161,7 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
     throw new MetarParseError(
       "unsupported-mode",
       raw,
-      "strict 模式尚未实现（v0.1 仅 tolerant）——请省略 mode 或显式传 'tolerant'",
+      "METAR 侧 strict 模式尚未实现（TAF 侧 parseTaf 已支持 strict）——请省略 mode 或显式传 'tolerant'",
     );
   }
   const warnings: ParseWarning[] = [];

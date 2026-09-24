@@ -384,7 +384,13 @@
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.unsupported-mode | Strict mode is not implemented in v0.1 — omit `mode` or pass 'tolerant' | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.unsupported-mode | Strict mode is not implemented for METAR yet (TAF-side parseTaf supports it) — omit `mode` or pass 'tolerant' | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+
+## errors.strict-violation (1 entries)
+
+| key | Text | kind | Usage | Standard · Document · Clause |
+|---|---|---|---|---|
+| errors.strict-violation | TAF strict validation failed: rule violations or warning-severity parse warnings present (see the summary) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
 
 ## errors.batch-parse-failed (1 entries)
 

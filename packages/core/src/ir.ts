@@ -709,8 +709,10 @@ export interface ParseOptions {
  * parseTaf 的选项：容忍模式与 span 携带（类型位由报文本性固定为 'taf'，无外部注入场景——不同于 METAR 的 IEM 剥词源）。
  */
 export interface TafParseOptions {
-  /** 同 ParseOptions.mode：v0.2 尚未实现 strict，显式传即 unsupported-mode 报错（不静默降级） */
+  /** 同 ParseOptions.mode：strict＝严判（v0.2 补齐批已实现）——任一条文违例（validateTaf）或 warning 级解析告警即抛 strict-violation；缺省 tolerant 照旧 */
   readonly mode?: "tolerant" | "strict";
+  /** strict 判据阈值源（缺省 "wmo"；"caac"＝中国扩展层天气合法 + VRB 阈值 2 m/s——见 validateTaf） */
+  readonly validateStandard?: "wmo" | "caac";
   /** 同 ParseOptions.spans：false = 紧凑模式剥除全部 span */
   readonly spans?: boolean;
 }

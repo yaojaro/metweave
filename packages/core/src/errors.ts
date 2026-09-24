@@ -20,7 +20,8 @@ export type MetarParseErrorCode =
   | "invalid-time" /** 时组在位但数值越界（日/时/分超范围）——值不可信，等同无效时组 */
   | "missing-validity" /** TAF：发布时组后无 ddHH/ddHH 有效期组（NIL 除外——NIL 占该位属合法缺报，见 TafReport.nil） */
   | "invalid-validity" /** TAF：有效期组在位但数值越界（日起 01–31、起时 00–23、止时 00–24——止时 24 为午夜合法特例） */
-  | "unsupported-mode" /** mode:'strict' 在 v0.1 未实现（路线图项）——类型已预留，调用即明确报错而非静默降级 */
+  | "unsupported-mode" /** mode:'strict'：METAR 侧未实现（路线图项）——调用即明确报错而非静默降级；TAF 侧 parseTaf 已实现 strict（v0.2 补齐批） */
+  | "strict-violation" /** TAF strict（v0.2 补齐批）：任一条文违例（validateTaf 四判据）或 warning 级解析告警——聚合为整体不通过 */
   /** 批量聚合解析失败（伞包 getMetarReports 缺省模式：任一行整体失败即聚合抛出）。
    *  注意 raw 字段语义在本 code 下的调整：承载汇总信息（网络名/失败条数/逐条站名与原因）而非单条报文原文——
    *  单条原文仍可经 message 与 onUnparseable 回调取得，语义差异在本注释声明。 */
@@ -103,7 +104,10 @@ export const EN_MESSAGES: Record<MetarParseErrorCode | MetarSourceErrorCode, str
   "missing-validity": "Not a complete TAF report: validity group ddHH/ddHH missing",
   "invalid-validity":
     "TAF validity group out of range (day 01–31 / start hour 00–23 / end hour 00–24)",
-  "unsupported-mode": "Strict mode is not implemented in v0.1 — omit `mode` or pass 'tolerant'",
+  "unsupported-mode":
+    "Strict mode is not implemented for METAR yet (TAF-side parseTaf supports it) — omit `mode` or pass 'tolerant'",
+  "strict-violation":
+    "TAF strict validation failed: rule violations or warning-severity parse warnings present (see the summary)",
   "batch-parse-failed":
     "Some reports in the batch failed to parse entirely (see the summary for per-station reasons)",
   "http-error": "Source returned a non-2xx HTTP status",

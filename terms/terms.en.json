@@ -2772,7 +2772,22 @@
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
-   "text": "Strict mode is not implemented in v0.1 — omit `mode` or pass 'tolerant'",
+   "text": "Strict mode is not implemented for METAR yet (TAF-side parseTaf supports it) — omit `mode` or pass 'tolerant'",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.strict-violation": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "TAF strict validation failed: rule violations or warning-severity parse warnings present (see the summary)",
    "usage": [
     "packages/core/src/errors.ts#EN_MESSAGES"
    ],

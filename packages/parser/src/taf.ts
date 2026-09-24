@@ -7,6 +7,7 @@
  * 传输层终止符 `=` 剥离（A1）、NIL/CNL 位置判别（A2）、AAA/CCA 族仅容错（A3）、
  * 基况段四要素 + CAVOK（复用 groups 共享件，组装语义沿 METAR）。
  * 变化组与气温组（批 2/3.4）界后 token 暂一律 unknown-token 出声（不静默纪律）。
+ * strict 模式（v0.2 补齐批）：tolerant 解析后经 strictGate（validate.ts 四判据 + warning 级告警聚合）。
  * 纪律与 METAR 侧同源：不静默、span 保真、错误码只增不改（ParseError 别名自 v0.2 起）。
  */
 import { MetarParseError } from "@metweave/core";
@@ -44,6 +45,7 @@ import {
   warnDuplicateGroup,
   type Token,
 } from "./groups";
+import { strictGate } from "./validate";
 
 const STATION_PATTERN = /^[A-Z0-9]{4}$/;
 const ISSUE_TIME_PATTERN = /^(\d{2})(\d{2})(\d{2})Z$/;
@@ -87,16 +89,16 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       `parseTaf 需要一个 TAF 报文字符串，收到 ${raw === null ? "null" : typeof raw}`,
     );
   }
-  if (options?.mode === "strict") {
-    throw new MetarParseError(
-      "unsupported-mode",
-      raw,
-      "strict 模式在 v0.2 尚未实现——省略 mode 或传 'tolerant'",
-    );
-  }
-
   const compact = options?.spans === false;
   const compactIfEnabled = <T>(node: T): T => (compact ? compactNode(node) : node);
+  // strict 门（v0.2 补齐批）：tolerant 产物先过判据闸（validateTaf 四判据 + warning 级告警），
+  // 违例聚合抛 strict-violation（info 级方言/缺测注记不拦）；通过再按 spans 选项紧凑化
+  const finish = (node: TafReport): TafReport => {
+    if (options?.mode === "strict") {
+      strictGate(node, raw, options.validateStandard ?? "wmo");
+    }
+    return compactIfEnabled(node);
+  };
 
   // —— 传输层终止符（A1★）：中国站/AFTN 通道报尾带 `=`、tgftp 与 aviationweather 通道不带——
   // 传输层惯例而非报文结构，剥离后不进 IR（span 只到末组电码；report.raw 仍原文保真）。
@@ -156,7 +158,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
   if (peek()?.text === "NIL") {
     i += 1;
     collectTailAsUnknown(tokens, i, warnings);
-    return compactIfEnabled({
+    return finish({
       kind: "taf" as const,
       raw,
       station,
@@ -231,7 +233,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
   if (vTok?.text === "NIL") {
     i += 1;
     collectTailAsUnknown(tokens, i, warnings);
-    return compactIfEnabled({
+    return finish({
       kind: "taf" as const,
       raw,
       station,
@@ -305,7 +307,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
   if (peek()?.text === "CNL") {
     i += 1;
     collectTailAsUnknown(tokens, i, warnings);
-    return compactIfEnabled({
+    return finish({
       kind: "taf" as const,
       raw,
       station,
@@ -651,7 +653,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     });
   }
 
-  return compactIfEnabled({
+  return finish({
     kind: "taf" as const,
     raw,
     station,

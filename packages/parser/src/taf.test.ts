@@ -113,16 +113,11 @@ describe("TAF 批 1 骨架：电头与有效期（清单 A4）", () => {
     expect(r.warnings.every((w) => w.code === "unknown-token")).toBe(true);
   });
 
-  it("spans:false 紧凑模式剥除全部 span；strict 模式显式报错不静默降级", () => {
+  it("spans:false 紧凑模式剥除全部 span；strict 干净报文通过（违例路径见 validate.test.ts）", () => {
     const c = parseTaf(fx("ogimet-plain-zbaa-20090801").raw, { spans: false });
     expect(JSON.stringify(c)).not.toContain('"span"');
-    try {
-      parseTaf("TAF ZBAA 010340Z 0106/0206 17004MPS=", { mode: "strict" });
-      throw new Error("strict 应抛 unsupported-mode");
-    } catch (e) {
-      expect(e).toBeInstanceOf(MetarParseError);
-      expect((e as MetarParseError).code).toBe("unsupported-mode");
-    }
+    const strictOk = parseTaf("TAF ZBAA 010340Z 0106/0206 17004MPS=", { mode: "strict" });
+    expect(strictOk.station).toBe("ZBAA"); // 干净报文（无违例、无 warning 级告警）strict 通过
   });
 
   it("非字符串输入走稳定契约；tryParseTaf 与 parseTaf 同语义", () => {

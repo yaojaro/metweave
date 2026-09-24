@@ -21,6 +21,7 @@ describe("EN_MESSAGES 错误码英文文案（供消费方映射）", () => {
     "missing-validity",
     "invalid-validity",
     "unsupported-mode",
+    "strict-violation",
     "batch-parse-failed",
   ];
   const SOURCE_CODES: readonly MetarSourceErrorCode[] = [
@@ -31,7 +32,7 @@ describe("EN_MESSAGES 错误码英文文案（供消费方映射）", () => {
     "network",
   ];
 
-  it("覆盖全部 parse 8 码 + source 5 码，且无多余键（code 只增不改——新增码必须补文案）", () => {
+  it("覆盖全部 parse 9 码 + source 5 码，且无多余键（code 只增不改——新增码必须补文案）", () => {
     const expected = [...PARSE_CODES, ...SOURCE_CODES];
     expect(Object.keys(EN_MESSAGES)).toHaveLength(expected.length);
     expect(new Set(Object.keys(EN_MESSAGES)), "键集与 13 码完全一致").toEqual(new Set(expected));
