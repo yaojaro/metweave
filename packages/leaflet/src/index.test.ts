@@ -585,7 +585,8 @@ it("评测批 B：常显站码标签（zoom≥5）/card 透传/滑杆窗对齐+�
   const popupAfter = pane?.querySelector(".mw-taf-card");
   expect(popupAfter).not.toBeNull();
   expect(popupAfter?.textContent ?? "").toContain("查看时刻 01日12:00Z");
-  // 滑杆：窗对齐（0106→0206=24 格）+ aria-valuetext + 京时括注
+  // 滑杆：窗对齐（0106→0206=24 格）+ aria-valuetext——时区单制（owner 9/24）缺省 UTC、无括注；
+  // 显式 480＝京时单制（整段京钟，无 Z 无括号）
   const ctrl = createTafTimeControl(map, {
     layer: g,
     items: [{ report: parseTaf(raw), position: [40, 116] }],
@@ -593,7 +594,17 @@ it("评测批 B：常显站码标签（zoom≥5）/card 透传/滑杆窗对齐+�
   });
   const input = ctrl.querySelector("input");
   expect(input?.max).toBe("24");
-  expect(input?.getAttribute("aria-valuetext") ?? "").toContain("京");
+  const utcLabel = input?.getAttribute("aria-valuetext") ?? "";
+  expect(utcLabel).toContain("01日 06:00Z");
+  expect(utcLabel).not.toContain("京");
+  const ctrlBj = createTafTimeControl(map, {
+    layer: g,
+    items: [{ report: parseTaf(raw), position: [40, 116] }],
+    utcOffsetMinutes: 480,
+  });
+  const bjLabel = ctrlBj.querySelector("input")?.getAttribute("aria-valuetext") ?? "";
+  expect(bjLabel).toContain("京01日14:00");
+  expect(bjLabel).not.toMatch(/Z|（/);
   map.remove();
 });
 
@@ -644,12 +655,16 @@ it("复测修复：出窗灰态（超有效期＝unknown 灰点+「已过期」�
   await setTafLayerTime(map, g, items, { at: { day: 1, hour: 5, minute: 0 } });
   const tip2 = marker.getTooltip()?.getContent();
   expect((tip2 instanceof HTMLElement ? tip2.textContent : "") ?? "").toContain("预报尚未生效");
-  // 滑杆端点标注（小白#11）：两端时刻+京时
+  // 滑杆端点标注（小白#11）：两端起止时刻；时区单制（owner 9/24）——缺省 UTC 直读，显式 480＝京钟
   const ctrl = createTafTimeControl(map, { layer: g, items });
   const ticks = Array.from(ctrl.querySelectorAll("div")).find((d) => d.children.length === 2);
   expect(ticks?.textContent ?? "").toContain("01日 06:00Z");
-  expect(ticks?.textContent ?? "").toContain("（京01日14:00）");
   expect(ticks?.textContent ?? "").toContain("02日 06:00Z");
+  expect(ticks?.textContent ?? "").not.toContain("京");
+  const ctrlBj = createTafTimeControl(map, { layer: g, items, utcOffsetMinutes: 480 });
+  const ticksBj = Array.from(ctrlBj.querySelectorAll("div")).find((d) => d.children.length === 2);
+  expect(ticksBj?.textContent ?? "").toContain("京01日14:00");
+  expect(ticksBj?.textContent ?? "").toContain("京02日14:00");
   map.remove();
 });
 
@@ -716,6 +731,59 @@ describe("C14：超高卡版式（owner 9/24 指令——卡不占满屏/不压�
     });
     card.dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
     expect(reached).toBe(0); // 冒泡到容器即地图被缩放（产品行为红线；实测断点在 .leaflet-popup-content）
+    map.remove();
+  });
+});
+
+describe("C15：时区单制切换（owner 9/24——一个开关控全图时间，缺省 UTC）", () => {
+  const raw =
+    "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 TEMPO 2520/2524 2500 -SHRASN BR BECMG 2605/2606 2000 -SN BR=";
+  const mkItems = (): Array<{
+    report: ReturnType<typeof parseTaf>;
+    position: [number, number];
+  }> => [{ report: parseTaf(raw), position: [25, 102] }];
+
+  it("setTafLayerTime 带 card 时区：已开弹窗原地换制（UTC→京）且随后滑杆换时刻不回退（可变覆盖合并语义锁）", async () => {
+    const map = freshMap();
+    const items = mkItems();
+    const g = await addTafLayer(map, items, { at: { day: 25, hour: 21, minute: 0 } });
+    const marker = g.getLayers()[0];
+    if (!(marker instanceof L.Marker)) throw new Error("应为 Marker");
+    marker.openPopup();
+    const pane = map.getPane?.("popupPane");
+    const cardText = (): string => pane?.querySelector(".mw-taf-card")?.textContent ?? "";
+    expect(cardText()).toContain("查看时刻 25日21:00Z"); // 缺省 UTC 单制
+    // 切京时：不清层不重开——可变 card 覆盖即时生效（丢 WeakMap 合并即红）；
+    // 人话行全京钟无 Z（RAW 原文区是 UTC 电码本体，不随展示时区换算——设计口径）
+    await setTafLayerTime(map, g, items, { card: { utcOffsetMinutes: 480 } });
+    const metaRow = (): string => pane?.querySelector(".mw-taf-meta-row")?.textContent ?? "";
+    const validityLine = (): string =>
+      Array.from(pane?.querySelectorAll(".mw-taf-meta") ?? [])
+        .map((x) => x.textContent ?? "")
+        .find((x) => x.includes("有效期")) ?? "";
+    expect(metaRow()).toContain("查看时刻 京26日05:00");
+    expect(metaRow()).not.toContain("Z");
+    expect(validityLine()).toContain("自 京26日02:00 至 京27日08:00（北京时，30 小时）");
+    // 滑杆换时刻（不带 card）：京制保持不回退——覆盖被 at-only 调用清掉即红
+    await setTafLayerTime(map, g, items, { at: { day: 25, hour: 22, minute: 0 } });
+    expect(metaRow()).toContain("查看时刻 京26日06:00");
+    map.remove();
+  });
+
+  it("initialAt：重建控件落到当前时刻格（时区切换不丢拨动位置）", async () => {
+    const map = freshMap();
+    const items = mkItems();
+    const g = await addTafLayer(map, items, { at: { day: 25, hour: 21, minute: 0 } });
+    // 窗 2518→2624：25日21:00 ＝ 第 3 格（18→19→20→21）；京钟 21:00+8＝次日 05:00
+    const ctrl = createTafTimeControl(map, {
+      layer: g,
+      items,
+      utcOffsetMinutes: 480,
+      initialAt: { day: 25, hour: 21, minute: 0 },
+    });
+    const input = ctrl.querySelector("input");
+    expect(input?.value).toBe("3");
+    expect(input?.getAttribute("aria-valuetext") ?? "").toContain("京26日05:00");
     map.remove();
   });
 });

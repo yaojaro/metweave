@@ -8,6 +8,8 @@
  * 样式随组件注入（STYLE_ID 单次）、双语文案集中一张 locale 表、宿主 className 可叠加。
  * 版式契约（owner 9/24 指令）：卡宽 480、卡高上限 min(65vh, 680px) 且超高卡内上下滚动
  * （超高弹窗不再占满整屏/被视口裁顶）、分段行间距 7px（段与段不贴死）。
+ * 时区契约（owner 9/24 单制指令）：utcOffsetMinutes 决定全卡唯一展示时区（null=UTC 缺省 / 480=北京时），
+ * 一处切换全卡一致；电码悬停（li.title）与 RAW 原文保持 UTC（与报文原码对齐，不随展示时区换算）。
  * 预报警示：档位/摘要是扫视辅助，不得用作运行判据（沿 METAR 卡口径）。
  */
 import type {
@@ -48,7 +50,8 @@ export interface RenderTafCardOptions {
   className?: string;
   /** 站点名（元数据联表所得，如「ZLXY 西安/咸阳」）——标题下 muted 站名行；缺省不渲染（沿 METAR 卡口径） */
   stationTitle?: string;
-  /** 本地时偏移（分钟）：非空时关键时间行括注本地时（zh 缺省 480＝北京时，en 缺省 null 不括注） */
+  /** 展示时区偏移（分钟）——owner 9/24 单制指令：全卡只显一个时区（旧「UTC+京时双括注」退役）。
+   *  缺省 null＝UTC 单制；zh 传 480＝北京时单制（京dd日HH:MM 全卡统一）；en 无本地时词表恒 UTC */
   utcOffsetMinutes?: number | null;
 }
 
@@ -77,7 +80,10 @@ const LOCALE = {
     localTag: "京",
     validityFrom: (day: string, hm: string): string => `自 ${day}日 ${hm}`,
     validityTo: (day: string, hm: string): string => `至 ${day}日 ${hm}`,
+    validityFromZone: (clock: string): string => `自 ${clock}`,
+    validityToZone: (clock: string): string => `至 ${clock}`,
     validityZone: "UTC",
+    zoneLocal: "北京时",
     labelHigh: "高温",
     labelLow: "低温",
     change: "变化组",
@@ -128,7 +134,10 @@ const LOCALE = {
     localTag: null,
     validityFrom: (day: string, hm: string): string => `from Day ${day}, ${hm}`,
     validityTo: (day: string, hm: string): string => `to Day ${day}, ${hm}`,
+    validityFromZone: (clock: string): string => `from ${clock}`,
+    validityToZone: (clock: string): string => `to ${clock}`,
     validityZone: "UTC",
+    zoneLocal: "", // en 无本地时词表（localTag null）——时区单制恒 UTC，此键不可达、占位保形
     labelHigh: "High",
     labelLow: "Low",
     change: "Change groups",
@@ -217,7 +226,6 @@ const STYLE_TEXT = `
 .mw-taf-rawseg.mw-taf-hl { background: #fdeeb9; border-radius: 3px; }
 .mw-taf-warn { margin-top: 6px; font-size: 11px; color: #5f6b79; }
 .mw-taf-station { margin: -4px 0 4px; color: #6b7785; font-size: 12px; }
-.mw-taf-period-lt { color: #6b7785; font-size: 11px; }
 .mw-taf-outrange { color: #8a5a00; background: #fdf3dd; border-radius: 4px; padding: 1px 6px;
   font-size: 12px; display: inline-block; margin: 2px 0; }
 .mw-taf-period-danger { border-left: 3px solid #c2504a; background: #fdf1f0; }
@@ -265,18 +273,10 @@ const tempValueOf = (x: TafTemperatureGroup, lt = ""): string =>
 
 // ---------------------------------------------------------------- 分段明细拼装（gloss 词表共用，与 METAR 卡同口径）
 
-/** 展开时刻文本（zh：23日00:00Z / en：23/00:00Z）——发布|预报 双列行右列用 */
-const fmtClockAt = (at: TafExpandAt, locale: "zh" | "en"): string =>
-  locale === "zh"
-    ? `${String(at.day).padStart(2, "0")}日${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`
-    : `${String(at.day).padStart(2, "0")}/${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`;
-
-/** 元信息时钟（整点补零）：06:00Z */
-const clockOf = (hour: number): string => `${String(hour).padStart(2, "0")}:00Z`;
 /** 元信息日号补零：23 */
 const dayOf = (day: number): string => String(day).padStart(2, "0");
 
-/** 分段行时刻标签（zh：23日06Z / en：23/06Z） */
+/** 分段行时刻标签（zh：23日06Z / en：23/06Z）——UTC 单制的人话行与电码悬停共用 */
 const fmtSegAt = (at: TafExpandAt, locale: "zh" | "en"): string =>
   locale === "zh"
     ? `${String(at.day).padStart(2, "0")}日${String(at.hour).padStart(2, "0")}Z`
@@ -543,27 +543,30 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   injectStyle();
   const locale = options.locale ?? "zh";
   const t = LOCALE[locale];
-  // 本地时括注（评测共识①）：zh 缺省北京时（+480），en 缺省不括注；宿主可显式覆盖或 null 关闭
-  const ltOffset =
-    options.utcOffsetMinutes !== undefined
+  // 展示时区（owner 9/24 单制指令：全卡只显一个时区，旧「UTC+京时双括注」退役）：
+  // 缺省 null＝UTC 单制；480＝北京时单制；en 无本地时词表（localTag null）恒 UTC
+  const zone =
+    options.utcOffsetMinutes !== undefined &&
+    options.utcOffsetMinutes !== null &&
+    t.localTag !== null
       ? options.utcOffsetMinutes
-      : locale === "zh"
-        ? 480
-        : null;
-  const ltB = (day: number, hour: number, minute: number): string =>
-    ltOffset !== null && t.localTag !== null
-      ? `（${t.localTag}${ltClock(day, hour, minute, ltOffset)}）`
-      : "";
-  /** 本地时区间（HH:00 制，全卡统一）：（京dd日HH:00–dd日HH:00） */
-  const ltRangeOf = (from: TafExpandAt, to: TafExpandAt): string => {
-    if (ltOffset === null || t.localTag === null) return "";
-    const clock = (day: number, hour: number): string => {
-      const total = (day - 1) * 1440 + hour * 60 + ltOffset;
-      const d = (Math.floor(total / 1440) % 31) + 1;
-      return `${t.localTag}${String(d).padStart(2, "0")}日${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}:00`;
-    };
-    return `（${clock(from.day, from.hour)}–${clock(to.day, to.hour).replace(t.localTag, "")}）`;
-  };
+      : null;
+  const tag = t.localTag;
+  /** 主显钟点：UTC＝dd日HH:MMZ；京＝京dd日HH:MM（发布/查看时刻、有效期端点） */
+  const clockAt = (day: number, hour: number, minute: number): string =>
+    zone === null
+      ? `${String(day).padStart(2, "0")}日${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}Z`
+      : `${tag}${ltClock(day, hour, minute, zone)}`;
+  /** 段界时刻（整点）：UTC＝dd日HHZ；京＝京dd日HH:00（段头/风险行/气温时刻） */
+  const segClock = (day: number, hour: number, minute: number): string =>
+    zone === null
+      ? `${String(day).padStart(2, "0")}日${String(hour).padStart(2, "0")}Z`
+      : `${tag}${ltClock(day, hour, minute, zone)}`;
+  /** 段区间：dd日HHZ–dd日HHZ / 京dd日HH:00–dd日HH:00 */
+  const segRangeOf = (from: TafExpandAt, to: TafExpandAt): string =>
+    `${segClock(from.day, from.hour, from.minute)}–${segClock(to.day, to.hour, to.minute)}`;
+  /** 时区名（有效期行）：UTC / 北京时 */
+  const zoneName = zone === null ? t.validityZone : t.zoneLocal;
   const card = el(
     "div",
     `mw-taf-card${options.className !== undefined ? ` ${options.className}` : ""}`,
@@ -651,7 +654,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         el(
           "span",
           undefined,
-          `${t.issued} ${String(report.issueTime.day).padStart(2, "0")}日${String(report.issueTime.hour).padStart(2, "0")}:${String(report.issueTime.minute).padStart(2, "0")}Z${ltB(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)}`,
+          `${t.issued} ${clockAt(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)}`,
         ),
       );
     }
@@ -660,22 +663,26 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         el(
           "span",
           undefined,
-          `${t.atLabel} ${fmtClockAt(options.at, locale)}${ltB(options.at.day, options.at.hour, options.at.minute)}`.trim(),
+          `${t.atLabel} ${clockAt(options.at.day, options.at.hour, options.at.minute)}`.trim(),
         ),
       );
     }
     card.append(row);
   }
-  // 有效期直说具体日期时间（不用 ddHH/ddHH 短码）：止时 24＝次日 00:00（B2 午夜特例的显示位换算）
+  // 有效期直说具体日期时间（不用 ddHH/ddHH 短码）：止时 24＝次日 00:00（B2 午夜特例的显示位换算）；
+  // 两制各自模板——UTC 带日号前缀 + HH:MMZ；京时整段京钟（validityFrom 的「dd日」前缀不重复套日号）
   const endClock =
     v.endHour === 24 ? { day: (v.endDay % 31) + 1, hour: 0 } : { day: v.endDay, hour: v.endHour };
-  const validityText = `${t.validity} ${t.validityFrom(
-    dayOf(v.startDay),
-    `${clockOf(v.startHour)}${ltB(v.startDay, v.startHour, 0)}`,
-  )} ${t.validityTo(
-    dayOf(endClock.day),
-    `${clockOf(endClock.hour)}${ltB(endClock.day, endClock.hour, 0)}`,
-  )}（${t.validityZone}，${t.duration(hours)}）`;
+  const hmOf = (hour: number): string => `${String(hour).padStart(2, "0")}:00Z`;
+  const validityText =
+    zone === null
+      ? `${t.validity} ${t.validityFrom(dayOf(v.startDay), hmOf(v.startHour))} ${t.validityTo(
+          dayOf(endClock.day),
+          hmOf(endClock.hour),
+        )}（${zoneName}，${t.duration(hours)}）`
+      : `${t.validity} ${t.validityFromZone(clockAt(v.startDay, v.startHour, 0))} ${t.validityToZone(
+          clockAt(endClock.day, endClock.hour, 0),
+        )}（${zoneName}，${t.duration(hours)}）`;
   const validityEl = el("p", "mw-taf-meta", validityText);
   link.validityEl = validityEl;
   card.append(validityEl);
@@ -690,7 +697,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       if (report.issueTime !== undefined) {
         note.append(
           document.createTextNode(
-            `（所示为 ${String(report.issueTime.day).padStart(2, "0")}日${String(report.issueTime.hour).padStart(2, "0")}:${String(report.issueTime.minute).padStart(2, "0")}Z 发布的报文）`,
+            `（所示为 ${clockAt(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)} 发布的报文）`,
           ),
         );
       }
@@ -704,11 +711,14 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     box.append(el("p", "mw-taf-meta", `${t.temps}：`));
     const maxes = report.temperatures.filter((x) => x.extremum === "max");
     const mins = report.temperatures.filter((x) => x.extremum === "min");
-    const tempLt = (x: TafTemperatureGroup): string => {
-      if (ltOffset === null || t.localTag === null || x.at.day === undefined) return "";
-      const total = (x.at.day - 1) * 1440 + x.at.hour * 60 + ltOffset;
-      const d = (Math.floor(total / 1440) % 31) + 1;
-      return `（${t.localTag}${String(d).padStart(2, "0")}日${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}:00）`;
+    // 气温时刻随展示时区（单制）：UTC=@ dd日HHZ；京=@ 京dd日HH:00（无日短形态 HHZ 按时区折时、日号缺省不显）
+    const tempText = (x: TafTemperatureGroup): string => {
+      if (zone === null) return tempValueOf(x);
+      const atText =
+        x.at.day !== undefined
+          ? `${tag}${ltClock(x.at.day, x.at.hour, 0, zone)}`
+          : `${tag}${String(Math.floor(((x.at.hour * 60 + zone) % 1440) / 60)).padStart(2, "0")}:00`;
+      return `${x.celsius}°C @ ${atText}`;
     };
     const tempRow = (label: string, list: TafTemperatureGroup[]): void => {
       if (list.length === 0) return;
@@ -716,7 +726,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       for (const [i, x] of list.entries()) {
         const row = el("p", "mw-taf-temp-line");
         row.append(el("span", "mw-taf-item-label", i === 0 ? label : ""));
-        row.append(document.createTextNode(tempValueOf(x, tempLt(x))));
+        row.append(document.createTextNode(tempText(x)));
         box.append(row);
       }
     };
@@ -752,9 +762,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
           if (layer.kind === "layer" && layer.convective !== undefined)
             parts.push(layer.convective === "CB" ? "积雨云" : "浓积云");
       if (parts.length > 0)
-        riskParts.push(
-          `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}${ltRangeOf(row.from, row.to)} ${parts.join(wxJoin(locale))}`,
-        );
+        riskParts.push(`${segRangeOf(row.from, row.to)} ${parts.join(wxJoin(locale))}`);
     }
     if (riskParts.length > 0) {
       const risk = el(
@@ -773,7 +781,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       rowEls.push(li);
       const src = row.sourceIndex !== undefined ? report.changes[row.sourceIndex] : undefined;
       const shown = row.overlay?.conditions ?? row.conditions;
-      // 行头：扫视色点 + 时间窗（含京时括注）+ 类型徽（评测签派 P1-4：行业词为主中文为辅；TEMPO 带隐含概率）
+      // 行头：扫视色点 + 时间窗（随展示时区单制）+ 类型徽（评测签派 P1-4：行业词为主中文为辅；TEMPO 带隐含概率）
       const head = el("div", "mw-taf-period-head");
       const dot = el("span", `mw-taf-dot mw-taf-dot-${tone}`, "●");
       dot.setAttribute("aria-hidden", "true");
@@ -790,17 +798,10 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
               : row.kind === "FM"
                 ? t.kindFm
                 : t.kindBase;
-      const timeSpan = el(
-        "span",
-        "mw-taf-period-time",
-        `${fmtSegAt(row.from, locale)}–${fmtSegAt(row.to, locale)}`,
-      );
-      const ltRange = ltRangeOf(row.from, row.to);
-      const ltSpan = ltRange === "" ? undefined : el("span", "mw-taf-period-lt", ltRange);
+      const timeSpan = el("span", "mw-taf-period-time", segRangeOf(row.from, row.to));
       head.append(
         dot,
         timeSpan,
-        ...(ltSpan !== undefined ? [ltSpan] : []),
         el("span", `mw-taf-k mw-taf-k-${row.kind.toLowerCase()}`, chipText),
       );
       link.heads.push({ el: head, rowIdx });

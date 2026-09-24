@@ -28,6 +28,10 @@ import type {
   TafResolvedConditions,
 } from "@metweave/parser";
 
+// 公开选项（AddTafLayerOptions.at / TafTimeControlOptions.initialAt）以 TafExpandAt 为形参——
+// 类型随包再导出，宿主（如 examples）不必穿透到 @metweave/parser 取型
+export type { TafExpandAt };
+
 /**
  * leaflet 惰性装载：import 本包时不再静态加载 leaflet——peer 库是浏览器专属实现，
  * 顶层静态 import 会让 Node/SSR 的模块图在求值期即崩（window is not defined，
@@ -600,6 +604,9 @@ const bindCodeZoom = (map: Leaflet.Map): void => {
 
 /** 各层当前展开时刻（setTafLayerTime 换时刻不再清层重建——marker 原地 setIcon/setTooltipContent，评测工程 P2-1） */
 const tafLayerAt = new WeakMap<Leaflet.LayerGroup, TafExpandAt>();
+/** 各层的可变 card 选项覆盖（owner 9/24 时区单制：setTafLayerTime 带 card 即合并——切时区不清层重建、
+ *  滑杆换时刻不带 card 不回退；弹窗刷新读此处而非建层闭包，已开弹窗即时随时区换内容） */
+const tafLayerCard = new WeakMap<Leaflet.LayerGroup, Omit<RenderTafCardOptions, "locale" | "at">>();
 /** marker → 其 TafLayerItem（换时刻原地更新时的数据面） */
 const tafMarkerItems = new WeakMap<Leaflet.Marker, TafLayerItem>();
 /** marker → 弹窗内容刷新函数（复测 N1/N2：刷新不走合成 popupopen——真实打开才移焦点，刷新按当前时刻重算置顶提示） */
@@ -709,6 +716,7 @@ async function populateTafLayer(
 ): Promise<void> {
   const anchor: TafMonthAnchor = { daysIn: options.anchorDays ?? 31 };
   const locale = options.locale ?? "zh";
+  tafLayerCard.set(group, options.card ?? {}); // 可变 card 覆盖的初值（setTafLayerTime 带 card 时合并更新）
   for (const item of items) {
     const r = item.report;
     const noTimeline = r.nil === true || r.cancelled === true;
@@ -727,7 +735,8 @@ async function populateTafLayer(
       // maxWidth 480 = 卡片设计宽（owner 9/24 加宽指令，renderTafCard max-width 同步）
       marker.bindPopup(document.createElement("div"), { maxWidth: 480, ...options.popupOptions });
       // 刷新函数（复测 N1/N2）：按层当前时刻重展开取 notes（置顶提示随换时刻更新，与 tooltip 同源），
-      // 只重建卡片内容不动焦点——焦点移入仅发生在真实 popupopen（键盘拖滑杆不再被抢焦）
+      // 只重建卡片内容不动焦点——焦点移入仅发生在真实 popupopen（键盘拖滑杆不再被抢焦）；
+      // card 选项读层的可变覆盖（tafLayerCard）而非建层闭包——切时区后已开弹窗即时换内容（owner 9/24）
       const refresh = (popup: Leaflet.Popup): void => {
         const current = tafLayerAt.get(group) ?? at;
         const fresh = tafMarkerState(item, noTimeline ? at : current, anchor, locale);
@@ -735,7 +744,7 @@ async function populateTafLayer(
           locale,
           raw: true,
           ...(noTimeline ? {} : { at: current }),
-          ...options.card,
+          ...tafLayerCard.get(group),
         };
         if (cardOpts.stationTitle === undefined && item.title !== undefined) {
           const stationName = item.title.startsWith(`${r.station} `)
@@ -810,6 +819,10 @@ export async function setTafLayerTime(
       minute: 0,
     };
   if (options.at !== undefined) tafLayerAt.set(layer, options.at);
+  // card 覆盖合并（owner 9/24 时区单制）：带 card 即更新层的可变覆盖并刷新已开弹窗；不带（滑杆换时刻）不回退
+  if (options.card !== undefined) {
+    tafLayerCard.set(layer, { ...tafLayerCard.get(layer), ...options.card });
+  }
   const openRefresh: Leaflet.Marker[] = [];
   layer.eachLayer((ml) => {
     if (!(ml instanceof L.Marker)) return; // 层内非 marker（弹窗代理等）跳过
@@ -843,13 +856,14 @@ const fmtTafAt = (at: TafExpandAt, locale: "zh" | "en" = "zh"): string =>
     ? `${String(at.day).padStart(2, "0")}日 ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`
     : `Day ${String(at.day).padStart(2, "0")} ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")} Z`;
 
-/** 控件本地时括注（评测共识①：zh 缺省北京时；日回绕按 31 折回——显示位近似） */
-const fmtTafLt = (at: TafExpandAt, offset: number, tag: string): string => {
+/** 控件时刻显示·本地时（owner 9/24 时区单制）：tag+dd日HH:MM——无括注无 Z，与卡片单制同口径；
+ *  日回绕按 31 折回（TAF 无月语境的显示位近似） */
+const fmtTafZone = (at: TafExpandAt, offset: number, tag: string): string => {
   const total = (at.day - 1) * 1440 + at.hour * 60 + at.minute + offset;
   const d = (Math.floor(total / 1440) % 31) + 1;
   const h = Math.floor((total % 1440) / 60);
   const m = total % 60;
-  return `（${tag}${String(d).padStart(2, "0")}日${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}）`;
+  return `${tag}${String(d).padStart(2, "0")}日${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
 export interface TafTimeControlOptions {
@@ -864,10 +878,12 @@ export interface TafTimeControlOptions {
   from?: TafExpandAt;
   /** 滑杆终点时刻；缺省自动取各站最晚有效期止（评测共识⑤：滑杆窗对齐数据，不再盲拖出界） */
   to?: TafExpandAt;
-  /** 显示语言（缺省 zh；en 不加「日」字与京时括注——评测工程 P2-3 i18n 漏网） */
+  /** 显示语言（缺省 zh；en 不加「日」字与本地时——评测工程 P2-3 i18n 漏网） */
   locale?: "zh" | "en";
-  /** 本地时括注偏移（分钟）；zh 缺省 480＝北京时，null 关闭 */
+  /** 展示时区偏移（分钟）——owner 9/24 单制：缺省 null＝UTC 单制；zh 传 480＝北京时单制（标签与两端标注同随） */
   utcOffsetMinutes?: number | null;
+  /** 初始时刻（缺省＝滑杆零点）；时区切换等重建控件场景用来保住当前拨动位置（落到最近格） */
+  initialAt?: TafExpandAt;
   /** 时刻变更回调（拿到当前时刻，供宿主联动外部 UI） */
   onTime?: (at: TafExpandAt) => void;
 }
@@ -884,12 +900,9 @@ export function createTafTimeControl(
 ): HTMLElement {
   const step = options.stepMinutes ?? 60;
   const locale = options.locale ?? "zh";
-  const ltOffset =
-    options.utcOffsetMinutes !== undefined
-      ? options.utcOffsetMinutes
-      : locale === "zh"
-        ? 480
-        : null;
+  const ltOffset = options.utcOffsetMinutes ?? null; // owner 9/24 单制：缺省 UTC（旧 zh 缺省京时括注退役）
+  const zoneText = (at: TafExpandAt): string =>
+    ltOffset !== null && locale === "zh" ? fmtTafZone(at, ltOffset, "京") : fmtTafAt(at, locale);
   const box = document.createElement("div");
   box.className = "mw-taf-timectrl";
   box.style.cssText =
@@ -934,9 +947,7 @@ export function createTafTimeControl(
     };
   };
   const apply = (at: TafExpandAt): void => {
-    const text =
-      fmtTafAt(at, locale) +
-      (ltOffset !== null && locale === "zh" ? fmtTafLt(at, ltOffset, "京") : "");
+    const text = zoneText(at);
     label.textContent = text;
     input.setAttribute("aria-valuetext", text); // 读屏不朗读裸格值（评测工程 P2-3）
     void setTafLayerTime(map, options.layer, options.items, { ...options.layerOptions, at });
@@ -952,19 +963,32 @@ export function createTafTimeControl(
       apply(atOfValue(Number(input.value)));
     });
   });
-  // 缺省落在第 0 格；宿主可用 setTafLayerTime 自定初始时刻后拨动
-  apply(atOfValue(0));
+  // 初始位置：缺省第 0 格；initialAt 落到最近格（时区切换重建控件不丢当前时刻）
+  const idxOf = (at: TafExpandAt): number =>
+    Math.max(
+      0,
+      Math.min(
+        spanSteps,
+        Math.round(
+          (at.day * 1440 +
+            at.hour * 60 +
+            at.minute -
+            (from.day * 1440 + from.hour * 60 + from.minute)) /
+            step,
+        ),
+      ),
+    );
+  input.value = String(idxOf(options.initialAt ?? from));
+  apply(atOfValue(Number(input.value)));
   box.append(input, label);
-  // 端点标注（复测小白#11：无刻度无范围的「盲拖」——两端起止时刻各带京时，10px 灰字通栏）
+  // 端点标注（复测小白#11：无刻度无范围的「盲拖」——两端起止时刻随展示时区单制，10px 灰字通栏）
   const ticks = document.createElement("div");
   ticks.style.cssText =
     "display:flex;justify-content:space-between;width:100%;font-size:10px;color:#6b7785";
-  const ltText = (at: TafExpandAt): string =>
-    ltOffset !== null && locale === "zh" ? fmtTafLt(at, ltOffset, "京") : "";
   const tickL = document.createElement("span");
-  tickL.textContent = `${fmtTafAt(from, locale)}${ltText(from)}`;
+  tickL.textContent = zoneText(from);
   const tickR = document.createElement("span");
-  tickR.textContent = `${fmtTafAt(atOfValue(spanSteps), locale)}${ltText(atOfValue(spanSteps))}`;
+  tickR.textContent = zoneText(atOfValue(spanSteps));
   ticks.append(tickL, tickR);
   box.append(ticks);
   return box;

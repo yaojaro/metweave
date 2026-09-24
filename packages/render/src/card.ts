@@ -64,6 +64,9 @@ export interface RenderCardOptions {
   /** 站点名（来自站点元数据联表，如「Tianjin/Binhai Intl, TJ, CN」）——标题行下方的 muted 站名行；
    *  缺省不渲染（纯 IR 无此信息，四字码之外的名号永远来自调用方的元数据，不捏造） */
   stationTitle?: string;
+  /** 展示时区偏移（分钟）——owner 9/24 单制指令：观测时刻行只显一个时区。
+   *  缺省 null＝UTC；zh 传 480＝北京时（京dd日 HH:MM）；en 无本地时词表恒 UTC。与 renderTafCard 同语义 */
+  utcOffsetMinutes?: number | null;
 }
 
 /** renderCard 的合法选项键（运行时校验用——拼错的选项键被静默忽略 = 语言/单位/视图悄悄不符预期，
@@ -75,6 +78,7 @@ const RENDER_CARD_OPTION_KEYS: ReadonlySet<string> = new Set([
   "className",
   "now",
   "stationTitle",
+  "utcOffsetMinutes",
 ]);
 
 // ---------------------------------------------------------------- locale 表
@@ -594,6 +598,16 @@ function observeTimeOf(t: ReportTime, now: Date): Date | null {
   return null;
 }
 
+/** 观测时刻 → 本地时显示序（单制主显，owner 9/24）：dd日 HH:MM——日回绕按 31 折回（METAR 无月语境的显示位近似，
+ *  与 taf-card 的 ltClock 同口径；龄期计算仍走 UTC 的 observeTimeOf，不受展示时区影响） */
+function localClockOf(t: ReportTime, offsetMinutes: number): string {
+  const total = (t.day - 1) * 1440 + t.hour * 60 + t.minute + offsetMinutes;
+  const d = (Math.floor(total / 1440) % 31) + 1;
+  const h = Math.floor((total % 1440) / 60);
+  const m = total % 60;
+  return `${String(d).padStart(2, "0")}日 ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 /** 跑道状态行文本：跑道号 + 关闭/清除 + 污染物 + 覆盖 + 深度 + 摩擦/制动（WMO §15.13.6 电码表）。 */
 function runwayStateText(st: RunwayStateGroup, rwy: LocaleTable["rwy"]): string {
   const parts: string[] = [];
@@ -791,7 +805,12 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
   }
 
   // —— 时间行：电码时刻 + 数据龄期（「43 分钟前」比时刻本身更直接支撑判读；超 60 分钟标橙）
-  const timeEl = el("div", "mw-time", T.timeText(v.time));
+  // 时刻随展示时区单制（owner 9/24）：UTC＝dd日 HH:MM UTC；京＝京dd日 HH:MM（en 恒 UTC）
+  const timeText =
+    options.utcOffsetMinutes != null && options.locale !== "en"
+      ? `京${localClockOf(v.time, options.utcOffsetMinutes)}`
+      : T.timeText(v.time);
+  const timeEl = el("div", "mw-time", timeText);
   const observedAt = observeTimeOf(v.time, now);
   if (observedAt !== null) {
     const ageMinutes = Math.round((now.getTime() - observedAt.getTime()) / 60_000);

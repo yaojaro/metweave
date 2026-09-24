@@ -8,6 +8,8 @@ import {
   addMetarLayer,
   addTafLayer,
   createTafTimeControl,
+  setTafLayerTime,
+  type TafExpandAt,
   type TafLayerItem,
 } from "@metweave/leaflet";
 import type * as LeafletNS from "leaflet";
@@ -45,13 +47,26 @@ const mountPreviewCards = (): void => {
   for (const raw of samples) box.append(renderCard(parse(raw), { raw: true }));
   hint.append(box);
 };
-/** dd/hh → 京dd日HH时（+8，日回绕 31 折回——面板「下一变化」人话化用） */
-const ltHourOf = (d: number, h: number): string => {
-  const total = (d - 1) * 1440 + h * 60 + 480;
-  return `${String((Math.floor(total / 1440) % 31) + 1).padStart(2, "0")}日${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}时`;
+/** dd/hh → 当前时区整点词：UTC＝dd日HH时；京时＝京dd日HH时（+8，日回绕 31 折回——面板「下一变化」用） */
+const hourWordOf = (d: number, h: number): { d: number; h: number } => {
+  if (tzOffset === null) return { d, h };
+  const total = (d - 1) * 1440 + h * 60 + tzOffset;
+  return { d: (Math.floor(total / 1440) % 31) + 1, h: Math.floor((total % 1440) / 60) };
 };
 
 if (!hasBasemap) mountPreviewCards();
+
+// —— 全局时区单制（owner 9/24 指令：全页只显一个时间，UTC/北京时一键切换；缺省 UTC）——
+// 卡片/滑杆/站点面板/状态条统一读此一处；480＝北京时（+8）
+let tzOffset: number | null = null;
+let metarItems: Awaited<ReturnType<typeof getMetarReports>> | undefined; // 时区切换重建实况层的数据面
+let lastTafAt: TafExpandAt | undefined; // 滑杆当前时刻（时区切换重建控件时经 initialAt 保位）
+/** 状态条时钟（单一时区）：UTC＝HH:MM UTC；京时＝京HH:MM（仅换显示，时刻本身仍 UTC 基准） */
+const zonedClock = (utc: Date): string =>
+  tzOffset === null
+    ? `${utc.toISOString().slice(11, 16)} UTC`
+    : `京${new Date(utc.getTime() + tzOffset * 60000).toISOString().slice(11, 16)}`;
+let statusOk: (() => string) | undefined; // 最近一条 ok 状态的再渲染函数（时区切换时按新制重写）
 
 const panel = document.getElementById("panel");
 const show = (message: string): void => {
@@ -148,17 +163,17 @@ const report = async (): Promise<void> => {
     onUnparseable: (failure) => skipped.push(failure.station),
   });
   map.removeLayer(pendingLayer);
+  metarItems = items; // 时区切换 / 模式回切重建实况层的数据面
   const group = await addMetarLayer(map, items, {
-    card: { raw: true },
+    card: { raw: true, utcOffsetMinutes: tzOffset },
     conditionColors: true,
     popupOptions: POPUP_AUTOPAN,
   });
   metarLayer = group;
-  const updatedClock = new Date().toISOString().slice(11, 16);
-  setStatus(
-    `已更新 ${items.length} 站 · ${updatedClock} UTC${skipped.length > 0 ? ` · ${skipped.length} 站跳过` : ""}`,
-    "ok",
-  );
+  const updated = new Date();
+  statusOk = () =>
+    `已更新 ${items.length} 站 · ${zonedClock(updated)}${skipped.length > 0 ? ` · ${skipped.length} 站跳过` : ""}`;
+  setStatus(statusOk(), "ok");
   if (skipped.length > 0) {
     show(
       `${skipped.length} 站解析失败已跳过（${skipped.slice(0, 5).join("、")}${skipped.length > 5 ? " 等" : ""}）`,
@@ -277,7 +292,10 @@ const loadTaf = async (): Promise<void> => {
     }
     if (items.length === 0) throw new Error("上游返回的报文全部解析失败（数据异常），请稍后重试");
     tafItems = items;
-    tafLayer = await addTafLayer(map, items, { popupOptions: POPUP_AUTOPAN });
+    tafLayer = await addTafLayer(map, items, {
+      popupOptions: POPUP_AUTOPAN,
+      card: { utcOffsetMinutes: tzOffset },
+    });
     if (metarLayer !== undefined) map.removeLayer(metarLayer);
     else map.removeLayer(pendingLayer);
     // 站点列表（档色点＋下一变化；滑杆换时刻即刷新；行点击飞行并开卡——评测签派 P2-7）
@@ -300,7 +318,7 @@ const loadTaf = async (): Promise<void> => {
         const dot = ml instanceof L.Marker ? ml.getElement()?.querySelector(".mw-dot") : undefined;
         const tier = dot?.className.match(/mw-dot-(\w+)/)?.[1] ?? "unknown";
         const ch = it.report.changes[0];
-        // 人话化窗口（复测小白#1/#面板）：ddHH/ddHH → dd日HH–HH时（京HH–HH时，+8）
+        // 人话化窗口（复测小白#1/#面板）：ddHH/ddHH → 当前时区单制的 dd日HH–HH时（UTC 直读；京时 +8 换算）
         const win = ch?.window;
         const winText =
           win !== undefined && /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.test(win.raw)
@@ -308,8 +326,14 @@ const loadTaf = async (): Promise<void> => {
                 const m = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(win.raw);
                 if (m === null) return win.raw;
                 const [, d1, h1, d2, h2] = m;
-                const sameDay = d1 === d2;
-                return `${d1}日${h1}${sameDay ? "–" : `时–${d2}日`}${h2}时（京${ltHourOf(Number(d1), Number(h1))}–${ltHourOf(Number(d2), Number(h2))}）`;
+                const a = hourWordOf(Number(d1), Number(h1));
+                const b = hourWordOf(Number(d2), Number(h2));
+                const tag = tzOffset === null ? "" : "京";
+                const dd = (x: { d: number; h: number }): string =>
+                  `${String(x.d).padStart(2, "0")}日${String(x.h).padStart(2, "0")}`;
+                return a.d === b.d
+                  ? `${tag}${dd(a)}–${String(b.h).padStart(2, "0")}时`
+                  : `${tag}${dd(a)}时–${dd(b)}时`;
               })()
             : ch?.at !== undefined
               ? `${String(ch.at.hour).padStart(2, "0")}:${String(ch.at.minute).padStart(2, "0")}Z`
@@ -407,18 +431,19 @@ const loadTaf = async (): Promise<void> => {
     const ctrl = createTafTimeControl(map, {
       layer: tafLayer,
       items,
-      layerOptions: {},
-      onTime: () => {
+      layerOptions: { card: { utcOffsetMinutes: tzOffset } }, // 滑杆换时刻持续以当前时区刷新（与层内可变覆盖一致）
+      utcOffsetMinutes: tzOffset,
+      onTime: (at) => {
+        lastTafAt = at; // 时区切换重建控件时经 initialAt 保位
         window.setTimeout(renderPanel, 60); // 等 setTafLayerTime 原地更新图标落地后刷新列表
       },
     });
     modeBar.time?.replaceChildren(ctrl);
     setMode("taf");
     renderPanel();
-    setStatus(
-      `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 拖动右上滑杆换时刻`,
-      "ok",
-    );
+    statusOk = () =>
+      `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 拖动右上滑杆换时刻`;
+    setStatus(statusOk(), "ok");
   })();
   try {
     await tafLoading;
@@ -434,14 +459,69 @@ modeBar.taf?.addEventListener("click", () => {
     setMode("metar");
   });
 });
+/** 实况层回挂：在场即挂回；被时区切换弃置则按当前时区重建（卡片在建层时渲染，换区必重建） */
+const ensureMetarLayer = async (): Promise<void> => {
+  if (metarLayer !== undefined) {
+    map.addLayer(metarLayer);
+    return;
+  }
+  if (metarItems === undefined) return; // 实况未到达（第一阶段待更新态不动）
+  metarLayer = await addMetarLayer(map, metarItems, {
+    card: { raw: true, utcOffsetMinutes: tzOffset },
+    conditionColors: true,
+    popupOptions: POPUP_AUTOPAN,
+  });
+};
 modeBar.metar?.addEventListener("click", () => {
   if (tafLayer !== undefined) map.removeLayer(tafLayer);
-  if (metarLayer !== undefined) map.addLayer(metarLayer);
+  void ensureMetarLayer();
   setMode("metar");
 });
 modeBar.list?.addEventListener("click", () => {
   setListOpen(!listOpen);
   if (listOpen) refreshPanel?.(); // 首开即渲染（此后滑杆换时刻经 onTime 自动刷新）
+});
+
+// —— 时区单制切换（owner 9/24：一个按钮控全页时间；缺省 UTC）——
+const tzBtn = document.getElementById("tz-btn");
+tzBtn?.addEventListener("click", () => {
+  tzOffset = tzOffset === null ? 480 : null;
+  const bj = tzOffset !== null;
+  tzBtn.textContent = bj ? "北京时" : "UTC";
+  tzBtn.setAttribute("aria-pressed", String(bj));
+  tzBtn.title = bj ? "当前显示北京时，点击切回 UTC" : "当前显示 UTC，点击切换为北京时";
+  // 实况层：卡片建层时定版——在场重建（随层关闭已开弹窗，重点即新时区）；不在场（TAF 模式中）弃置，回切时按新区重建
+  if (metarItems !== undefined) {
+    if (metarLayer !== undefined && map.hasLayer(metarLayer)) {
+      map.removeLayer(metarLayer);
+      metarLayer = undefined;
+      void ensureMetarLayer();
+    } else {
+      metarLayer = undefined;
+    }
+  }
+  // 预报层：不重建——可变 card 覆盖经 setTafLayerTime 即时生效（已开弹窗原地换时区，图标/列表不受影响）；
+  // 滑杆标签与两端标注随区重建，initialAt 保住当前拨动位置
+  const tLayer = tafLayer;
+  const tItems = tafItems;
+  if (tLayer !== undefined && tItems !== undefined) {
+    void setTafLayerTime(map, tLayer, tItems, { card: { utcOffsetMinutes: tzOffset } }).then(() => {
+      const ctrl = createTafTimeControl(map, {
+        layer: tLayer,
+        items: tItems,
+        layerOptions: { card: { utcOffsetMinutes: tzOffset } },
+        utcOffsetMinutes: tzOffset,
+        ...(lastTafAt !== undefined ? { initialAt: lastTafAt } : {}),
+        onTime: (at) => {
+          lastTafAt = at;
+          window.setTimeout(() => refreshPanel?.(), 60);
+        },
+      });
+      modeBar.time?.replaceChildren(ctrl);
+    });
+  }
+  refreshPanel?.(); // 面板「下一变化」按新区重算
+  if (statusOk !== undefined) setStatus(statusOk(), "ok"); // 状态条时钟按新区重写（顺带确认切换生效）
 });
 
 // 实况层完成后留存引用，供模式切换（原 addMetarLayer 调用点捕获返回值）

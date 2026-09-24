@@ -1566,6 +1566,19 @@ describe("renderCard 云底单位（heightUnit / en 缺省英尺）与未知选�
       /locale/,
     );
   });
+
+  it("时区单制（owner 9/24）：缺省 UTC 原样；utcOffsetMinutes:480 观测时刻行显京钟（龄期仍按 UTC 观测算）", () => {
+    const T = "METAR ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG";
+    const utc = renderCard(parse(T));
+    expect(utc.querySelector(".mw-time")?.textContent).toContain("11日 07:00 UTC");
+    const bj = renderCard(parse(T), {
+      utcOffsetMinutes: 480,
+      now: new Date(Date.UTC(2026, 8, 11, 7, 40)),
+    });
+    const timeText = bj.querySelector(".mw-time")?.textContent ?? "";
+    expect(timeText).toContain("京11日 15:00");
+    expect(timeText).toContain("40 分钟前"); // 观测 07:00Z、now 07:40Z——龄期不随展示时区换算
+  });
 });
 
 describe("renderCard 严重度钩子与斜杠时段展示（2026-09-16 五方评测反馈回归锁）", () => {
@@ -1600,10 +1613,12 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     const text = card.textContent ?? "";
     expect(card.querySelector("h2")?.textContent).toContain("ZPPP");
     expect(card.querySelector(".mw-taf-badge")?.textContent).toContain("TAF");
-    // 五轮：发布在前（报文语序）、有效期区间化（26日24时→27日00:00 午夜特例换算）、时长保留
+    // 五轮：发布在前（报文语序）、有效期区间化（26日24时→27日00:00 午夜特例换算）、时长保留；
+    // 时区单制（owner 9/24）：缺省 UTC，不再有京时括注
     expect(text.indexOf("发布 25日15:18Z")).toBeLessThan(text.indexOf("有效期"));
-    expect(text).toContain("自 25日 18:00Z（京26日02:00）");
-    expect(text).toContain("至 27日 00:00Z（京27日08:00）");
+    expect(text).toContain("自 25日 18:00Z");
+    expect(text).toContain("至 27日 00:00Z");
+    expect(text).toContain("（UTC，30 小时）");
     expect(text).toContain("30 小时"); // 2518→2624：(26-25)×24+(24-18)=30h（B2 止时 24 进算术）
   });
 
@@ -1613,8 +1628,8 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(row).not.toBeNull();
     const spans = Array.from(row?.querySelectorAll("span") ?? []);
     expect(spans.length).toBe(2);
-    expect(spans[0]?.textContent).toContain("发布 25日15:18Z（京25日23:18）");
-    expect(spans[1]?.textContent).toBe("查看时刻 25日21:00Z（京26日05:00）");
+    expect(spans[0]?.textContent).toContain("发布 25日15:18Z");
+    expect(spans[1]?.textContent).toBe("查看时刻 25日21:00Z");
     const one = renderTafCard(parseTaf(golden));
     expect(one.querySelectorAll(".mw-taf-meta-row span")).toHaveLength(1); // 无 at 仅发布单列
     expect(one.textContent).toContain("发布 25日15:18Z");
@@ -1748,10 +1763,21 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     const rows = Array.from(card.querySelectorAll(".mw-taf-period"));
     expect(rows[1]?.classList.contains("mw-taf-period-danger")).toBe(true);
     expect(rows[0]?.classList.contains("mw-taf-period")).toBe(true);
-    // 京时链：发布/查看/有效期/分段行头四处括注
+    // 京时单制链（owner 9/24 时区单制）：传 480 时全卡只显京时——发布/查看/有效期/风险行/分段行头同一维度
+    const bj = renderTafCard(parseTaf(raw), {
+      at: { day: 23, hour: 3, minute: 0 },
+      utcOffsetMinutes: 480,
+    });
+    const bjText = bj.textContent ?? "";
+    expect(bjText).toContain("发布 京23日11:03");
+    expect(bjText).toContain("查看时刻 京23日11:00");
+    expect(bjText).toContain("自 京23日14:00 至 京24日20:00（北京时，30 小时）");
+    expect(bjText).toContain("京23日14:00–京23日17:00"); // TEMPO 段头（风险行同格式）
+    expect(bjText).not.toMatch(/\d{2}Z/); // 无 UTC 残留（单制互斥锁）
+    // UTC 缺省卡：无任何京字
     const text = card.textContent ?? "";
-    expect(text).toContain("查看时刻 23日03:00Z（京23日11:00）");
-    expect(text).toContain("（京23日14:00–23日17:00）");
+    expect(text).toContain("查看时刻 23日03:00Z");
+    expect(text).not.toContain("京");
   });
 
   it("复测修复：条目不入 Tab 序（行头代表段），行头/原文片可聚焦（工程 N3 简版）", () => {
