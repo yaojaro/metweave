@@ -21,11 +21,10 @@ const map = L.map("map", { center: [35.5, 105], zoom: 4 });
 const hasBasemap = setupBasemap(map);
 
 // 弹窗自动避让边（owner 9/24 指令：卡片不与固定悬浮层重叠）：autoPan 只认这两角留白——
-// 顶部让开模式切换条（实测 bottom≈68），底部让开免责声明栏+图例+状态条（合计≈85），
-// 弹窗永远落在其间的可视带内（超高卡另有卡内限高滚动兜底）
+// 顶部让开模式切换条（实测 bottom≈68）；底部让开免责声明栏+时间轴条+图例+状态条（时间轴批后合计≈140）
 const POPUP_AUTOPAN = {
   autoPanPaddingTopLeft: L.point(12, 84),
-  autoPanPaddingBottomRight: L.point(16, 92),
+  autoPanPaddingBottomRight: L.point(16, 150),
 };
 
 // —— 无 key 预览态（2026-09-15 五角色评测批）：底图缺席时不让首屏停留在「灰点+空底」，
@@ -210,10 +209,23 @@ const modeBar = {
   metar: document.getElementById("mode-metar"),
   taf: document.getElementById("mode-taf"),
   list: document.getElementById("mode-list"),
-  time: document.getElementById("taf-time"),
   panel: document.getElementById("taf-panel"),
   panelTitle: document.getElementById("taf-panel-title"),
   panelBody: document.getElementById("taf-panel-body"),
+};
+// TAF 时间轴条（owner 9/24 时间轴批）：提示栏上方独立通栏；控件挂载点与整条显隐分离
+const timelineBar = document.getElementById("taf-timeline");
+const timelineMount = timelineBar?.querySelector<HTMLElement>(".tl-ctrl") ?? null;
+/** 时间轴窗：零点＝当前时刻向下取整到 10 分钟刻度，跨度 24 小时（owner 定口径；默认锚「现在」） */
+const timelineWindow = (): { from: TafExpandAt; to: TafExpandAt } => {
+  const floor = new Date(Math.floor(Date.now() / 600_000) * 600_000);
+  const end = new Date(floor.getTime() + 86_400_000);
+  const atOf = (d: Date): TafExpandAt => ({
+    day: d.getUTCDate(),
+    hour: d.getUTCHours(),
+    minute: d.getUTCMinutes(),
+  });
+  return { from: atOf(floor), to: atOf(end) };
 };
 let metarLayer: LeafletNS.LayerGroup | undefined;
 let tafLayer: LeafletNS.LayerGroup | undefined;
@@ -230,7 +242,7 @@ const setMode = (mode: "metar" | "taf"): void => {
   modeBar.taf?.classList.toggle("active", active);
   modeBar.metar?.setAttribute("aria-pressed", String(!active));
   modeBar.taf?.setAttribute("aria-pressed", String(active));
-  if (modeBar.time !== null) modeBar.time.hidden = !active;
+  if (timelineBar !== null) timelineBar.hidden = !active;
   if (modeBar.list !== null) modeBar.list.hidden = !active;
   if (mapLegend !== null) mapLegend.hidden = !active; // 地图角四档图例（复测签派 N4：自定义编码须配图例）
   if (!active) setListOpen(false);
@@ -428,21 +440,27 @@ const loadTaf = async (): Promise<void> => {
         modeBar.panelTitle.append(legend);
       }
     };
+    // 时间轴（owner 9/24）：现在起 24h、10 分钟一格、3 小时整点刻度；缺省锚「现在」（第 0 格）
+    const tl = timelineWindow();
     const ctrl = createTafTimeControl(map, {
       layer: tafLayer,
       items,
       layerOptions: { card: { utcOffsetMinutes: tzOffset } }, // 滑杆换时刻持续以当前时区刷新（与层内可变覆盖一致）
       utcOffsetMinutes: tzOffset,
+      stepMinutes: 10,
+      from: tl.from,
+      to: tl.to,
+      tickEveryMinutes: 180,
       onTime: (at) => {
         lastTafAt = at; // 时区切换重建控件时经 initialAt 保位
         window.setTimeout(renderPanel, 60); // 等 setTafLayerTime 原地更新图标落地后刷新列表
       },
     });
-    modeBar.time?.replaceChildren(ctrl);
+    timelineMount?.replaceChildren(ctrl);
     setMode("taf");
     renderPanel();
     statusOk = () =>
-      `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 拖动右上滑杆换时刻`;
+      `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 拖动下方时间轴换时刻`;
     setStatus(statusOk(), "ok");
   })();
   try {
@@ -501,23 +519,28 @@ tzBtn?.addEventListener("click", () => {
     }
   }
   // 预报层：不重建——可变 card 覆盖经 setTafLayerTime 即时生效（已开弹窗原地换时区，图标/列表不受影响）；
-  // 滑杆标签与两端标注随区重建，initialAt 保住当前拨动位置
+  // 时间轴标签/刻度随区重建，initialAt 保住当前拨动位置（窗零点重取「现在」，格网随 10 分钟基准稳定）
   const tLayer = tafLayer;
   const tItems = tafItems;
   if (tLayer !== undefined && tItems !== undefined) {
+    const tl = timelineWindow();
     void setTafLayerTime(map, tLayer, tItems, { card: { utcOffsetMinutes: tzOffset } }).then(() => {
       const ctrl = createTafTimeControl(map, {
         layer: tLayer,
         items: tItems,
         layerOptions: { card: { utcOffsetMinutes: tzOffset } },
         utcOffsetMinutes: tzOffset,
+        stepMinutes: 10,
+        from: tl.from,
+        to: tl.to,
+        tickEveryMinutes: 180,
         ...(lastTafAt !== undefined ? { initialAt: lastTafAt } : {}),
         onTime: (at) => {
           lastTafAt = at;
           window.setTimeout(() => refreshPanel?.(), 60);
         },
       });
-      modeBar.time?.replaceChildren(ctrl);
+      timelineMount?.replaceChildren(ctrl);
     });
   }
   refreshPanel?.(); // 面板「下一变化」按新区重算

@@ -878,6 +878,9 @@ export interface TafTimeControlOptions {
   from?: TafExpandAt;
   /** 滑杆终点时刻；缺省自动取各站最晚有效期止（评测共识⑤：滑杆窗对齐数据，不再盲拖出界） */
   to?: TafExpandAt;
+  /** 轴内刻度间隔（分钟；缺省＝仅两端起止标注）。刻度对齐整点（自窗内首个对齐刻度起），
+   *  日界（展示时区的 00 时）标 dd日，标签随展示时区单制——owner 9/24 底部时间轴批 */
+  tickEveryMinutes?: number;
   /** 显示语言（缺省 zh；en 不加「日」字与本地时——评测工程 P2-3 i18n 漏网） */
   locale?: "zh" | "en";
   /** 展示时区偏移（分钟）——owner 9/24 单制：缺省 null＝UTC 单制；zh 传 480＝北京时单制（标签与两端标注同随） */
@@ -935,7 +938,14 @@ export function createTafTimeControl(
     if (toAbsMax === null || abs > toAbsMax) toAbsMax = abs;
   }
   const fromAbs = (from.day - 1) * 1440 + from.hour * 60 + from.minute;
-  const toAbs = toAbsMax ?? fromAbs + 100 * step; // 无任何有效期数据时回退百格
+  const absOf = (at: TafExpandAt): number => (at.day - 1) * 1440 + at.hour * 60 + at.minute;
+  const atOfAbs = (abs: number): TafExpandAt => ({
+    day: Math.floor(abs / 1440) + 1,
+    hour: Math.floor((abs % 1440) / 60),
+    minute: abs % 60,
+  });
+  // 显式 to 优先（owner 9/24 时间轴批：宿主自定「现在+24h」窗）——此前该选项有文档无接线，静默忽略违不静默纪律，本批修
+  const toAbs = options.to !== undefined ? absOf(options.to) : (toAbsMax ?? fromAbs + 100 * step);
   const spanSteps = Math.max(1, Math.round((toAbs - fromAbs) / step));
   input.max = String(spanSteps);
   const atOfValue = (value: number): TafExpandAt => {
@@ -981,6 +991,42 @@ export function createTafTimeControl(
   input.value = String(idxOf(options.initialAt ?? from));
   apply(atOfValue(Number(input.value)));
   box.append(input, label);
+  if (options.tickEveryMinutes !== undefined) {
+    // 轴内刻度（owner 9/24 底部时间轴批）：对齐整点的等距标注（自窗内首个对齐刻度起），
+    // 日界（展示时区 00 时）标 dd日、其余标 HH:MM，随展示时区单制；终点恒标注（right 锚防溢出）
+    const every = Math.max(step, options.tickEveryMinutes);
+    const first = Math.ceil((fromAbs + 1) / every) * every;
+    const total = toAbs - fromAbs;
+    const axis = document.createElement("div");
+    axis.style.cssText =
+      "position:relative;height:15px;margin-top:4px;width:100%;font-size:10px;color:#6b7785";
+    /** 刻度短标签：整点 HH:00；展示时区 00 时＝日界 dd日（京时随制换算） */
+    const tickText = (at: TafExpandAt): string => {
+      if (ltOffset !== null && locale === "zh") {
+        const z = atOfAbs(absOf(at) + ltOffset);
+        const day = ((z.day - 1) % 31) + 1; // TAF 无月语境日回绕 31 折回（与卡内 ltClock 同口径）
+        return z.hour === 0 && z.minute === 0
+          ? `京${String(day).padStart(2, "0")}日`
+          : `京${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")}`;
+      }
+      return at.hour === 0 && at.minute === 0
+        ? `${String(at.day).padStart(2, "0")}日`
+        : `${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}`;
+    };
+    const addTick = (abs: number, anchorRight = false): void => {
+      const s = document.createElement("span");
+      s.textContent = tickText(atOfAbs(abs));
+      s.style.cssText = anchorRight
+        ? "position:absolute;right:0;white-space:nowrap"
+        : `position:absolute;left:${(((abs - fromAbs) / total) * 100).toFixed(3)}%;transform:translateX(-50%);white-space:nowrap`;
+      axis.append(s);
+    };
+    // 与终点相距不足一格的尾刻度跳过（防标签相撞）
+    for (let a = first; a <= toAbs - every / 2; a += every) addTick(a);
+    addTick(toAbs, true);
+    box.append(axis);
+    return box;
+  }
   // 端点标注（复测小白#11：无刻度无范围的「盲拖」——两端起止时刻随展示时区单制，10px 灰字通栏）
   const ticks = document.createElement("div");
   ticks.style.cssText =

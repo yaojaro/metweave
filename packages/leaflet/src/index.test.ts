@@ -786,4 +786,48 @@ describe("C15：时区单制切换（owner 9/24——一个开关控全图时间
     expect(input?.getAttribute("aria-valuetext") ?? "").toContain("京26日05:00");
     map.remove();
   });
+
+  it("时间轴批（owner 9/24）：显式 from/to 接线（10 分钟步 24h＝144 格，默认锚窗零点）+ tickEveryMinutes 整点刻度与日界标注", async () => {
+    const map = freshMap();
+    const items = mkItems();
+    const g = await addTafLayer(map, items);
+    // 窗：24日14:30（现在向下取整 10 分钟）→ 25日14:30；to 此前有文档无接线（静默忽略），丢接线即本断言红
+    const ctrl = createTafTimeControl(map, {
+      layer: g,
+      items,
+      stepMinutes: 10,
+      from: { day: 24, hour: 14, minute: 30 },
+      to: { day: 25, hour: 14, minute: 30 },
+      tickEveryMinutes: 180,
+    });
+    const input = ctrl.querySelector("input");
+    expect(input?.max).toBe("144");
+    expect(input?.value).toBe("0"); // 默认锚「现在」（＝窗零点）
+    expect(input?.getAttribute("aria-valuetext") ?? "").toContain("24日 14:30Z");
+    // 刻度：自窗内首个 3h 对齐整点（15:00）起等距；UTC 00 时＝日界标 dd日；终点恒标注（右锚防溢出）
+    const labels = Array.from(ctrl.querySelectorAll("div span")).map((s) => s.textContent ?? "");
+    expect(labels).toContain("15:00");
+    expect(labels).toContain("21:00");
+    expect(labels).toContain("25日"); // 25日00:00Z 日界
+    expect(labels).toContain("03:00"); // 25日03:00Z
+    expect(labels).toContain("14:30"); // 终点
+    // 京时：刻度随展示时区换算（15:00Z→京23:00、终点→京22:30），UTC 式裸标签不再出现
+    const ctrlBj = createTafTimeControl(map, {
+      layer: g,
+      items,
+      stepMinutes: 10,
+      from: { day: 24, hour: 14, minute: 30 },
+      to: { day: 25, hour: 14, minute: 30 },
+      tickEveryMinutes: 180,
+      utcOffsetMinutes: 480,
+    });
+    const bjLabels = Array.from(ctrlBj.querySelectorAll("div span")).map(
+      (s) => s.textContent ?? "",
+    );
+    expect(bjLabels).toContain("京23:00");
+    expect(bjLabels).toContain("京02:00"); // 24日18:00Z → 京25日02:00（跨日换算正确、非日界不打日号）
+    expect(bjLabels).toContain("京22:30"); // 终点 25日14:30Z → 京22:30
+    expect(bjLabels.every((x) => x.startsWith("京"))).toBe(true);
+    map.remove();
+  });
 });

@@ -43,10 +43,14 @@
       >
         UTC
       </button>
-      <div id="taf-time" hidden></div>
     </div>
     <div id="basemap-hint" role="note" hidden></div>
     <aside id="panel" role="alert" hidden></aside>
+    <!-- TAF 时间轴（owner 9/24 时间轴批）：现在起 24h、10 分钟一格，默认锚「现在」；拖动全图按该时刻重渲级别 -->
+    <div id="taf-timeline" hidden aria-label="预报时间轴">
+      <span class="tl-now" title="时间轴起点＝当前时刻">现在</span>
+      <div class="tl-ctrl"></div>
+    </div>
     <footer id="disclaimer">
       演示用途：数据来自公开通路（IEM / NOAA 等），按现状提供、无 SLA，可能延迟或缺失；
       本页及本库均<strong>不得用于飞行决策或任何运行决策</strong>。圆点色仅为扫视参考，

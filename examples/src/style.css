@@ -53,12 +53,62 @@ body {
   color: #ffd9a0;
 }
 
+/* TAF 时间轴条（owner 9/24 时间轴批）：免责声明栏上方独立通栏——现在起 24h、10 分钟一格，
+ * 左端「现在」锚 + 滑杆与刻度；顶部操作栏由此回归一行纯按钮 */
+#taf-timeline {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 34px;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;
+  background: rgba(244, 246, 249, 0.96);
+  border-top: 1px solid #d8dee6;
+}
+
+#taf-timeline .tl-now {
+  flex: none;
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
+  font-weight: 600;
+  color: #1c2733;
+  background: #dfe9f5;
+  border: 1px solid #b9cadd;
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+#taf-timeline .tl-ctrl {
+  flex: 1;
+  min-width: 0;
+}
+
+#taf-timeline .mw-taf-timectrl {
+  width: 100%;
+}
+
+#taf-timeline .mw-taf-timectrl input[type="range"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#taf-timeline .mw-taf-timectrl span {
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* 错误/摘要面板：纯文本单条消息（textContent 装载），无子结构样式。
- * bottom 抬高到免责声明栏之上，避免被页脚压住 */
+ * bottom 抬高到时间轴条与免责声明栏之上，避免被底部通栏压住 */
 #panel {
   position: fixed;
   right: 10px;
-  bottom: 48px;
+  bottom: 104px;
   z-index: 1000;
   max-width: 480px;
   background: #fff;
@@ -71,11 +121,11 @@ body {
 }
 
 /* 状态条：实况拉取进度（loading → ok / error），role=status + aria-live 供读屏。
- * bottom 抬高到免责声明栏之上 */
+ * bottom 抬高到时间轴条与免责声明栏之上 */
 #status {
   position: fixed;
   left: 10px;
-  bottom: 48px;
+  bottom: 104px;
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -285,11 +335,11 @@ body {
   height: 8px;
 }
 
-/* 地图角四档图例（复测签派 N4） */
+/* 地图角四档图例（复测签派 N4）——抬高到时间轴条之上 */
 #map-legend {
   position: absolute;
   left: 12px;
-  bottom: 12px;
+  bottom: 104px;
   z-index: 800;
   display: flex;
   gap: 10px;
