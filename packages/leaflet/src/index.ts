@@ -866,6 +866,14 @@ const fmtTafZone = (at: TafExpandAt, offset: number, tag: string): string => {
   return `${tag}${String(d).padStart(2, "0")}日${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
+/** TafExpandAt ↔ 绝对分钟序（窗/刻度格计算共用；day-1 基准使跨日差值可直接加减） */
+const tafAbsOf = (at: TafExpandAt): number => (at.day - 1) * 1440 + at.hour * 60 + at.minute;
+const tafAtOfAbs = (abs: number): TafExpandAt => ({
+  day: Math.floor(abs / 1440) + 1,
+  hour: Math.floor((abs % 1440) / 60),
+  minute: abs % 60,
+});
+
 export interface TafTimeControlOptions {
   /** 受控图层与数据（每次拨动全量重展开） */
   layer: Leaflet.LayerGroup;
@@ -937,15 +945,10 @@ export function createTafTimeControl(
     const abs = (endDay - 1) * 1440 + v.endHour * 60;
     if (toAbsMax === null || abs > toAbsMax) toAbsMax = abs;
   }
-  const fromAbs = (from.day - 1) * 1440 + from.hour * 60 + from.minute;
-  const absOf = (at: TafExpandAt): number => (at.day - 1) * 1440 + at.hour * 60 + at.minute;
-  const atOfAbs = (abs: number): TafExpandAt => ({
-    day: Math.floor(abs / 1440) + 1,
-    hour: Math.floor((abs % 1440) / 60),
-    minute: abs % 60,
-  });
+  const fromAbs = tafAbsOf(from);
   // 显式 to 优先（owner 9/24 时间轴批：宿主自定「现在+24h」窗）——此前该选项有文档无接线，静默忽略违不静默纪律，本批修
-  const toAbs = options.to !== undefined ? absOf(options.to) : (toAbsMax ?? fromAbs + 100 * step);
+  const toAbs =
+    options.to !== undefined ? tafAbsOf(options.to) : (toAbsMax ?? fromAbs + 100 * step);
   const spanSteps = Math.max(1, Math.round((toAbs - fromAbs) / step));
   input.max = String(spanSteps);
   const atOfValue = (value: number): TafExpandAt => {
@@ -1003,7 +1006,7 @@ export function createTafTimeControl(
     /** 刻度短标签：整点 HH:00；展示时区 00 时＝日界 dd日（京时随制换算） */
     const tickText = (at: TafExpandAt): string => {
       if (ltOffset !== null && locale === "zh") {
-        const z = atOfAbs(absOf(at) + ltOffset);
+        const z = tafAtOfAbs(tafAbsOf(at) + ltOffset);
         const day = ((z.day - 1) % 31) + 1; // TAF 无月语境日回绕 31 折回（与卡内 ltClock 同口径）
         return z.hour === 0 && z.minute === 0
           ? `京${String(day).padStart(2, "0")}日`
@@ -1015,7 +1018,7 @@ export function createTafTimeControl(
     };
     const addTick = (abs: number, anchorRight = false): void => {
       const s = document.createElement("span");
-      s.textContent = tickText(atOfAbs(abs));
+      s.textContent = tickText(tafAtOfAbs(abs));
       s.style.cssText = anchorRight
         ? "position:absolute;right:0;white-space:nowrap"
         : `position:absolute;left:${(((abs - fromAbs) / total) * 100).toFixed(3)}%;transform:translateX(-50%);white-space:nowrap`;

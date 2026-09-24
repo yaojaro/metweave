@@ -51,6 +51,9 @@ const hourWordOf = (d: number, h: number): { d: number; h: number } => {
   const total = (d - 1) * 1440 + h * 60 + tzOffset;
   return { d: (Math.floor(total / 1440) % 31) + 1, h: Math.floor((total % 1440) / 60) };
 };
+/** {日,时} → dd日HH（面板窗口文案的时刻段） */
+const dayHourOf = (x: { d: number; h: number }): string =>
+  `${String(x.d).padStart(2, "0")}日${String(x.h).padStart(2, "0")}`;
 
 if (!hasBasemap) mountPreviewCards();
 
@@ -214,20 +217,25 @@ const modeBar = {
 // TAF 时间轴条（owner 9/24 窄条批）：提示栏上方一条窄轴——播放键 + 现在 + 带刻度滑道 + 当前时刻；
 // 点刻度/拖动跳时刻（手动介入即停播），播放自动按 10 分钟步进扫过 24 小时（到尾循环）
 const timelineBar = document.getElementById("taf-timeline");
-const tlInput = document.getElementById("tl-input") as HTMLInputElement | null;
+/** 按类型守卫取 input（禁 as 断言）：非 input 元素返回 null，调用点各自判空 */
+const inputById = (id: string): HTMLInputElement | null => {
+  const el = document.getElementById(id);
+  return el instanceof HTMLInputElement ? el : null;
+};
+const tlInput = inputById("tl-input");
 const tlValue = document.getElementById("tl-value");
 const tlTicksBox = document.getElementById("tl-ticks");
 const tlPlayBtn = document.getElementById("tl-play");
+/** Date → TafExpandAt（UTC 日/时/分直读） */
+const dateToAt = (d: Date): TafExpandAt => ({
+  day: d.getUTCDate(),
+  hour: d.getUTCHours(),
+  minute: d.getUTCMinutes(),
+});
 /** 时间轴窗：零点＝当前时刻向下取整到 10 分钟刻度，跨度 24 小时（owner 定口径；默认锚「现在」） */
 const timelineWindow = (): { from: TafExpandAt; to: TafExpandAt } => {
   const floor = new Date(Math.floor(Date.now() / 600_000) * 600_000);
-  const end = new Date(floor.getTime() + 86_400_000);
-  const atOf = (d: Date): TafExpandAt => ({
-    day: d.getUTCDate(),
-    hour: d.getUTCHours(),
-    minute: d.getUTCMinutes(),
-  });
-  return { from: atOf(floor), to: atOf(end) };
+  return { from: dateToAt(floor), to: dateToAt(new Date(floor.getTime() + 86_400_000)) };
 };
 // —— 时间轴状态与驱动（10 分钟一格；apply 与图层 setTafLayerTime 同路，拖/点/播全图重渲级别）——
 const tlAbsOf = (at: TafExpandAt): number => (at.day - 1) * 1440 + at.hour * 60 + at.minute;
@@ -434,11 +442,9 @@ const loadTaf = async (): Promise<void> => {
                 const a = hourWordOf(Number(d1), Number(h1));
                 const b = hourWordOf(Number(d2), Number(h2));
                 const tag = tzOffset === null ? "" : "京";
-                const dd = (x: { d: number; h: number }): string =>
-                  `${String(x.d).padStart(2, "0")}日${String(x.h).padStart(2, "0")}`;
                 return a.d === b.d
-                  ? `${tag}${dd(a)}–${String(b.h).padStart(2, "0")}时`
-                  : `${tag}${dd(a)}时–${dd(b)}时`;
+                  ? `${tag}${dayHourOf(a)}–${String(b.h).padStart(2, "0")}时`
+                  : `${tag}${dayHourOf(a)}时–${dayHourOf(b)}时`;
               })()
             : ch?.at !== undefined
               ? `${String(ch.at.hour).padStart(2, "0")}:${String(ch.at.minute).padStart(2, "0")}Z`

@@ -1091,6 +1091,14 @@ const fmtTafZone = (at: TafExpandAt, offset: number, tag: string): string => {
   return `${tag}${String(d).padStart(2, "0")}日${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
+/** TafExpandAt ↔ 绝对分钟序（窗/刻度格计算共用；day-1 基准使跨日差值可直接加减） */
+const tafAbsOf = (at: TafExpandAt): number => (at.day - 1) * 1440 + at.hour * 60 + at.minute;
+const tafAtOfAbs = (abs: number): TafExpandAt => ({
+  day: Math.floor(abs / 1440) + 1,
+  hour: Math.floor((abs % 1440) / 60),
+  minute: abs % 60,
+});
+
 export interface TafTimeControlOptions {
   /** 受控图层与数据（每次拨动全量重展开） */
   layer: Leaflet.LayerGroup;

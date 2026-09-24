@@ -807,7 +807,9 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
   // —— 时间行：电码时刻 + 数据龄期（「43 分钟前」比时刻本身更直接支撑判读；超 60 分钟标橙）
   // 时刻随展示时区单制（owner 9/24）：UTC＝dd日 HH:MM UTC；京＝京dd日 HH:MM（en 恒 UTC）
   const timeText =
-    options.utcOffsetMinutes != null && options.locale !== "en"
+    options.utcOffsetMinutes !== undefined &&
+    options.utcOffsetMinutes !== null &&
+    options.locale !== "en"
       ? `京${localClockOf(v.time, options.utcOffsetMinutes)}`
       : T.timeText(v.time);
   const timeEl = el("div", "mw-time", timeText);

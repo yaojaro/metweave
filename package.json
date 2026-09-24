@@ -23,7 +23,8 @@
     "publish:all": "pnpm build && pnpm check:artifact && pnpm -r publish --access public",
     "gen:terms": "node scripts/terms.mjs gen --write",
     "check:terms": "node scripts/terms.mjs check",
-    "ci:rehearsal": "node scripts/ci-rehearsal.mjs"
+    "ci:rehearsal": "node scripts/ci-rehearsal.mjs",
+    "check:all": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm check:leaks && pnpm check:docs && pnpm check:terms && pnpm check:knip"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

@@ -276,6 +276,9 @@ const tempValueOf = (x: TafTemperatureGroup, lt = ""): string =>
 /** 元信息日号补零：23 */
 const dayOf = (day: number): string => String(day).padStart(2, "0");
 
+/** 元信息时钟（整点补零）：06:00Z——有效期行 UTC 单制的时刻段 */
+const clockHmOf = (hour: number): string => `${String(hour).padStart(2, "0")}:00Z`;
+
 /** 分段行时刻标签（zh：23日06Z / en：23/06Z）——UTC 单制的人话行与电码悬停共用 */
 const fmtSegAt = (at: TafExpandAt, locale: "zh" | "en"): string =>
   locale === "zh"
@@ -673,12 +676,11 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   // 两制各自模板——UTC 带日号前缀 + HH:MMZ；京时整段京钟（validityFrom 的「dd日」前缀不重复套日号）
   const endClock =
     v.endHour === 24 ? { day: (v.endDay % 31) + 1, hour: 0 } : { day: v.endDay, hour: v.endHour };
-  const hmOf = (hour: number): string => `${String(hour).padStart(2, "0")}:00Z`;
   const validityText =
     zone === null
-      ? `${t.validity} ${t.validityFrom(dayOf(v.startDay), hmOf(v.startHour))} ${t.validityTo(
+      ? `${t.validity} ${t.validityFrom(dayOf(v.startDay), clockHmOf(v.startHour))} ${t.validityTo(
           dayOf(endClock.day),
-          hmOf(endClock.hour),
+          clockHmOf(endClock.hour),
         )}（${zoneName}，${t.duration(hours)}）`
       : `${t.validity} ${t.validityFromZone(clockAt(v.startDay, v.startHour, 0))} ${t.validityToZone(
           clockAt(endClock.day, endClock.hour, 0),
