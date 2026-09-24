@@ -466,6 +466,37 @@ describe("addTafLayer（v0.2 渲染层①）", () => {
     map2.remove();
   });
 
+  it("TEMPO 发作窗内圆点升档（owner 9/24 实测批：发作窗只进提示不升档＝图上看不到危险窗），窗前窗后回主导档", async () => {
+    // 基况 8000 BKN040＝好；TEMPO 18–22Z TSRA+CB＝差（实测 ZGGG 样形）
+    const raw =
+      "TAF ZGGG 240303Z 2406/2512 14003MPS 8000 BKN040 TEMPO 2418/2422 TSRA FEW030CB BKN033=";
+    const r = parseTaf(raw);
+    const dotAt = async (hour: number, minute = 0): Promise<string | null | undefined> => {
+      const map = freshMap();
+      const g = await addTafLayer(map, [{ report: r, position: [23, 113] }], {
+        at: { day: 24, hour, minute },
+      });
+      const d = firstDot(g);
+      map.remove();
+      return d;
+    };
+    expect(await dotAt(12)).toContain("mw-dot-good"); // 窗前：主导段绿
+    expect(await dotAt(19)).toContain("mw-dot-poor"); // 发作中：叠加态红（丢合成即回绿必红）
+    expect(await dotAt(22)).toContain("mw-dot-good"); // 窗终（含窗终不含）回主导段
+    // 摘要同合成态：发作中 tooltip 摘要含雷暴电码，aria-label 档位词随升
+    const map = freshMap();
+    const g = await addTafLayer(map, [{ report: r, position: [23, 113] }], {
+      at: { day: 24, hour: 19, minute: 0 },
+    });
+    expect(firstTipText(g)).toContain("TSRA");
+    const label = (g.getLayers()[0] as L.Marker)
+      .getElement()
+      ?.querySelector('[role="img"]')
+      ?.getAttribute("aria-label");
+    expect(label).toContain("预报天气差");
+    map.remove();
+  });
+
   it("缺省展开时刻＝有效期起点；aria-label 带「预报」标注", async () => {
     const map = freshMap();
     const g = await addTafLayer(map, [{ report: parseTaf(goodBase), position: [40, 116] }]);

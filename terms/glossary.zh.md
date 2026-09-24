@@ -878,22 +878,25 @@ function tafMarkerState(
   }
   if (!noTimeline && v !== undefined) {
     const expansion = expandTaf(r, at, anchor);
-    tier = conditionOf(asConditionInput(expansion.conditions, false));
-    summary = summarizeTaf(expansion.conditions, locale);
+    // 发作窗内档位/摘要按「主导段 + TEMPO 叠加」合成态（owner 9/24 实测批：雷雨发作窗圆点不升档＝
+    // 图上永远看不到危险窗——叠加合并式与下方提示语同一份，单一来源不漂移）
+    const effective =
+      expansion.tempo !== undefined
+        ? {
+            ...expansion.conditions,
+            ...expansion.tempo.conditions,
+            weather: expansion.tempo.conditions.weather ?? [],
+            cavok: expansion.tempo.conditions.cavok,
+          }
+        : expansion.conditions;
+    tier = conditionOf(asConditionInput(effective, false));
+    summary = summarizeTaf(effective, locale);
     if (expansion.uncertain)
       notes.push(
         locale === "en" ? "Transition band — timing uncertain" : "过渡带（变化时刻不确定）",
       );
     if (expansion.tempo !== undefined) {
-      const tempoSummary = summarizeTaf(
-        {
-          ...expansion.conditions,
-          ...expansion.tempo.conditions,
-          weather: expansion.tempo.conditions.weather ?? [],
-          cavok: expansion.tempo.conditions.cavok,
-        },
-        locale,
-      );
+      const tempoSummary = summarizeTaf(effective, locale);
       notes.push((locale === "en" ? "TEMPO bursts: " : "TEMPO 发作可能：") + tempoSummary);
     }
   } else if (v !== undefined) {

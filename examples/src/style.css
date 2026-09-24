@@ -152,11 +152,11 @@ body {
 }
 
 /* 错误/摘要面板：纯文本单条消息（textContent 装载），无子结构样式。
- * bottom 抬高到时间轴条与免责声明栏之上，避免被底部通栏压住 */
+ * 右侧与图例竖向堆叠（面板上图例下），底部清开时间轴条与免责声明栏 */
 #panel {
   position: fixed;
   right: 10px;
-  bottom: 104px;
+  bottom: 112px;
   z-index: 1000;
   max-width: 480px;
   background: #fff;
@@ -383,11 +383,12 @@ body {
   height: 8px;
 }
 
-/* 地图角四档图例（复测签派 N4）——抬高到时间轴条之上 */
+/* 地图角四档图例（owner 9/24：METAR/TAF 两模式常驻；挪右侧——左侧陆地图层上不显眼，右侧海面背景衬托色点）。
+ * 与右侧错误面板竖向堆叠：图例贴时间轴上方，错误面板再高一层 */
 #map-legend {
   position: absolute;
-  left: 12px;
-  bottom: 104px;
+  right: 12px;
+  bottom: 74px;
   z-index: 800;
   display: flex;
   gap: 10px;

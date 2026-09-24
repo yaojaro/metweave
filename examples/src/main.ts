@@ -335,8 +335,6 @@ let listOpen = false;
 let refreshPanel: (() => void) | undefined; // TAF 载入后由 loadTaf 赋值（列表渲染入口，面板开关直呼）
 let pendingFlyOpen: (() => void) | undefined; // 行点击「先飞后开卡」的在途回调（换行连点时解绑防开错站）
 
-const mapLegend = document.getElementById("map-legend");
-
 const setMode = (mode: "metar" | "taf"): void => {
   const active = mode === "taf";
   modeBar.metar?.classList.toggle("active", !active);
@@ -345,7 +343,6 @@ const setMode = (mode: "metar" | "taf"): void => {
   modeBar.taf?.setAttribute("aria-pressed", String(active));
   if (timelineBar !== null) timelineBar.hidden = !active;
   if (modeBar.list !== null) modeBar.list.hidden = !active;
-  if (mapLegend !== null) mapLegend.hidden = !active; // 地图角四档图例（复测签派 N4：自定义编码须配图例）
   if (!active) setListOpen(false);
 };
 
