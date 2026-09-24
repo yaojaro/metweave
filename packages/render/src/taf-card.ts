@@ -182,7 +182,7 @@ const STYLE_ID = "mw-taf-card-style";
 const STYLE_TEXT = `
 .mw-taf-card { font: 13px/1.6 system-ui, sans-serif; color: #1c2733; background: #fff;
   border: 1px solid #d8dee6; border-radius: 8px; padding: 10px 12px; max-width: 480px;
-  max-height: min(65vh, 680px); overflow-y: auto; }
+  max-height: min(65vh, 680px); overflow-y: auto; position: relative; }
 .mw-taf-card h2 { margin: 0 0 4px; font-size: 15px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .mw-taf-badge { font-size: 11px; font-weight: 600; color: #fff; background: #3d5a80;
   border-radius: 4px; padding: 1px 6px; }
@@ -237,13 +237,12 @@ const STYLE_TEXT = `
 .mw-taf-rawseg-caution { color: #8a5a12; }
 /* 联动可达性（评测工程 P0/P1）：tabIndex 聚焦通道 + 虚线 affordance + 激活时非相关项压暗（focus+context） */
 .mw-taf-item.mw-taf-link, .mw-taf-period-head.mw-taf-link { border-bottom: 1px dashed #7f8c9a; cursor: help; }
-/* 就地电码（owner 9/24 交互批）：悬停/聚焦带 data-code 的条目即在行尾显出对应原文片段——
-   映射词就地可见，替代「整段 title 浮层抢先弹出」的旧交互；raw:false 无联动时自然无此层 */
-.mw-taf-item.mw-taf-link[data-code]:hover::after,
-.mw-taf-item.mw-taf-link[data-code]:focus-visible::after {
-  content: attr(data-code); margin-left: 6px; white-space: nowrap;
+/* 就地电码浮签（owner 9/24 三轮）：绝对定位悬浮于条目上方——零占位零回流（旧 ::after 内联显码
+   内容进文档流，行宽一变就换行回流「跳一跳」）；pointer-events:none 不挡悬停链 */
+.mw-taf-codechip { position: absolute; display: none; z-index: 3; pointer-events: none; white-space: nowrap;
   font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: #44546a; background: #f2f6fa; border: 1px solid #e3e8ee; border-radius: 3px; padding: 0 4px; }
+  color: #44546a; background: #f7f9fc; border: 1px solid #cdd7e2; border-radius: 3px; padding: 1px 5px;
+  box-shadow: 0 1px 3px rgba(20, 32, 45, 0.15); }
 .mw-taf-item:focus-visible, .mw-taf-rawseg:focus-visible, .mw-taf-period-head:focus-visible
   { outline: 2px solid #4a90d9; outline-offset: 1px; }
 /* 联动压暗（owner 9/24 二轮修订）：原文区改「整盒颜色压淡」——旧 opacity 逐片压暗时，报头等
@@ -635,6 +634,27 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     olEl: undefined as HTMLElement | undefined,
     rawPEl: undefined as HTMLElement | undefined,
   };
+  // —— 就地电码浮签（owner 9/24 三轮）：卡内绝对定位、悬浮于条目上方——零占位零回流
+  //（旧 ::after 内联显码内容进文档流，行宽一变就换行回流「跳一跳」）；随联动 activate/clear 显隐
+  const codeChip = el("span", "mw-taf-codechip");
+  card.append(codeChip);
+  const showCodeChip = (target: HTMLElement): void => {
+    codeChip.textContent = target.dataset.code ?? "";
+    codeChip.style.display = "inline-block";
+    const cardR = card.getBoundingClientRect();
+    const tR = target.getBoundingClientRect();
+    const chipW = codeChip.offsetWidth;
+    const left = Math.max(
+      4,
+      Math.min(tR.right - cardR.left - chipW + card.scrollLeft, card.clientWidth - chipW - 4),
+    );
+    const top = Math.max(0, tR.top - cardR.top - codeChip.offsetHeight - 2 + card.scrollTop);
+    codeChip.style.left = `${left}px`;
+    codeChip.style.top = `${top}px`;
+  };
+  const hideCodeChip = (): void => {
+    codeChip.style.display = "none";
+  };
   const clearHl = (): void => {
     for (const c of link.cuts) c.el.classList.remove(HL);
     for (const i of link.items) i.el.classList.remove(HL);
@@ -643,6 +663,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     link.validityEl?.classList.remove(HL);
     link.olEl?.classList.remove("mw-taf-dim");
     link.rawPEl?.classList.remove("mw-taf-dim");
+    hideCodeChip();
   };
   /**
    * 联动三通道（评测工程 P0：mouseenter 之外补 focusin——键盘可达；tabIndex 聚焦 + 虚线 affordance + 激活压暗非相关项）。
@@ -657,6 +678,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       for (const o of others()) o.classList.add(HL);
       link.olEl?.classList.add("mw-taf-dim");
       link.rawPEl?.classList.add("mw-taf-dim");
+      if (self.dataset.code !== undefined) showCodeChip(self); // 带 data-code 的条目：浮签随行显码
     };
     self.addEventListener("mouseenter", activate);
     self.addEventListener("focusin", activate);

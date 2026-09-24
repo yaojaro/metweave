@@ -1692,7 +1692,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(rows[0]?.getAttribute("aria-label")).toBeNull(); // 电码只走 title（读屏读人话正文——评测工程 P0-2）
   });
 
-  it("就地电码（owner 9/24 交互批）：联动条目携带 data-code＝其值来源的原文片段，样式契约定样（悬停/聚焦显出）", () => {
+  it("就地电码浮签（owner 9/24 三轮：::after 内联显码撑动布局「跳一跳」→ 改卡内绝对定位浮签）", () => {
     const card = renderTafCard(parseTaf(golden), { raw: true });
     // 基况「风」条目 → 风组整组 token 跨度；「能见度」→ 9999
     const items = Array.from(card.querySelectorAll<HTMLElement>(".mw-taf-item[data-code]"));
@@ -1700,12 +1700,24 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
       items.find((x) => x.querySelector(".mw-taf-item-label")?.textContent === label)?.dataset.code;
     expect(codeOf("风")).toBe("04009G16MPS");
     expect(codeOf("能见度")).toBe("9999");
-    // 样式契约：:hover/:focus-visible 经 ::after 显出 attr(data-code)（丢规则即红）
+    // 行为锁：悬停带 data-code 的条目 → 浮签显示其电码；离开 → 隐藏（丢 showCodeChip 接线即红）
+    const chip = card.querySelector<HTMLElement>(".mw-taf-codechip");
+    expect(chip).not.toBeNull();
+    expect(chip?.style.display ?? "").toBe(""); // 静息由 CSS 类隐藏（display:none 在样式表），内联未动
+    const wind = items.find(
+      (x) => x.querySelector(".mw-taf-item-label")?.textContent === "风",
+    ) as HTMLElement;
+    wind.dispatchEvent(new MouseEvent("mouseenter", { bubbles: false }));
+    expect(chip?.style.display).not.toBe("none");
+    expect(chip?.textContent).toBe("04009G16MPS");
+    wind.dispatchEvent(new MouseEvent("mouseleave", { bubbles: false }));
+    expect(chip?.style.display).toBe("none");
+    // 样式契约：浮签绝对定位（不进文档流——零占位零回流）、挡不住悬停链
     const css = document.querySelector("#mw-taf-card-style")?.textContent ?? "";
-    const rule =
-      css.split(".mw-taf-item.mw-taf-link[data-code]:hover::after")[1]?.split("}")[0] ?? "";
-    expect(rule).toContain("attr(data-code)");
-    expect(css).toContain(".mw-taf-item.mw-taf-link[data-code]:focus-visible::after");
+    const chipRule = css.split(".mw-taf-codechip {")[1]?.split("}")[0] ?? "";
+    expect(chipRule).toContain("position: absolute");
+    expect(chipRule).toContain("pointer-events: none");
+    expect(css).not.toContain("[data-code]:hover::after"); // 旧内联显码方案不得回流
     // 压暗契约（owner 9/24 二轮）：原文区整盒颜色压淡——报头等未包片文本同样压淡，
     // 点亮电码为唯一焦点；退回逐片 opacity（报头不吃效果、全场最亮）即红
     const rawDimRule = css.split(".mw-taf-raw.mw-taf-dim {")[1]?.split("}")[0] ?? "";
