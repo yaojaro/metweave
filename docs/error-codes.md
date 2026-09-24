@@ -31,12 +31,15 @@
 | `missing-station`    | 首个 token 不是四字符站名组（含空输入）                                                                            |
 | `missing-time`       | 站名后无 ddHHMMZ 时组                                                                                              |
 | `invalid-time`       | 时组在位但数值越界（日/时/分超范围）——值不可信等同无效                                                             |
-| `unsupported-mode`   | `mode: "strict"` 在 v0.1 未实现——显式传 strict 即明确报错                                                          |
+| `missing-validity`   | TAF：发布时组后无 ddHH/ddHH 有效期组（NIL 占该位＝合法缺报，见 `TafReport.nil`）                                   |
+| `invalid-validity`   | TAF：有效期组数值越界（日起 01–31 / 起时 00–23 / 止时 00–24——24 为午夜合法特例）                                   |
+| `unsupported-mode`   | `mode: "strict"` METAR 侧未实现（显式传即明确报错）；TAF 侧 `parseTaf` 已支持 strict                               |
+| `strict-violation`   | TAF strict 严判未通过：`validateTaf` 条文违例（C2/C3/C5/C7）或 warning 级解析告警——聚合为整体拒绝，逐项在 message  |
 | `batch-parse-failed` | 批量聚合失败（`getMetarReports` 缺省模式）——`raw` 字段此时承载汇总信息，单条原文在 message 与 `onUnparseable` 回调 |
 
 ## 取数失败码（MetarSourceError.code，共 5 个）
 
-`getMetars` / `getMetarReports` 的取数失败；`error.network` 标注出错的 IEM 网络名。
+`getMetars` / `getMetarReports`（IEM）与 `getTafs` / `getTafReports`（aviationweather TAF）的取数失败；`error.network` 标注出错的网络名/源名（IEM 网络名或 `aviationweather`）。
 
 | code         | 含义                                                                 |
 | ------------ | -------------------------------------------------------------------- |

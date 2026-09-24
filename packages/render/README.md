@@ -1,6 +1,6 @@
 # @metweave/render
 
-解析后的 METAR/SPECI 报文卡片：自包含、零框架的 DOM 组件。默认样式随组件注入（运行时注入，宿主零配置），悬停提示用平实语言解释每个值，RAW 对照视图在原始报文上高亮缺测/告警组。
+解析后的 METAR/SPECI 与 TAF 报文卡片：自包含、零框架的 DOM 组件。默认样式随组件注入（运行时注入，宿主零配置），悬停提示用平实语言解释每个值，RAW 对照视图在原始报文上高亮缺测/告警组。
 
 ### 安装
 
@@ -15,6 +15,14 @@ import { renderCard } from "@metweave/render";
 ```
 
 卡片默认中文渲染；传 `{ locale: "en" }` 切换为全英文输出（行标签、悬停术语表、告警、跑道状态）。宿主可通过 `className` 叠加自己的样式，也可以跳过组件直接基于 IR 构建 UI。
+
+### TAF 卡片（renderTafCard）
+
+```ts
+import { renderTafCard } from "@metweave/render";
+```
+
+TAF 卡与 METAR 卡同契约：分段明细（主导段 / BECMG 过渡带 / TEMPO·PROB 挂载行）、气温极值、RAW 对照与组级双向联动、悬停＝点亮＋电码浮签、点击＝解码气泡＋ FM 51 依据行；`utcOffsetMinutes` 切换 UTC/北京时单制展示、`monthAnchor` 支撑跨月有效期。
 
 文档见[主仓库](https://github.com/yaojaro/metweave)。
 

@@ -127,8 +127,11 @@ describe("全球语料回放冒烟锁（corpus/ × snapshot.json）", () => {
       fileURLToPath(new URL("../../../docs/unknown-shapes.md", import.meta.url)),
       "utf8",
     );
-    // 表格首列 = 形态键（oxfmt 会做列宽对齐填充，正则不锚定尾随空白）
-    const docShapes = [...doc.matchAll(/^\| `([^`]+)`/gm)].map((m) => m[1] ?? "");
+    // 表格首列 = 形态键（oxfmt 会做列宽对齐填充，正则不锚定尾随空白）；
+    // 只取 METAR 节（v0.2 补齐批起文末另有 TAF 语料节——形态来自 corpus/taf 活算，
+    // 由 taf-corpus.test.ts 锁定，不在本快照比对范围）
+    const metarSection = doc.split("## TAF 语料")[0] ?? doc;
+    const docShapes = [...metarSection.matchAll(/^\| `([^`]+)`/gm)].map((m) => m[1] ?? "");
     expect(docShapes.length, "任务板应为非空（快照存在 unknown 形态）").toBeGreaterThan(0);
     expect(new Set(docShapes).size, "任务板形态不得重复").toBe(docShapes.length);
     const snapshotShapes = Object.keys(snapshot.unknownShapes);

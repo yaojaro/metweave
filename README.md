@@ -15,7 +15,7 @@ TypeScript 工具链：解析 → 标准化 → 渲染
 
 ---
 
-**metweave** 是一套处理公开气象数据的 TypeScript 工具链：机场报文（METAR / SPECI，TAF 在路线图上）经「解析 → 标准化 → 渲染」一条管道，变成报文卡片与地图图层。SPECI 是机场出现显著天气变化时插发的特殊观测报文，格式与 METAR 相同。取数直连公开源——IEM（Iowa Environmental Mesonet，美国爱荷华大学的公益气象数据聚合服务）的实况端点 CORS 全开，浏览器可直连；解析与渲染全部在浏览器端完成，报文不经过你自己的服务器，无需自建后端。
+**metweave** 是一套处理公开气象数据的 TypeScript 工具链：机场报文（METAR / SPECI 观测与 TAF 预报）经「解析 → 标准化 → 渲染」一条管道，变成报文卡片与地图图层。SPECI 是机场出现显著天气变化时插发的特殊观测报文，格式与 METAR 相同。取数直连公开源——IEM（Iowa Environmental Mesonet，美国爱荷华大学的公益气象数据聚合服务）的实况端点 CORS 全开，浏览器可直连；解析与渲染全部在浏览器端完成，报文不经过你自己的服务器，无需自建后端。
 
 > **30 秒认识 METAR**：METAR 是机场每小时（部分机场每半小时）发布的一行天气观测电码——`ZSPD 120330Z 04004MPS 9999 SCT033 27/18 Q1020 NOSIG` 依次是站名、时间（UTC）、风、能见度、云、温度/露点、气压、趋势。metweave 做的事，就是把这一行变成结构化数据和界面。
 
@@ -129,6 +129,32 @@ console.table(
 
 > 表格首列现在还是 ICAO 四字码——因为缺省没传站点元数据。**中国 39 站的精确元数据已随包自带**：`import { CN_STATIONS } from "metweave/stations-cn"` 后传给 `getMetarReports("CN__ASOS", { stations: CN_STATIONS })`，`title` 就会变成「四字码 + 站名」、坐标换为精确机场位（数据来源 aviationweather.gov，`pnpm gen:stations` 可再生；自建联表可照 [`examples/stations.json`](examples/stations.json) 的结构）。
 
+### TAF 取数与 CORS（坑位说明）
+
+TAF 取数线（`getTafs` / `getTafReports`，源＝aviationweather.gov `api/data/taf`）与 METAR 线有一个关键差异：**上游不返回 CORS 头，浏览器直连 fetch 必被拦**——控制台只看到 `TypeError: Failed to fetch`，完全看不出是跨域问题。这不是 bug，是上游策略。
+
+三条出路（`getTafs` 的 `baseUrl` 覆盖位就是为此留的）：
+
+1. **自建反向代理**（开发期最省事）：demo 的做法是 vite 代理 5 行，可直接抄（如下），然后 `getTafs(ids, { baseUrl: "/aw-taf" })`（demo 即此用法；静态部署 GitHub Pages 之类没有 vite 代理，须自带代理或按下条换根）。
+
+```ts
+// vite.config.ts
+server: {
+  proxy: {
+    "/aw-taf": {
+      target: "https://aviationweather.gov",
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/aw-taf/, "/api/data/taf"),
+    },
+  },
+}
+```
+
+2. **内网镜像/自建网关**：把 `baseUrl` 指到镜像的端点根即可整条切换（IEM 线同法，`getMetars` 的 `baseUrl` 是站点根）。
+3. **换数据源**：调研结论（2026-09-24 实测）——IEM 有 TAF 服务（`api/1/nws/taf.json`，CORS 全开）但**只覆盖美国站**（KDSM 有数据、ZBAA 返回 0 行）；ogimet/tgftp 通路无 CORS 头。目前没有现成的 CORS 全开中国站 TAF 源，中国站场景走 1/2 两条路。
+
+`getTafs` 的 `date` 参数＝「该时刻已发布的最新报」（上游语义），可用于回看上一发布周期（demo 报池即 `date=now-4h` 并行拉两代周期合并）。
+
 ### 数据源与风险披露
 
 metweave 的取数通路面向公开数据源，适合**态势感知、原型与教学**，不适合进入运行决策链：
@@ -137,10 +163,11 @@ metweave 的取数通路面向公开数据源，适合**态势感知、原型与
 - IEM 通路**无法区分 SPECI 与 METAR**（一律按例行展示）；中国站自带坐标为城市级粗定位，严肃场景请用 `stations` 联表精确坐标（方案见上）。
 - 底图：示例用天地图（官方 WMTS 端点），**key 需你自行申请**——天地图服务条款要求按应用申请 key，本项目不代发 key、不代理底图服务，也不对底图内容的合规性负责。商用请按底图服务方条款取得授权。
 - **观测数据本身的定位**：METAR 报文经公开通路（IEM / NWS tgftp 等）再分发——属公益公开通路、非官方再分发渠道；商用前请自行核实数据提供方的分发条款。
+- TAF 上游（aviationweather.gov）同样按「现状」提供、无 SLA；浏览器直连须代理/镜像（见上节），且 demo 为单上游无备用源——上游故障即 TAF 面降级（灰态口径在，降级路径自建）。
 
 ### 规范遵循与数据验证
 
-解析器以六套规范**原文**为编码基准，METAR/SPECI 编码面 106 条条款已逐条做过符合性审计（逐条的规范出处、实现位置与回归锁见 [docs/compliance.md](docs/compliance.md) 审计矩阵），未满足项零容忍修复：
+解析器以六套规范**原文**为编码基准，METAR/SPECI 编码面 106 条条款、TAF（FM 51）编码面 24 条清单（A 结构 4 / B 时间 9 / C 要素 8 / D 判卷纪律 3）已逐条做过符合性审计（逐条的规范出处、实现位置与回归锁见 [docs/compliance.md](docs/compliance.md) 审计矩阵），未满足项零容忍修复：
 
 | 规范                                                                      | 在本库中的用途               |
 | ------------------------------------------------------------------------- | ---------------------------- |
@@ -185,6 +212,8 @@ metweave 的取数通路面向公开数据源，适合**态势感知、原型与
 已交付：
 
 - METAR/SPECI tolerant 解析器——真实公开报文夹具验收（每类反常形态至少一条真实样本）：未知组进 `warnings[]`、缺测电码三态（`//` 天气、`////` 能见度、`/////KT` 风、云组 `///` 各归其位）、单位跟组走、脏值（超界 QNH）判缺测并告警、跑道状态组（WMO 15.13.6 六位电码 / CLRD / SNOCLO）、语义交叉校验（温露倒挂、CAVOK 矛盾）
+- TAF（FM 51）预报侧全套——`parseTaf` tolerant 解析（电头/NIL·CNL/变化组/气温组/方言收编）、`expandTaf` 时间线展开（切段→挂载→绑段→合成→叠加）、`tafSegments` 分段明细、`validateTaf` 条文判据校验（C2 VRB 两源阈值 / C3 阵风 / C5 天气白名单双层 / C7 三层选取）、`parseTaf({ mode: "strict" })` 严判模式（违例聚合抛 `strict-violation`）
+- 取数双线 sources——`getMetars`/`getMetarReports`（IEM 实况，CORS 全开浏览器直连）与 `getTafs`/`getTafReports`（aviationweather TAF，上游无 CORS 头需代理或镜像，见下方「TAF 取数与 CORS」）；两线各留 `baseUrl` 覆盖位——内网镜像/自建网关只换根，路径与查询串由本层拼装
 - IR 数据模型：解析器与渲染组件之间的唯一契约，纯 JSON 可序列化，一切产物携带原文 span
 - 报文卡片：开箱默认样式、RAW 对照视图、内置中文术语表
 - Leaflet 适配器与端到端示例：公开报文 → 解析 → 地图，[`examples/`](examples/) 可跑
@@ -192,7 +221,7 @@ metweave 的取数通路面向公开数据源，适合**态势感知、原型与
 
 方向：
 
-- 解析覆盖面：TAF、strict 校验模式
+- 解析覆盖面：METAR 侧 strict 校验（TAF 侧 strict 与判据校验已落地）
 - 图表组件：格点填色、等值线、风羽与流线、meteogram（Canvas 2D 优先渲染内核）
 - 更多地图库适配（MapLibre 等）、IWXXM ↔ TAC 转换、中文底图配方表
 

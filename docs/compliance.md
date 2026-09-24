@@ -203,3 +203,37 @@ pnpm test               # 全量测试（含逐条款断言与语料快照锁）
 pnpm replay:corpus      # 2,300+ 条（2,400+ 行）全球实弹语料回放，对比快照零漂移
 pnpm fuzz               # 5 万例种子化模糊测试，断言十一项产物不变量
 ```
+
+## TAF（FM 51）编码面符合性审计矩阵
+
+与 METAR/SPECI 矩阵同法：逐条给出条款、规范出处、实现位置与回归锁。施工图＝W39 补全清单 24 条
+（A 结构 4 / B 时间 9 / C 要素 8 / D 判卷纪律 3），★ 为考核真实失分点。规范主干：WMO No. 306 Vol I.1
+FM 51（TAF）；中国细则：AP-117-TM-2021-01R2。判据校验（C2/C3/C5/C7）自 v0.2 补齐批起由
+`validateTaf` 承担（B7 机器判据空集，明示）。
+
+| #   | 条款                                                                                                        | 出处                                       | 实现                                             | 回归锁                                                                                      |
+| --- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| A1★ | 传输层终止符 `=` 剥离（中国站带、tgftp 不带；可剥离项不进结构）                                             | 教材 §1 差异 5（FM51 代码形）              | `taf.ts` 报尾剥离（中串 `=` 不剥）               | describe「TAF 批 1.2：传输层终止符 = 剥离（清单 A1★）」                                     |
+| A2★ | NIL 双形态（占时组位/占有效期位）＝缺报；CNL 占风组位＝取消（有效期保留），其后零期待                       | FM51 代码形；AP-117                        | `taf.ts` NIL 早退/CNL 截断                       | describe「TAF 批 1.3：NIL/CNL 位置判别（清单 A2★）」                                        |
+| A3★ | AAA/CCA 族仅容错（主路径不支持，按族置位＋出声）                                                            | AP-117 第三十条 vs 824 万条语料实证        | `taf.ts` 时组后注记消费                          | describe「TAF 批 1.4：AAA/CCA 族仅容错（清单 A3★）」                                        |
+| A4  | 电头 token 序列（TAF 词可省/AMD·COR 任意相对序/COR 时组后位，不写死槽位）                                   | 教材 §2（FM51 代码形）                     | `taf.ts` 电头循环                                | describe「TAF 批 1 骨架：电头与有效期（清单 A4）」                                          |
+| B1★ | 有效期时长＝有效期组差值（禁用发布钟点判版本）；止时 24 午夜特例；跨月回绕月锚                              | WMO 51.8.1 Note 1；ogimet 八年 2054 条对拍 | `tafDurationHours` + `expand.ts` 月锚            | describe「TAF 批 2.1：有效期时长差值算术（清单 B1★/B2/B3）」                                |
+| B4★ | FM 硬分页（自足段全重报，此前一切作废）                                                                     | taf-timeline §3（ZGGG/ZGSG 实例）          | `expand.ts` 切段                                 | describe「TAF 批 2.3：时间线展开器黄金测试（B4★–B7★，三例 13 时刻逐格）」                   |
+| B5★ | BECMG 接棒＋云例外（cloud-only BECMG 全重报；局部清单继承回溯）                                             | taf-timeline §3（ZPPP/ZSOF 实例）          | `expand.ts` 合成                                 | 同上黄金测试                                                                                |
+| B6★ | 过渡带（窗内时刻不可精确，uncertain 按窗终已到的保守约定）                                                  | taf-timeline §2（ZPPP 05:30Z 题）          | `expand.ts` uncertain                            | 同上黄金测试                                                                                |
+| B7★ | TEMPO 间歇（发作取组值/间歇回段值；每次 <1h、累计 <半窗）——发作时长不由电码承载，判据机器空集（明示）       | WMO 51 语义；D 节判卷纪律                  | `expand.ts` 叠加；`validate.ts` 空集声明         | 同上黄金测试；`validate.test.ts` 模块头注                                                   |
+| B8  | PROB 组合规则（只可独立/连 TEMPO；禁与 BECMG/FM；C2C2 ∈ {30,40}）                                           | 教材 §3.9 穷举（51.9.2/3）                 | `taf.ts` 组合判别＋出声                          | describe「TAF 批 2.2：变化组结构化（清单 B4★/B5★/B8/B9）」                                  |
+| B9  | 中方四位短窗（无日位日归属回有效期起日；仅前向时对防误吞）                                                  | 教材 §5.1 方言                             | `taf.ts` 短窗分支                                | 同上                                                                                        |
+| C1★ | 风单位随组（KT/MPS 紧贴 ff，禁全局默认——中国站代际漂移实证）                                                | README-standards 断言（FM51 代码形）       | `groups.ts` 共享层（与 METAR 同源）              | describe「TAF 批 3.1：风单位随组（清单 C1★）」                                              |
+| C2  | VRB 两源阈值（WMO <1.5 m/s 或无法预报单一风向 / CAAC <2 m/s 或雷暴）——机器只判风速侧，逃逸条款不可判明示    | 教材 §3.3（§51.3）                         | `validate.ts` vrb-over-threshold                 | `validate.test.ts`「C2 VRB 阈值（两源 1.5/2 m/s，严格不等式）」                             |
+| C3  | 阵风阈值（超出平均 ≥5 m/s / 10 kt 严格不等式才可编 G）                                                      | 教材 §3.3（§51.3；ZSOF 34008G14 实证）     | `validate.ts` gust-below-threshold               | `validate.test.ts`「C3 阵风阈值（超出平均 ≥5 m/s 严格不等式）」                             |
+| C4★ | 天气强度三档逐元素读（-SHRASN＝弱阵性雨夹雪等组合组）                                                       | 教材 §3.4                                  | `groups.ts` 共享层                               | describe「TAF 批 3.2：天气强度三档逐元素读（清单 C4★）」                                    |
+| C5★ | 天气白名单双层（国际基＋中国扩展容错层）——解析层标记、拒收/违例归判据校验                                   | 教材 §3.5（§51.5.1；ZSPD/ZBTJ/ZSSS 实证）  | `taf.ts` C5 注记 + `validate.ts` wx-outside-list | describe「TAF 批 3.3：天气白名单双层（清单 C5★）」+ `validate.test.ts`「C5 天气白名单双层」 |
+| C6★ | 气温组可变长（1–4 组 TX/TN 交错、M 负值、ddHHZ/HHZ 双形态、超上限出声）                                     | 教材 §3.8（§51.10；ZBAA 实证）             | `taf.ts` TX/TN 分支                              | describe「TAF 批 3.4：气温组可变长（清单 C6★）」                                            |
+| C7  | 三层选取（第 1 组任意量/第 2 组 >2 oktas/第 3 组起 >4 oktas；CB/TCU 缺报侧不可判）——仅全重报语境（基况/FM） | 教材 §3.6（§51.6.1.4）                     | `validate.ts` cloud-layer-selection              | `validate.test.ts`「C7 三层选取（§51.6.1.4）」                                              |
+| C8  | 能见度主导值（无分立最小能见度组；CAVOK 可现于变化组后）                                                    | 教材 §3.4（§51.4）                         | `groups.ts` 共享层 + 变化组收                    | describe「TAF 批 1.5：基况段四要素 + CAVOK」                                                |
+| D   | 判卷纪律（严格不等式按条文 <1h/<半窗/<1.5/<2/≥5；实证可溯源）                                               | 学习线补全清单 D 节                        | `validate.ts` 全部比较严格不等式                 | `validate.test.ts` 边界用例（VRB03KT≈1.54 恰在两源阈值之间）                                |
+
+语料面：ogimet 16 年分层抽样 312/312 全解析成功（unknown-token 全语料仅 1 枚传输错拼），
+见 `taf-corpus.test.ts`；fuzz 2000 例冒烟（永不崩/双跑确定/strict 错误面恒为 `strict-violation`），
+完整档 `pnpm fuzz`（TAF 池已接线，每夜 10 万例）。

@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-// 从 corpus/snapshot.json 生成 docs/unknown-shapes.md —— 未识别形态任务板（贡献者的任务池入口）。
-// 纪律：文档的形态清单与频次不手写——全部由快照生成，本脚本是唯一写入口；
+// 从 corpus/snapshot.json（METAR）与 corpus/taf/（TAF，经 @metweave/parser dist 活算）生成
+// docs/unknown-shapes.md —— 未识别形态任务板（贡献者的任务池入口）。
+// 纪律：文档的形态清单与频次不手写——全部由快照/语料生成，本脚本是唯一写入口；
 // packages/parser/src/corpus.test.ts 锁文档与快照的形态键一致（漂移即红，防手改）。
 // 难度提示为人工标注的内置映射表（初稿，未标注的标「待评估」）——
 // 快照出现新形态时重跑本脚本即可带上「待评估」行，再由维护者补注。
 // 用法：node scripts/gen-unknown-shapes.mjs   （快照更新后重跑；package.json: pnpm gen:unknown）
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const root = new URL("..", import.meta.url).pathname;
 const snapshotPath = join(root, "corpus/snapshot.json");
@@ -113,6 +115,44 @@ const HINTS = {
 };
 
 const snapshot = JSON.parse(readFileSync(snapshotPath, "utf8"));
+
+// —— TAF 节（v0.2 补齐批）：corpus/taf/*.txt 经 parser dist 逐行活算 unknown-token 形态 ——
+// dist 未构建即明确报错退出（不静默降级出残缺看板）——先 pnpm build 再 gen:unknown。
+// 条件自举（同 replay-corpus.mjs）：core 的开发期 exports 默认指向 src，裸 node 解析不了
+// 无扩展名相对导入——按 --conditions=mw-dist 重启自身（core 的 mw-dist 条件指向 dist）。
+const DIST_CONDITION = "mw-dist";
+if (!process.execArgv.includes(`--conditions=${DIST_CONDITION}`)) {
+  const rerun = spawnSync(
+    process.execPath,
+    [`--conditions=${DIST_CONDITION}`, ...process.argv.slice(1)],
+    { stdio: "inherit", env: process.env, cwd: process.cwd() },
+  );
+  process.exit(rerun.status ?? 1);
+}
+const parserDist = join(root, "packages/parser/dist/index.js");
+if (!existsSync(parserDist)) {
+  console.error(`找不到 parser 产物（${parserDist}）——先 pnpm build 再 pnpm gen:unknown`);
+  process.exit(2);
+}
+const { tryParseTaf } = await import(pathToFileURL(parserDist).href);
+const tafFiles = readdirSync(join(root, "corpus/taf")).filter((f) => f.endsWith(".txt"));
+const tafShapes = new Map(); // 形态 → { count, samples }
+for (const f of tafFiles) {
+  for (const line of readFileSync(join(root, "corpus/taf", f), "utf8")
+    .split("\n")
+    .filter(Boolean)) {
+    const r = tryParseTaf(line);
+    if (!r.ok) continue; // 整体失败不进形态板（corpus 锁单独看）
+    for (const w of r.report.warnings) {
+      if (w.code !== "unknown-token" || w.span === undefined) continue;
+      const shape = line.slice(w.span.start, w.span.end);
+      const entry = tafShapes.get(shape) ?? { count: 0, samples: [] };
+      entry.count += 1;
+      if (!entry.samples.includes(shape)) entry.samples.push(shape);
+      tafShapes.set(shape, entry);
+    }
+  }
+}
 const shapes = Object.entries(snapshot.unknownShapes).toSorted(
   (a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]),
 );
@@ -144,7 +184,32 @@ const doc = `# 未知形态看板
 ${rows}
 `;
 
-writeFileSync(outPath, doc + "\n");
+const tafRows = [...tafShapes.entries()]
+  .toSorted((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]))
+  .map(
+    ([shape, entry]) =>
+      "| `" +
+      shape +
+      "` | " +
+      entry.count +
+      " | " +
+      entry.samples.map((x) => "`" + x + "`").join(", ") +
+      " | 待评估 | 传输磨损/错拼一类；先核对语料原文行再决定建模或保留。 |",
+  )
+  .join("\n");
+
+const tafDoc = `
+## TAF 语料（corpus/taf）
+
+TAF 侧未识别形态由 \`@metweave/parser\` dist 对 \`corpus/taf/*.txt\` 逐行活算生成（ogimet 16 年分层抽样——${tafFiles.map((f) => "`corpus/taf/" + f + "`").join("、")}）；分布与频次由
+\`packages/parser/src/taf-corpus.test.ts\` 锁定（全语料 312/312 解析成功，unknown-token 仅 1 枚）。
+
+| 形态 | 计数 | 样本 | 难度（草案） | 提示 |
+| --- | --- | --- | --- | --- |
+${tafRows}
+`;
+
+writeFileSync(outPath, doc + tafDoc + "\n");
 
 // 产物自动过 oxfmt（表格列宽对齐由 oxfmt 统一）：消灭「生成后还需手动 pnpm format」两步操作。
 // 直接调仓内 node_modules/.bin/oxfmt（pnpm run 会注入 PATH，直跑 node 也稳）；幂等——
