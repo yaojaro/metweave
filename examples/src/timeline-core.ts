@@ -66,12 +66,20 @@ export const contAtOf = (ms: number, cal: CalendarAnchor): TafExpandAt => {
   return { day, hour: d.getUTCHours(), minute: d.getUTCMinutes() };
 };
 
-/** 时刻显示（单制，带月位——跨月不歧义）：UTC＝M月D日 HH:MMZ；京＝北京时M月D日 HH:MM */
+/** 时刻显示（单制，带月位——跨月不歧义）：UTC＝M月D日 HH:MMZ；京＝北京时M月D日 HH:MM。
+ *  双日界引用（owner 9/24）：北京时与 UTC 日期不同日时括注「（UTC M月D日）」——防对表错位 */
 export const fmtTl = (ms: number, tzOffset: number | null): string => {
   const z = new Date(ms + (tzOffset ?? 0) * 60_000);
   const md = `${z.getUTCMonth() + 1}月${z.getUTCDate()}日`;
   const hm = `${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
-  return tzOffset === null ? `${md} ${hm}Z` : `北京时${md} ${hm}`;
+  if (tzOffset === null) return `${md} ${hm}Z`;
+  const u = new Date(ms);
+  const sameDay =
+    u.getUTCFullYear() === z.getUTCFullYear() &&
+    u.getUTCMonth() === z.getUTCMonth() &&
+    u.getUTCDate() === z.getUTCDate();
+  const ref = sameDay ? "" : `（UTC ${u.getUTCMonth() + 1}月${u.getUTCDate()}日）`;
+  return `北京时${md} ${hm}${ref}`;
 };
 
 /** 变化窗 ddHH → 展示时区「M月D日HH时」（真月历；面板「下一变化」列用） */

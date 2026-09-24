@@ -24,6 +24,7 @@ import type {
   WindGroup,
 } from "@metweave/core";
 import { tafSegments } from "@metweave/parser";
+import { utcDayRefText } from "./gloss";
 import { ariaClose, ariaOpen, positionBubbleAt, positionChipNear } from "./linkage";
 import type { TafExpandAt, TafResolvedConditions } from "@metweave/parser";
 import {
@@ -320,6 +321,23 @@ const absDayHour = (day: number, hour: number): number => (day - 1) * 1440 + hou
  *  minDay（生效起点日号）在位时，day ≥ minDay+16 判前一月（日号序在月内连续，跨月邻接差恒 ≈30）。
  *  无锚（TAF 报文无月份、宿主未传）或病态日号（锚月不含该日——守卫：月漂移即回退）时按 31 天折回，
  *  残余近似仅显示位：档位/展开判读不依赖显示串，且缺锚时无从判读真实月份 */
+/** 展开时刻 → 展示时区的真实 Date 与其 UTC 锚（双日界引用用；锚缺省/病态日号＝null——折回近似不加引用） */
+const ltDateOf = (
+  day: number,
+  hour: number,
+  minute: number,
+  offset: number,
+  anchor?: TafCalendarAnchor,
+  minDay?: number,
+): { z: Date; utcY: number; utcMo: number; utcD: number } | null => {
+  if (anchor === undefined || day < 1) return null;
+  const prev = minDay !== undefined && day >= minDay + 16;
+  const y = prev && anchor.month === 1 ? anchor.year - 1 : anchor.year;
+  const m = prev ? (anchor.month === 1 ? 12 : anchor.month - 1) : anchor.month;
+  const z = new Date(Date.UTC(y, m - 1, day, hour, minute) + offset * 60_000);
+  return { z, utcY: y, utcMo: m, utcD: day };
+};
+
 const ltClock = (
   day: number,
   hour: number,
@@ -698,6 +716,13 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   const minDay = report.validity?.startDay;
   const tag = t.localTag;
   /** 主显钟点：UTC＝dd日HH:MMZ；京＝北京时M月D日 HH:MM（真月历，月界批） */
+  /** 双日界引用（owner 9/24）：BJ 制下与 UTC 日期不同日时括注 UTC 日号（发布/查看/有效期端点用；
+   *  段头不加——日期已在位，重复括注徒增扫读噪音） */
+  const refAt = (day: number, hour: number, minute: number): string => {
+    if (zone === null) return "";
+    const d = ltDateOf(day, hour, minute, zone, calAnchor, minDay);
+    return d === null ? "" : utcDayRefText(d.z, d.utcY, d.utcMo, d.utcD, locale);
+  };
   const clockAt = (day: number, hour: number, minute: number): string =>
     zone === null
       ? `${String(day).padStart(2, "0")}日${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}Z`
@@ -897,7 +922,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         el(
           "span",
           undefined,
-          `${t.issued} ${clockAt(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)}`,
+          `${t.issued} ${clockAt(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)}${refAt(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)}`,
         ),
       );
     }
@@ -906,7 +931,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         el(
           "span",
           undefined,
-          `${t.atLabel} ${clockAt(options.at.day, options.at.hour, options.at.minute)}`.trim(),
+          `${t.atLabel} ${clockAt(options.at.day, options.at.hour, options.at.minute)}${refAt(options.at.day, options.at.hour, options.at.minute)}`.trim(),
         ),
       );
     }
@@ -922,8 +947,8 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
           dayOf(endClock.day),
           clockHmOf(endClock.hour),
         )}（${zoneName}，${t.duration(hours)}）`
-      : `${t.validity} ${t.validityFromZone(clockAt(v.startDay, v.startHour, 0))} ${t.validityToZone(
-          clockAt(endClock.day, endClock.hour, 0),
+      : `${t.validity} ${t.validityFromZone(clockAt(v.startDay, v.startHour, 0) + refAt(v.startDay, v.startHour, 0))} ${t.validityToZone(
+          clockAt(endClock.day, endClock.hour, 0) + refAt(endClock.day, endClock.hour, 0),
         )}（${zoneName}，${t.duration(hours)}）`;
   const validityEl = el("p", "mw-taf-meta", validityText);
   link.validityEl = validityEl;

@@ -30,8 +30,8 @@ describe("时间轴窗（月界批）：真实毫秒序建窗，跨月不回绕"
   });
 
   it("fmtTl 北京时制跨月：9/30 16:00Z 显示「北京时10月1日 00:00」而非「31日」回绕", () => {
-    expect(fmtTl(Date.UTC(2026, 8, 30, 16, 0), 480)).toBe("北京时10月1日 00:00");
-    expect(fmtTl(Date.UTC(2026, 8, 30, 23, 50), 480)).toBe("北京时10月1日 07:50");
+    expect(fmtTl(Date.UTC(2026, 8, 30, 16, 0), 480)).toBe("北京时10月1日 00:00（UTC 9月30日）");
+    expect(fmtTl(Date.UTC(2026, 8, 30, 23, 50), 480)).toBe("北京时10月1日 07:50（UTC 9月30日）");
     // UTC 制同样带月位（跨月不歧义）
     expect(fmtTl(Date.UTC(2026, 8, 30, 23, 50), null)).toBe("9月30日 23:50Z");
     expect(fmtTl(Date.UTC(2026, 9, 1, 0, 5), null)).toBe("10月1日 00:05Z");
@@ -41,7 +41,7 @@ describe("时间轴窗（月界批）：真实毫秒序建窗，跨月不回绕"
     const now = Date.UTC(2027, 1, 27, 23, 50);
     expect(dayOffsetOf(28, now)).toBe(1);
     expect(dayOffsetOf(1, now)).toBe(2); // 3 月 1 日（2027 年 2 月 28 天）
-    expect(fmtTl(Date.UTC(2027, 1, 27, 16, 0), 480)).toBe("北京时2月28日 00:00");
+    expect(fmtTl(Date.UTC(2027, 1, 27, 16, 0), 480)).toBe("北京时2月28日 00:00（UTC 2月27日）");
   });
 
   it("zonedDayHour（面板「下一变化」）：跨月窗 ddHH → M月D日HH时", () => {
@@ -120,5 +120,15 @@ describe("tierChangeOf 变化可见性基准对比（评测批4#23）", () => {
     expect(tierChangeOf("unknown", "poor")).toBe("none");
     expect(tierChangeOf("good", "unknown")).toBe("none");
     expect(tierChangeOf("unknown", "unknown")).toBe("none");
+  });
+});
+
+describe("双日界引用（owner 9/24：BJ 制跨日括注 UTC 日号）", () => {
+  it("北京时跨日：24日18:00Z → 北京时25日 02:00（UTC 24日）；同日不括注；UTC 制恒无括注", () => {
+    const cross = Date.UTC(2026, 8, 24, 18, 0);
+    expect(fmtTl(cross, 480)).toBe("北京时9月25日 02:00（UTC 9月24日）");
+    const same = Date.UTC(2026, 8, 24, 5, 0);
+    expect(fmtTl(same, 480)).toBe("北京时9月24日 13:00");
+    expect(fmtTl(cross, null)).toBe("9月24日 18:00Z");
   });
 });

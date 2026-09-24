@@ -1623,7 +1623,17 @@ describe("renderCard 云底单位（heightUnit / en 缺省英尺）与未知选�
       utcOffsetMinutes: 480,
       now: new Date(Date.UTC(2026, 8, 30, 16, 10)),
     });
-    expect(bj.querySelector(".mw-time")?.textContent).toContain("北京时10月1日 00:00");
+    expect(bj.querySelector(".mw-time")?.textContent).toContain(
+      "北京时10月1日 00:00（UTC 9月30日）",
+    );
+  });
+
+  it("双日界引用（owner 9/24）：METAR 观测行 BJ 跨日括注 UTC 日号；同日不括注", () => {
+    const same = renderCard(parse("METAR ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG"), {
+      utcOffsetMinutes: 480,
+      now: new Date(Date.UTC(2026, 8, 11, 7, 40)),
+    });
+    expect(same.querySelector(".mw-time")?.textContent).not.toContain("UTC");
   });
 });
 
@@ -1653,6 +1663,19 @@ import { parseTaf } from "@metweave/parser";
 describe("renderTafCard（v0.2 渲染层②）", () => {
   const golden =
     "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 BKN033 TX02/2518Z TNM02/2523Z TNM04/2623Z TEMPO 2520/2524 2500 -SHRASN BR BECMG 2605/2606 2000 -SN BR BECMG 2609/2610 04004MPS BECMG 2611/2612 4000 BR=";
+
+  it("双日界引用（owner 9/24）：BJ 制下跨日端点括注 UTC 日号（有效期起端 25日18Z→北京时 26 日，引 UTC 25 日）；止端 26日24Z≡27日00Z 同 UTC 日不括注；发布行同日不括注；UTC 制恒无", () => {
+    const bj = renderTafCard(parseTaf(golden), {
+      utcOffsetMinutes: 480,
+      monthAnchor: { year: 2026, month: 9 },
+    });
+    const text = bj.textContent ?? "";
+    expect(text).toContain("北京时9月26日 02:00（UTC 9月25日）"); // 有效期起端（25 日 18Z，BJ 已跨到 26 日）
+    expect(text).toContain("至 北京时9月27日 08:00（北京时"); // 止端（26日24Z≡27日00Z）同 UTC 日——不带括注
+    expect(text).toContain("发布 北京时9月25日 23:18有效期"); // 发布行同日——不带括注
+    const utc = renderTafCard(parseTaf(golden));
+    expect(utc.textContent ?? "").not.toContain("UTC 9月");
+  });
 
   it("头行与元信息：站名/TAF 徽章/有效期+42h 时长/发布时刻", () => {
     const card = renderTafCard(parseTaf(golden));

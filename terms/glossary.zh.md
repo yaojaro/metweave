@@ -1125,6 +1125,19 @@ async function populateTafLayer(
  * className 正则回读（状态经渲染产物回流的工程债收口），DOM 只做展示。
  * at 语义同 addTafLayer：calendarAnchor 在位时为层连续序（逐报归一），否则为报锚内日号。
  */
+/**
+ * METAR 档位判据公共面（conditionOf 薄包装，tafTierOf 同款）：实况面板/图例等消费方
+ * 与圆点同一判据管线（数据直读，不从 DOM 回流——批3#14 口径）。
+ */
+export function metarTierOf(report: MetarReport): ConditionTier {
+  return conditionOf(report);
+}
+
+/** METAR 要素摘要公共面（summarizeReport 薄包装）：「2500m +TSRA BKN030CB」式扫视摘要。 */
+export function summarizeMetarConditions(report: MetarReport, locale: "zh" \| "en"): string {
+  return summarizeReport(report, locale);
+}
+
 export function tafTierOf(
   item: TafLayerItem,
   at: TafExpandAt,
@@ -1371,7 +1384,19 @@ export interface TafTimeControlOptions {
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg12 | TAF 解析失败 ${failures.length} 条（aviationweather）——${failures.slice(0, 3).join("；")}${failures.length > 3 ? "……" : ""} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg12 | ogimet TAF 请求超时（>${options.timeoutMs}ms，站=${station}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## sources.msg13（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| sources.msg13 | 网络请求失败（源：ogimet TAF，站=${station}）：${reason} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+
+## sources.msg14（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| sources.msg14 | ogimet TAF HTTP ${res.status}（站=${station}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg001（1 条）
 

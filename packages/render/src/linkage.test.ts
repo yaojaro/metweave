@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from "vitest";
 import { ariaClose, ariaOpen, positionBubbleAt, positionChipNear } from "./linkage";
+import { utcDayRefText } from "./gloss";
 
 /**
  * 几何内核行为锁（owner 9/24 工程债批）：jsdom 无布局，度量全部以属性桩注入
@@ -119,5 +120,14 @@ describe("aria 开合生命周期", () => {
     expect(trigger.hasAttribute("aria-expanded")).toBe(false);
     expect(trigger.hasAttribute("aria-describedby")).toBe(false);
     ariaClose(null); // 空触发元（未开态）不炸
+  });
+});
+
+describe("双日界引用（owner 9/24：BJ 制跨日括注 UTC 日号）", () => {
+  it("同日空串；跨日 zh「（UTC 9月24日）」/ en「 (UTC 9/24)」", () => {
+    const shifted = new Date(Date.UTC(2026, 8, 25, 2, 0)); // 北京时 9月25日 02:00（墙钟存 UTC 字段）
+    expect(utcDayRefText(shifted, 2026, 9, 25, "zh")).toBe("");
+    expect(utcDayRefText(shifted, 2026, 9, 24, "zh")).toBe("（UTC 9月24日）");
+    expect(utcDayRefText(shifted, 2026, 9, 24, "en")).toBe(" (UTC 9/24)");
   });
 });

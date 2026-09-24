@@ -1,5 +1,5 @@
 /**
- * metweave/sources — 取数 helper（伞包子路径）。双线：IEM METAR 实况 + aviationweather TAF 预报。
+ * metweave/sources — 取数 helper（伞包子路径）。双线：IEM METAR 实况 + aviationweather TAF 预报（主）+ ogimet TAF 报池补充（次）。
  *
  * 纪律：只做端点模板 + fetch + 取数侧整理（解析、定位联表）——缓存/质控/归档等
  * 数据管理逻辑永不进入开源包；核心包（core/parser/render）零网络代码。
@@ -515,4 +515,166 @@ export async function getTafReports(
     );
   }
   return items;
+}
+
+// ---------------------------------------------------------------- ogimet TAF 补充线（owner 9/24 指令：aviationweather 取最新，ogimet 取最新/次新合并补充）
+
+/** ogimet display_metars2.php 端点（tipo=FT＝TAF；无 CORS 头：浏览器直连须代理/镜像——baseUrl 覆盖即为此用） */
+export const OGIMET_TAF_ENDPOINT = "https://www.ogimet.com/display_metars2.php";
+
+/** ogimet 查询窗（UTC 起止） */
+export interface OgimetTafWindow {
+  readonly from: Date;
+  readonly to: Date;
+}
+
+/**
+ * ogimet TAF 端点模板（配方＝私有管线 backfill_ogimet.py 同源）：tipo=FT、txt 形、
+ * 服务端按 <pre> 区回 HTML（解析见 parseOgimetTafs）。免费公益服务——调用方自行节制频率。
+ */
+/** UTC 日期字段补零组（ogimet 查询串的 ano/mes/day/hora/min 族） */
+const ogimetFields = (
+  d: Date,
+): { ano: string; mes: string; day: string; hora: string; min: string } => ({
+  ano: `${d.getUTCFullYear()}`,
+  mes: `${d.getUTCMonth() + 1}`.padStart(2, "0"),
+  day: `${d.getUTCDate()}`.padStart(2, "0"),
+  hora: `${d.getUTCHours()}`.padStart(2, "0"),
+  min: `${d.getUTCMinutes()}`.padStart(2, "0"),
+});
+
+export function ogimetTafUrl(
+  station: string,
+  window: OgimetTafWindow,
+  options: { baseUrl?: string } = {},
+): string {
+  const a = ogimetFields(window.from);
+  const b = ogimetFields(window.to);
+  const qs = new URLSearchParams({
+    lang: "en",
+    lugar: station,
+    tipo: "FT",
+    ord: "DIR",
+    nil: "SI",
+    fmt: "txt",
+    ano: a.ano,
+    mes: a.mes,
+    day: a.day,
+    hora: a.hora,
+    min: a.min,
+    anof: b.ano,
+    mesf: b.mes,
+    dayf: b.day,
+    horaf: b.hora,
+    minf: b.min,
+    send: "send",
+    nohtmlo: "yes",
+    annot: "yes",
+    leng: "0",
+  });
+  return `${options.baseUrl ?? OGIMET_TAF_ENDPOINT}?${qs.toString()}`;
+}
+
+/** 电头站码 best-effort 提取（TAF/AMD/COR 剥词；剥不出返回空串）——与 mergeTafLines 同判式（aviationweather 取数线） */
+const stationHeadOf = (raw: string): string => {
+  const toks = raw.split(/\s+/);
+  let k = toks[0] === "TAF" ? 1 : 0;
+  while (toks[k] === "AMD" || toks[k] === "COR") k += 1;
+  const head = toks[k] ?? "";
+  return /^[A-Z0-9]{4}$/.test(head) ? head : "";
+};
+
+/**
+ * ogimet 响应解析（<pre> 区）：12 位时间戳前缀行（YYYYMMDDHHmm，收报序）起新记录、无前缀行并入上一条
+ * （多行报文并单——与私有管线 parse_tafs 同协议）；# 注释/空行跳过；只收 TAF 起头报文。
+ * 站码 best-effort 取自电头（query 站名兜底）；空模板（无 <pre> 或零报文）返回空数组——
+ * 由调用方判空（ogimet 缺数常见，属正常降级而非错误面）。
+ */
+export function parseOgimetTafs(html: string, fallbackStation = ""): TafObservation[] {
+  const pre = /<pre>([\s\S]*?)<\/pre>/.exec(html);
+  if (pre === null) return [];
+  const PREFIX = /^(\d{12})\s+(.*)$/;
+  const merged: string[] = [];
+  for (const line of (pre[1] ?? "").split("\n")) {
+    const t = line.trim();
+    if (t === "" || t.startsWith("#")) continue;
+    const pm = PREFIX.exec(t);
+    if (pm !== null) merged.push(pm[2] ?? "");
+    else if (merged.length > 0) merged[merged.length - 1] += ` ${t}`;
+  }
+  return merged
+    .filter((raw) => raw.startsWith("TAF"))
+    .map((raw) => ({ station: stationHeadOf(raw) || fallbackStation, raw }));
+}
+
+/** Options for getTafsOgimet: fetch options plus the ogimet endpoint-root override. */
+export interface GetTafsOgimetOptions {
+  /** 外部取消信号（与超时组合，任一触发即中止） */
+  signal?: AbortSignal;
+  /** 请求超时毫秒数（触发即中止并抛出超时错误） */
+  timeoutMs?: number;
+  /** ogimet 端点根覆盖（内网镜像/自建代理；examples 走 /ogimet-taf 代理根） */
+  baseUrl?: string;
+}
+
+/**
+ * Fetch one station's recent TAFs from ogimet (latest + previous publication cycles).
+ * 拉取单站的 ogimet 近窗 TAF（最新与上一发布周期——报池补充线，供与 aviationweather 线合并去重）。
+ * 失败语义与 getTafs 同族（timeout/network/http-error 机读码）；空数据返回空数组而非抛错
+ * （ogimet 站点级缺数常见——它是补充线，空窗属正常降级，不静默丢整批）。
+ */
+export async function getTafsOgimet(
+  station: string,
+  window: OgimetTafWindow,
+  options: GetTafsOgimetOptions = {},
+): Promise<TafObservation[]> {
+  const controller = new AbortController();
+  const external = options.signal;
+  const forward = (): void => {
+    controller.abort(external?.reason);
+  };
+  if (external !== undefined) {
+    if (external.aborted) forward();
+    else external.addEventListener("abort", forward, { once: true });
+  }
+  const timer =
+    options.timeoutMs === undefined
+      ? undefined
+      : setTimeout(
+          () =>
+            controller.abort(
+              new MetarSourceError(
+                "timeout",
+                "ogimet",
+                `ogimet TAF 请求超时（>${options.timeoutMs}ms，站=${station}）`,
+              ),
+            ),
+          options.timeoutMs,
+        );
+  try {
+    let res: Response;
+    try {
+      res = await fetch(ogimetTafUrl(station, window, options), { signal: controller.signal });
+    } catch (err) {
+      if (controller.signal.aborted) throw err;
+      const reason = err instanceof Error ? err.message : String(err);
+      throw new MetarSourceError(
+        "network",
+        "ogimet",
+        `网络请求失败（源：ogimet TAF，站=${station}）：${reason}`,
+        { cause: err },
+      );
+    }
+    if (!res.ok) {
+      throw new MetarSourceError(
+        "http-error",
+        "ogimet",
+        `ogimet TAF HTTP ${res.status}（站=${station}）`,
+      );
+    }
+    return parseOgimetTafs(await res.text(), station);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    external?.removeEventListener("abort", forward);
+  }
 }

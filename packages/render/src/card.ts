@@ -43,7 +43,7 @@ import {
   weatherCodeOf,
   weatherGloss,
 } from "./gloss";
-import type { CloudGloss, WindGloss, WxGloss } from "./gloss";
+import { type CloudGloss, type WindGloss, type WxGloss, utcDayRefText } from "./gloss";
 
 /**
  * Options for renderCard: display locale, RAW cross-check view, host className, and a deterministic clock for age display.
@@ -840,7 +840,18 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     options.utcOffsetMinutes !== undefined &&
     options.utcOffsetMinutes !== null &&
     options.locale !== "en"
-      ? `北京时${observedAt !== null ? zonedClockOf(observedAt, options.utcOffsetMinutes) : fallbackClockOf(v.time, options.utcOffsetMinutes)}`
+      ? `北京时${observedAt !== null ? zonedClockOf(observedAt, options.utcOffsetMinutes) : fallbackClockOf(v.time, options.utcOffsetMinutes)}` +
+        // 双日界引用（owner 9/24）：北京时与 UTC 日期不同日时括注 UTC 日号（真实月历路径；
+        // 病态折回路径无 UTC 锚不加）
+        (observedAt !== null
+          ? utcDayRefText(
+              new Date(observedAt.getTime() + options.utcOffsetMinutes * 60_000),
+              observedAt.getUTCFullYear(),
+              observedAt.getUTCMonth() + 1,
+              observedAt.getUTCDate(),
+              options.locale ?? "zh",
+            )
+          : "")
       : T.timeText(v.time);
   const timeEl = el("div", "mw-time", timeText);
   if (observedAt !== null) {

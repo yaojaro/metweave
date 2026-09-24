@@ -6,7 +6,10 @@ import {
   getMetars,
   getTafReports,
   getTafs,
+  getTafsOgimet,
   iemCurrentsUrl,
+  ogimetTafUrl,
+  parseOgimetTafs,
 } from "./sources";
 import { MetarParseError, MetarSourceError as MetarSourceErrorFromSources } from "./sources";
 
@@ -514,5 +517,72 @@ describe("getMetars 换源（baseUrl 覆盖——owner 9/24「内网切换自有
     expect(String(f.mock.calls[0]?.[0])).toBe(
       "https://iem-mirror.internal/api/1/currents.json?network=CN__ASOS",
     );
+  });
+});
+
+// ---------------------------------------------------------------- ogimet TAF 补充线
+
+describe("ogimetTafUrl（display_metars2.php tipo=FT 配方——私有管线同源）", () => {
+  it("UTC 字段补零入参 + baseUrl 覆盖；lugar 单站", () => {
+    const s = ogimetTafUrl(
+      "ZBAA",
+      { from: new Date(Date.UTC(2026, 8, 24, 0, 0)), to: new Date(Date.UTC(2026, 8, 24, 23, 59)) },
+      { baseUrl: "/ogimet-taf" },
+    );
+    expect(s.startsWith("/ogimet-taf?")).toBe(true); // baseUrl＝端点根含路径（aviationweather 线同语义；代理 rewrite 补 .php 路径）
+    const u = new URL(s, "https://x");
+    expect(u.searchParams.get("tipo")).toBe("FT");
+    expect(u.searchParams.get("lugar")).toBe("ZBAA");
+    expect(u.searchParams.get("ano")).toBe("2026");
+    expect(u.searchParams.get("hora")).toBe("00");
+    expect(u.searchParams.get("minf")).toBe("59");
+  });
+});
+
+describe("parseOgimetTafs（<pre> 区 12 位前缀起报 + 续行并单）", () => {
+  it("注释/空行跳过、多行报文并单、非 TAF 丢弃、站码电头提取带 query 站兜底", () => {
+    const html = `<html><pre>
+##########################################################
+# Query made at 09/24/2026 14:53 UTC
+##########################################################
+
+# ZBAA, Beijing (China)
+# WMO index: 54511
+202609220304 TAF ZSPD 220304Z 2206/2312 04004MPS 8000 SCT030
+TX30/2206Z TN23/2221Z
+BECMG 2214/2215 10004MPS=
+202609220904 TAF AMD ZGGG 220904Z 2212/2318 10004MPS 9999=
+202609220905 NOTAFDATA DROPPED
+</pre></html>`;
+    const rows = parseOgimetTafs(html, "ZBAA");
+    expect(rows.length).toBe(2);
+    expect(rows[0]?.station).toBe("ZSPD");
+    expect(rows[0]?.raw).toContain("BECMG 2214/2215"); // 续行已并回
+    expect(rows[1]?.station).toBe("ZGGG"); // TAF AMD 前缀剥除
+    expect(rows.map((r) => r.raw).join("\n")).not.toContain("NOTAFDATA"); // 非 TAF 起头记录整条丢弃
+  });
+
+  it("空模板（无 pre 区 / 零报文）返回空数组——补充线的正常降级不抛错", () => {
+    expect(parseOgimetTafs("<html>No data</html>")).toEqual([]);
+    expect(parseOgimetTafs("<pre># No short TAF reports.</pre>")).toEqual([]);
+  });
+});
+
+describe("getTafsOgimet（单站近窗）", () => {
+  it("走 baseUrl 代理根解析成功；ogimet 缺数（空 pre）返回空数组不抛错", async () => {
+    vi.stubGlobal(
+      "fetch",
+      textFetch("<pre>202609220304 TAF ZSPD 220304Z 2206/2312 04004MPS 9999=</pre>"),
+    );
+    const rows = await getTafsOgimet(
+      "ZSPD",
+      { from: new Date(0), to: new Date(1) },
+      { baseUrl: "/ogimet-taf" },
+    );
+    expect(rows.length).toBe(1);
+    expect(rows[0]?.station).toBe("ZSPD");
+    vi.stubGlobal("fetch", textFetch("<pre># nothing</pre>"));
+    const empty = await getTafsOgimet("ZBAA", { from: new Date(0), to: new Date(1) });
+    expect(empty).toEqual([]);
   });
 });

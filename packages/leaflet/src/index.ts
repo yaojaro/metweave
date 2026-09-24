@@ -888,6 +888,19 @@ async function populateTafLayer(
  * className 正则回读（状态经渲染产物回流的工程债收口），DOM 只做展示。
  * at 语义同 addTafLayer：calendarAnchor 在位时为层连续序（逐报归一），否则为报锚内日号。
  */
+/**
+ * METAR 档位判据公共面（conditionOf 薄包装，tafTierOf 同款）：实况面板/图例等消费方
+ * 与圆点同一判据管线（数据直读，不从 DOM 回流——批3#14 口径）。
+ */
+export function metarTierOf(report: MetarReport): ConditionTier {
+  return conditionOf(report);
+}
+
+/** METAR 要素摘要公共面（summarizeReport 薄包装）：「2500m +TSRA BKN030CB」式扫视摘要。 */
+export function summarizeMetarConditions(report: MetarReport, locale: "zh" | "en"): string {
+  return summarizeReport(report, locale);
+}
+
 export function tafTierOf(
   item: TafLayerItem,
   at: TafExpandAt,

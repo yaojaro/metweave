@@ -418,3 +418,21 @@ export const visibilityTone = (vis: {
   if (meters < 5000) return "mw-caution";
   return undefined;
 };
+
+/** 双日界引用（owner 9/24「UTC/北京时双日界引用加上」）：北京时制下展示时刻的日期与报文 UTC
+ *  日期不同日时，括注 UTC 日号——防与 RAW 电码/外部 UTC 源对表错位（如「北京时9月25日 02:00（UTC 24日）」）。
+ *  同日返回空串；UTC 单制（offset null）调用方不调本函数；病态折回显示路径无真实 UTC 锚，同样不调。 */
+export const utcDayRefText = (
+  shifted: Date,
+  utcY: number,
+  utcMo: number,
+  utcD: number,
+  locale: "zh" | "en",
+): string =>
+  shifted.getUTCFullYear() === utcY &&
+  shifted.getUTCMonth() + 1 === utcMo &&
+  shifted.getUTCDate() === utcD
+    ? ""
+    : locale === "en"
+      ? ` (UTC ${utcMo}/${utcD})`
+      : `（UTC ${utcMo}月${utcD}日）`;

@@ -3,7 +3,7 @@ import "leaflet/dist/leaflet.css";
 // 主流程分两阶段：① 站点元数据（stations.json，静态可信）立即上图「待更新」态，杜绝空白地图；
 // ② 实况到达后移除待更新层、渲染条件色实况层。取数（含解析与定位联表）→ 卡片上图（底图切换见 basemaps.ts）
 import { parse, parseTaf, renderCard } from "metweave";
-import { getMetarReports, getTafs } from "metweave/sources";
+import { getMetarReports, getTafs, getTafsOgimet } from "metweave/sources";
 import type { TafObservation } from "metweave/sources";
 import {
   addMetarLayer,
@@ -15,6 +15,8 @@ import {
   type TafExpandAt,
   type TafLayerItem,
   type TafReport,
+  metarTierOf,
+  summarizeMetarConditions,
 } from "@metweave/leaflet";
 import type * as LeafletNS from "leaflet";
 import stationsFile from "../stations.json";
@@ -442,14 +444,15 @@ let pendingFlyOpen: (() => void) | undefined; // 行点击「先飞后开卡」�
 // 排序/选择的纯函数内核在 timeline-core（真实月历毫秒序——月界批收口，跨月不再 %31 折回）
 const reportsByStation = new Map<string, TafReport[]>();
 
+let activeMode: "metar" | "taf" = "metar"; // 站点面板双模式判据（owner 9/24：METAR 模式也有列表）
 const setMode = (mode: "metar" | "taf"): void => {
   const active = mode === "taf";
+  activeMode = mode;
   modeBar.metar?.classList.toggle("active", !active);
   modeBar.taf?.classList.toggle("active", active);
   modeBar.metar?.setAttribute("aria-pressed", String(!active));
   modeBar.taf?.setAttribute("aria-pressed", String(active));
   if (timelineBar !== null) timelineBar.hidden = !active;
-  if (modeBar.list !== null) modeBar.list.hidden = !active;
   if (!active) {
     setListOpen(false);
     tlStopPlay(); // 批3#8：切回实况停播——否则播放循环每 300ms 对已摘除图层的 39 marker 空转
@@ -462,6 +465,7 @@ const setListOpen = (open: boolean): void => {
   modeBar.list?.classList.toggle("active", open);
   modeBar.list?.setAttribute("aria-pressed", String(open));
   if (modeBar.panel !== null) modeBar.panel.hidden = !open;
+  if (open && activeMode === "metar") renderMetarPanel(); // METAR 模式开面板：静态行直渲（TAF 走 refreshPanel）
 };
 
 let tafLoading: Promise<void> | undefined; // 防重入（评测工程 P2-4：连点不重复拉取）
@@ -472,6 +476,95 @@ for (const ev of ["pointerenter", "pointerleave"] as const) {
     if (!panelHover && tlPlaying) refreshPanel?.(); // 移出面板：立刻补一帧追上当前时刻
   });
 }
+
+/** METAR 站点面板（owner 9/24「METAR 模式站点列表加上」）：档色点+站码+站名+实况摘要，
+ *  按状态排序、行点击飞行开卡——与 TAF 面板同款交互语言；实况无时间轴故为渲染一次的静态行 */
+const renderMetarPanel = (): void => {
+  if (metarItems === undefined || metarLayer === undefined) return;
+  const body = modeBar.panelBody;
+  if (body === null) return;
+  body.replaceChildren();
+  const TIER_ORDER: Record<ConditionTier, number> = { poor: 0, caution: 1, good: 2, unknown: 3 };
+  const colors = TIER_COLORS;
+  const rows = [...metarItems]
+    .map((it) => ({ it, tier: metarTierOf(it.report) }))
+    // 本数组即 map 新建副本，sort 变异无外溢（examples lib ES2022 无 toSorted）
+    // oxlint-disable-next-line unicorn/no-array-sort
+    .sort(
+      (a, b) =>
+        TIER_ORDER[a.tier] - TIER_ORDER[b.tier] ||
+        a.it.report.station.localeCompare(b.it.report.station),
+    );
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    tr.tabIndex = 0;
+    const tdDot = document.createElement("td");
+    const dot = document.createElement("span");
+    dot.className = "p-dot";
+    dot.style.background = colors[r.tier] ?? colors.unknown;
+    tdDot.append(dot);
+    const tdName = document.createElement("td");
+    const code = document.createElement("span");
+    code.className = "p-code";
+    code.textContent = r.it.report.station;
+    const name = document.createElement("span");
+    name.className = "p-name";
+    name.textContent = r.it.title.slice(r.it.report.station.length + 1);
+    tdName.append(code, name);
+    const tdSum = document.createElement("td");
+    tdSum.className = "p-next";
+    tdSum.textContent = summarizeMetarConditions(r.it.report, "zh");
+    tr.append(tdDot, tdName, tdSum);
+    const fly = (): void => {
+      if (metarLayer === undefined || metarItems === undefined) return; // 行存活期图层被时区切换弃置的边界
+      const markers = metarLayer.getLayers();
+      const idx = metarItems.findIndex((x) => x.report.station === r.it.report.station);
+      const found = markers[idx];
+      if (!(found instanceof L.Marker)) return;
+      const marker = found;
+      if (pendingFlyOpen !== undefined) {
+        map.off("moveend", pendingFlyOpen);
+        pendingFlyOpen = undefined;
+      }
+      if (map.getZoom() === 6 && map.getCenter().distanceTo(L.latLng(r.it.position)) < 1) {
+        if (!marker.isPopupOpen()) marker.openPopup();
+        return;
+      }
+      const open = (): void => {
+        if (pendingFlyOpen === open) pendingFlyOpen = undefined;
+        if (!marker.isPopupOpen()) marker.openPopup();
+      };
+      pendingFlyOpen = open;
+      map.flyTo(r.it.position, 6);
+      map.once("moveend", open);
+    };
+    tr.addEventListener("click", fly);
+    tr.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") fly();
+    });
+    body.append(tr);
+  }
+  if (modeBar.panelTitle !== null) {
+    modeBar.panelTitle.textContent = `站点实况 · ${rows.length} 站（按状态排序）`;
+    const legend = document.createElement("span");
+    legend.className = "p-legend";
+    for (const [key, word] of [
+      ["poor", "差"],
+      ["caution", "注意"],
+      ["good", "良好"],
+      ["unknown", "无数据"],
+    ] as Array<[ConditionTier, string]>) {
+      const chip = document.createElement("span");
+      chip.className = "p-legend-item";
+      const d = document.createElement("span");
+      d.className = "p-dot";
+      d.style.background = colors[key] ?? colors.unknown;
+      chip.append(d, document.createTextNode(word));
+      legend.append(chip);
+    }
+    modeBar.panelTitle.append(legend);
+  }
+};
 
 const loadTaf = async (): Promise<void> => {
   if (tafLayer !== undefined && tafItems !== undefined) {
@@ -519,9 +612,39 @@ const loadTaf = async (): Promise<void> => {
       }
       return added;
     };
+    const nowMs = Date.now();
     const latestAdded = ingest(latest);
     const prevAdded = ingest(prevRows);
-    const nowMs = Date.now();
+    // 双源补充（owner 9/24 定口径：aviationweather 最新优先，ogimet 取最新/次新合并补充）：aviationweather 两代入池后，
+    // 池不足两份的站（aviationweather 上一周期缺失/短池）走 ogimet 近 36h 补齐——并发限 6、10s 超时、
+    // 失败静默（免费公益服务：只补缺口站、不整表重拉；raw 去重与 aviationweather 线天然合池）
+    const gapStations = stationsFile.stations
+      .map((st) => st.icao)
+      .filter((icao) => (reportsByStation.get(icao)?.length ?? 0) < 2);
+    let ogimetFilled = 0;
+    let ogimetMissed = 0;
+    if (gapStations.length > 0) {
+      const window = { from: new Date(nowMs - 36 * 3_600_000), to: new Date(nowMs) };
+      const queue = [...gapStations];
+      const CONCURRENCY = 6;
+      // 并发 worker 池（6 路共取队列；递归排水——无 await-in-loop 的 lint 形态，并发语义不变）
+      const drain = async (): Promise<void> => {
+        const icao = queue.shift();
+        if (icao === undefined) return;
+        try {
+          const rows = await getTafsOgimet(icao, window, {
+            baseUrl: "/ogimet-taf",
+            timeoutMs: 10_000,
+          });
+          if (ingest(rows) > 0) ogimetFilled += 1;
+        } catch {
+          // ogimet 缺数/超时/网络失败＝补充线正常降级（空窗口径已在 sources 层消化），出声归状态行
+          ogimetMissed += 1;
+        }
+        await drain();
+      };
+      await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, drain));
+    }
     for (const pool of reportsByStation.values()) sortTafPool(pool, nowMs);
     // 初始即取「现在」的在效报——首屏不再整片灰「未生效」（owner 9/24 方案B 的直接目的）；
     // 每报附真实锚月（item.monthAnchor——leaflet 层内归一到各报锚月，跨月报池正确）
@@ -698,7 +821,7 @@ const loadTaf = async (): Promise<void> => {
     setMode("taf");
     renderPanel();
     statusOk = () =>
-      `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""} · 下方时间轴可拖动/播放换时刻`;
+      `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""}${ogimetFilled > 0 ? ` · ogimet 补充 ${ogimetFilled} 站${ogimetMissed > 0 ? `（${ogimetMissed} 站缺数）` : ""}` : ""} · 下方时间轴可拖动/播放换时刻`;
     setStatus(statusOk(), "ok");
     // 批4#22：上一周期整体缺失（空响应或全部与最新周期重复）——附一句可见降级（评测签派：宁可标一句「上一周期缺」）
     if (latestAdded > 0 && prevAdded === 0) {
@@ -739,7 +862,8 @@ modeBar.metar?.addEventListener("click", () => {
 });
 modeBar.list?.addEventListener("click", () => {
   setListOpen(!listOpen);
-  if (listOpen) refreshPanel?.(); // 首开即渲染（此后滑杆换时刻经 onTime 自动刷新）
+  // 首开即渲染：TAF 走 refreshPanel（此后滑杆换时刻经 onTime 自动刷新）；METAR 已在 setListOpen 直渲
+  if (listOpen && activeMode === "taf") refreshPanel?.();
 });
 
 // —— 时区单制切换（owner 9/24：一个按钮控全页时间；缺省 UTC）——
