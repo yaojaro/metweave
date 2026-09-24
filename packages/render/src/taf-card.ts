@@ -246,9 +246,16 @@ const STYLE_TEXT = `
   color: #44546a; background: #f2f6fa; border: 1px solid #e3e8ee; border-radius: 3px; padding: 0 4px; }
 .mw-taf-item:focus-visible, .mw-taf-rawseg:focus-visible, .mw-taf-period-head:focus-visible
   { outline: 2px solid #4a90d9; outline-offset: 1px; }
-.mw-taf-raw.mw-taf-dim .mw-taf-rawseg:not(.mw-taf-hl) { opacity: .35; }
+/* 联动压暗（owner 9/24 二轮修订）：原文区改「整盒颜色压淡」——旧 opacity 逐片压暗时，报头等
+   未包片的普通文本不在任何 span 里、不吃效果，全场最亮喧宾夺主；颜色经继承可压淡全部未点亮文本，
+   点亮片恢复深色黑字黄底，被引用的电码成为唯一焦点 */
+.mw-taf-raw.mw-taf-dim { color: #b6c1cc; }
+.mw-taf-raw.mw-taf-dim .mw-taf-rawseg:not(.mw-taf-hl) { color: inherit; }
+.mw-taf-raw.mw-taf-dim .mw-taf-rawseg.mw-taf-hl:not(.mw-taf-rawseg-danger):not(.mw-taf-rawseg-caution)
+  { color: #1c2733; }
 .mw-taf-periods.mw-taf-dim .mw-taf-item:not(.mw-taf-hl),
-.mw-taf-periods.mw-taf-dim .mw-taf-period-head:not(.mw-taf-hl) { opacity: .45; }
+.mw-taf-periods.mw-taf-dim .mw-taf-period-head:not(.mw-taf-hl),
+.mw-taf-periods.mw-taf-dim .mw-taf-period-note { opacity: .45; }
 .mw-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 `;
 

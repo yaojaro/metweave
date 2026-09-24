@@ -1706,6 +1706,11 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
       css.split(".mw-taf-item.mw-taf-link[data-code]:hover::after")[1]?.split("}")[0] ?? "";
     expect(rule).toContain("attr(data-code)");
     expect(css).toContain(".mw-taf-item.mw-taf-link[data-code]:focus-visible::after");
+    // 压暗契约（owner 9/24 二轮）：原文区整盒颜色压淡——报头等未包片文本同样压淡，
+    // 点亮电码为唯一焦点；退回逐片 opacity（报头不吃效果、全场最亮）即红
+    const rawDimRule = css.split(".mw-taf-raw.mw-taf-dim {")[1]?.split("}")[0] ?? "";
+    expect(rawDimRule).toContain("color:");
+    expect(css).not.toContain(".mw-taf-raw.mw-taf-dim .mw-taf-rawseg:not(.mw-taf-hl) { opacity");
   });
 
   it("RAW 对照（独立盒区置底、气温行在其上）+ 组级联动：悬停「天气」只点亮天气组片，反向亦然", () => {
