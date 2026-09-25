@@ -380,7 +380,7 @@ describe("A 批：取数与子路径错误面", () => {
   });
 });
 
-// ---------------------------------------------------------------- TAF 取数线（owner 9/24「收进 sources」指令）
+// ---------------------------------------------------------------- TAF 取数线
 
 describe("awTafUrl（端点模板：内网镜像只换根，路径与查询由本层拼装）", () => {
   it("缺省官方端点：ids 逗号连接 + format=raw；数组与字符串 ids 等价", () => {
@@ -507,7 +507,7 @@ describe("getTafReports（取数→解析→定位一步到位，契约沿 getMe
   });
 });
 
-describe("getMetars 换源（baseUrl 覆盖——owner 9/24「内网切换自有数据源」指令）", () => {
+describe("getMetars 换源（baseUrl 覆盖——内网镜像/自建网关只换根）", () => {
   it("baseUrl 生效：请求打到覆盖根，路径与查询串仍由本层拼装", async () => {
     const f = okFetch({
       data: [{ station: "ZGGG", raw: "ZGGG 120000Z 9999 26/22 Q1009", lat: 23.4, lon: 113.5 }],

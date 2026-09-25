@@ -4,54 +4,25 @@
 
 ## [0.2.0] - 2026-09-23
 
-TAF（FM 51）解析层全量落地：解析 → 时间线展开的预报侧工具链，与 METAR 观测侧同入口同纪律。施工图＝W39 补全清单 24 条（A 结构层 4 / B 时间层 9 / C 要素层 8 / D 出题判卷纪律 3），★ 考核失分点 12 条全实证锁。
+TAF（FM 51）预报侧工具链全量落地：解析 → 时间线展开 → 渲染上图，与 METAR 观测侧同入口、同「不静默」纪律。编码面按 WMO 306 FM 51 结构/时间/要素三层 21 条清单逐条施工，每条带真实报文实证回归锁。
 
 ### 新增
 
-- **`parseTaf` / `tryParseTaf`**（`@metweave/parser`）：电头 token 序列不写死槽位（TAF 词可省 / AMD·COR 任意相对序 / COR 时组后位，A4）；传输层终止符 `=` 剥离（A1，双通道双形态等价）；NIL 双形态（占时组位 `TAF ZSAM NIL=` / 占有效期位）与 CNL 占风组位（A2，cancelled 置位且有效期保留）；AAA/CCA 族仅容错（A3，824 万条 0 出现结论沿用）。
-- **基况段四要素 + CAVOK**：复用 METAR 组级共享层（groups.ts 机械迁出，零重写），组装语义沿 METAR（重复组 last-wins 出声、缺测不顶替在场值、三态 Observed、span 保真）。
-- **变化组结构化**（B4/B5 token 层 + B8/B9）：FM 硬时刻 GGgg、BECMG/TEMPO 带窗、PROB 独立与 PROB TEMPO 连用（组合违例出声）；中方四位短窗日归属回有效期起日（仅前向时对判窗防误吞）；解析层只收「组内所列要素」，继承语义不越权代判。
-- **`expandTaf` 时间线展开器**：五步算法（切段→挂载→绑段→合成→叠加）；FM 硬分页（此前一切作废）；BECMG 接棒 + 云例外（cloud-only BECMG 单层全重报）；过渡带显式 uncertain（B6，按前段值保守返回）；TEMPO 发作/间歇双态（B7，weather 整列替换、未列要素继承）；CAVOK 让位语义（回溯途中遇 CAVOK 其前未定要素作废）；B3 跨月回绕月锚。黄金基准＝taf-timeline §3 三例 13 时刻逐格断言。
-- **`tafDurationHours`**：有效期时长差值判别（B1，禁用发布钟点——03/09/15/21Z 与版本解耦）；止时 24 午夜特例（B2）；ogimet 八年分层 2054 条分布对拍 24h/30h 两制吻合，新发现 48h/54h 加长报真实长尾。
-- **气温组 TX/TN**（C6）：1–4 组交错、M 负值前缀、超 WMO 上限出声不丢弃；实码形态实证修正为 ddHHZ（另收编无日短形态 HHZ 方言）。
-- **天气白名单双层**（C5）：国际白名单为基，中国扩展层（弱档 `-` / BR / HZ）容错收下 + info 出声，拒收语义归 /validate。
-- **IR 类型族**（`@metweave/core`）：TafReport / TafValidityGroup / TafChangeGroup 族 / TafTemperatureGroup；错误码新增 `missing-validity` / `invalid-validity`（只增不改）；`ParseError` 报文中性别名。
-- **方言收编**（ogimet 分层抽样 312 条实测）：有效期无斜杠形态 `dddddd`（ZWWW 160024）、TX/TN 无日短形态、BECMG 短窗（B9 机制覆盖）——皆 tolerant 收下 + 出声。
-- **工程工具**：`replay:full` 全量回放对拍器（803 万行本地历史数据双版本逐报文指纹零漂移验证法沉淀）；fuzz 套件 TAF 池接线（5 万 + 5 万例零违例）；`corpus/taf` 语料回归仓（312/312 全解析成功、unknown-token 全语料仅 1 枚传输错拼）。
-- **TAF 渲染三件**：`addTafLayer`（`@metweave/leaflet`，预报当观测渲——TAF 展开结果投影喂 METAR 同一档位管线，NIL/CNL 灰点口径对齐）；`renderTafCard`（`@metweave/render`）；`setTafLayerTime` + `createTafTimeControl`（同实例原地重建的全图换时刻 + 零框架时间滑杆）。
-- **TAF 卡片分段明细与 RAW 对照**：`tafSegments`（`@metweave/parser`，主导段 / BECMG 过渡带 / TEMPO·PROB 挂载行按时间升序，与 `expandTaf` 共用切段规则）；卡片逐段「时间窗 + 类型徽 + 人话要素」+ 气温极值行 + 关键风险摘要行 + 出界提示；RAW 对照置底，行↔原文**组级双向联动**（悬停点亮来源组片，继承值沿变化链溯源）；`gloss.ts` 人话词表内核（两卡共用单一真相）。
-- **徽章与时间显示**：类型徽双标 + 概率显式（TEMPO·间歇（≥40%）/ PROB30·概率30% / BECMG·渐变中·转变后 / FM·自此）；发布在前、有效期直说具体日期时间（止时 24 显示为次日 00:00）；「查看时刻」并入发布行（`at` 选项）。
-- **三角色评测改进批**：时间双制括注与 `stationTitle` 站名行；小白人话包（风向八方位+蒲福风级、云底台阶化分行）；联动可达包（Tab 聚焦三通道、警示语对比度达标）；常显 ICAO 站码标签（zoom≥5 门控）；`setTafLayerTime` 瘦身为原地更新（已开弹窗即时换内容）；弹窗惰性渲染与焦点管理；demo 38 站列表视图（档色点+下一变化、行点击飞行开卡）。
-- **复测修复批**：TEMPO 概率措辞改「≥40%」（ICAO 语义）；超有效期＝灰点「预报尚未生效/已过期」；滑杆焦点劫持修复（键盘拖动不抢焦）；弹窗置顶提示随时刻重算；卡高上限 `min(65vh, 680px)` 内滚、卡宽 480、`popupOptions` 透传（宿主为固定悬浮层留避让边）；demo 行点击改「先飞到位再开卡」。
-- **时区单制**：`utcOffsetMinutes` 语义升级为「展示时区」（缺省 UTC、480＝北京时；全卡单一时区，RAW 原文保持 UTC）——examples 加 UTC/北京时切换按钮，卡片/滑杆/面板/状态时钟全页联动。
-- **底部时间轴（demo 窄条）**：现在起 24 小时、10 分钟一格，播放键自动扫全程（手动介入即停）；`createTafTimeControl` 补 `to` 接线与 `tickEveryMinutes` 轴内刻度；「回到现在」按钮与「现在」锚漂移重锚。
-- **发作窗升档与图例**：修复 TEMPO 发作窗内圆点不升档（按主导段+叠加合成态定档）；四档图例两模式常驻、挪右侧。
-- **在效报补位**：并行拉上一发布周期与最新报合并成按站报池，按查看时刻选在效报——首屏不再整片灰「未生效」，跨生效边界拖动自动换报。
-- **就地电码与浮签**：条目悬停/聚焦就地显出来源原文电码（卡内绝对定位浮签，零回流）；点击条目弹「电码→人话」解码气泡＋ FM 51 依据行——METAR 卡同步补齐，两卡交互同契约（点亮+浮签、不做压暗）。
-- **月界收口**：时间轴/报池/面板全链改真实毫秒序（跨月不回绕）；`calendarAnchor` / `monthAnchor` 逐报月锚（`@metweave/leaflet`）；北京时经真实 Date 换算。
-- **双日界引用**：北京时制下展示日期与 UTC 日期不同日时括注「（UTC M月D日）」（`utcDayRefText`，同日/段头不加）。
-- **键盘通道**：两卡 Enter/Space 开合解码气泡、Esc 关闭、`aria-expanded`/`aria-describedby` 读屏接线。
-- **左上导览错开**：导览卡与地图缩放控件同高并排（left 52），弹窗 autopan 左上避让按新几何重算。
-- **站点面板双模式**：实况模式也有站点列表（`metarTierOf`/`summarizeMetarConditions` 随包导出）——实况＝档色点+站名+实况摘要、预报＝下一变化+「查看时刻 vs 现在」，面板随模式自动切换、宽度自适应内容全展（无内部横向滚动）。
-- **TAF 取数收编 sources ＋ 双线换源**：`awTafUrl` / `getTafs`（续行归并+站码提取，失败面沿 getMetars 五路机读码契约）/ `getTafReports`（取数→解析→定位一步到位，契约沿 getMetarReports）；`getMetars` 与 `getTafs` 各留 `baseUrl` 覆盖位——内网镜像/自建网关只换根。
-- **ogimet 补充线**：`ogimetTafUrl` / `parseOgimetTafs` / `getTafsOgimet`（display_metars2.php tipo=FT 配方，空窗返回空数组的正常降级口径）；demo 按「aviationweather 最新优先、ogimet 补最新/次新」合并（只补缺口站、并发受限、失败静默）。
-- **`validateTaf` 判据校验 + strict 模式**：条文判据收口——C2 VRB 两源阈值（wmo 1.5 / caac 2 m/s，逃逸条款不可机器判已明示）、C3 阵风严格 ≥5 m/s、C5 天气白名单双层（国际基+中国扩展按 standard 取舍）、C7 三层选取（仅全重报语境）；`parseTaf({ mode: "strict" })` 违例聚合抛新错误码 `strict-violation`（info 级方言注记不拦），`validateStandard` 可切中国口径。
-- **`metweave/stations-cn` 子路径**（伞包）：中国 39 站静态元数据（ICAO / 名称 / WGS-84 精确坐标 / 标高米，aviationweather.gov 采集、`pnpm gen:stations` 单源再生）——「精确站名与坐标联表」开箱即用，不再要求用户去仓库翻 `examples/stations.json`。
-- **TAF 取数收编 sources ＋ 双线换源（owner 9/24 指令「收进 sources 统一维护、内网可切自有数据源」）**：`metweave/sources` 新增 TAF 取数线——`awTafUrl`（aviationweather 端点模板：ids 连接/format=raw/date 序列化）、`getTafs`（取数侧整理：raw 格式缩进续行归并＋best-effort 站码提取；失败面沿 getMetars 五路契约——timeout/network/http-error/empty-data 一律 MetarSourceError 机读码，200+空体显式判错）、`getTafReports`（取数→解析→定位一步到位，契约沿 getMetarReports：stations 联表定位、缺省聚合 batch-parse-failed/传 onUnparseable 逐行容错、spans 紧凑模式；解析先于联表——失败面先出声再谈定位）；**换源口径**：两条线各留 baseUrl 覆盖位（`getMetars`＝IEM 站点根、`getTafs`＝TAF 端点根）——内网镜像/自建网关只换根、路径与查询串由本层拼装；examples TAF 取数由手写 fetch+自行归并改走 `getTafs`（`baseUrl:"/aw-taf"` 走 vite 代理），报池/在效选择等数据管理逻辑留 demo（纪律：永不进开源包）；测试 452→463（续行归并/站码提取/date 入参/五路失败面/联表跳行/聚合抛错各锁，突变必红）。
+- **`parseTaf` / `tryParseTaf`**（`@metweave/parser`）：TAF 报文解析为 IR——电头（TAF/AMD/COR 任意相对序）、有效期组（止时 24 午夜特例）、NIL/CNL 缺报与取消、基况四要素 + CAVOK、变化组（FM/BECMG/TEMPO/PROB，含中方四位短窗）、气温组 TX/TN；中国方言形态 tolerant 收下并出声。
+- **`expandTaf` 时间线展开器**（`@metweave/parser`）：任意时刻的预报状态——切段→挂载→绑段→合成→叠加五步算法，FM 硬分页、BECMG 接棒、TEMPO 发作/间歇双态、跨月回绕月锚。
+- **`tafSegments`**（`@metweave/parser`）：按时间升序的分段明细（主导段/过渡带/挂载行），供渲染层逐段展示。
+- **`validateTaf` 判据校验 + strict 模式**：条文判据（VRB 两源阈值、阵风 ≥5 m/s、天气白名单双层、云三层选取）；`parseTaf({ mode: "strict" })` 违例聚合抛 `strict-violation`（`validateStandard` 可切中国口径）。
+- **IR 类型族**（`@metweave/core`）：TafReport / TafChangeGroup 族 / TafTemperatureGroup；错误码新增 `missing-validity` / `invalid-validity` / `strict-violation`；`ParseError` 报文中性别名。
+- **TAF 渲染**（`@metweave/render`）：`renderTafCard`——分段明细、气温极值、关键风险摘要、RAW 对照与组级双向联动、电码浮签与解码气泡（附 FM 51 依据行）；`summarizeTafConditions` 人话摘要。
+- **TAF 上图**（`@metweave/leaflet`）：`addTafLayer`（预报当观测渲，TEMPO 发作窗按叠加态定档）+ `setTafLayerTime`（原地换查看时刻）+ `createTafTimeControl`（时间滑杆）；`calendarAnchor`/`TIER_COLORS`/`tafTierOf` 判据与配色随包导出。
+- **取数双线**（`metweave/sources`）：TAF 取数收编——`getTafs` / `getTafReports`（契约沿 METAR 线）；ogimet 补充线（`getTafsOgimet`，报池缺站补最新/次新）；两线与 IEM 各留 `baseUrl` 覆盖位——内网镜像/自建网关只换根。
+- **两卡联动同契约**：METAR 卡与 TAF 卡统一交互语言——悬停点亮 + 电码浮签、点击解码气泡、Enter/Space/Esc 键盘通道与读屏接线。
+- **`metweave/stations-cn` 子路径**（伞包）：中国 39 站静态元数据（ICAO / 名称 / WGS-84 精确坐标 / 标高米，`pnpm gen:stations` 可再生）。
+- **质量基建**：`corpus/taf` 语料回归仓（ogimet 16 年分层抽样 312 条全解析成功）；fuzz 套件 TAF 池接线；`replay:full` 全量回放对拍器。
 
 ### 变更
 
-- METAR 侧行为零变化：324 存量测试零改动全绿；803 万行冻结快照逐报文指纹全程零漂移（批 0→4 复核）。
-- 依赖方向契约改约：core←parser←render←leaflet（render / leaflet 合法依赖 parser——TAF 分段明细需在渲染层消费展开器）；顺带修正 leaflet dist 外部化引用 `@metweave/parser` 却仅声明 devDependencies 的打包暗病（0.2.0 未发布，无人踩中）。
-
-### 修复
-
-- `setTafLayerTime` 连拨竞态叠点（`@metweave/leaflet`）：`clearLayers` 同步而 populate 隔一个 `await`，同步连发多次换时刻时各次清层都落在空层、多批标记叠加（demo 实测 38 站连拨三下变 114 点）——每层代际令牌，旧代重建作废，回归测试先证伪再锁绿。
-- TAF 卡风组电码重建的阵风位序：真码 `04009G16MPS`（阵风在单位前），旧拼法产出 `MPSG16`（无阵风用例未覆盖的暗病）。
-
-### 测试
-
-- 406 例全绿（v0.1.2 为 324，TAF 侧 +82）；夹具 11 条三源溯源（ogimet / aviationweather / 教材）。
+- 依赖方向契约改约：core←parser←render←leaflet——render / leaflet 现可合法依赖 parser（TAF 分段明细需在渲染层消费展开器）；leaflet 打包声明同步修正。
 
 ## [0.1.2] - 2026-09-22
 

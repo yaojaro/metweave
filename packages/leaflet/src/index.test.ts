@@ -467,7 +467,7 @@ describe("addTafLayer（v0.2 渲染层①）", () => {
     map2.remove();
   });
 
-  it("TEMPO 发作窗内圆点升档（owner 9/24 实测批：发作窗只进提示不升档＝图上看不到危险窗），窗前窗后回主导档", async () => {
+  it("TEMPO 发作窗内圆点升档，窗前窗后回主导档", async () => {
     // 基况 8000 BKN040＝好；TEMPO 18–22Z TSRA+CB＝差（实测 ZGGG 样形）
     const raw =
       "TAF ZGGG 240303Z 2406/2512 14003MPS 8000 BKN040 TEMPO 2418/2422 TSRA FEW030CB BKN033=";
@@ -499,7 +499,7 @@ describe("addTafLayer（v0.2 渲染层①）", () => {
     map.remove();
   });
 
-  it("换报数据面（owner 9/24 方案B）：宿主原位换 item.report 后 setTafLayerTime 圆点与已开弹窗即时跟随新报", async () => {
+  it("换报数据面：宿主原位换 item.report 后 setTafLayerTime 圆点与已开弹窗即时跟随新报", async () => {
     // 旧周期报（00Z 生效、全程好）建层开卡 → 原位换新周期报（06Z 生效、TEMPO 18–22Z 雷雨）→ 同层换时刻重渲
     const item: TafLayerItem = {
       report: parseTaf("TAF ZGGG 232106Z 2400/2506 13003MPS 8000 BKN040="),
@@ -645,7 +645,7 @@ it("评测批 B：常显站码标签（zoom≥5）/card 透传/滑杆窗对齐+�
   const popupAfter = pane?.querySelector(".mw-taf-card");
   expect(popupAfter).not.toBeNull();
   expect(popupAfter?.textContent ?? "").toContain("查看时刻 01日12:00Z");
-  // 滑杆：窗对齐（0106→0206=24 格）+ aria-valuetext——时区单制（owner 9/24）缺省 UTC、无括注；
+  // 滑杆：窗对齐（0106→0206=24 格）+ aria-valuetext——时区单制缺省 UTC、无括注；
   // 显式 480＝京时单制（整段京钟，无 Z 无括号）
   const ctrl = createTafTimeControl(map, {
     layer: g,
@@ -715,7 +715,7 @@ it("复测修复：出窗灰态（超有效期＝unknown 灰点+「已过期」�
   await setTafLayerTime(map, g, items, { at: { day: 1, hour: 5, minute: 0 } });
   const tip2 = marker.getTooltip()?.getContent();
   expect((tip2 instanceof HTMLElement ? tip2.textContent : "") ?? "").toContain("预报尚未生效");
-  // 滑杆端点标注（小白#11）：两端起止时刻；时区单制（owner 9/24）——缺省 UTC 直读，显式 480＝京钟
+  // 滑杆端点标注（小白#11）：两端起止时刻；时区单制——缺省 UTC 直读，显式 480＝京钟
   const ctrl = createTafTimeControl(map, { layer: g, items });
   const ticks = Array.from(ctrl.querySelectorAll("div")).find((d) => d.children.length === 2);
   expect(ticks?.textContent ?? "").toContain("01日 06:00Z");
@@ -746,7 +746,7 @@ it("层③竞态回归：同步连拨两次不叠点（clearLayers 与 populate 
   map.remove();
 });
 
-describe("C14：超高卡版式（owner 9/24 指令——卡不占满屏/不压固定悬浮层/段间距）", () => {
+describe("C14：超高卡版式", () => {
   const tall =
     "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 BKN033 TEMPO 2520/2524 2500 -SHRASN BR BECMG 2605/2606 2000 -SN BR=";
 
@@ -795,7 +795,7 @@ describe("C14：超高卡版式（owner 9/24 指令——卡不占满屏/不压�
   });
 });
 
-describe("C15：时区单制切换（owner 9/24——一个开关控全图时间，缺省 UTC）", () => {
+describe("C15：时区单制切换", () => {
   const raw =
     "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 TEMPO 2520/2524 2500 -SHRASN BR BECMG 2605/2606 2000 -SN BR=";
   const mkItems = (): Array<{
@@ -847,7 +847,7 @@ describe("C15：时区单制切换（owner 9/24——一个开关控全图时间
     map.remove();
   });
 
-  it("时间轴批（owner 9/24）：显式 from/to 接线（10 分钟步 24h＝144 格，默认锚窗零点）+ tickEveryMinutes 整点刻度与日界标注", async () => {
+  it("时间轴批：显式 from/to 接线（10 分钟步 24h＝144 格，默认锚窗零点）+ tickEveryMinutes 整点刻度与日界标注", async () => {
     const map = freshMap();
     const items = mkItems();
     const g = await addTafLayer(map, items);

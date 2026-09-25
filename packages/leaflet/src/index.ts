@@ -595,7 +595,7 @@ const bindCodeZoom = (map: Leaflet.Map): void => {
 const tafLayerAt = new WeakMap<Leaflet.LayerGroup, TafExpandAt>();
 /** 各层的日历月锚（2026-09-24 评测 P1 月界批）：at 连续序「自该月 1 日起」的基准月 */
 const tafLayerCalendar = new WeakMap<Leaflet.LayerGroup, TafCalendarAnchor>();
-/** 各层的可变 card 选项覆盖（owner 9/24 时区单制：setTafLayerTime 带 card 即合并——切时区不清层重建、
+/** 各层的可变 card 选项覆盖（时区单制：setTafLayerTime 带 card 即合并——切时区不清层重建、
  *  滑杆换时刻不带 card 不回退；弹窗刷新读此处而非建层闭包，已开弹窗即时随时区换内容） */
 const tafLayerCard = new WeakMap<
   Leaflet.LayerGroup,
@@ -728,7 +728,7 @@ function tafMarkerState(
   }
   if (!noTimeline && v !== undefined) {
     const expansion = expandTaf(r, at, anchor);
-    // 发作窗内档位/摘要按「主导段 + TEMPO 叠加」合成态（owner 9/24 实测批：雷雨发作窗圆点不升档＝
+    // 发作窗内档位/摘要按「主导段 + TEMPO 叠加」合成态（实测批：雷雨发作窗圆点不升档＝
     // 图上永远看不到危险窗——叠加合并式与下方提示语同一份，单一来源不漂移）
     const effective =
       expansion.tempo !== undefined
@@ -808,12 +808,12 @@ async function populateTafLayer(
 
     if (options.popup ?? true) {
       // 惰性弹窗（评测工程 P2-1）：占位 DOM 只在 popupopen 时换真卡——滑杆换时刻不清层，重开即见新时刻卡；
-      // maxWidth 480 = 卡片设计宽（owner 9/24 加宽指令，renderTafCard max-width 同步）
+      // maxWidth 480 = 卡片设计宽（加宽指令，renderTafCard max-width 同步）
       marker.bindPopup(document.createElement("div"), { maxWidth: 480, ...options.popupOptions });
       // 刷新函数（复测 N1/N2）：按层当前时刻重展开取 notes（置顶提示随换时刻更新，与 tooltip 同源），
       // 只重建卡片内容不动焦点——焦点移入仅发生在真实 popupopen（键盘拖滑杆不再被抢焦）；
-      // card 选项读层的可变覆盖（tafLayerCard）而非建层闭包——切时区后已开弹窗即时换内容（owner 9/24）；
-      // 报文数据面同样现读 item.report（owner 9/24 方案B：宿主原位换报——如按查看时刻切换上一周期在效报——
+      // card 选项读层的可变覆盖（tafLayerCard）而非建层闭包——切时区后已开弹窗即时换内容（）；
+      // 报文数据面同样现读 item.report（方案B：宿主原位换报——如按查看时刻切换上一周期在效报——
       // 换报后已开弹窗即时跟随新报，捕获建层时的 r/noTimeline 会停在旧报）；
       // 月界批：层连续序 current 归一到本报锚月再喂展开/渲染（跨月报池各报正确），card 注入本月锚
       const refresh = (popup: Leaflet.Popup): void => {
@@ -843,7 +843,7 @@ async function populateTafLayer(
           if (stationName !== undefined) cardOpts.stationTitle = stationName;
         }
         const card = renderTafCard(rNow, cardOpts);
-        // 卡内限高滚动（owner 9/24）的滚轮隔离由 Leaflet 弹窗内建 disableScrollPropagation(contentNode)
+        // 卡内限高滚动（）的滚轮隔离由 Leaflet 弹窗内建 disableScrollPropagation(contentNode)
         // 提供（只截传播不拦默认滚动——实测勿再叠加自带监听：纯冗余）；行为锁见 index.test.ts C14
         if (fresh.notes.length > 0) {
           const lead = document.createElement("p");
@@ -938,7 +938,7 @@ export async function setTafLayerTime(
       minute: 0,
     };
   if (options.at !== undefined) tafLayerAt.set(layer, options.at);
-  // card 覆盖合并（owner 9/24 时区单制）：带 card 即更新层的可变覆盖并刷新已开弹窗；不带（滑杆换时刻）不回退
+  // card 覆盖合并（时区单制）：带 card 即更新层的可变覆盖并刷新已开弹窗；不带（滑杆换时刻）不回退
   if (options.card !== undefined) {
     tafLayerCard.set(layer, { ...tafLayerCard.get(layer), ...options.card });
   }
@@ -971,7 +971,7 @@ const fmtTafAt = (at: TafExpandAt, locale: "zh" | "en" = "zh"): string =>
     ? `${String(at.day).padStart(2, "0")}日 ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`
     : `Day ${String(at.day).padStart(2, "0")} ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")} Z`;
 
-/** 控件时刻显示·本地时（owner 9/24 时区单制）：tag+M月D日HH:MM——月位显式（2026-09-24 评测 P1 月界批）：
+/** 控件时刻显示·本地时（时区单制）：tag+M月D日HH:MM——月位显式（2026-09-24 评测 P1 月界批）：
  *  calendarAnchor 在位时走真实月历（at 为自锚月 1 日起的连续日序，day>31 按进位恒正确、跨月不回绕）；
  *  缺席时按 31 天折回（残余近似仅显示位：无月语境无从判读真实月份，控件值本身不受影响） */
 const fmtTafZone = (
@@ -1016,11 +1016,11 @@ export interface TafTimeControlOptions {
   /** 滑杆终点时刻；缺省自动取各站最晚有效期止（评测共识⑤：滑杆窗对齐数据，不再盲拖出界） */
   to?: TafExpandAt;
   /** 轴内刻度间隔（分钟；缺省＝仅两端起止标注）。刻度对齐整点（自窗内首个对齐刻度起），
-   *  日界（展示时区的 00 时）标 dd日，标签随展示时区单制——owner 9/24 底部时间轴批 */
+   *  日界（展示时区的 00 时）标 dd日，标签随展示时区单制——底部时间轴批 */
   tickEveryMinutes?: number;
   /** 显示语言（缺省 zh；en 不加「日」字与本地时——评测工程 P2-3 i18n 漏网） */
   locale?: "zh" | "en";
-  /** 展示时区偏移（分钟）——owner 9/24 单制：缺省 null＝UTC 单制；zh 传 480＝北京时单制（标签与两端标注同随） */
+  /** 展示时区偏移（分钟）——单制：缺省 null＝UTC 单制；zh 传 480＝北京时单制（标签与两端标注同随） */
   utcOffsetMinutes?: number | null;
   /** 日历月锚（2026-09-24 评测 P1 月界批）：滑杆零点所在真实年月（month 1–12）——from/to/at 视为
    *  自该月 1 日起的连续日序（day 可超月长），北京时标签走真实月历、跨月不回绕；缺省 31 天折回显示 */
@@ -1043,7 +1043,7 @@ export function createTafTimeControl(
 ): HTMLElement {
   const step = options.stepMinutes ?? 60;
   const locale = options.locale ?? "zh";
-  const ltOffset = options.utcOffsetMinutes ?? null; // owner 9/24 单制：缺省 UTC（旧 zh 缺省京时括注退役）
+  const ltOffset = options.utcOffsetMinutes ?? null; // 单制：缺省 UTC（旧 zh 缺省京时括注退役）
   const cal = options.calendarAnchor; // 月界批：真月历锚（缺省 31 天折回显示）
   const zoneText = (at: TafExpandAt): string =>
     ltOffset !== null && locale === "zh"
@@ -1081,7 +1081,7 @@ export function createTafTimeControl(
     if (toAbsMax === null || abs > toAbsMax) toAbsMax = abs;
   }
   const fromAbs = tafAbsOf(from);
-  // 显式 to 优先（owner 9/24 时间轴批：宿主自定「现在+24h」窗）——此前该选项有文档无接线，静默忽略违不静默纪律，本批修
+  // 显式 to 优先（时间轴批：宿主自定「现在+24h」窗）——此前该选项有文档无接线，静默忽略违不静默纪律，本批修
   const toAbs =
     options.to !== undefined ? tafAbsOf(options.to) : (toAbsMax ?? fromAbs + 100 * step);
   const spanSteps = Math.max(1, Math.round((toAbs - fromAbs) / step));
@@ -1130,7 +1130,7 @@ export function createTafTimeControl(
   apply(atOfValue(Number(input.value)));
   box.append(input, label);
   if (options.tickEveryMinutes !== undefined) {
-    // 轴内刻度（owner 9/24 底部时间轴批）：对齐整点的等距标注（自窗内首个对齐刻度起），
+    // 轴内刻度（底部时间轴批）：对齐整点的等距标注（自窗内首个对齐刻度起），
     // 日界（展示时区 00 时）标 dd日、其余标 HH:MM，随展示时区单制；终点恒标注（right 锚防溢出）
     const every = Math.max(step, options.tickEveryMinutes);
     const first = Math.ceil((fromAbs + 1) / every) * every;

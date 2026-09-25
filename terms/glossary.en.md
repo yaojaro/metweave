@@ -13,7 +13,7 @@
 - **AP117** — CAAC Ground Observation Specifications AP-117-TM-2021-01R2 (Civil Aviation Administration of China)
 - **CCAR117** — CCAR-117R1 — China Civil Aviation Meteorological Working Rules
 - **MAVIS** — UK Met Office MAVIS — How to decode a METAR (as relayed by an authoritative body)
-- **PRODUCT** — Product display copy (no matching standard clause; wording approved by the owner)
+- **PRODUCT** — Product display copy (no matching standard clause; wording approved by the maintainer)
 
 ## card.label (11 entries)
 
@@ -39,16 +39,16 @@
 | card.badge.metar | METAR | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.1 template note (1) (aerodrome routine meteorological report) |
 | card.badge.corrected | COR | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.1 template note (2) (COR for corrected reports) |
 | card.badge.auto | AUTO | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.4 (Code word AUTO) |
-| card.badge.cavokShort | good visibility; no low cloud or significant weather | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.badge.cavokShort | good visibility; no low cloud or significant weather | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.missingGroup (4 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| card.missingGroup.wind | Wind group missing | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.missingGroup.visibility | Visibility group missing | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.missingGroup.weather | Weather group missing | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.missingGroup.rvr | RVR unavailable (RVRNO) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.missingGroup.wind | Wind group missing | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.missingGroup.visibility | Visibility group missing | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.missingGroup.weather | Weather group missing | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.missingGroup.rvr | RVR unavailable (RVRNO) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.cavokHint (1 entries)
 
@@ -68,17 +68,17 @@
 |---|---|---|---|---|
 | card.wind.gust | Gust | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.5 (Gust) |
 | card.wind.variable | Variable | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.2 (VRB conditions) |
-| card.wind.missing | Wind direction missing | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.wind.missing | Wind direction missing | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 | card.wind.calm | Calm | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.4 (calm reported as 00000) |
 | card.wind.vrbNote | VRB = variable direction (all sectors) | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.2 (VRB conditions) |
 | card.wind.calmNote | Calm = wind speed zero | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.4 (calm reported as 00000) |
 | card.wind.variationNote | wind direction variation = the two extreme directions between which the wind varied (clockwise order) | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.3 (two extreme directions, clockwise order) |
-| card.wind.hintSep | ;  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.wind.hintSep | ;  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 | card.wind.unit.kt | kt = knots (nautical miles per hour) | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5 (wind speed unit KT) |
 | card.wind.unit.mps | mps = meters per second | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5 (wind speed unit MPS) |
-| card.wind.unit.kmh | kmh = kilometers per hour | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · FM 15 codes wind speed in KT/MPS only; KMH is accepted tolerantly (used by WMO code families such as FM 50) |
-| card.wind.gustOf | (value) => ` (Gust ${value})` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.wind.variationOf | (min, max) => `(wind varying between ${deg3(min)}° and ${deg3(max)}°)` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.wind.unit.kmh | kmh = kilometers per hour | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · FM 15 codes wind speed in KT/MPS only; KMH is accepted tolerantly (used by WMO code families such as FM 50) |
+| card.wind.gustOf | (value) => ` (Gust ${value})` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.wind.variationOf | (min, max) => `(wind varying between ${deg3(min)}° and ${deg3(max)}°)` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.cloud (26 entries)
 
@@ -88,21 +88,21 @@
 | card.cloud.amount.SCT | Scattered: 3–4 oktas (3/8–4/8) | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · Annex 3 METAR/SPECI template (SCT = 3–4 oktas) |
 | card.cloud.amount.BKN | Broken: 5–7 oktas (5/8–7/8) | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · Annex 3 METAR/SPECI template (BKN = 5–7 oktas) |
 | card.cloud.amount.OVC | Overcast: 8 oktas (8/8, sky fully covered) | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · Annex 3 METAR/SPECI template (OVC = 8 oktas) |
-| card.cloud.shortAmount.FEW | few | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.shortAmount.SCT | scattered | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.shortAmount.BKN | broken | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.shortAmount.OVC | overcast | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.baseShortMeters | (meters) => `, base ≈ ${meters} m` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.metersShort | (meters) => ` ≈ ${meters} m` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.baseShortFeet | (feet) => `, base ${feet} ft` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.feetShort | (feet) => ` ${feet} ft` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.metersDerivedNote |  (metres are converted by this library at 1 ft = 0.3048 m; the report codes cloud base in feet in 100 ft steps, so the metre value is approximate) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.amountUnknown | cloud amount not reported | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.vvMissing | vertical visibility not reported | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.heightUnknown | cloud base not reported | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.vvShort | vertical visibility | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.baseFtMeters | (feet, meters) => `, base ${feet} ft ≈ ${meters} m` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.cloud.minimumOf | (meters, direction) => `minimum visibility ${meters} m (${direction})` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.cloud.shortAmount.FEW | few | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.shortAmount.SCT | scattered | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.shortAmount.BKN | broken | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.shortAmount.OVC | overcast | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.baseShortMeters | (meters) => `, base ≈ ${meters} m` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.metersShort | (meters) => ` ≈ ${meters} m` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.baseShortFeet | (feet) => `, base ${feet} ft` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.feetShort | (feet) => ` ${feet} ft` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.metersDerivedNote |  (metres are converted by this library at 1 ft = 0.3048 m; the report codes cloud base in feet in 100 ft steps, so the metre value is approximate) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.amountUnknown | cloud amount not reported | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.vvMissing | vertical visibility not reported | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.heightUnknown | cloud base not reported | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.vvShort | vertical visibility | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.baseFtMeters | (feet, meters) => `, base ${feet} ft ≈ ${meters} m` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.cloud.minimumOf | (meters, direction) => `minimum visibility ${meters} m (${direction})` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 | card.cloud.skyClear.SKC | no clouds (manual observation) | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · Annex 3 METAR/SPECI template (NSC = no significant cloud; NCD = nil cloud detected; SKC/CLR are North American practice codes) |
 | card.cloud.skyClear.NSC | no significant clouds | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · Annex 3 METAR/SPECI template (NSC = no significant cloud; NCD = nil cloud detected; SKC/CLR are North American practice codes) |
 | card.cloud.skyClear.NCD | no clouds detected (automatic station) | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · Annex 3 METAR/SPECI template (NSC = no significant cloud; NCD = nil cloud detected; SKC/CLR are North American practice codes) |
@@ -119,7 +119,7 @@
 | card.wx.phenomena.RA | rain | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
 | card.wx.phenomena.SN | snow | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
 | card.wx.phenomena.SG | snow grains | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
-| card.wx.phenomena.IC | ice crystals | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · No WMO TAC 4678 / AP-117 table entry (US practice; NWS decode key and FAA JO 7340.2: ice crystals) |
+| card.wx.phenomena.IC | ice crystals | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · No WMO TAC 4678 / AP-117 table entry (US practice; NWS decode key and FAA JO 7340.2: ice crystals) |
 | card.wx.phenomena.PL | ice pellets | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
 | card.wx.phenomena.GR | hail | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
 | card.wx.phenomena.GS | small hail and/or snow pellets | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
@@ -131,7 +131,7 @@
 | card.wx.phenomena.DU | widespread dust | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
 | card.wx.phenomena.SA | sand | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
 | card.wx.phenomena.HZ | haze | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
-| card.wx.phenomena.PY | spray | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · No WMO TAC 4678 / AP-117 table entry (US FMH-1 usage); "spray" is the common rendering |
+| card.wx.phenomena.PY | spray | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · No WMO TAC 4678 / AP-117 table entry (US FMH-1 usage); "spray" is the common rendering |
 | card.wx.phenomena.PO | dust/sand whirls (dust devils) | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
 | card.wx.phenomena.SQ | squalls | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
 | card.wx.phenomena.FC | funnel cloud (tornado or waterspout) | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · Code table 4678 (present-weather abbreviations) |
@@ -160,17 +160,17 @@
           : `${phenom} showers`
         : phenom === ""
           ? descriptor
-          : `${descriptor} ${phenom}` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.wx.join |  and  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.wx.joinParts |   | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.wx.hazard |  (major flight hazard) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+          : `${descriptor} ${phenom}` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.wx.join |  and  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.wx.joinParts |   | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.wx.hazard |  (major flight hazard) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.timeText (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
 | card.timeText | (t) =>
-      `Day ${t.day}, ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")} UTC` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+      `Day ${t.day}, ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")} UTC` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.ago (1 entries)
 
@@ -181,7 +181,7 @@
         ? ` (${minutes} min ago)`
         : minutes < 48 * 60
           ? ` (${Math.floor(minutes / 60)} h ago)`
-          : ` (${Math.floor(minutes / 1440)} d ago)` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+          : ` (${Math.floor(minutes / 1440)} d ago)` | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.rvrNote (3 entries)
 
@@ -216,9 +216,9 @@
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| card.decode.title | How this was decoded (code → meaning) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.decode.code | Code | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.decode.basisLabel | Basis:  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.decode.title | How this was decoded (code → meaning) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.decode.code | Code | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.decode.basisLabel | Basis:  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 | card.decode.cite.cavok | WMO No. 306 Vol I.1 (2019), FM 15 §15.10 — CAVOK replaces visibility/weather/cloud groups: vis ≥10 km, no low cloud or CB/TCU, no significant weather | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.10 (CAVOK replaces the visibility, weather and cloud groups) |
 | card.decode.cite.wind | WMO No. 306 Vol I.1 (2019), FM 15 §15.5.1–15.5.6 — dddff = 10-min mean wind direction and speed, unit suffix follows the group (§15.5.1); VRB variable, 00000 calm, G gust, P above-range (same section) | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.1–§15.5.6 (wind direction and speed group dddff) |
 | card.decode.cite.windVariation | WMO No. 306 Vol I.1 (2019), FM 15 §15.5.3 — dndndnVdxdxdx = the two extreme directions when variation is ≥60° and <180° (clockwise) | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.3 (direction variation group dndndnVdxdxdx) |
@@ -241,7 +241,7 @@
 | card.trendNote.nosig | no significant change expected | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.15 (NOSIG = no significant change) |
 | card.trendNote.becmg | gradual change | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.4 (BECMG) |
 | card.trendNote.tempo | temporary fluctuations | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.5 (TEMPO temporary fluctuations) |
-| card.trendNote.unspecified | trend segment with missing change indicator (gradual vs temporary indistinguishable) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.trendNote.unspecified | trend segment with missing change indicator (gradual vs temporary indistinguishable) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 | card.trendNote.periodAt | (text) => {
         const slash = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(text);
         if (slash !== null) {
@@ -252,9 +252,9 @@
         const hm = `${m[2]}:${m[3]}`;
         return m[1] === "TL" ? `until ${hm}` : m[1] === "FM" ? `from ${hm}` : `at ${hm}`;
       } | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.3 (FM from / TL until / AT at) |
-| card.trendNote.contentLead | expected:  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.trendNote.contentLead | expected:  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 | card.trendNote.nsw | NSW = no significant weather in the trend period | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · NSW = No significant weather (code table 4678 note: trend forecasts only) |
-| card.trendNote.windShear | wind shear embedded in the trend (WS) — caution on takeoff/landing | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.trendNote.windShear | wind shear embedded in the trend (WS) — caution on takeoff/landing | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.warningText (1 entries)
 
@@ -265,13 +265,13 @@
         ? WARNINGS_EN[code](rawSlice ?? "")
         : rawSlice !== undefined && rawSlice !== ""
           ? `${code}: ${rawSlice}`
-          : code | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+          : code | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.sep (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| card.sep |  ·  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.sep |  ·  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.rwy (32 entries)
 
@@ -294,12 +294,12 @@
 | card.rwy.coverage.2 | 11–25% | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · Code table 0519 (2: 11–25%) |
 | card.rwy.coverage.5 | 26–50% | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · Code table 0519 (5: 26–50%) |
 | card.rwy.coverage.9 | 51–100% | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · Code table 0519 (9: 51–100%) |
-| card.rwy.coverageLabel | coverage  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.rwy.depthLabel | depth  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.rwy.coverageLabel | coverage  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.rwy.depthLabel | depth  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 | card.rwy.depthText | (mm) =>
         mm === 0 ? "<1 mm" : mm === 400 ? "≥40 cm" : mm >= 100 ? `${mm / 10} cm` : `${mm} mm` | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · Code table 1079 (00 = less than 1 mm; 01–90 = millimetres; 92–98 = 10–40 cm; 98 = 40 cm or more) |
 | card.rwy.friction | (coeff) => `friction ${coeff.toFixed(2)}` | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · Code table 0366 (00–90 friction coefficient 0.00–0.90) |
-| card.rwy.brakingLabel | braking  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.rwy.brakingLabel | braking  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 | card.rwy.braking.poor | poor | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · Code table 0366 (91 braking action poor) |
 | card.rwy.braking.medium-poor | medium/poor | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · Code table 0366 (92 braking action medium/poor) |
 | card.rwy.braking.medium | medium | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · Code table 0366 (93 braking action medium) |
@@ -308,122 +308,122 @@
 | card.rwy.braking.unreliable | unreliable | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · Code table 0366 (99 unreliable) |
 | card.rwy.closedNote | runway non-operational (depth digit 99 = closed due to snow/slush/ice/large drifts/runway clearance, depth not reported; SNOCLO = aerodrome closed due to extreme deposit of snow) | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · Code table 1079 code 99 and §15.13.6 (SNOCLO) are modelled as distinct semantics |
 | card.rwy.clearedNote | CLRD: contamination cleared (followed by two friction digits or //) | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.13.6 (CLRD followed by a two-digit friction figure or //) |
-| card.rwy.wmoNote | WMO 306 FM15 §15.13.6 runway state code (code tables 0919/0519/1079/0366; verified against official WMO tables 2026-09-13, pending owner review) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| card.rwy.itemSep | ,  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.rwy.wmoNote | WMO 306 FM15 §15.13.6 runway state code (code tables 0919/0519/1079/0366; verified against official WMO tables 2026-09-13, reviewed against the official WMO tables) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.rwy.itemSep | ,  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.colon (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| card.colon | :  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.colon | :  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.dash (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| card.dash |  —  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.dash |  —  | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.rawTitle (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| card.rawTitle | Raw report (for professional cross-check) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.rawTitle | Raw report (for professional cross-check) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## card.rawHint (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| card.rawHint | hover or Tab-focus to cross-link with the plain-language rows | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| card.rawHint | hover or Tab-focus to cross-link with the plain-language rows | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## leaflet.tier (4 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| leaflet.tier.unknown | Weather unknown | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| leaflet.tier.poor | Weather poor | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| leaflet.tier.caution | Weather caution | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
-| leaflet.tier.good | Weather good | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| leaflet.tier.unknown | Weather unknown | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| leaflet.tier.poor | Weather poor | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| leaflet.tier.caution | Weather caution | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| leaflet.tier.good | Weather good | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.invalid-input (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.invalid-input | Parse expects a METAR/SPECI report string, received a non-string value | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.invalid-input | Parse expects a METAR/SPECI report string, received a non-string value | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.missing-station (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.missing-station | Not a METAR/SPECI report: station group missing or unrecognized | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.missing-station | Not a METAR/SPECI report: station group missing or unrecognized | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.missing-time (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.missing-time | Not a complete METAR/SPECI report: observation-time group missing | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.missing-time | Not a complete METAR/SPECI report: observation-time group missing | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.invalid-time (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.invalid-time | Observation-time group out of range (day 01–31 / hour 00–23 / minute 00–59) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.invalid-time | Observation-time group out of range (day 01–31 / hour 00–23 / minute 00–59) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.missing-validity (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.missing-validity | Not a complete TAF report: validity group ddHH/ddHH missing | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.missing-validity | Not a complete TAF report: validity group ddHH/ddHH missing | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.invalid-validity (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.invalid-validity | TAF validity group out of range (day 01–31 / start hour 00–23 / end hour 00–24) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.invalid-validity | TAF validity group out of range (day 01–31 / start hour 00–23 / end hour 00–24) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.unsupported-mode (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.unsupported-mode | Strict mode is not implemented for METAR yet (TAF-side parseTaf supports it) — omit `mode` or pass 'tolerant' | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.unsupported-mode | Strict mode is not implemented for METAR yet (TAF-side parseTaf supports it) — omit `mode` or pass 'tolerant' | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.strict-violation (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.strict-violation | TAF strict validation failed: rule violations or warning-severity parse warnings present (see the summary) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.strict-violation | TAF strict validation failed: rule violations or warning-severity parse warnings present (see the summary) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.batch-parse-failed (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.batch-parse-failed | Some reports in the batch failed to parse entirely (see the summary for per-station reasons) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.batch-parse-failed | Some reports in the batch failed to parse entirely (see the summary for per-station reasons) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.http-error (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.http-error | Source returned a non-2xx HTTP status | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.http-error | Source returned a non-2xx HTTP status | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.bad-schema (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.bad-schema | Response body does not match the agreed schema | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.bad-schema | Response body does not match the agreed schema | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.empty-data (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.empty-data | HTTP 200 with empty data — typically a wrong network name | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.empty-data | HTTP 200 with empty data — typically a wrong network name | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.timeout (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.timeout | Request aborted after the configured timeout | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.timeout | Request aborted after the configured timeout | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.network (1 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
-| errors.network | Network-level failure (offline, DNS, fetch refused) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the owner) · Self-authored display copy (no matching standard clause) |
+| errors.network | Network-level failure (offline, DNS, fetch refused) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |

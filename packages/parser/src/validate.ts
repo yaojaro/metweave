@@ -1,5 +1,5 @@
 /**
- * @metweave/parser — TAF 判据校验层（/validate，v0.2 补齐批：owner 9/24「其他全部修复」指令）。
+ * @metweave/parser — TAF 判据校验层（/validate，v0.2 补齐批：其他全部修复」指令）。
  * The TAF rule-validation layer:条文判据在解析层五处被显式移交至此（C2/C3/C5/B7 注释），本层收口。
  *
  * 判据清单（来源＝学习线补全清单 + taf-tac §3，条款号核自 WMO 306 FM 51）：

@@ -3,12 +3,12 @@
  *
  * 结构：头行（站名 + TAF 徽章 + AMD/COR/NIL/CNL 标志）→ 元信息（有效期 + 时长 / 发布时刻）→
  * **分段天气明细**（tafSegments 逐段「时间窗 + 类型徽 + 人话要素」，
- * 悬停=电码紧凑串——owner 9/23 指令：按拆分时间段给具体天气，专业/小白双受众）→ 气温极值（多组分行，置于分段上方——owner 五轮）→ 可选 RAW 对照。
+ * 悬停=电码紧凑串——指令：按拆分时间段给具体天气，专业/小白双受众）→ 气温极值（多组分行，置于分段上方——五轮）→ 可选 RAW 对照。
  * 与 card.ts 同纪律：纯 DOM 构建（createElement/textContent，无 innerHTML 注入面）、
  * 样式随组件注入（STYLE_ID 单次）、双语文案集中一张 locale 表、宿主 className 可叠加。
- * 版式契约（owner 9/24 指令）：卡宽 480、卡高上限 min(65vh, 680px) 且超高卡内上下滚动
+ * 版式契约（指令）：卡宽 480、卡高上限 min(65vh, 680px) 且超高卡内上下滚动
  * （超高弹窗不再占满整屏/被视口裁顶）、分段行间距 7px（段与段不贴死）。
- * 时区契约（owner 9/24 单制指令）：utcOffsetMinutes 决定全卡唯一展示时区（null=UTC 缺省 / 480=北京时），
+ * 时区契约（单制指令）：utcOffsetMinutes 决定全卡唯一展示时区（null=UTC 缺省 / 480=北京时），
  * 一处切换全卡一致；电码悬停（li.title）与 RAW 原文保持 UTC（与报文原码对齐，不随展示时区换算）。
  * 预报警示：档位/摘要是扫视辅助，不得用作运行判据（沿 METAR 卡口径）。
  */
@@ -46,7 +46,7 @@ import {
 export interface RenderTafCardOptions {
   /** 显示语言，缺省中文 */
   locale?: "zh" | "en";
-  /** 展开时刻（地图层传入）：与发布时刻同排右列「查看时刻 xxZ」（owner 六轮双列行） */
+  /** 展开时刻（地图层传入）：与发布时刻同排右列「查看时刻 xxZ」（六轮双列行） */
   at?: TafExpandAt;
   /** 附带 RAW 对照行（原文保真） */
   raw?: boolean;
@@ -54,7 +54,7 @@ export interface RenderTafCardOptions {
   className?: string;
   /** 站点名（元数据联表所得，如「ZLXY 西安/咸阳」）——标题下 muted 站名行；缺省不渲染（沿 METAR 卡口径） */
   stationTitle?: string;
-  /** 展示时区偏移（分钟）——owner 9/24 单制指令：全卡只显一个时区（旧「UTC+京时双括注」退役）。
+  /** 展示时区偏移（分钟）——单制指令：全卡只显一个时区（旧「UTC+京时双括注」退役）。
    *  缺省 null＝UTC 单制；zh 传 480＝北京时单制（京dd日HH:MM 全卡统一）；en 无本地时词表恒 UTC */
   utcOffsetMinutes?: number | null;
   /** 月锚（真实年月，2026-09-24 评测 P1 月界批）：报文日号（或自该月 1 日起的连续日序）归属的日历月。
@@ -234,7 +234,7 @@ const STYLE_TEXT = `
 .mw-taf-k-tempo { background: #fdf3dd; color: #8a5a00; }
 .mw-taf-k-prob { background: #eef0f3; color: #5a6b7d; }
 .mw-taf-period-note { color: #8a5a12; font-size: 11px; }
-/* 组级联动高亮（owner 三轮：悬停条目只点亮其来源组、悬停组片点亮对应条目/行头） */
+/* 组级联动高亮（三轮：悬停条目只点亮其来源组、悬停组片点亮对应条目/行头） */
 .mw-taf-item.mw-taf-hl { background: #fdeeb9; border-radius: 3px; }
 .mw-taf-period-head.mw-taf-hl { background: #fdf3dd; border-radius: 4px; }
 .mw-taf-meta.mw-taf-hl { background: #fdeeb9; border-radius: 3px; }
@@ -252,15 +252,15 @@ const STYLE_TEXT = `
 .mw-taf-rawseg-danger { color: #a02c2c; font-weight: 600; }
 .mw-taf-rawseg-caution { color: #8a5a12; }
 /* 联动可达性（评测工程 P0/P1）：tabIndex 聚焦通道 + 虚线 affordance；联动语言＝点亮＋浮签
-   （owner 9/24 统一批定稿：不做压暗——原 focus+context 压暗已移除，两卡同口径） */
+   （统一批定稿：不做压暗——原 focus+context 压暗已移除，两卡同口径） */
 .mw-taf-item.mw-taf-link, .mw-taf-period-head.mw-taf-link { border-bottom: 1px dashed #7f8c9a; cursor: help; }
-/* 就地电码浮签（owner 9/24 三轮）：绝对定位悬浮于条目上方——零占位零回流（旧 ::after 内联显码
+/* 就地电码浮签（三轮）：绝对定位悬浮于条目上方——零占位零回流（旧 ::after 内联显码
    内容进文档流，行宽一变就换行回流「跳一跳」）；pointer-events:none 不挡悬停链 */
 .mw-taf-codechip { position: absolute; display: none; z-index: 3; pointer-events: none; white-space: nowrap;
   font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: #44546a; background: #f7f9fc; border: 1px solid #cdd7e2; border-radius: 3px; padding: 1px 5px;
   box-shadow: 0 1px 3px rgba(20, 32, 45, 0.15); }
-/* 解码气泡（owner 9/24 统一批）：点击条目弹「电码→人话」逐行 + FM 51 依据行——METAR 卡同款点击契约 */
+/* 解码气泡（统一批）：点击条目弹「电码→人话」逐行 + FM 51 依据行——METAR 卡同款点击契约 */
 .mw-taf-decode { position: absolute; display: none; z-index: 4; max-width: 300px; background: #fff;
   border: 1px solid #cdd7e2; border-radius: 6px; padding: 6px 8px; box-shadow: 0 2px 8px rgba(20, 32, 45, 0.18);
   font: 12px/1.5 system-ui, sans-serif; color: #1c2733; }
@@ -437,7 +437,7 @@ const cloudLayerText = (layer: CloudElement, locale: "zh" | "en"): string => {
   return `${amount}${base}${conv}`;
 };
 
-/** 分段行条目：要素标签 + 人话值 + 联动组键（wind/vis/wx/clouds＝四要素组；group＝整变化组；owner 9/23 三轮组级联动） */
+/** 分段行条目：要素标签 + 人话值 + 联动组键（wind/vis/wx/clouds＝四要素组；group＝整变化组；三轮组级联动） */
 interface SegItem {
   label: string;
   text: string;
@@ -446,7 +446,7 @@ interface SegItem {
   full?: boolean;
 }
 
-// ---------------------------------------------------------------- 解码气泡（owner 9/24 统一批：点击条目出「电码→人话」+ 依据行）
+// ---------------------------------------------------------------- 解码气泡（统一批：点击条目出「电码→人话」+ 依据行）
 
 /** TAF 解码依据行文案（条款号核自 WMO-No. 306 卷 I.1（2019 版）FM 51–XV：风 §51.3 / 能见度 §51.4 /
  *  天气 §51.5（NSW §51.5.1）/ 云 §51.6；变化组条款未核到、不标——与 METAR 卡 DECODE_CITES 同四段式） */
@@ -703,7 +703,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   injectStyle();
   const locale = options.locale ?? "zh";
   const t = LOCALE[locale];
-  // 展示时区（owner 9/24 单制指令：全卡只显一个时区，旧「UTC+京时双括注」退役）：
+  // 展示时区（单制指令：全卡只显一个时区，旧「UTC+京时双括注」退役）：
   // 缺省 null＝UTC 单制；480＝北京时单制；en 无本地时词表（localTag null）恒 UTC
   const zone =
     options.utcOffsetMinutes !== undefined &&
@@ -716,7 +716,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   const minDay = report.validity?.startDay;
   const tag = t.localTag;
   /** 主显钟点：UTC＝dd日HH:MMZ；京＝北京时M月D日 HH:MM（真月历，月界批） */
-  /** 双日界引用（owner 9/24）：BJ 制下与 UTC 日期不同日时括注 UTC 日号（发布/查看/有效期端点用；
+  /** 双日界引用（）：BJ 制下与 UTC 日期不同日时括注 UTC 日号（发布/查看/有效期端点用；
    *  段头不加——日期已在位，重复括注徒增扫读噪音） */
   const refAt = (day: number, hour: number, minute: number): string => {
     if (zone === null) return "";
@@ -776,11 +776,11 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   const hours =
     (v.endDay >= v.startDay ? v.endDay - v.startDay : v.endDay + 31 - v.startDay) * 24 +
     (v.endHour - v.startHour);
-  // —— 联动注册表（owner 9/23 三轮：着色细化到组级——条目/行头/原文片/元信息行双向点亮）
+  // —— 联动注册表（三轮：着色细化到组级——条目/行头/原文片/元信息行双向点亮）
   const HL = "mw-taf-hl";
   /** 解码气泡依据键（FM 51 条款族——见 TAF_DECODE_CITES） */
   type TafCiteKey = keyof typeof TAF_DECODE_CITES;
-  /** 条目 → 解码气泡载荷（电码→人话行 + 依据键；点击条目时弹——owner 9/24 统一批） */
+  /** 条目 → 解码气泡载荷（电码→人话行 + 依据键；点击条目时弹——统一批） */
   const itemDecode = new Map<
     HTMLElement,
     { rows: Array<{ code: string; text: string }>; cites: TafCiteKey[] }
@@ -803,19 +803,19 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     tempsEl: undefined as HTMLElement | undefined,
     validityEl: undefined as HTMLElement | undefined,
   };
-  // —— 就地电码浮签（owner 9/24 三轮）：卡内绝对定位、悬浮于条目上方——零占位零回流
+  // —— 就地电码浮签（三轮）：卡内绝对定位、悬浮于条目上方——零占位零回流
   //（旧 ::after 内联显码内容进文档流，行宽一变就换行回流「跳一跳」）；随联动 activate/clear 显隐
   const codeChip = el("span", "mw-taf-codechip");
   card.append(codeChip);
   const showCodeChip = (target: HTMLElement): void => {
     codeChip.textContent = target.dataset.code ?? "";
     codeChip.style.display = "inline-block";
-    positionChipNear(card, codeChip, target); // 共享几何（owner 9/24 工程债批）：与 METAR 卡同一实现
+    positionChipNear(card, codeChip, target); // 共享几何（工程债批）：与 METAR 卡同一实现
   };
   const hideCodeChip = (): void => {
     codeChip.style.display = "none";
   };
-  // —— 解码气泡（owner 9/24 统一批：点击条目弹「电码→人话」逐行 + FM 51 依据行——METAR 卡同款点击契约；
+  // —— 解码气泡（统一批：点击条目弹「电码→人话」逐行 + FM 51 依据行——METAR 卡同款点击契约；
   // 切换语义与 METAR 一致：点已开的收起、点别的换内容、点空白处收起。
   // 键盘契约（2026-09-24 评测 P1 键盘批，两卡同款）：可聚焦元素（行头，代表段）Enter/Space 开合该行
   // 合并解码气泡、Esc 关闭；条目保持不入 Tab 序（复测工程 N3「行头代表段、Tab stop 减半」决策不推翻），
@@ -848,7 +848,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       decodeBubble.append(el("p", "mw-taf-decode-cite", TAF_DECODE_CITES[cite][locale]));
     }
     decodeBubble.style.display = "block";
-    // 共享落位（owner 9/24 工程债批）：下方优先/翻上方/钳制/滚动补偿与 METAR 卡同一实现
+    // 共享落位（工程债批）：下方优先/翻上方/钳制/滚动补偿与 METAR 卡同一实现
     positionBubbleAt(card, decodeBubble, item);
     if (decodeBubble.id === "") decodeBubble.id = `mw-taf-decode-${++decodeSeq}`;
     ariaOpen(item, decodeBubble, decodeBubble.id);
@@ -897,7 +897,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   };
   /**
    * 联动三通道（评测工程 P0：mouseenter 之外补 focusin——键盘可达；tabIndex 聚焦 + 虚线 affordance）。
-   * 联动语言＝点亮＋浮签（owner 9/24 统一批定稿：不做压暗）。focusable=false（分段条目）不入 Tab 序——
+   * 联动语言＝点亮＋浮签（统一批定稿：不做压暗）。focusable=false（分段条目）不入 Tab 序——
    * 行头代表整段聚焦，单卡 Tab stop 从 ~27 降半（复测工程 N3 简版）
    */
   const pairHover = (self: HTMLElement, others: () => HTMLElement[], focusable = true): void => {
@@ -914,7 +914,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     self.addEventListener("mouseleave", clearHl);
     self.addEventListener("focusout", clearHl);
   };
-  // 发布在前、有效期在后（owner 五轮语序）；展开时刻在位时与发布同行左右两列（owner 六轮）
+  // 发布在前、有效期在后（五轮语序）；展开时刻在位时与发布同行左右两列（六轮）
   if (report.issueTime !== undefined || options.at !== undefined) {
     const row = el("p", "mw-taf-meta mw-taf-meta-row");
     if (report.issueTime !== undefined) {
@@ -972,7 +972,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     }
   }
 
-  // 气温极值（owner 五轮：置于分段天气上方的基本固定信息；多组分行——组标题 + 高温一行 + 低温一行）
+  // 气温极值（五轮：置于分段天气上方的基本固定信息；多组分行——组标题 + 高温一行 + 低温一行）
   if (report.temperatures.length > 0) {
     const box = el("div", "mw-taf-temps");
     box.append(el("p", "mw-taf-meta", `${t.temps}：`));
@@ -1003,7 +1003,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     link.tempsEl = box;
   }
 
-  // —— 分段天气明细（owner 9/23 指令「按拆分时间段给具体天气」；三轮版式：两列一行两条、组级联动）
+  // —— 分段天气明细（指令「按拆分时间段给具体天气」；三轮版式：两列一行两条、组级联动）
   const rows = tafSegments(report);
   const rowEls: (HTMLElement | undefined)[] = [];
   if (rows.length > 0) {
@@ -1071,7 +1071,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         el("span", `mw-taf-k mw-taf-k-${row.kind.toLowerCase()}`, chipText),
       );
       link.heads.push({ el: head, rowIdx });
-      // 行体：带标签要素条目，两列网格一行两条（owner 三轮版式）；TEMPO/PROB 行＝发作态、过渡带行＝「转为」
+      // 行体：带标签要素条目，两列网格一行两条（三轮版式）；TEMPO/PROB 行＝发作态、过渡带行＝「转为」
       const body = el("div", "mw-taf-period-body");
       const items: SegItem[] =
         row.uncertain && src?.elements !== undefined
@@ -1100,11 +1100,11 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
               : originSpansOf(report, row.sourceIndex, it.key);
           if (spans.length > 0) {
             link.items.push({ el: item, spans });
-            // 就地电码（owner 9/24 交互批）：该条目值对应的原文片段，浮签随行显出——
+            // 就地电码（交互批）：该条目值对应的原文片段，浮签随行显出——
             // 对应关系在行内即可见，不再只靠卡底 RAW 区的高亮（滚动后常在视区外）
             item.dataset.code = spans.map((sp) => report.raw.slice(sp.start, sp.end)).join(" ");
           }
-          // 解码气泡载荷（owner 9/24 统一批）：行值与分段行同源（过渡带＝组内所列、其余＝展示态合成），
+          // 解码气泡载荷（统一批）：行值与分段行同源（过渡带＝组内所列、其余＝展示态合成），
           // 逐组/逐层成对「电码→人话」+ 依据键——点击条目时弹（见卡级 click 委托）
           const dRows = decodeRowsOf(it.key, row.uncertain ? src?.elements : shown, locale);
           if (dRows.length > 0) {

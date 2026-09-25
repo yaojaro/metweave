@@ -650,7 +650,7 @@ function rawSlice(raw: string, span: { start: number; end: number } | undefined)
   return raw.slice(span.start, span.end);
 }
 
-describe("TAF 分段视图 tafSegments（渲染层②数据面，owner 9/23 指令「按拆分时间段给具体天气」）", () => {
+describe("TAF 分段视图 tafSegments（渲染层分段数据面：按拆分时间段给具体天气）", () => {
   it("aw 实证（ZGSZ 30h 报）：基况/TEMPO 挂载/BECMG 过渡带/BECMG 转变后四行按时间升序，行值=段中点展开", () => {
     const r = parseTaf(
       "TAF ZGSZ 230303Z 2306/2412 21004MPS 8000 BKN040 TX32/2306Z TX32/2406Z TN27/2322Z TEMPO 2306/2309 TSRA FEW020CB BKN040 BECMG 2310/2312 10004MPS=",

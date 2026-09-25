@@ -44,7 +44,7 @@ export const STANDARDS = {
   AP117: "民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航）",
   CCAR117: "中国民用航空气象工作规则 CCAR-117R1",
   MAVIS: "UK Met Office MAVIS — How to decode a METAR（权威机构转述）",
-  PRODUCT: "产品显示文案（无标准对应条款，措辞经 owner 术语终审）",
+  PRODUCT: "产品显示文案（无标准对应条款，措辞经维护者终审）",
 };
 
 /**
@@ -63,7 +63,7 @@ const STANDARDS_EN = {
     "CAAC Ground Observation Specifications AP-117-TM-2021-01R2 (Civil Aviation Administration of China)",
   CCAR117: "CCAR-117R1 — China Civil Aviation Meteorological Working Rules",
   MAVIS: "UK Met Office MAVIS — How to decode a METAR (as relayed by an authoritative body)",
-  PRODUCT: "Product display copy (no matching standard clause; wording approved by the owner)",
+  PRODUCT: "Product display copy (no matching standard clause; wording approved by the maintainer)",
 };
 
 for (const code of Object.keys(STANDARDS))
@@ -333,7 +333,7 @@ function validate(zhTerms, enTerms) {
         errs.push(`${lang}:${k} 非 official 条目不得引 PRODUCT 之外的规范`);
       // 依据完备：product/template 条目必须恰有一条 PRODUCT 引用——不许出现「refs 为空」
       // 的第三态（空 refs 在术语册里渲染成「—」，读起来像「未登记依据」，而 PRODUCT 行
-      // 表达的是「自拟、无标准条款、措辞经 owner 终审」，信息量更大且是唯一诚实归类）。
+      // 表达的是「自拟、无标准条款、措辞经维护者终审」，信息量更大且是唯一诚实归类）。
       // 2026-09-15 发布前审核实测：35 条显示「—」，其中 25 条实有条款可依（应升 official）、
       // 10 条真自拟（应进 products 列表）——两类都不该停在第三态。
       if (e.kind !== "official") {

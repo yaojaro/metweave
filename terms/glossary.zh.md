@@ -13,7 +13,7 @@
 - **AP117** — 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航）
 - **CCAR117** — 中国民用航空气象工作规则 CCAR-117R1
 - **MAVIS** — UK Met Office MAVIS — How to decode a METAR（权威机构转述）
-- **PRODUCT** — 产品显示文案（无标准对应条款，措辞经 owner 术语终审）
+- **PRODUCT** — 产品显示文案（无标准对应条款，措辞经维护者终审）
 
 ## card.label（11 条）
 
@@ -39,16 +39,16 @@
 | card.badge.metar | 例行报告 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.1 模板注 (1)（aerodrome routine meteorological report）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六 说明 1（机场例行天气报告） |
 | card.badge.corrected | 更正报 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.1 模板注 (2)（COR for corrected reports）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六（METAR COR 更正报） |
 | card.badge.auto | 自动观测 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.4（Code word AUTO）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六（自动或缺省报告标志） |
-| card.badge.cavokShort | 能见度佳、低云与天气无碍 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.badge.cavokShort | 能见度佳、低云与天气无碍 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.missingGroup（4 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| card.missingGroup.wind | 风组缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.missingGroup.visibility | 能见度组缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.missingGroup.weather | 天气组缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.missingGroup.rvr | 跑道视程缺测（RVRNO） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.missingGroup.wind | 风组缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.missingGroup.visibility | 能见度组缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.missingGroup.weather | 天气组缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.missingGroup.rvr | 跑道视程缺测（RVRNO） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.cavokHint（1 条）
 
@@ -68,17 +68,17 @@
 |---|---|---|---|---|
 | card.wind.gust | 阵风 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.5（Gust）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 第三十九条（阵风） |
 | card.wind.variable | 风向不定 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.2（VRB 条件）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 第三十九条（风向不定） |
-| card.wind.missing | 风向缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.wind.missing | 风向缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 | card.wind.calm | 静风 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.4（Calm 编报 00000）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 第三十九条（静风） |
 | card.wind.vrbNote | VRB = 风向不定（全向） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.2（VRB 条件）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 第三十九条（风向不定） |
 | card.wind.calmNote | 静风 = 风速为零 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.4（Calm 编报 00000） |
 | card.wind.variationNote | 风向变化范围 = 风向在两个边界值之间变动（10 分钟观测时段内、顺时针方向编报） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.3（two extreme directions, clockwise order）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 第三十九条、第四十五条（风向变化范围、顺时针记录） |
-| card.wind.hintSep | ； | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.wind.hintSep | ； | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 | card.wind.unit.kt | kt = 节（海里/小时） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5（风速单位 KT） |
 | card.wind.unit.mps | mps = 米/秒 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5（风速单位 MPS）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录十一（风速单位米/秒） |
 | card.wind.unit.kmh | kmh = 千米/小时 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案 · FM15 风速仅 KT/MPS；KMH 为容错解析口径（WMO 电码族 FM50 等使用） |
-| card.wind.gustOf | (value) => `（阵风 ${value}）` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.wind.variationOf | (min, max) => `（风向在 ${deg3(min)}° 与 ${deg3(max)}° 间变动）` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.wind.gustOf | (value) => `（阵风 ${value}）` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.wind.variationOf | (min, max) => `（风向在 ${deg3(min)}° 与 ${deg3(max)}° 间变动）` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.cloud（26 条）
 
@@ -88,21 +88,21 @@
 | card.cloud.amount.SCT | 疏云：约 3–4 个量（3/8–4/8） | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · 附录 3 METAR/SPECI 模板（SCT = 3–4 oktas）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 第一百三十一条（疏云 3/8-4/8） |
 | card.cloud.amount.BKN | 多云：约 5–7 个量（5/8–7/8） | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · 附录 3 METAR/SPECI 模板（BKN = 5–7 oktas）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 第一百三十一条（多云 5/8-7/8） |
 | card.cloud.amount.OVC | 阴：8 个量（8/8，天空全遮蔽） | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · 附录 3 METAR/SPECI 模板（OVC = 8 oktas）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 第一百三十一条（阴天 8/8） |
-| card.cloud.shortAmount.FEW | 少云 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.shortAmount.SCT | 疏云 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.shortAmount.BKN | 多云 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.shortAmount.OVC | 阴 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.baseShortMeters | (meters) => `，云底约 ${meters} 米` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.metersShort | (meters) => ` 约 ${meters} 米` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.baseShortFeet | (feet) => `，云底 ${feet} 英尺` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.feetShort | (feet) => ` ${feet} 英尺` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.metersDerivedNote | （米为本库按 1 英尺 = 0.3048 米换算；报文只编英尺且以百英尺为台阶，故米值为约值） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.amountUnknown | 云量缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.vvMissing | 垂直能见度缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.heightUnknown | 云底缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.vvShort | 垂直能见度 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.baseFtMeters | (feet, meters) => `，云底 ${feet} 英尺 ≈ ${meters} 米` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.cloud.minimumOf | (meters, direction) => `最低能见度 ${meters} 米（${direction} 方向）` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.cloud.shortAmount.FEW | 少云 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.shortAmount.SCT | 疏云 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.shortAmount.BKN | 多云 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.shortAmount.OVC | 阴 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.baseShortMeters | (meters) => `，云底约 ${meters} 米` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.metersShort | (meters) => ` 约 ${meters} 米` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.baseShortFeet | (feet) => `，云底 ${feet} 英尺` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.feetShort | (feet) => ` ${feet} 英尺` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.metersDerivedNote | （米为本库按 1 英尺 = 0.3048 米换算；报文只编英尺且以百英尺为台阶，故米值为约值） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.amountUnknown | 云量缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.vvMissing | 垂直能见度缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.heightUnknown | 云底缺测 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.vvShort | 垂直能见度 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.baseFtMeters | (feet, meters) => `，云底 ${feet} 英尺 ≈ ${meters} 米` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.cloud.minimumOf | (meters, direction) => `最低能见度 ${meters} 米（${direction} 方向）` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 | card.cloud.skyClear.SKC | 无云（人工观测） | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · 附录 3 METAR/SPECI 模板（NSC = no significant cloud；NCD = nil cloud detected；SKC/CLR 为北美惯例电码） |
 | card.cloud.skyClear.NSC | 无显著云 | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · 附录 3 METAR/SPECI 模板（NSC = no significant cloud；NCD = nil cloud detected；SKC/CLR 为北美惯例电码） |
 | card.cloud.skyClear.NCD | 无云（自动站未探测） | official | packages/render/src/card.ts#LOCALE | ICAOANNEX3 · ICAO Annex 3 — Meteorological Service for International Air Navigation (21st ed., Amd 82) · 附录 3 METAR/SPECI 模板（NSC = no significant cloud；NCD = nil cloud detected；SKC/CLR 为北美惯例电码） |
@@ -160,17 +160,17 @@
           : `阵${phenom}`
         : phenom === ""
           ? descriptor
-          : `${descriptor}${phenom}` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.wx.join | 、 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.wx.joinParts |  | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.wx.hazard | （飞行威胁大） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+          : `${descriptor}${phenom}` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.wx.join | 、 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.wx.joinParts |  | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.wx.hazard | （飞行威胁大） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.timeText（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
 | card.timeText | (t) =>
-      `${String(t.day).padStart(2, "0")}日 ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")} UTC` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+      `${String(t.day).padStart(2, "0")}日 ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")} UTC` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.ago（1 条）
 
@@ -181,7 +181,7 @@
         ? `（${minutes} 分钟前）`
         : minutes < 48 * 60
           ? `（${Math.floor(minutes / 60)} 小时前）`
-          : `（${Math.floor(minutes / 1440)} 天前）` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+          : `（${Math.floor(minutes / 1440)} 天前）` | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.rvrNote（3 条）
 
@@ -216,9 +216,9 @@
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| card.decode.title | 转换说明（原码 → 含义） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.decode.code | 原码 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.decode.basisLabel | 依据： | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.decode.title | 转换说明（原码 → 含义） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.decode.code | 原码 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.decode.basisLabel | 依据： | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 | card.decode.cite.cavok | WMO 306 卷 I.1（2019 年版）FM 15 §15.10——CAVOK 代替能见度/天气/云组：能见度 ≥10 km、无低云与 CB/TCU、无重要天气 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.10（CAVOK 代替能见度/天气/云三族） |
 | card.decode.cite.wind | WMO 306 卷 I.1（2019 年版）FM 15 §15.5.1–15.5.6——dddff＝观测前 10 分钟平均风向与平均风速，单位后缀紧跟组后（§15.5.1）；VRB＝风向不定、00000＝静风、G＝阵风、P＝超上限（同节各条） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.1–§15.5.6（dddff 风向风速组） |
 | card.decode.cite.windVariation | WMO 306 卷 I.1（2019 年版）FM 15 §15.5.3——dndndnVdxdxdx＝10 分钟内风向变化 ≥60° 且 <180° 时的两个边界方位（顺时针） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.5.3（风向变化组 dndndnVdxdxdx） |
@@ -241,7 +241,7 @@
 | card.trendNote.nosig | 无重要变化 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.15（NOSIG = no significant change） |
 | card.trendNote.becmg | 渐变（逐步转变） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.4（BECMG）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六（渐变 BECMG） |
 | card.trendNote.tempo | 短时波动（临时性变化） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.5（TEMPO temporary fluctuations）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六（短时 TEMPO） |
-| card.trendNote.unspecified | 变化趋势段（指示组缺失，渐变/短时不可辨） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.trendNote.unspecified | 变化趋势段（指示组缺失，渐变/短时不可辨） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 | card.trendNote.periodAt | (text) => {
         const slash = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(text);
         if (slash !== null) {
@@ -252,21 +252,21 @@
         const hm = `${m[2]}:${m[3]}`;
         return m[1] === "TL" ? `持续至 ${hm}` : m[1] === "FM" ? `自 ${hm} 起` : `预计时刻 ${hm}`;
       } | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.14.3（FM from / TL until / AT at）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六（变化时段：从/至/在，FMnnnn 和/或 TLnnnn 或 ATnnnn） |
-| card.trendNote.contentLead | 趋向： | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.trendNote.contentLead | 趋向： | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 | card.trendNote.nsw | NSW = 趋势时段内无重要天气 | official | packages/render/src/card.ts#LOCALE | WMO4678 · WMO Code table 4678 — Present and forecast weather (in WMO-No. 306 Vol I.1) · NSW = No significant weather（表 4678 注：仅用于趋势报）；AP117 · 民用航空气象地面观测规范 AP-117-TM-2021-01R2（中国民航） · 附录六（无重要天气 NSW） |
-| card.trendNote.windShear | 趋势内含风切变（WS）——起降注意 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.trendNote.windShear | 趋势内含风切变（WS）——起降注意 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.warningText（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| card.warningText | (_code, message) => message | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.warningText | (_code, message) => message | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.sep（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| card.sep | 　 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.sep | 　 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.rwy（32 条）
 
@@ -289,12 +289,12 @@
 | card.rwy.coverage.2 | 11–25% | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · 电码表 0519（2 11–25%） |
 | card.rwy.coverage.5 | 26–50% | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · 电码表 0519（5 26–50%） |
 | card.rwy.coverage.9 | 51–100% | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · 电码表 0519（9 51–100%） |
-| card.rwy.coverageLabel | 覆盖  | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.rwy.depthLabel | 深度  | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.rwy.coverageLabel | 覆盖  | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.rwy.depthLabel | 深度  | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 | card.rwy.depthText | (mm) =>
         mm === 0 ? "<1 mm" : mm === 400 ? "40 cm 或以上" : mm >= 100 ? `${mm / 10} cm` : `${mm} mm` | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · 电码表 1079（00=less than 1 mm；01–90 毫米；92–98=10–40 cm；98=40 cm or more） |
 | card.rwy.friction | (coeff) => `摩擦系数 ${coeff.toFixed(2)}` | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · 电码表 0366（00–90 friction coefficient 0.00–0.90） |
-| card.rwy.brakingLabel | 制动作用  | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.rwy.brakingLabel | 制动作用  | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 | card.rwy.braking.poor | 差 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · 电码表 0366（91 Braking action poor） |
 | card.rwy.braking.medium-poor | 较差 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · 电码表 0366（92 Braking action medium/poor） |
 | card.rwy.braking.medium | 中 | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · 电码表 0366（93 Braking action medium） |
@@ -303,41 +303,41 @@
 | card.rwy.braking.unreliable | 不可靠（摩擦数值不可靠） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · 电码表 0366（99 Unreliable） |
 | card.rwy.closedNote | 跑道不可用（深度位 99＝因雪/雪浆/冰/大雪堆/清雪作业关闭，深度未报；SNOCLO＝机场因大量积雪关闭） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · 电码表 1079 电码 99 与 §15.13.6（SNOCLO）语义分列 |
 | card.rwy.clearedNote | CLRD：跑道污染已清除（后随摩擦两位或 //） | official | packages/render/src/card.ts#LOCALE | WMO306 · WMO-No. 306 Manual on Codes, Volume I.1 (2019) — FM 15 METAR/SPECI · §15.13.6（CLRD 后随摩擦两位数或 //） |
-| card.rwy.wmoNote | WMO 306 FM15 §15.13.6 跑道状态电码（电码表 0919/0519/1079/0366；已按官方标准核对 2026-09-13，待 owner 终审） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| card.rwy.itemSep | ， | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.rwy.wmoNote | WMO 306 FM15 §15.13.6 跑道状态电码（电码表 0919/0519/1079/0366；已按官方标准核对 2026-09-13，已按官方电码表核对） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.rwy.itemSep | ， | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.colon（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| card.colon | ： | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.colon | ： | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.dash（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| card.dash | —— | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.dash | —— | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.rawTitle（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| card.rawTitle | 报文原文（专业人员核对用） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.rawTitle | 报文原文（专业人员核对用） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## card.rawHint（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| card.rawHint | 悬停或 Tab 聚焦可与人话对照 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| card.rawHint | 悬停或 Tab 聚焦可与人话对照 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.tier（4 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.tier.unknown | 天气不明 | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| leaflet.tier.poor | 天气差 | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| leaflet.tier.caution | 天气注意 | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
-| leaflet.tier.good | 天气好 | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.tier.unknown | 天气不明 | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| leaflet.tier.poor | 天气差 | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| leaflet.tier.caution | 天气注意 | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| leaflet.tier.good | 天气好 | product | packages/leaflet/src/index.ts#TIER_WORDS | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg01（1 条）
 
@@ -832,7 +832,7 @@ const bindCodeZoom = (map: Leaflet.Map): void => {
 const tafLayerAt = new WeakMap<Leaflet.LayerGroup, TafExpandAt>();
 /** 各层的日历月锚（2026-09-24 评测 P1 月界批）：at 连续序「自该月 1 日起」的基准月 */
 const tafLayerCalendar = new WeakMap<Leaflet.LayerGroup, TafCalendarAnchor>();
-/** 各层的可变 card 选项覆盖（owner 9/24 时区单制：setTafLayerTime 带 card 即合并——切时区不清层重建、
+/** 各层的可变 card 选项覆盖（时区单制：setTafLayerTime 带 card 即合并——切时区不清层重建、
  *  滑杆换时刻不带 card 不回退；弹窗刷新读此处而非建层闭包，已开弹窗即时随时区换内容） */
 const tafLayerCard = new WeakMap<
   Leaflet.LayerGroup,
@@ -965,7 +965,7 @@ function tafMarkerState(
   }
   if (!noTimeline && v !== undefined) {
     const expansion = expandTaf(r, at, anchor);
-    // 发作窗内档位/摘要按「主导段 + TEMPO 叠加」合成态（owner 9/24 实测批：雷雨发作窗圆点不升档＝
+    // 发作窗内档位/摘要按「主导段 + TEMPO 叠加」合成态（实测批：雷雨发作窗圆点不升档＝
     // 图上永远看不到危险窗——叠加合并式与下方提示语同一份，单一来源不漂移）
     const effective =
       expansion.tempo !== undefined
@@ -1045,12 +1045,12 @@ async function populateTafLayer(
 
     if (options.popup ?? true) {
       // 惰性弹窗（评测工程 P2-1）：占位 DOM 只在 popupopen 时换真卡——滑杆换时刻不清层，重开即见新时刻卡；
-      // maxWidth 480 = 卡片设计宽（owner 9/24 加宽指令，renderTafCard max-width 同步）
+      // maxWidth 480 = 卡片设计宽（加宽指令，renderTafCard max-width 同步）
       marker.bindPopup(document.createElement("div"), { maxWidth: 480, ...options.popupOptions });
       // 刷新函数（复测 N1/N2）：按层当前时刻重展开取 notes（置顶提示随换时刻更新，与 tooltip 同源），
       // 只重建卡片内容不动焦点——焦点移入仅发生在真实 popupopen（键盘拖滑杆不再被抢焦）；
-      // card 选项读层的可变覆盖（tafLayerCard）而非建层闭包——切时区后已开弹窗即时换内容（owner 9/24）；
-      // 报文数据面同样现读 item.report（owner 9/24 方案B：宿主原位换报——如按查看时刻切换上一周期在效报——
+      // card 选项读层的可变覆盖（tafLayerCard）而非建层闭包——切时区后已开弹窗即时换内容（）；
+      // 报文数据面同样现读 item.report（方案B：宿主原位换报——如按查看时刻切换上一周期在效报——
       // 换报后已开弹窗即时跟随新报，捕获建层时的 r/noTimeline 会停在旧报）；
       // 月界批：层连续序 current 归一到本报锚月再喂展开/渲染（跨月报池各报正确），card 注入本月锚
       const refresh = (popup: Leaflet.Popup): void => {
@@ -1080,7 +1080,7 @@ async function populateTafLayer(
           if (stationName !== undefined) cardOpts.stationTitle = stationName;
         }
         const card = renderTafCard(rNow, cardOpts);
-        // 卡内限高滚动（owner 9/24）的滚轮隔离由 Leaflet 弹窗内建 disableScrollPropagation(contentNode)
+        // 卡内限高滚动（）的滚轮隔离由 Leaflet 弹窗内建 disableScrollPropagation(contentNode)
         // 提供（只截传播不拦默认滚动——实测勿再叠加自带监听：纯冗余）；行为锁见 index.test.ts C14
         if (fresh.notes.length > 0) {
           const lead = document.createElement("p");
@@ -1175,7 +1175,7 @@ export async function setTafLayerTime(
       minute: 0,
     };
   if (options.at !== undefined) tafLayerAt.set(layer, options.at);
-  // card 覆盖合并（owner 9/24 时区单制）：带 card 即更新层的可变覆盖并刷新已开弹窗；不带（滑杆换时刻）不回退
+  // card 覆盖合并（时区单制）：带 card 即更新层的可变覆盖并刷新已开弹窗；不带（滑杆换时刻）不回退
   if (options.card !== undefined) {
     tafLayerCard.set(layer, { ...tafLayerCard.get(layer), ...options.card });
   }
@@ -1208,7 +1208,7 @@ const fmtTafAt = (at: TafExpandAt, locale: "zh" \| "en" = "zh"): string =>
     ? `${String(at.day).padStart(2, "0")}日 ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")}Z`
     : `Day ${String(at.day).padStart(2, "0")} ${String(at.hour).padStart(2, "0")}:${String(at.minute).padStart(2, "0")} Z`;
 
-/** 控件时刻显示·本地时（owner 9/24 时区单制）：tag+M月D日HH:MM——月位显式（2026-09-24 评测 P1 月界批）：
+/** 控件时刻显示·本地时（时区单制）：tag+M月D日HH:MM——月位显式（2026-09-24 评测 P1 月界批）：
  *  calendarAnchor 在位时走真实月历（at 为自锚月 1 日起的连续日序，day>31 按进位恒正确、跨月不回绕）；
  *  缺席时按 31 天折回（残余近似仅显示位：无月语境无从判读真实月份，控件值本身不受影响） */
 const fmtTafZone = (
@@ -1253,11 +1253,11 @@ export interface TafTimeControlOptions {
   /** 滑杆终点时刻；缺省自动取各站最晚有效期止（评测共识⑤：滑杆窗对齐数据，不再盲拖出界） */
   to?: TafExpandAt;
   /** 轴内刻度间隔（分钟；缺省＝仅两端起止标注）。刻度对齐整点（自窗内首个对齐刻度起），
-   *  日界（展示时区的 00 时）标 dd日，标签随展示时区单制——owner 9/24 底部时间轴批 */
+   *  日界（展示时区的 00 时）标 dd日，标签随展示时区单制——底部时间轴批 */
   tickEveryMinutes?: number;
   /** 显示语言（缺省 zh；en 不加「日」字与本地时——评测工程 P2-3 i18n 漏网） */
   locale?: "zh" \| "en";
-  /** 展示时区偏移（分钟）——owner 9/24 单制：缺省 null＝UTC 单制；zh 传 480＝北京时单制（标签与两端标注同随） */
+  /** 展示时区偏移（分钟）——单制：缺省 null＝UTC 单制；zh 传 480＝北京时单制（标签与两端标注同随） */
   utcOffsetMinutes?: number \| null;
   /** 日历月锚（2026-09-24 评测 P1 月界批）：滑杆零点所在真实年月（month 1–12）——from/to/at 视为
    *  自该月 1 日起的连续日序（day 可超月长），北京时标签走真实月历、跨月不回绕；缺省 31 天折回显示 */
@@ -1270,133 +1270,133 @@ export interface TafTimeControlOptions {
 
 /**
  * A framework-free time-scrub control element for a TAF layer: one range input drives every
- * station | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+ * station | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg02（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg02 | 北京时 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg02 | 北京时 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg03（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg03 | 预报时刻 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg03 | 预报时刻 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg04（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg04 | 北京时${z.getUTCMonth() + 1}月${z.getUTCDate()}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg04 | 北京时${z.getUTCMonth() + 1}月${z.getUTCDate()}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg05（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg05 | 北京时${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")} | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg05 | 北京时${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")} | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg06（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg06 | 北京时${String(day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg06 | 北京时${String(day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg07（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg07 | 北京时${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")} | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg07 | 北京时${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")} | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg08（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg08 | ${String(at.day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg08 | ${String(at.day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg01（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg01 | IEM 请求超时（>${options.timeoutMs}ms，network=${network}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg01 | IEM 请求超时（>${options.timeoutMs}ms，network=${network}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg02（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg02 | 网络请求失败（源：IEM，network=${network}）：请检查网络连通性后重试（${reason}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg02 | 网络请求失败（源：IEM，network=${network}）：请检查网络连通性后重试（${reason}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg03（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg03 | IEM 响应不是合法 JSON（可能被代理/防火墙拦截，network=${network}）：${reason} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg03 | IEM 响应不是合法 JSON（可能被代理/防火墙拦截，network=${network}）：${reason} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg04（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg04 | IEM 响应异常：缺少 data 数组（network=${network}，schema 不符） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg04 | IEM 响应异常：缺少 data 数组（network=${network}，schema 不符） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg05（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg05 | IEM 响应异常：data 存在 station/raw 非字符串的记录（network=${network}，schema 不符） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg05 | IEM 响应异常：data 存在 station/raw 非字符串的记录（network=${network}，schema 不符） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg06（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg06 | IEM 返回空数据（network=${network}）——请核对 IEM 网络名（如 CN__ASOS/RU__ASOS，参考 https://mesonet.agron.iastate.edu/sites/networks.php） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg06 | IEM 返回空数据（network=${network}）——请核对 IEM 网络名（如 CN__ASOS/RU__ASOS，参考 https://mesonet.agron.iastate.edu/sites/networks.php） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg07（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg07 | 报文解析失败 ${failures.length} 条（network=${network}）——${failures.slice(0, 3).join("；")}${failures.length > 3 ? "……" : ""} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg07 | 报文解析失败 ${failures.length} 条（network=${network}）——${failures.slice(0, 3).join("；")}${failures.length > 3 ? "……" : ""} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg08（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg08 | aviationweather TAF 请求超时（>${options.timeoutMs}ms） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg08 | aviationweather TAF 请求超时（>${options.timeoutMs}ms） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg09（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg09 | 网络请求失败（源：aviationweather TAF）：请检查网络连通性后重试（${reason}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg09 | 网络请求失败（源：aviationweather TAF）：请检查网络连通性后重试（${reason}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg10（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg10 | aviationweather TAF 响应读取失败：${reason} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg10 | aviationweather TAF 响应读取失败：${reason} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg11（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg11 | aviationweather TAF 返回空数据——请核对 ids 站码（如 ZBAA,ZBAD；端点 format=raw） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg11 | aviationweather TAF 返回空数据——请核对 ids 站码（如 ZBAA,ZBAD；端点 format=raw） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg12（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg12 | ogimet TAF 请求超时（>${options.timeoutMs}ms，站=${station}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg12 | ogimet TAF 请求超时（>${options.timeoutMs}ms，站=${station}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg13（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg13 | 网络请求失败（源：ogimet TAF，站=${station}）：${reason} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg13 | 网络请求失败（源：ogimet TAF，站=${station}）：${reason} | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg14（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg14 | ogimet TAF HTTP ${res.status}（站=${station}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| sources.msg14 | ogimet TAF HTTP ${res.status}（站=${station}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg001（1 条）
 
@@ -1629,7 +1629,7 @@ export interface TafTimeControlOptions {
 
     // 指示组缺失趋势段两形态——传输磨损所致（WMO 306 FM15 §15.14.3 时段词 AT/TL/FM 不得脱离指示组）：
     // ①粘连——指示组与时段词丢空格（BECMGTL0350，IEM 归档实弹 10 次）：宽容拆分，语义完整可恢复；
-    // ②裸时段词——指示组整组丢失（Q1009 TL0730 …，IEM 归档实弹 128 次）：按 kind  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+    // ②裸时段词——指示组整组丢失（Q1009 TL0730 …，IEM 归档实弹 128 次）：按 kind  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg002（1 条）
 
@@ -1686,7 +1686,7 @@ export interface TafTimeControlOptions {
       }
     }
     // 裸斜杠时段词（1616/1618——ICAO Annex 3 模板 / 中国民航主流趋势时段编法，指示组缺失）：
-    // 与 AT/TL/FM 裸词同纪律——kind  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+    // 与 AT/TL/FM 裸词同纪律——kind  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg003（1 条）
 
@@ -1794,7 +1794,7 @@ export interface TafTimeControlOptions {
 
     // RVRNO：RVR 设备存在但明示不可用（显式缺测，区别于组省略）。
     // 正文位与 RMK 位行为统一（2026-09-15 方案一，专业判读定案）：一律进 remarks（kind
-    //  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+    //  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg004（1 条）
 
@@ -1872,7 +1872,7 @@ export interface TafTimeControlOptions {
 
     // 温度预告组（TAF TX/TN 混入 METAR 通路，IEM 归档实弹 26 次——中国区 TAF 行混入 METAR 流）：
     // TX25/0907Z = 最高 25°C、09 日 07Z 到达（ICAO Annex 3 附录五温度预告组，M 前缀 = 负值）。
-    // 认组收下进 remarks（kind  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+    // 认组收下进 remarks（kind  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg005（1 条）
 
@@ -1903,7 +1903,7 @@ export interface TafTimeControlOptions {
       }
       if (weatherParsed.signWithVc) {
         // 强度符与 VC 并存（-VCTSRA 家族，NWS 自动站实弹）：互斥是明文条款（4678 限定槽
-        // 四选一、FAA AIM「Intensity and  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+        // 四选一、FAA AIM「Intensity and  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg006（1 条）
 
@@ -2026,28 +2026,28 @@ export interface TafTimeControlOptions {
     }
 
     // 变化能见度（FAA 正文位形态：主能见度组后跟「VIS 1/4V1/2」变化区间）——
-    // IR 建模为 RemarkKind  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+    // IR 建模为 RemarkKind  | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg007（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg007 | 未识别的组（${text}）——已如实收下 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg007 | 未识别的组（${text}）——已如实收下 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg008（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg008 | 后续 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg008 | 后续 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg009（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg009 | VV 组与云层组并存（WMO 15.9.2：VV 顶替整个云组）——报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg009 | VV 组与云层组并存（WMO 15.9.2：VV 顶替整个云组）——报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## parser.msg010（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| parser.msg010 | ${clearCode.code}（无云电码）与云层组并存——互斥形态，报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经 owner 术语终审） · 显示自拟（无标准对应条款） |
+| parser.msg010 | ${clearCode.code}（无云电码）与云层组并存——互斥形态，报文自洽性存疑 | product | packages/parser/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |

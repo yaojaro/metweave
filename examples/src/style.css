@@ -34,8 +34,7 @@ body {
 }
 
 /* 批4#16：页面导览一句（小白第一眼看懂本页干什么）；
-  top 回 10、left 52＝缩放控件右缘 44 + 8 间隙（owner 9/24 二次裁定：高度复原、只横向错开；
-  首版 top 10/left 10 与控件同角压叠，二版下移 83 被否回） */
+  top 回 10、left 52＝缩放控件右缘 44 + 8 间隙 */
 #guide {
   position: absolute;
   top: 10px;
@@ -113,7 +112,7 @@ body {
   color: #ffd9a0;
 }
 
-/* TAF 时间轴条（owner 9/24 窄条批）：免责声明栏上方的一条窄轴——播放键 + 现在 + 带刻度滑道 + 当前时刻 */
+/* TAF 时间轴条：免责声明栏上方的一条窄轴——播放键 + 现在 + 带刻度滑道 + 当前时刻 */
 #taf-timeline {
   position: fixed;
   left: 0;
@@ -368,7 +367,7 @@ body {
   top: 56px;
   right: 12px;
   z-index: 900;
-  width: max-content; /* 加宽到内容全展（owner 9/25 二轮：392 仍有内部横向滚动——表头/变化列 nowrap 撑出的最小宽即面板宽，杜绝内部左右移动）；max-width 兜底防超屏 */
+  width: max-content; /* 加宽到内容全展；max-width 兜底防超屏 */
   max-width: min(560px, calc(100vw - 40px));
   max-height: calc(100% - 80px);
   overflow: auto;
@@ -453,7 +452,7 @@ body {
   height: 8px;
 }
 
-/* 地图角四档图例（owner 9/24：METAR/TAF 两模式常驻；挪右侧——左侧陆地图层上不显眼，右侧海面背景衬托色点）。
+/* 地图角四档图例。
  * 与右侧错误面板竖向堆叠：图例贴时间轴上方，错误面板再高一层 */
 #map-legend {
   position: absolute;

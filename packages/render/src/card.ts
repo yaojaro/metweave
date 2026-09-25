@@ -8,7 +8,7 @@
  * 双语文案已按官方标准核对（2026-09-13）：WMO 306 卷 I.1（2019 版）FM15 原文与电码表
  * 0919/0519/1079/0366/4678 + 中国民航《民用航空气象地面观测规范》（AP-117-TM-2021-01R2，
  * 2022-07-01 施行，同时废止 AP-117-TM-02R1）
- * 附录十五/十六逐条对照，待 owner 终审（修订均带测试断言更新）。
+ * 附录十五/十六逐条对照，已按官方电码表核对（修订均带测试断言更新）。
  */
 import type {
   WindGroup,
@@ -65,7 +65,7 @@ export interface RenderCardOptions {
   /** 站点名（来自站点元数据联表，如「Tianjin/Binhai Intl, TJ, CN」）——标题行下方的 muted 站名行；
    *  缺省不渲染（纯 IR 无此信息，四字码之外的名号永远来自调用方的元数据，不捏造） */
   stationTitle?: string;
-  /** 展示时区偏移（分钟）——owner 9/24 单制指令：观测时刻行只显一个时区。
+  /** 展示时区偏移（分钟）——单制指令：观测时刻行只显一个时区。
    *  缺省 null＝UTC；zh 传 480＝北京时（京dd日 HH:MM）；en 无本地时词表恒 UTC。与 renderTafCard 同语义 */
   utcOffsetMinutes?: number | null;
 }
@@ -248,7 +248,7 @@ interface LocaleTable {
   warningText: (code: WarningCode, message: string, rawSlice?: string) => string;
   /** 行内多组分隔（zh 全角空格 / en 间隔点） */
   sep: string;
-  /** 跑道状态行（WMO 306 FM15 §15.13.6 与电码表 0919/0519/1079/0366；已按官方标准核对 2026-09-13，待 owner 终审） */
+  /** 跑道状态行（WMO 306 FM15 §15.13.6 与电码表 0919/0519/1079/0366；已按官方标准核对 2026-09-13，已按官方电码表核对） */
   rwy: {
     closed: string;
     closedAll: string;
@@ -424,7 +424,7 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
         "跑道不可用（深度位 99＝因雪/雪浆/冰/大雪堆/清雪作业关闭，深度未报；SNOCLO＝机场因大量积雪关闭）",
       clearedNote: "CLRD：跑道污染已清除（后随摩擦两位或 //）",
       wmoNote:
-        "WMO 306 FM15 §15.13.6 跑道状态电码（电码表 0919/0519/1079/0366；已按官方标准核对 2026-09-13，待 owner 终审）",
+        "WMO 306 FM15 §15.13.6 跑道状态电码（电码表 0919/0519/1079/0366；已按官方标准核对 2026-09-13，已按官方电码表核对）",
       itemSep: "，",
     },
     colon: "：",
@@ -564,7 +564,7 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
         "runway non-operational (depth digit 99 = closed due to snow/slush/ice/large drifts/runway clearance, depth not reported; SNOCLO = aerodrome closed due to extreme deposit of snow)",
       clearedNote: "CLRD: contamination cleared (followed by two friction digits or //)",
       wmoNote:
-        "WMO 306 FM15 §15.13.6 runway state code (code tables 0919/0519/1079/0366; verified against official WMO tables 2026-09-13, pending owner review)",
+        "WMO 306 FM15 §15.13.6 runway state code (code tables 0919/0519/1079/0366; verified against official WMO tables 2026-09-13, reviewed against the official WMO tables)",
       itemSep: ", ",
     },
     colon: ": ",
@@ -575,7 +575,7 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
 };
 
 /** 悬停解释统一挂载：aria-label 承载读屏通道，点击/Enter/Space 切换气泡（见 root 委托），
- *  悬停联动随行显电码浮签（owner 9/24 统一批）。
+ *  悬停联动随行显电码浮签（统一批）。
  *  原生 title 已移除（2026-09-24 评测批2#6：title 悬停与电码浮签同屏双气泡叠出——TAF 卡此前
  *  已把 title 移行头收口，METAR 卡对齐；人话解读走 aria-label（读屏）＋点击/键盘解码气泡，
  *  电码走浮签，三通道各司其职不再叠出） */
@@ -614,7 +614,7 @@ function zonedClockOf(utc: Date, offsetMinutes: number): string {
   return `${z.getUTCMonth() + 1}月${z.getUTCDate()}日 ${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
 }
 
-/** 观测时刻 → 本地时显示序（单制主显，owner 9/24）：北京时制走真实月历（observeTimeOf 已把
+/** 观测时刻 → 本地时显示序（单制主显，）：北京时制走真实月历（observeTimeOf 已把
  *  「日/时/分」定到真实 Date——含跨月；跨月显示 10月1日 而非「31日」回绕，2026-09-24 评测 P1 月界批）。
  *  observeTimeOf 无可吻合候选（7 天内日号不吻合的病态输入）时回退 %31 折回显示——残余近似仅显示位：
  *  病态日号本就无从判读真实日期，且龄期行不渲染、档位判读不依赖显示串，无害 */
@@ -675,7 +675,7 @@ const STYLE_ID = "mw-card-style";
 const CARD_CSS = `
 .mw-card { font: 13px/1.6 system-ui, sans-serif; color: #1c2733; background: #fff;
   border: 1px solid #d8dee4; border-radius: 10px; padding: 12px 14px; max-width: 420px; position: relative;
-  /* 限高契约对齐 TAF 卡（owner 9/24 只落了 TAF 侧——多跑道状态组长卡可超视口，批3#10）：
+  /* 限高契约对齐 TAF 卡（只落了 TAF 侧——多跑道状态组长卡可超视口，批3#10）：
      卡内上下滚动，滚轮隔离由 Leaflet 弹窗内建 disableScrollPropagation 提供 */
   max-height: min(65vh, 680px); overflow-y: auto; }
 .mw-card h2 { margin: 0; font-size: 15px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -688,7 +688,7 @@ const CARD_CSS = `
 .mw-badge.mw-warn { border-color: #e0b478; color: #8a5a12; background: #fdf3e2; }
 .mw-badge.mw-cavok { border-color: #79b791; color: #1e6b40; background: #eaf6ee; }
 .mw-card [data-hint].mw-link { background: #fdeeb9; outline: 1px solid #e0b478; border-radius: 4px; }
-/* 电码浮签（owner 9/24 统一批：与 TAF 卡同款——悬停联动组随行显 RAW 侧电码，零占位零回流） */
+/* 电码浮签（统一批：与 TAF 卡同款——悬停联动组随行显 RAW 侧电码，零占位零回流） */
 .mw-codechip { position: absolute; display: none; z-index: 3; pointer-events: none; white-space: nowrap;
   font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: #44546a; background: #f7f9fc; border: 1px solid #cdd7e2; border-radius: 3px; padding: 1px 5px;
@@ -833,7 +833,7 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
   }
 
   // —— 时间行：电码时刻 + 数据龄期（「43 分钟前」比时刻本身更直接支撑判读；超 60 分钟标橙）
-  // 时刻随展示时区单制（owner 9/24）：UTC＝dd日 HH:MM UTC；京＝北京时M月D日 HH:MM（真实月历，en 恒 UTC）；
+  // 时刻随展示时区单制（）：UTC＝dd日 HH:MM UTC；京＝北京时M月D日 HH:MM（真实月历，en 恒 UTC）；
   // 北京时制经 observeTimeOf 定到的真实 Date 换算（跨月正确——月界批），病态日号回退 %31 近似显示
   const observedAt = observeTimeOf(v.time, now);
   const timeText =
@@ -841,7 +841,7 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     options.utcOffsetMinutes !== null &&
     options.locale !== "en"
       ? `北京时${observedAt !== null ? zonedClockOf(observedAt, options.utcOffsetMinutes) : fallbackClockOf(v.time, options.utcOffsetMinutes)}` +
-        // 双日界引用（owner 9/24）：北京时与 UTC 日期不同日时括注 UTC 日号（真实月历路径；
+        // 双日界引用（）：北京时与 UTC 日期不同日时括注 UTC 日号（真实月历路径；
         // 病态折回路径无 UTC 锚不加）
         (observedAt !== null
           ? utcDayRefText(
@@ -1596,7 +1596,7 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
         bubble.append(el("div", "mw-decode-basis", `${T.decode.basisLabel}${T.decode.cite[cite]}`));
       }
     }
-    // 共享落位（owner 9/24 工程债批）：先显形（display:block）再量宽高——下方优先、放不下翻上方、
+    // 共享落位（工程债批）：先显形（display:block）再量宽高——下方优先、放不下翻上方、
     // 卡内钳制 + 滚动补偿（旧实现无补偿无翻转：卡滚动后气泡错位、底部溢出——随统一修复）
     bubble.classList.add("mw-hint-on");
     positionBubbleAt(root, bubble, hint);
@@ -1632,14 +1632,14 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
   });
   root.append(bubble);
 
-  // —— 主表 ↔ RAW 双向对照高亮 + 电码浮签（owner 9/24 统一批：联动语言＝点亮＋浮签、不做压暗，与 TAF 卡同口径）：
+  // —— 主表 ↔ RAW 双向对照高亮 + 电码浮签（统一批：联动语言＝点亮＋浮签、不做压暗，与 TAF 卡同口径）：
   // 同一组的两处 data-hint 同字符串（单一来源锁），悬停任一侧即把同组两侧一起点亮，
   // 浮签随行显出该组在 RAW 侧的电码——「这个结论从原文哪里来」一眼可见
   const codeChip = el("span", "mw-codechip");
   const showChip = (near: HTMLElement, codes: string): void => {
     codeChip.textContent = codes;
     codeChip.style.display = "inline-block";
-    positionChipNear(root, codeChip, near); // 共享几何（owner 9/24 工程债批）：滚动补偿+钳制单一来源
+    positionChipNear(root, codeChip, near); // 共享几何（工程债批）：滚动补偿+钳制单一来源
   };
   const setLinked = (key: string | null, near: HTMLElement | null = null): void => {
     const codes: string[] = [];

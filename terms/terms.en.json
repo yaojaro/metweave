@@ -11,7 +11,7 @@
   "AP117": "CAAC Ground Observation Specifications AP-117-TM-2021-01R2 (Civil Aviation Administration of China)",
   "CCAR117": "CCAR-117R1 — China Civil Aviation Meteorological Working Rules",
   "MAVIS": "UK Met Office MAVIS — How to decode a METAR (as relayed by an authoritative body)",
-  "PRODUCT": "Product display copy (no matching standard clause; wording approved by the owner)"
+  "PRODUCT": "Product display copy (no matching standard clause; wording approved by the maintainer)"
  },
  "terms": {
   "card.label.wind": {
@@ -229,7 +229,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -243,7 +243,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -257,7 +257,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -271,7 +271,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -285,7 +285,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -355,7 +355,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -425,7 +425,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -467,7 +467,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "FM 15 codes wind speed in KT/MPS only; KMH is accepted tolerantly (used by WMO code families such as FM 50)"
     }
    ],
@@ -481,7 +481,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -495,7 +495,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -565,7 +565,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -579,7 +579,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -593,7 +593,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -607,7 +607,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -621,7 +621,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -635,7 +635,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -649,7 +649,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -663,7 +663,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -677,7 +677,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -691,7 +691,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -705,7 +705,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -719,7 +719,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -733,7 +733,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -747,7 +747,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -761,7 +761,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -929,7 +929,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "No WMO TAC 4678 / AP-117 table entry (US practice; NWS decode key and FAA JO 7340.2: ice crystals)"
     }
    ],
@@ -1097,7 +1097,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "No WMO TAC 4678 / AP-117 table entry (US FMH-1 usage); \"spray\" is the common rendering"
     }
    ],
@@ -1425,7 +1425,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -1439,7 +1439,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -1453,7 +1453,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -1467,7 +1467,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -1481,7 +1481,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -1495,7 +1495,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -1715,7 +1715,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -1729,7 +1729,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -1743,7 +1743,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2020,7 +2020,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2048,7 +2048,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2076,7 +2076,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2090,7 +2090,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2104,7 +2104,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2356,7 +2356,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2370,7 +2370,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2412,7 +2412,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2538,11 +2538,11 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
-   "text": "WMO 306 FM15 §15.13.6 runway state code (code tables 0919/0519/1079/0366; verified against official WMO tables 2026-09-13, pending owner review)",
+   "text": "WMO 306 FM15 §15.13.6 runway state code (code tables 0919/0519/1079/0366; verified against official WMO tables 2026-09-13, reviewed against the official WMO tables)",
    "usage": [
     "packages/render/src/card.ts#LOCALE"
    ]
@@ -2552,7 +2552,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2566,7 +2566,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2580,7 +2580,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2594,7 +2594,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2608,7 +2608,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2622,7 +2622,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2636,7 +2636,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2650,7 +2650,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2664,7 +2664,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2678,7 +2678,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2693,7 +2693,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2708,7 +2708,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2723,7 +2723,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2738,7 +2738,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2753,7 +2753,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2768,7 +2768,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2783,7 +2783,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2798,7 +2798,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2813,7 +2813,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2828,7 +2828,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2843,7 +2843,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2858,7 +2858,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],
@@ -2873,7 +2873,7 @@
    "refs": [
     {
      "standard": "PRODUCT",
-     "doc": "Product display copy (no matching standard clause; wording approved by the owner)",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
      "clause": "Self-authored display copy (no matching standard clause)"
     }
    ],

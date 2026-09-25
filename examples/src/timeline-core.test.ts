@@ -123,7 +123,7 @@ describe("tierChangeOf 变化可见性基准对比（评测批4#23）", () => {
   });
 });
 
-describe("双日界引用（owner 9/24：BJ 制跨日括注 UTC 日号）", () => {
+describe("双日界引用", () => {
   it("北京时跨日：24日18:00Z → 北京时25日 02:00（UTC 24日）；同日不括注；UTC 制恒无括注", () => {
     const cross = Date.UTC(2026, 8, 24, 18, 0);
     expect(fmtTl(cross, 480)).toBe("北京时9月25日 02:00（UTC 9月24日）");

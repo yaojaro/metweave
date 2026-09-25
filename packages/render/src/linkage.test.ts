@@ -4,7 +4,7 @@ import { ariaClose, ariaOpen, positionBubbleAt, positionChipNear } from "./linka
 import { utcDayRefText } from "./gloss";
 
 /**
- * 几何内核行为锁（owner 9/24 工程债批）：jsdom 无布局，度量全部以属性桩注入
+ * 几何内核行为锁：jsdom 无布局，度量全部以属性桩注入
  * （getBoundingClientRect/offsetWidth/clientWidth/scrollTop/Left），断言纯数学——
  * 滚动补偿、下方优先翻上方、卡内钳制三契约各有突变必红的定点。
  */
@@ -123,7 +123,7 @@ describe("aria 开合生命周期", () => {
   });
 });
 
-describe("双日界引用（owner 9/24：BJ 制跨日括注 UTC 日号）", () => {
+describe("双日界引用", () => {
   it("同日空串；跨日 zh「（UTC 9月24日）」/ en「 (UTC 9/24)」", () => {
     const shifted = new Date(Date.UTC(2026, 8, 25, 2, 0)); // 北京时 9月25日 02:00（墙钟存 UTC 字段）
     expect(utcDayRefText(shifted, 2026, 9, 25, "zh")).toBe("");

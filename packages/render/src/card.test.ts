@@ -45,7 +45,7 @@ const rawSpanByTitle = (
     s.getAttribute("aria-label")?.startsWith(prefix),
   );
 
-describe("术语修订五条（已按专业评测修订，待 owner 终审）", () => {
+describe("术语修订五条（已按专业评测修订）", () => {
   it("TCU 悬停「浓积云」（原「耸积云」废止）；CB 悬停「积雨云」（原「雷暴云」废止）", () => {
     const card = renderCard(
       parse("METAR ZGGG 120000Z 27008KT 9999 FEW020CB FEW030TCU 26/22 Q1009"),
@@ -408,7 +408,7 @@ describe("跑道状态卡片渲染（解析了不让 UI 蒸发——签派员最
     const piece = row?.querySelector("span");
     expect(piece?.getAttribute("aria-label")).toContain("R13R/550237");
     expect(piece?.getAttribute("aria-label")).toContain("WMO 306 FM15 §15.13.6");
-    expect(piece?.getAttribute("aria-label")).toContain("待 owner 终审");
+    expect(piece?.getAttribute("aria-label")).toContain("已按官方电码表核对");
     // RAW 对照视图跑道状态组也有高亮与悬停
     const rawPiece = [...card.querySelectorAll(".mw-raw span")].find((s) =>
       s.textContent?.startsWith("R13R/"),
@@ -468,7 +468,7 @@ describe("跑道状态卡片渲染（解析了不让 UI 蒸发——签派员最
     expect(row?.textContent).toContain("depth 2 mm");
     expect(row?.textContent).toContain("friction 0.37");
     const piece = row?.querySelector("span");
-    expect(piece?.getAttribute("aria-label")).toContain("pending owner review");
+    expect(piece?.getAttribute("aria-label")).toContain("reviewed against the official WMO tables");
     expect(card.outerHTML).not.toMatch(HAN);
   });
 });
@@ -980,7 +980,7 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
 
 // ---------------------------------------------------------------- 官方标准核对修订（2026-09-13）
 
-describe("官方标准核对修订（WMO 306 卷 I.1（2019）FM15 原文 + 民航观测规范 AP-117-TM-2021-01；待 owner 终审）", () => {
+describe("官方标准核对修订（WMO 306 卷 I.1（2019）FM15 原文 + 民航观测规范 AP-117-TM-2021-01）", () => {
   it("风切变悬停引用条款更正为 WMO 306 FM15 §15.13.3（§15.4 实为 AUTO 码字条款）", () => {
     const card = renderCard(
       parse("ZBAA 111630Z 32009G14MPS 290V350 7000 BLDU NSC 19/M12 Q1010 WS RWY36R NOSIG"),
@@ -1344,7 +1344,7 @@ describe("温露组标注合并 + 气泡单行优先（用户实测反馈修正�
     expect(hintRule).toContain("dashed");
   });
 
-  it("电码浮签（owner 9/24 统一批：联动语言＝点亮＋浮签，无压暗）：悬停主表词点亮两侧并随行显 RAW 侧电码，离开即隐", () => {
+  it("电码浮签：悬停主表词点亮两侧并随行显 RAW 侧电码，离开即隐", () => {
     const card = renderCard(parse("METAR ZBAA 110700Z 04009G16MPS 9999 SCT033 25/10 Q1019 NOSIG"), {
       raw: true,
     });
@@ -1604,7 +1604,7 @@ describe("renderCard 云底单位（heightUnit / en 缺省英尺）与未知选�
     );
   });
 
-  it("时区单制（owner 9/24）：缺省 UTC 原样；utcOffsetMinutes:480 观测时刻行显京钟（真实月历带月位，龄期仍按 UTC 观测算）", () => {
+  it("时区单制：缺省 UTC 原样；utcOffsetMinutes:480 观测时刻行显京钟（真实月历带月位，龄期仍按 UTC 观测算）", () => {
     const T = "METAR ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG";
     const utc = renderCard(parse(T));
     expect(utc.querySelector(".mw-time")?.textContent).toContain("11日 07:00 UTC");
@@ -1628,7 +1628,7 @@ describe("renderCard 云底单位（heightUnit / en 缺省英尺）与未知选�
     );
   });
 
-  it("双日界引用（owner 9/24）：METAR 观测行 BJ 跨日括注 UTC 日号；同日不括注", () => {
+  it("双日界引用：METAR 观测行 BJ 跨日括注 UTC 日号；同日不括注", () => {
     const same = renderCard(parse("METAR ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG"), {
       utcOffsetMinutes: 480,
       now: new Date(Date.UTC(2026, 8, 11, 7, 40)),
@@ -1664,7 +1664,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
   const golden =
     "TAF ZPPP 251518Z 2518/2624 04009G16MPS 9999 SCT023 BKN033 TX02/2518Z TNM02/2523Z TNM04/2623Z TEMPO 2520/2524 2500 -SHRASN BR BECMG 2605/2606 2000 -SN BR BECMG 2609/2610 04004MPS BECMG 2611/2612 4000 BR=";
 
-  it("双日界引用（owner 9/24）：BJ 制下跨日端点括注 UTC 日号（有效期起端 25日18Z→北京时 26 日，引 UTC 25 日）；止端 26日24Z≡27日00Z 同 UTC 日不括注；发布行同日不括注；UTC 制恒无", () => {
+  it("双日界引用：BJ 制下跨日端点括注 UTC 日号（有效期起端 25日18Z→北京时 26 日，引 UTC 25 日）；止端 26日24Z≡27日00Z 同 UTC 日不括注；发布行同日不括注；UTC 制恒无", () => {
     const bj = renderTafCard(parseTaf(golden), {
       utcOffsetMinutes: 480,
       monthAnchor: { year: 2026, month: 9 },
@@ -1683,7 +1683,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(card.querySelector("h2")?.textContent).toContain("ZPPP");
     expect(card.querySelector(".mw-taf-badge")?.textContent).toContain("TAF");
     // 五轮：发布在前（报文语序）、有效期区间化（26日24时→27日00:00 午夜特例换算）、时长保留；
-    // 时区单制（owner 9/24）：缺省 UTC，不再有京时括注
+    // 时区单制：缺省 UTC，不再有京时括注
     expect(text.indexOf("发布 25日15:18Z")).toBeLessThan(text.indexOf("有效期"));
     expect(text).toContain("自 25日 18:00Z");
     expect(text).toContain("至 27日 00:00Z");
@@ -1691,7 +1691,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(text).toContain("30 小时"); // 2518→2624：(26-25)×24+(24-18)=30h（B2 止时 24 进算术）
   });
 
-  it("发布|预报双列行（owner 六轮）：at 在位时同行左右两列，at 缺席仅发布单行", () => {
+  it("发布|预报双列行：at 在位时同行左右两列，at 缺席仅发布单行", () => {
     const two = renderTafCard(parseTaf(golden), { at: { day: 25, hour: 21, minute: 0 } });
     const row = two.querySelector(".mw-taf-meta-row");
     expect(row).not.toBeNull();
@@ -1715,7 +1715,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(lines[0]?.textContent).toContain("2°C @ 25日18Z");
     expect(lines[1]?.textContent).toContain("-2°C @ 25日23Z");
     expect(lines[2]?.textContent).toContain("-4°C @ 26日23Z"); // 双 TN 各占一行
-    // 位置：气温区在分段天气之前（owner 五轮：基本固定信息置顶）
+    // 位置：气温区在分段天气之前
     const children = Array.from(card.children);
     expect(children.findIndex((c) => c.classList.contains("mw-taf-temps"))).toBeLessThan(
       children.findIndex((c) => c.classList.contains("mw-taf-periods")),
@@ -1757,7 +1757,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(rows[0]?.getAttribute("aria-label")).toBeNull(); // 电码只走 data-code 浮签（读屏读人话正文——评测工程 P0-2）
   });
 
-  it("就地电码浮签（owner 9/24 三轮：::after 内联显码撑动布局「跳一跳」→ 改卡内绝对定位浮签）", () => {
+  it("就地电码浮签", () => {
     const card = renderTafCard(parseTaf(golden), { raw: true });
     // 基况「风」条目 → 风组整组 token 跨度；「能见度」→ 9999
     const items = Array.from(card.querySelectorAll<HTMLElement>(".mw-taf-item[data-code]"));
@@ -1783,11 +1783,11 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(chipRule).toContain("position: absolute");
     expect(chipRule).toContain("pointer-events: none");
     expect(css).not.toContain("[data-code]:hover::after"); // 旧内联显码方案不得回流
-    // 联动语言契约（owner 9/24 统一批定稿）：点亮＋浮签、不做压暗——mw-taf-dim 不得回流
+    // 联动语言契约：点亮＋浮签、不做压暗——mw-taf-dim 不得回流
     expect(css).not.toContain("mw-taf-dim");
   });
 
-  it("点击解码气泡（owner 9/24 统一批）：条目点击弹「电码→人话」逐行 + FM 51 依据行，再点收起、点空白处收起", () => {
+  it("点击解码气泡：条目点击弹「电码→人话」逐行 + FM 51 依据行，再点收起、点空白处收起", () => {
     const card = renderTafCard(parseTaf(golden), { raw: true });
     const bubble = card.querySelector<HTMLElement>(".mw-taf-decode");
     expect(bubble).not.toBeNull();
@@ -1828,7 +1828,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     const segs = Array.from(card.querySelectorAll(".mw-taf-rawseg"));
     // 有效期 1 + 基况 4 + 变化组 4 整组 + 变化组内要素子片 9（TEMPO 3/BECMG1 3/BECMG2 1/BECMG3 2）+ 气温 3
     expect(segs.length).toBe(21);
-    // 版式序：气温极值行在 RAW 之前（owner 三轮指令）
+    // 版式序：气温极值行在 RAW 之前
     const children = Array.from(card.children);
     const tempsAt = children.findIndex((c) => c.classList.contains("mw-taf-temps"));
     const rawAt = children.findIndex((c) => c.classList.contains("mw-taf-raw"));
@@ -1900,7 +1900,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     const rows = Array.from(card.querySelectorAll(".mw-taf-period"));
     expect(rows[1]?.classList.contains("mw-taf-period-danger")).toBe(true);
     expect(rows[0]?.classList.contains("mw-taf-period")).toBe(true);
-    // 京时单制链（owner 9/24 时区单制）：传 480 时全卡只显京时——发布/查看/有效期/风险行/分段行头同一维度
+    // 京时单制链：传 480 时全卡只显京时——发布/查看/有效期/风险行/分段行头同一维度
     const bj = renderTafCard(parseTaf(raw), {
       at: { day: 23, hour: 3, minute: 0 },
       utcOffsetMinutes: 480,
@@ -1997,7 +1997,7 @@ describe("renderTafCard（v0.2 渲染层②）", () => {
     expect(en.querySelector(".mw-taf-raw")?.textContent).toContain(golden.slice(0, 20));
   });
 
-  it("版式契约（owner 9/24 指令）：卡宽 480 / 卡高上限 min(65vh, 680px) 内滚 / 分段行间距 7px", () => {
+  it("版式契约：卡宽 480 / 卡高上限 min(65vh, 680px) 内滚 / 分段行间距 7px", () => {
     renderTafCard(parseTaf(golden), { raw: true });
     const css = document.querySelector("#mw-taf-card-style")?.textContent ?? "";
     // 卡片本体：加宽 + 限高（超高不再占满整屏/被视口裁顶）+ 超高内容卡内上下滚动

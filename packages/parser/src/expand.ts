@@ -293,7 +293,7 @@ export interface TafSegmentRow {
 /**
  * Derive the period-by-period view of a TAF: prevailing rows (base / FM / after-BECMG) with the
  * BECMG transition band as its own uncertain row, plus TEMPO/PROB overlay rows — chronological.
- * 把 TAF 切成分段明细行（owner 9/23 指令「按拆分时间段给具体天气」）：主导段行 + BECMG 过渡带行 +
+ * 把 TAF 切成分段明细行（指令「按拆分时间段给具体天气」）：主导段行 + BECMG 过渡带行 +
  * TEMPO/PROB 挂载行，按窗口起点升序稳定合并（同刻主导段在前）；每行携带段中点展开结果——
  * 切段规则与 expandTaf 同一来源（prevailingSegments），黄金基准互通。
  */

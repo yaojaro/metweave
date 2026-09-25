@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * 左上角悬浮层错位契约（owner 9/24 两次裁定：①「重叠了，需要错开」②「高度复原、只横向错开」）。
+ * 左上角悬浮层错位契约。
  * 量纲（1440px 视口实测）：缩放控件 (.leaflet-bar, topleft) 占 (10,10)–(44,75)；
  * 导览首版 top/left 10 与控件同角压叠、二版下移 83 被否——终版 top 回 10、left 52（控件右缘 44+8），
  * 占 52..418（宽 366＝max-width 340+padding 24+border 2）× 10..101（高约 91）。
@@ -22,7 +22,7 @@ describe("左上角悬浮层错位（导览 vs 缩放控件）", () => {
   const pan = /autoPanPaddingTopLeft:\s*L\.point\(\s*(\d+),\s*(\d+)\s*\)/.exec(mainTs) ?? [];
   const [panX, panY] = [Number(pan[1] ?? NaN), Number(pan[2] ?? NaN)];
 
-  it("导览高度复原 top＝10（owner 二次裁定），左移横向错开 left ≥ 52（控件右缘 44 + 8）", () => {
+  it("导览高度复原 top＝10，左移横向错开 left ≥ 52（控件右缘 44 + 8）", () => {
     expect(guideTop).toBe(10);
     expect(Number.isFinite(guideLeft)).toBe(true);
     expect(guideLeft).toBeGreaterThanOrEqual(52);

@@ -3,7 +3,7 @@
  *
  * 纪律：只做端点模板 + fetch + 取数侧整理（解析、定位联表）——缓存/质控/归档等
  * 数据管理逻辑永不进入开源包；核心包（core/parser/render）零网络代码。
- * 换源口径（owner 9/24「内网的人切换到自己的数据源」指令）：两条线各留 baseUrl 覆盖位
+ * 换源口径（内网的人切换到自己的数据源」指令）：两条线各留 baseUrl 覆盖位
  * （IEM＝站点根、TAF＝端点根）——内网镜像/自建网关只换根、路径与查询串由本层拼装。
  * 不静默：HTTP 失败、响应 schema 不符、报文解析失败一律 throw，绝不吞错返回空数组。
  * 错误面机读化：五路失败一律抛 MetarSourceError（code 稳定契约 + network 网络名字段；
@@ -299,7 +299,7 @@ export async function getMetarReports(
   return items;
 }
 
-// ---------------------------------------------------------------- TAF 取数线（owner 9/24「收进 sources」指令）
+// ---------------------------------------------------------------- TAF 取数线（收进 sources」指令）
 
 /** aviationweather TAF 数据端点（上游无 CORS 头：浏览器直连须自建代理/镜像——baseUrl 覆盖即为此用） */
 export const AW_TAF_ENDPOINT = "https://aviationweather.gov/api/data/taf";
@@ -517,7 +517,7 @@ export async function getTafReports(
   return items;
 }
 
-// ---------------------------------------------------------------- ogimet TAF 补充线（owner 9/24 指令：aviationweather 取最新，ogimet 取最新/次新合并补充）
+// ---------------------------------------------------------------- ogimet TAF 补充线（指令：aviationweather 取最新，ogimet 取最新/次新合并补充）
 
 /** ogimet display_metars2.php 端点（tipo=FT＝TAF；无 CORS 头：浏览器直连须代理/镜像——baseUrl 覆盖即为此用） */
 export const OGIMET_TAF_ENDPOINT = "https://www.ogimet.com/display_metars2.php";

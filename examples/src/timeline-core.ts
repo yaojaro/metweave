@@ -16,7 +16,7 @@ export interface CalendarAnchor {
 }
 
 const DAY_MS = 86_400_000;
-/** 时间轴窗：现在起 24 小时、10 分钟一格（owner 9/24 定口径）＝144 格 */
+/** 时间轴窗：现在起 24 小时、10 分钟一格＝144 格 */
 export const TL_STEPS = 144;
 
 /** UTC 某日的 00:00 毫秒序 */
@@ -67,7 +67,7 @@ export const contAtOf = (ms: number, cal: CalendarAnchor): TafExpandAt => {
 };
 
 /** 时刻显示（单制，带月位——跨月不歧义）：UTC＝M月D日 HH:MMZ；京＝北京时M月D日 HH:MM。
- *  双日界引用（owner 9/24）：北京时与 UTC 日期不同日时括注「（UTC M月D日）」——防对表错位 */
+ *  双日界引用：北京时与 UTC 日期不同日时括注「（UTC M月D日）」——防对表错位 */
 export const fmtTl = (ms: number, tzOffset: number | null): string => {
   const z = new Date(ms + (tzOffset ?? 0) * 60_000);
   const md = `${z.getUTCMonth() + 1}月${z.getUTCDate()}日`;
@@ -106,7 +106,7 @@ export const reanchorOf = (anchorMs: number, nowMs: number): number | undefined 
   return Math.floor(nowMs / 600_000) * 600_000;
 };
 
-// ---------------------------------------------------------------- 报池（owner 9/24 方案B：现在永远有在效报）
+// ---------------------------------------------------------------- 报池（「现在」永远有在效报）
 
 /** 报文发布毫秒序（次序键；无发布时刻排最前） */
 const issueMsOf = (r: TafReport, nowMs: number): number =>

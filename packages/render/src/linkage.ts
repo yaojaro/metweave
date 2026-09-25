@@ -1,5 +1,5 @@
 /**
- * @metweave/render — 两卡联动浮层共享内核（owner 9/24 工程债批：card.ts 与 taf-card.ts 的
+ * @metweave/render — 两卡联动浮层共享内核（card.ts 与 taf-card.ts 的
  * 联动代码收进单一模块）。此前两卡各写一份「卡内绝对定位 + 边界钳制」几何与 aria 开合生命周期，
  * 且 METAR 侧缺滚动补偿（卡滚动后浮签/气泡错位——潜在错位随统一修复，行为锁在 linkage.test.ts）。
  *

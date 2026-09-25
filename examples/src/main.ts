@@ -72,7 +72,7 @@ if (guideBox !== null) {
   guideBox.textContent = `${stationsFile.stations.length} 个主要机场的天气一图速览：圆点颜色＝天气好坏。METAR 实况＝此刻的观测，TAF 预报＝未来 24 小时的趋势——两者时点不同，颜色不一致是正常的；切到 TAF 后可拖动底部时间轴看未来变化。`;
 }
 
-// 弹窗自动避让边（owner 9/24 指令：卡片不与固定悬浮层重叠）：autoPan 只认这两角留白——
+// 弹窗自动避让边（指令：卡片不与固定悬浮层重叠）：autoPan 只认这两角留白——
 // 左上让开缩放控件+导览卡（导览横移后占 52..418 × 10..101 → 避让 426/110＝其右/下缘 + 8）；
 // 底部让开免责声明栏+时间轴条+图例+状态条（时间轴批后合计≈140）
 const POPUP_AUTOPAN = {
@@ -101,7 +101,7 @@ const mountPreviewCards = (): void => {
 };
 if (!hasBasemap) mountPreviewCards();
 
-// —— 全局时区单制（owner 9/24 指令：全页只显一个时间，UTC/北京时一键切换；缺省 UTC）——
+// —— 全局时区单制（指令：全页只显一个时间，UTC/北京时一键切换；缺省 UTC）——
 // 卡片/滑杆/站点面板/状态条统一读此一处；480＝北京时（+8）
 let tzOffset: number | null = null;
 let metarItems: Awaited<ReturnType<typeof getMetarReports>> | undefined; // 时区切换重建实况层的数据面
@@ -262,7 +262,7 @@ const modeBar = {
   panelTitle: document.getElementById("taf-panel-title"),
   panelBody: document.getElementById("taf-panel-body"),
 };
-// TAF 时间轴条（owner 9/24 窄条批）：提示栏上方一条窄轴——播放键 + 现在 + 带刻度滑道 + 当前时刻；
+// TAF 时间轴条（窄条批）：提示栏上方一条窄轴——播放键 + 现在 + 带刻度滑道 + 当前时刻；
 // 点刻度/拖动跳时刻（手动介入即停播），播放自动按 10 分钟步进扫过 24 小时（到尾循环）
 const timelineBar = document.getElementById("taf-timeline");
 /** 按类型守卫取 input（禁 as 断言）：非 input 元素返回 null，调用点各自判空 */
@@ -433,18 +433,18 @@ let tafItems: readonly TafLayerItem[] | undefined;
 let listOpen = false;
 let panelOrder: string[] | undefined; // 播放期间冻结的面板行序（批3#12：停播后下次刷新恢复档位排序）
 let refreshPanel: (() => void) | undefined; // TAF 载入后由 loadTaf 赋值（列表渲染入口，面板开关直呼）
-// 播放中面板 hover 闪动收口（owner 9/24 工程债批）：行序冻结已做，但行内容仍每 300ms 重渲——
+// 播放中面板 hover 闪动收口（工程债批）：行序冻结已做，但行内容仍每 300ms 重渲——
 // 悬停态与点击目标被打掉。播放期间指针在面板内时跳过重渲（保持最后一帧），移出即恢复刷新。
 let panelHover = false;
 let pendingFlyOpen: (() => void) | undefined; // 行点击「先飞后开卡」的在途回调（换行连点时解绑防开错站）
 
-// —— TAF 报池（owner 9/24 方案B：现在永远有在效报）——
+// —— TAF 报池（方案B：现在永远有在效报）——
 // 最新周期 + 上一周期（date=now-4h 取「该时刻已发布的最新报」）合并进按站报池；
 // 查看时刻落在最新报生效前（发布后 2–3 小时的空档）时自动用仍在效的上一份补位。
 // 排序/选择的纯函数内核在 timeline-core（真实月历毫秒序——月界批收口，跨月不再 %31 折回）
 const reportsByStation = new Map<string, TafReport[]>();
 
-let activeMode: "metar" | "taf" = "metar"; // 站点面板双模式判据（owner 9/24：METAR 模式也有列表）
+let activeMode: "metar" | "taf" = "metar"; // 站点面板双模式判据（METAR 模式也有列表）
 /** 模式切换后的面板重渲回调（由 renderMetarPanel/loadTaf 侧登记——setMode 定义先于两者，延迟引用） */
 let repanelOnMode: ((mode: "metar" | "taf") => void) | undefined;
 const setMode = (mode: "metar" | "taf"): void => {
@@ -455,7 +455,7 @@ const setMode = (mode: "metar" | "taf"): void => {
   modeBar.metar?.setAttribute("aria-pressed", String(!active));
   modeBar.taf?.setAttribute("aria-pressed", String(active));
   if (timelineBar !== null) timelineBar.hidden = !active;
-  if (listOpen) repanelOnMode?.(mode); // 面板开着：数据面随模式自动切换（owner 9/25）
+  if (listOpen) repanelOnMode?.(mode); // 面板开着：数据面随模式自动切换（）
   if (!active) {
     // 批3#8：切回实况停播——否则播放循环每 300ms 对已摘除图层的 39 marker 空转
     // （面板不再随切回实况关闭：实况模式现在也有列表，repanelOnMode 已换数据面）
@@ -490,7 +490,7 @@ const setPanelHead = (labels: string[], titles: ReadonlyArray<string | undefined
   });
 };
 
-/** METAR 站点面板（owner 9/24「METAR 模式站点列表加上」）：档色点+站码+站名+实况摘要，
+/** METAR 站点面板（METAR 模式站点列表加上」）：档色点+站码+站名+实况摘要，
  *  按状态排序、行点击飞行开卡——与 TAF 面板同款交互语言；实况无时间轴故为渲染一次的静态行 */
 const renderMetarPanel = (): void => {
   if (metarItems === undefined || metarLayer === undefined) return;
@@ -597,9 +597,9 @@ const loadTaf = async (): Promise<void> => {
   tafLoading = (async () => {
     setStatus("正在拉取 39 站 TAF 预报（aviationweather 公开通路）…", "loading");
     const ids = stationsFile.stations.map((s) => s.icao);
-    // 取数统一走 sources getTafs（owner 9/24「收进 sources」指令）：端点根=/aw-taf（vite 代理——上游无 CORS 头，
+    // 取数统一走 sources getTafs（收进 sources」指令）：端点根=/aw-taf（vite 代理——上游无 CORS 头，
     // 见 vite.config.ts；内网镜像只改这一处 baseUrl 即整条切换）、超时 20s（评测工程 P2-4）、失败面走 sources 权威中文文案。
-    // 上一周期并行拉取（owner 9/24 方案B）：上游 date 参数＝「该时刻已发布的最新报」——date=now-4h
+    // 上一周期并行拉取（方案B）：上游 date 参数＝「该时刻已发布的最新报」——date=now-4h
     // 取上一发布周期，与最新周期合并成报池、按查看时刻选在效报；属增强取数，失败静默降级
     const prevPromise: Promise<TafObservation[]> = getTafs(ids, {
       baseUrl: "/aw-taf",
@@ -634,7 +634,7 @@ const loadTaf = async (): Promise<void> => {
     const nowMs = Date.now();
     const latestAdded = ingest(latest);
     const prevAdded = ingest(prevRows);
-    // 双源补充（owner 9/24 定口径：aviationweather 最新优先，ogimet 取最新/次新合并补充）：aviationweather 两代入池后，
+    // 双源补充（定口径：aviationweather 最新优先，ogimet 取最新/次新合并补充）：aviationweather 两代入池后，
     // 池不足两份的站（aviationweather 上一周期缺失/短池）走 ogimet 近 36h 补齐——并发限 6、10s 超时、
     // 失败静默（免费公益服务：只补缺口站、不整表重拉；raw 去重与 aviationweather 线天然合池）
     const gapStations = stationsFile.stations
@@ -665,7 +665,7 @@ const loadTaf = async (): Promise<void> => {
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, drain));
     }
     for (const pool of reportsByStation.values()) sortTafPool(pool, nowMs);
-    // 初始即取「现在」的在效报——首屏不再整片灰「未生效」（owner 9/24 方案B 的直接目的）；
+    // 初始即取「现在」的在效报——首屏不再整片灰「未生效」（方案B 的直接目的）；
     // 每报附真实锚月（item.monthAnchor——leaflet 层内归一到各报锚月，跨月报池正确）
     const nowFloorMs = Math.floor(nowMs / 600_000) * 600_000;
     const items: TafLayerItem[] = [];
@@ -797,7 +797,7 @@ const loadTaf = async (): Promise<void> => {
           if (!(found instanceof L.Marker)) return;
           const marker = found;
           // 先飞到位再开卡：飞行中开弹窗＝autoPan 按中间帧算避让、动画随后把地图带走，
-          // 限高后的卡仍会被推出视口/压住固定悬浮层（owner 9/24 版式批实测）。
+          // 限高后的卡仍会被推出视口/压住固定悬浮层（版式批实测）。
           // 换行连点时先解绑上一行未触发的开卡回调，防陈旧回调开错站（Leaflet once 存原 fn 引用，off 可解）
           if (pendingFlyOpen !== undefined) {
             map.off("moveend", pendingFlyOpen);
@@ -844,7 +844,7 @@ const loadTaf = async (): Promise<void> => {
         modeBar.panelTitle.append(legend);
       }
     };
-    // 时间轴（owner 9/24 窄条批）：现在起 24h、10 分钟一格、默认锚「现在」；初始化后拖/点/播都走 tlApply
+    // 时间轴（窄条批）：现在起 24h、10 分钟一格、默认锚「现在」；初始化后拖/点/播都走 tlApply
     initTimeline();
     setMode("taf");
     renderPanel();
@@ -894,7 +894,7 @@ modeBar.list?.addEventListener("click", () => {
   if (listOpen && activeMode === "taf") refreshPanel?.();
 });
 
-// —— 时区单制切换（owner 9/24：一个按钮控全页时间；缺省 UTC）——
+// —— 时区单制切换（一个按钮控全页时间；缺省 UTC）——
 const tzBtn = document.getElementById("tz-btn");
 tzBtn?.addEventListener("click", () => {
   tzOffset = tzOffset === null ? 480 : null;
