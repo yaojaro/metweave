@@ -478,10 +478,11 @@ for (const ev of ["pointerenter", "pointerleave"] as const) {
 }
 
 /** 面板表头随模式切换（表体列数不同：预报 4 列、实况 3 列——标签写死会让实况摘要在「下一变化」名下） */
-const setPanelHead = (labels: string[]): void => {
+const setPanelHead = (labels: string[], titles: ReadonlyArray<string | undefined> = []): void => {
   document.querySelectorAll<HTMLTableCellElement>("#taf-panel thead th").forEach((th, i) => {
     th.textContent = labels[i] ?? "";
     th.style.display = i < labels.length ? "" : "none";
+    if (titles[i] !== undefined) th.title = titles[i];
   });
 };
 
@@ -691,7 +692,15 @@ const loadTaf = async (): Promise<void> => {
       if (panelHover && tlPlaying) return; // 播放中悬停面板：冻结当前帧，移出/停播即恢复
       const body = modeBar.panelBody;
       if (body === null) return;
-      setPanelHead(["档", "站点", "下一变化", "相对现在"]);
+      setPanelHead(
+        ["档", "站点", "下一变化", "查看时刻 vs 现在"],
+        [
+          undefined,
+          undefined,
+          "该站报文里下一个变化组（渐变/间歇/自此）及其生效时段",
+          "你在时间轴上拖到的那个时刻的天气档位，与此刻实际档位相比——拖离「现在」后出值；—＝两者相同或无法比较",
+        ],
+      );
       body.replaceChildren();
       // 批3#14：档位数据直读——tafTierOf 与圆点同一判据管线（含 TEMPO 升档/出窗灰），
       // 不再从 marker DOM className 正则回读（状态经渲染产物回流的工程债收口），DOM 只做展示
@@ -771,7 +780,7 @@ const loadTaf = async (): Promise<void> => {
         const tdChange = document.createElement("td");
         tdChange.className = `p-change${r.change === "worse" ? " p-change-worse" : r.change === "better" ? " p-change-better" : ""}`;
         tdChange.textContent = r.change === "worse" ? "变差" : r.change === "better" ? "变好" : "—";
-        tdChange.title = "与「现在」时刻（时间轴第 0 格）相比";
+        tdChange.title = "查看时刻（时间轴当前位置）的档位与此刻相比；—＝两者相同或无法比较";
         tr.append(tdDot, tdName, tdNext, tdChange);
         const fly = (): void => {
           const idx = tafItems?.findIndex((x) => x.report.station === r.it.report.station) ?? -1;
