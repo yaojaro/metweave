@@ -477,12 +477,21 @@ for (const ev of ["pointerenter", "pointerleave"] as const) {
   });
 }
 
+/** 面板表头随模式切换（表体列数不同：预报 4 列、实况 3 列——标签写死会让实况摘要在「下一变化」名下） */
+const setPanelHead = (labels: string[]): void => {
+  document.querySelectorAll<HTMLTableCellElement>("#taf-panel thead th").forEach((th, i) => {
+    th.textContent = labels[i] ?? "";
+    th.style.display = i < labels.length ? "" : "none";
+  });
+};
+
 /** METAR 站点面板（owner 9/24「METAR 模式站点列表加上」）：档色点+站码+站名+实况摘要，
  *  按状态排序、行点击飞行开卡——与 TAF 面板同款交互语言；实况无时间轴故为渲染一次的静态行 */
 const renderMetarPanel = (): void => {
   if (metarItems === undefined || metarLayer === undefined) return;
   const body = modeBar.panelBody;
   if (body === null) return;
+  setPanelHead(["档", "站点", "实况"]);
   body.replaceChildren();
   const TIER_ORDER: Record<ConditionTier, number> = { poor: 0, caution: 1, good: 2, unknown: 3 };
   const colors = TIER_COLORS;
@@ -682,6 +691,7 @@ const loadTaf = async (): Promise<void> => {
       if (panelHover && tlPlaying) return; // 播放中悬停面板：冻结当前帧，移出/停播即恢复
       const body = modeBar.panelBody;
       if (body === null) return;
+      setPanelHead(["档", "站点", "下一变化", "相对现在"]);
       body.replaceChildren();
       // 批3#14：档位数据直读——tafTierOf 与圆点同一判据管线（含 TEMPO 升档/出窗灰），
       // 不再从 marker DOM className 正则回读（状态经渲染产物回流的工程债收口），DOM 只做展示
