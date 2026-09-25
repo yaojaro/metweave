@@ -445,6 +445,8 @@ let pendingFlyOpen: (() => void) | undefined; // 行点击「先飞后开卡」�
 const reportsByStation = new Map<string, TafReport[]>();
 
 let activeMode: "metar" | "taf" = "metar"; // 站点面板双模式判据（owner 9/24：METAR 模式也有列表）
+/** 模式切换后的面板重渲回调（由 renderMetarPanel/loadTaf 侧登记——setMode 定义先于两者，延迟引用） */
+let repanelOnMode: ((mode: "metar" | "taf") => void) | undefined;
 const setMode = (mode: "metar" | "taf"): void => {
   const active = mode === "taf";
   activeMode = mode;
@@ -453,9 +455,11 @@ const setMode = (mode: "metar" | "taf"): void => {
   modeBar.metar?.setAttribute("aria-pressed", String(!active));
   modeBar.taf?.setAttribute("aria-pressed", String(active));
   if (timelineBar !== null) timelineBar.hidden = !active;
+  if (listOpen) repanelOnMode?.(mode); // 面板开着：数据面随模式自动切换（owner 9/25）
   if (!active) {
-    setListOpen(false);
-    tlStopPlay(); // 批3#8：切回实况停播——否则播放循环每 300ms 对已摘除图层的 39 marker 空转
+    // 批3#8：切回实况停播——否则播放循环每 300ms 对已摘除图层的 39 marker 空转
+    // （面板不再随切回实况关闭：实况模式现在也有列表，repanelOnMode 已换数据面）
+    tlStopPlay();
   }
 };
 
@@ -574,6 +578,11 @@ const renderMetarPanel = (): void => {
     }
     modeBar.panelTitle.append(legend);
   }
+};
+
+repanelOnMode = (mode): void => {
+  if (mode === "metar") renderMetarPanel();
+  else refreshPanel?.(); // TAF：数据未到位时 refreshPanel 早退空面板，loadTaf 完成路径末尾的 renderPanel 兜底
 };
 
 const loadTaf = async (): Promise<void> => {
