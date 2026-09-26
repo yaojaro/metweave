@@ -1,5 +1,5 @@
 // fuzz 套件自身的行为锁（不是解析器测试——解析器契约由 fuzz 的十一项不变量在线断言）：
-// 1) 冒烟：小例数跑通零违例（核心 runFuzz 注入 src 解析器，无需先 build）；
+// 1) 冒烟：小例数跑通零违例（核心 runFuzz / runTafFuzz 注入 src 解析器，无需先 build）；
 // 2) invalid-format 定向生成器可达性：构造「token 可识别但结构坏」的变异必须让
 //    invalid-format 告警码在普查中出现（此前两轮 fuzz 零命中——生成器就是为此而建）；
 // 3) 确定性：同种子同序列（--seed 复现承诺的机制基础）。
@@ -7,8 +7,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { MetarParseError, toValues } from "../packages/core/src/index";
-import { parse } from "../packages/parser/src/index";
-import { MUTATORS, mulberry32, mutate, runFuzz } from "./fuzz.mjs";
+import { parse, parseTaf, tryParseTaf } from "../packages/parser/src/index";
+import { MUTATORS, mulberry32, mutate, runFuzz, runTafFuzz } from "./fuzz.mjs";
 
 const corpusDir = fileURLToPath(new URL("../corpus/", import.meta.url));
 const pool: string[] = [];
@@ -18,6 +18,11 @@ for (const f of readdirSync(corpusDir).filter((x) => x.endsWith(".txt"))) {
     if (t !== "" && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/.test(t)) pool.push(t);
   }
 }
+
+const tafDir = fileURLToPath(new URL("../corpus/taf/", import.meta.url));
+const tafPool: string[] = readdirSync(tafDir)
+  .filter((f) => f.endsWith(".txt"))
+  .flatMap((f) => readFileSync(`${tafDir}${f}`, "utf8").split("\n").filter(Boolean));
 
 describe("fuzz 套件自身锁", () => {
   it("七类变异器齐备（delete/duplicate/swap/corrupt/fuse/truncate/structured-invalid）", () => {
@@ -38,6 +43,20 @@ describe("fuzz 套件自身锁", () => {
     expect(result.parsed).toBeGreaterThan(2_000);
     expect(result.threw).toBeGreaterThan(0);
     expect(result.violations).toBe(0);
+  });
+
+  it("冒烟：TAF 池 2000 例零违例（runTafFuzz 与 CLI 共核——TAF 不变量同步入测试面，消 CLI 独占盲区：2026-09-26 每夜假红即盲区脱网）", () => {
+    const result = runTafFuzz({
+      parseTaf,
+      tryParseTaf,
+      MetarParseError,
+      pool: tafPool,
+      cases: 2_000,
+      seed: 20260912,
+    });
+    expect(result.parsed).toBeGreaterThan(0);
+    expect(result.threw).toBeGreaterThan(0);
+    expect(result.violationCount).toBe(0);
   });
 
   it("invalid-format 定向生成器可达：普查中必须出现（此前两轮 fuzz 零命中的补面）", () => {

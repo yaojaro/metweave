@@ -238,7 +238,9 @@ export function assertInvariants(parse, toValues, input, report) {
  * 确定性：同 { seed, pool } 同序列（mutberry32 显式注入 rand）。
  */
 // TAF 侧不变量（批 4.2）：永不崩（非 ParseError 即违例）、双跑确定性、span 界内、
-// nil/validity 互斥、cancelled 必带 validity、strict 恒 unsupported-mode、紧凑模式可序列化。
+// nil/validity 互斥、cancelled 必带 validity、strict 门契约（2026-09-26 随 strict 落地
+// 更新——旧断言「strict 恒 unsupported-mode」漏更致每夜 fuzz 假红一轮，教训同批入
+// 测试面冒烟锁）、紧凑模式可序列化。
 export function runTafFuzz({ parseTaf, tryParseTaf, MetarParseError, pool, cases, seed }) {
   const rand = mulberry32(seed);
   const violations = [];
@@ -274,13 +276,19 @@ export function runTafFuzz({ parseTaf, tryParseTaf, MetarParseError, pool, cases
       problems.push("CNL 无 validity");
     if (report.changes === undefined || report.temperatures === undefined)
       problems.push("changes/temperatures 缺席");
+    // strict 门契约（双向锁，与 validate.ts strictGate 同一判式）：strict 抛错必为
+    // MetarParseError{strict-violation}；tolerant 产物含 warning 级告警 ⇒ strict 必抛。
+    // validateTaf 四判据违例发生在解析内部、产物外不可观测，反向「零告警 ⇒ 成功」不苛求
+    const hasWarningLevel = report.warnings.some((w) => w.severity === "warning");
+    let strictThrew = false;
     try {
       parseTaf(text, { mode: "strict" });
-      problems.push("strict 未报错");
     } catch (e) {
-      if (!(e instanceof MetarParseError) || e.code !== "unsupported-mode")
+      strictThrew = true;
+      if (!(e instanceof MetarParseError) || e.code !== "strict-violation")
         problems.push("strict 非预期码");
     }
+    if (hasWarningLevel && !strictThrew) problems.push("warning 级告警未拦，strict 未报错");
     JSON.stringify(parseTaf(text, { spans: false }));
     if (problems.length > 0) violations.push({ case: n, mutator: kind, input: text, problems });
   }
