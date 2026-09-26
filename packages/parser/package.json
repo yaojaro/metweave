@@ -1,6 +1,6 @@
 {
   "name": "@metweave/parser",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Tolerant METAR/SPECI parser to a JSON IR — unknown groups and missing values are never silent: warnings carry source spans, missing codes map to explicit states.",
   "keywords": [
     "aviation",

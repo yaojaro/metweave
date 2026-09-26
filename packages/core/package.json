@@ -1,6 +1,6 @@
 {
   "name": "@metweave/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The stable data contract for METAR/SPECI pipelines: a JSON-serializable IR with three-state missing values, source spans and machine-readable warnings.",
   "keywords": [
     "data-model",
