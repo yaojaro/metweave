@@ -2,7 +2,7 @@
 
 本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，六个包锁步同版本发布。
 
-## [未发布]
+## [0.3.0] - 2026-10-08
 
 **三大主线：IWXXM 双向转换（解析 + 生成）、格点渲染新包 `@metweave/grid`、显示档位判据单源化 + `tierOf` 自定义通道。** 六包锁步发布：`@metweave/core` / `parser` / `grid` / `render` / `leaflet` / `metweave`。
 
