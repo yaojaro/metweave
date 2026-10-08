@@ -2,7 +2,7 @@ import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 // 主流程分两阶段：① 站点元数据（stations.json，静态可信）立即上图「待更新」态，杜绝空白地图；
 // ② 实况到达后移除待更新层、渲染条件色实况层。取数（含解析与定位联表）→ 卡片上图（底图切换见 basemaps.ts）
-import { parse, parseTaf, renderCard } from "metweave";
+import { parse, parseTaf, renderCard, type MetarReport } from "metweave";
 import { getMetarReports, getTafs, getTafsOgimet } from "metweave/sources";
 import type { TafObservation } from "metweave/sources";
 import {
@@ -35,6 +35,8 @@ import {
 } from "./timeline-core";
 import { stationTitleOf } from "./zh-stations";
 import { setupBasemap } from "./basemaps";
+import { altRawsFromAwc, fetchAwcIwxxm } from "./iwxxm-prefetch";
+import { mountGridLayerPanel } from "./grid-panel";
 import "./style.css";
 
 /** 档名字符串守卫（DOM 回读值收窄到 ConditionTier，免类型断言） */
@@ -43,6 +45,13 @@ const isTier = (x: string): x is ConditionTier =>
 
 const map = L.map("map", { center: [35.5, 105], zoom: 4 });
 const hasBasemap = setupBasemap(map);
+
+// —— 格点图层（v0.3.1 产品形态：格点背景场与实况站点同屏）——
+// 控制区在顶栏「格点图层」按钮唤起的右侧抽屉 #grid-panel（拉最新/不透明度置顶、要素行
+// 列表余高滚动、可再点选中行取消），三态自含于抽屉 meta 行不占全局状态条；色斑层独立
+// pane，底图之上、站点标记与弹窗之下；与 METAR/TAF 模式切换正交（两模式都保留背景场）。
+// 色斑不依赖底图 key——无 key 静态降级态同样可叠加
+mountGridLayerPanel(map);
 
 // 图例/面板色值单一来源（评测批2#3）：@metweave/leaflet 的 TIER_COLORS——与地图圆点同表取色，
 // 图例项由 main.ts 启动时注入（index.html 不再内联色值，两套色系并存的根因收口）
@@ -194,6 +203,31 @@ setStatus(
   "loading",
 );
 
+// —— AWC IWXXM 备选视图预取（v0.3 第五期）：与 IEM 整网拉取并行、后台静默 ——
+// renderCard 产静态 DOM 且 altRaws 在建卡时同步求值——备选编码必须先落内存 Map（管线与降级口径
+// 见 iwxxm-prefetch.ts 头注；AWC 批量秒级、IEM 整网 10–40s，正常时序备选视图先于实况层就位）。
+// 成败各一条 console info、不弹 UI 错误：失败/未到/代理不可用＝弹窗原文区无 IWXXM tab，其余不受影响。
+// Map 用活引用原地填充（clear+set）：时区切换/模式回切重建实况层时 altRaws 闭包现查即得新数据。
+const awcIwxxmByStation = new Map<string, MetarReport>();
+const altRawsAwc = altRawsFromAwc(awcIwxxmByStation);
+void fetchAwcIwxxm(stationsFile.stations.map((s) => s.icao))
+  .then((fetched) => {
+    awcIwxxmByStation.clear();
+    for (const [station, alt] of fetched) awcIwxxmByStation.set(station, alt);
+    // oxlint-disable-next-line eslint/no-console -- 静默降级口径：预取成败仅 console 一条 info、不弹 UI
+    console.info(
+      `[demo] AWC IWXXM 备选视图就绪：${awcIwxxmByStation.size}/${stationsFile.stations.length} 站（弹窗原文区可切 IWXXM tab）`,
+    );
+  })
+  .catch((err: unknown) => {
+    // oxlint-disable-next-line eslint/no-console -- 静默降级口径：预取失败不弹 UI 错误，只留一条 console info
+    console.info(
+      `[demo] AWC IWXXM 预取失败（弹窗不出现 IWXXM tab，其余功能不受影响）：${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  });
+
 // —— 第二阶段：实况到达。移除待更新层、渲染实况层；等待期间点开的弹窗原地升级为实况卡片
 const report = async (): Promise<void> => {
   // stations.json（由 aviationweather.gov 站点元数据一次性生成）＝运行时定位权威源：精确坐标与站名经 icao 联表，
@@ -213,7 +247,7 @@ const report = async (): Promise<void> => {
   }));
   metarItems = zhItems; // 时区切换 / 模式回切重建实况层的数据面
   const group = await addMetarLayer(map, zhItems, {
-    card: { raw: true, utcOffsetMinutes: tzOffset },
+    card: { raw: true, utcOffsetMinutes: tzOffset, altRaws: altRawsAwc }, // 备选 IWXXM tab（第五期，查预取 Map）
     conditionColors: true,
     popupOptions: POPUP_AUTOPAN,
   });
@@ -878,7 +912,7 @@ const ensureMetarLayer = async (): Promise<void> => {
   }
   if (metarItems === undefined) return; // 实况未到达（第一阶段待更新态不动）
   metarLayer = await addMetarLayer(map, metarItems, {
-    card: { raw: true, utcOffsetMinutes: tzOffset },
+    card: { raw: true, utcOffsetMinutes: tzOffset, altRaws: altRawsAwc }, // 与初建同款（备选 IWXXM tab）
     conditionColors: true,
     popupOptions: POPUP_AUTOPAN,
   });

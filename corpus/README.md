@@ -52,8 +52,29 @@ node scripts/replay-corpus.mjs corpus/*.txt --json corpus/snapshot.json
 样本切片刷新）。`pnpm test` 里的冒烟锁（`packages/parser/src/corpus.test.ts`）断言
 unknown 形态分布与快照完全一致。
 
+## IWXXM 等价对语料（corpus/iwxxm/，v0.3 起）
+
+双通道测试的数据面（与上述 TAC 回放语料是两套机制，不进 snapshot.json）：
+
+- `metar-pairs/`：wmo-im/iwxxm-translation 仓 Amd79-80-2023/metar 官方等价对全量
+  （34 站 .tac+.xml + MetarSpeciTestCases.txt 边界用例说明）——`packages/parser/src/iwxxm-corpus.test.ts`
+  逐站断言 `parse(x.tac)` ≡ `parseIwxxm(x.xml)`（比较口径与 4 个固有分歧站的理由见该测试文件头）。
+- `eccc/`：ECCC 真实流样本（dd.weather.gc.ca 今日 TAF IWXXM，collect 包裹 + iwxxm 3.0 命名空间）——
+  版本容错与「范围外明确拒绝」的回归锁。
+- `extras/`：旧版官方样例（iwxxm 2.1 OM 架构族 NIL 报）——旧结构明确失败的回归锁。
+
+复核结论与来源细节见 [docs/iwxxm-notes.md](../docs/iwxxm-notes.md)。
+
 ## 数据许可定位
 
-样本均为**公开通路分发的机场观测报文原文**（NWS tgftp 与 IEM 公益聚合器），
+样本均为**公开通路分发的机场观测报文原文**（NWS tgftp、IEM 公益聚合器与 WMO 官方等价对样例仓），
 用于本仓库的解析器测试；属事实性观测数据，入库旨在保证测试的可复现性。
 商用前请自行核实数据提供方的分发条款（详见根 README 风险披露）。
+
+## grid/（格线语料，2026-10-06 起）
+
+- `gfs-0p25-tmp-2m-20261004-f000.grib2`：GFS 0.25° 全球场 2m 温度单要素 f000（2026-10-04T06Z cycle，504,640B）——GRIB2 5.3 complex packing（二阶空间差分）解码的仓内回归 fixture；
+- `gfs-tmp-2m-cn.f32`：上场的中国域窗口（行 140:300 × 列 280:560，北→南）big-endian float32 权威值（eccodes 2.49 解码产出）——解码器「零漂移」对账基准的仓内份；
+- `fixture.json`：窗口与网格声明。
+
+数据区全量基准（14 要素 15 场逐场 sha256）在 `$METWEAVE_DATA_DIR/grid/baseline-expected/`（环境变量指向时测试自动纳入，CI 无数据区自动跳过——路径由本机环境变量给定，仓不记任何机器路径）。

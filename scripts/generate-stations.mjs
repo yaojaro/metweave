@@ -67,9 +67,31 @@ const UA = "metweave-stations-gen/0.1 (yaojaro@metweave.com)";
 // 中国粗粒度包围盒（含台站坐标容差），拦截上游明显脏坐标
 const BBOX = { latMin: 15, latMax: 55, lonMin: 73, lonMax: 136 };
 
-const response = await fetch(`${API}?ids=${ICAOS.join(",")}&format=json`, {
-  headers: { "user-agent": UA },
-});
+// 取数纪律与 gen-iwxxm 对齐：30s 超时 + 3 次尝试（指数退避）——上游挂起不再无限等待
+const fetchWithRetry = async (url, tries = 3) => {
+  // 重试语义必须串行（退避后重发同一请求，前次失败才试下次）——非可并行集合
+  // oxlint-disable-next-line no-await-in-loop
+  for (let t = 1; t <= tries; t += 1) {
+    try {
+      // oxlint-disable-next-line no-await-in-loop
+      return await fetch(url, {
+        headers: { "user-agent": UA },
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (err) {
+      if (t === tries) {
+        console.error(
+          `取数失败（${tries} 次尝试均未成功）：${err instanceof Error ? err.message : String(err)}`,
+        );
+        process.exit(1);
+      }
+      // oxlint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 3000 * t));
+    }
+  }
+  throw new Error("unreachable");
+};
+const response = await fetchWithRetry(`${API}?ids=${ICAOS.join(",")}&format=json`);
 if (!response.ok) {
   console.error(`aviationweather.gov HTTP ${response.status}`);
   process.exit(1);

@@ -1,6 +1,35 @@
 # 更新日志
 
-本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，五个包锁步同版本发布。
+本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，六个包锁步同版本发布。
+
+## [未发布]
+
+**三大主线：IWXXM 双向转换（解析 + 生成）、格点渲染新包 `@metweave/grid`、显示档位判据单源化 + `tierOf` 自定义通道。** 六包锁步发布：`@metweave/core` / `parser` / `grid` / `render` / `leaflet` / `metweave`。
+
+### 升级前必读
+
+- **【破坏性】`TafTempoOverlay.conditions.weather` 由恒 `[]` 改为三态**：`undefined` = 变化组未列天气（继承主导段）、`[]` = 显式 NSW、所列 = 整列替换。此前两种语义都坍缩为 `[]`，基况雷雨报遇「TEMPO 只改云」的发作窗天气会被误清空。下游若按 `[]` 判断「未列天气」，需改按 `undefined` 分流。
+- **默认面板判据变化（显示行为，非 API 破坏）**：只报风切变（WS）、漏斗云/龙卷（FC/+FC）、沙暴/尘暴（SS/DS）而无雷暴的报文，圆点由绿变**红**；只报飑（SQ）的报文由绿变**琥珀**。这是判据修正的预期效果——要维持旧口径，用新增的 `tierOf` 注入自定判据。判据语义变化今后一律走 minor 版本并附迁移说明，不在 patch 位漂移。
+- v0.x 期间 minor 版本可能包含破坏性变更（遵循 semver 前期惯例），升级前请过目本节。
+
+### 新增
+
+- **IWXXM 解析——与 TAC 同一份 IR**：`parseIwxxm` / `tryParseIwxxm`（`@metweave/parser` 主入口与 `./iwxxm` 子路径）直接解析 IWXXM XML：METAR/SPECI 与 TAF 双根（含 collect 包裹），产出与 TAC 解析完全相同的 `MetarReport` / `TafReport`（以 `kind` 判别），CNL / NIL 完整支持。版本面覆盖 IWXXM 3.0 / 2023-1 / 2025-2。
+- **IWXXM 生成——`serializeIwxxm`**：IR 写回 IWXXM XML：METAR/SPECI 与 TAF 双侧，CNL / NIL 均可往返；2023-1（缺省）与 2025-2 双出口。经官方等价对语料 + XSD 全量验证，有损转换面（单位折算、电码收敛等）逐条记档于包文档。
+- **新包 `@metweave/grid`——格点线**：自研 GRIB2 解码器（complex packing 5.2/5.3）+ 13 要素档案（温度/露点/湿度/CAPE/降水率/能见度/反射率/PRMSL/500hPa 高度/地面气压/850hPa 温度/总云量/风）+ 等值线与风羽数据面，运行时外部依赖仅 d3-contour（ISC）。`./convert` 子路径独立供 GRIB2 解码能力。
+- **判据单源 + `tierOf` 注入**：四档条件判据（圆点色 / 读屏档位词 / 卡片行色）收口到 `@metweave/core` 单源（`metarTierOf` / `conditionTierOf` 及要素级色调函数）——deck.gl 等不用 Leaflet 的场景拿 core 即得，判据更新不再两包同改。`addMetarLayer` / `renderCard` 新增可选参数 `tierOf:(report) => ConditionTier`，一处注入三层生效；注入函数抛错或返回非法档位即整体失败，绝不静默回退。
+- **Leaflet 格点三件套**：`addGridLayer`（色斑）/ `addContourLayer`（等值线 + L/H 中心标注）/ `addWindBarbLayer`（风羽），档案驱动的色标与线型，加要素零改适配层。
+
+### 修复
+
+- IWXXM：电码引用非法编码不再以 `URIError` 逃逸错误面契约；TAF 的 NIL/CNL 派生失败机读化（新错误码 `taf-not-expandable`）；`timePosition` 缺时区标记时按 UTC 折算并出告警（此前随宿主时区漂移）。
+- 格点：GRIB2 负经纬度按 WMO 符号-幅值规范解码（此前按补码，负坐标网格静默错位）；损坏文件的死循环 / 误导性报错清理；尾部残渣容忍并告警。
+- 渲染：等值线 SVG 容器随图层组回收（不再累积泄漏）；TAF 层英文文案补全（`locale: "en"`）；无障碍补强（悬停解释可被读屏识别为按钮）；宿主传入单位串的属性转义。
+- 取数：IEM 响应坐标类型不符报 `bad-schema`；`getTafReports` 站表未命中的行不再拖垮整批。
+
+### 工程
+
+- CI 补全量语料回放；六包 LICENSE 实体化；新增 `pnpm bump` 六包锁步版本脚本。全仓测试 956 例。
 
 ## [0.2.1] - 2026-09-26
 

@@ -1265,6 +1265,7 @@
     "card.decode.code",
     "card.decode.basisLabel",
     "card.rawTitle",
-    "card.rawHint"
+    "card.rawHint",
+    "card.rawTab."
   ]
 }

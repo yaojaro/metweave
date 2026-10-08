@@ -1,7 +1,8 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  // 双入口：主入口（TAC）+ iwxxm 子路径（XML→IR，v0.3 起——exports 各子路径的发布面来源）
+  entry: ["src/index.ts", "src/iwxxm.ts"],
   format: ["esm", "cjs"],
   dts: true,
   sourcemap: true,

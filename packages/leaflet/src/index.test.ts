@@ -273,6 +273,29 @@ describe("C5：四档气象着色与 tooltip 要素摘要（conditionColors）",
     map.remove();
   });
 
+  it("tooltip 摘要天气优先集含 FZ：FZRA 组优先于普通组入选（与 core danger 集对齐——FZ 此前缺席属单源化残留）", async () => {
+    document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
+    const map = L.map("map", { center: [35.5, 105], zoom: 4 });
+    const group = await addMetarLayer(
+      map,
+      [
+        {
+          report: parse("ZGGG 120000Z 00000KT 2500 BR FZRA BKN030 26/22 Q1009"),
+          position: [40, 116],
+          title: "ZGGG",
+        },
+      ],
+      { conditionColors: true },
+    );
+    const marker = group.getLayers()[0];
+    if (!(marker instanceof L.Marker)) throw new Error("图层成员应为 Marker");
+    marker.openTooltip();
+    const tipEl = marker.getTooltip()?.getElement();
+    expect(tipEl?.textContent).toContain("FZRA"); // 摘要选 FZ 组（冻降水优先）
+    expect(tipEl?.textContent).not.toContain("BR"); // 而非先出现的普通组
+    map.remove();
+  });
+
   it("tooltip 摘要：NIL 站显示「缺报（NIL，WMO＝missed report）」、关键组全缺测站显示「数据缺测」（不再是空摘要行）", async () => {
     document.body.innerHTML = '<div id="map" style="width: 400px; height: 300px"></div>';
     const map = L.map("map", { center: [35.5, 105], zoom: 4 });
@@ -373,7 +396,7 @@ describe("条件色注入安全锁（前导引号载荷——转义被删时必�
     expect(host.querySelectorAll("img, svg, iframe, script").length).toBe(0);
     expect(host.querySelector("[onerror]")).toBeNull();
     expect(host.querySelector("[onload]")).toBeNull();
-    // 断言二：aria-label 字面等于原文+档位词后缀（转义后回读一致；档位词追加见 conditionOf 注释）
+    // 断言二：aria-label 字面等于原文+档位词后缀（转义后回读一致；档位词追加见 core tier 模块注释）
     const el = host.querySelector("[aria-label]");
     expect(el?.getAttribute("aria-label")).toBe(`${evil} · 天气好`);
     map.remove();
@@ -544,7 +567,7 @@ describe("addTafLayer（v0.2 渲染层①）", () => {
     const g1 = await addTafLayer(map1, [{ report: parseTaf(tempoRaw), position: [25, 102] }], {
       at: { day: 25, hour: 21, minute: 0 },
     });
-    expect(firstTipText(g1)).toContain("TEMPO 发作可能");
+    expect(firstTipText(g1)).toContain("含 TEMPO 间歇变化");
     expect(firstTipText(g1)).toContain("2500");
     map1.remove();
     const map2 = freshMap();
@@ -566,6 +589,27 @@ describe("addTafLayer（v0.2 渲染层①）", () => {
       addTafLayer(map2, [], { conditonColors: true } as unknown as AddTafLayerOptions),
     ).rejects.toThrow("未知选项");
     map2.remove();
+  });
+
+  it("TEMPO 未列天气：发作窗继承主导段天气（基况雷雨不因 TEMPO 只改云而丢档降级）", async () => {
+    const raw = "TAF ZPPP 251518Z 2518/2624 04009MPS 6000 -TSRA SCT023 TEMPO 2520/2524 BKN040=";
+    const map = freshMap();
+    const g = await addTafLayer(map, [{ report: parseTaf(raw), position: [25, 102] }], {
+      at: { day: 25, hour: 22, minute: 0 },
+    });
+    // TS 族判红；TEMPO 只声明云变化——发作窗合成态继承基况 -TSRA（旧实现把天气清空、圆点降档）
+    expect(firstDot(g)).toContain("mw-dot-poor");
+    expect(firstTipText(g)).toMatch(/雷暴|雷雨/);
+    map.remove();
+  });
+
+  it("NIL/缺报文案随 locale:'en' 全英文（此前 NIL 摘要硬编码中文）", async () => {
+    const map = freshMap();
+    const g = await addTafLayer(map, [{ report: parseTaf("TAF ZSAM NIL="), position: [24, 113] }], {
+      locale: "en",
+    });
+    expect(firstTipText(g)).toContain("No report (NIL)");
+    map.remove();
   });
 });
 
@@ -677,7 +721,7 @@ it("复测修复锁 N1/N2/N5：键盘拖滑杆不抢焦、弹窗置顶提示随�
   marker.openPopup();
   const pane = map.getPane?.("popupPane");
   // 19Z 在 TEMPO 窗（20-24）前：无「TEMPO 发作可能」提示
-  expect(pane?.querySelector(".mw-taf-card")?.textContent ?? "").not.toContain("TEMPO 发作可能");
+  expect(pane?.querySelector(".mw-taf-card")?.textContent ?? "").not.toContain("含 TEMPO 间歇变化");
   // 滑杆聚焦后拨动（键盘路径）：换时刻不抢焦（N1）、弹窗提示即时更新（N2）
   const ctrl = createTafTimeControl(map, { layer: g, items });
   document.body.append(ctrl); // 控件需在文档内 focus 才生效（happy-dom 语义）
@@ -687,7 +731,7 @@ it("复测修复锁 N1/N2/N5：键盘拖滑杆不抢焦、弹窗置顶提示随�
   input?.dispatchEvent(new Event("input", { bubbles: true }));
   await new Promise((r) => setTimeout(r, 80));
   expect(document.activeElement).toBe(input); // N1：焦点仍在滑杆
-  expect(pane?.querySelector(".mw-taf-card")?.textContent ?? "").toContain("TEMPO 发作可能"); // N2：提示重算
+  expect(pane?.querySelector(".mw-taf-card")?.textContent ?? "").toContain("含 TEMPO 间歇变化"); // N2：提示重算
   // N5：不传 at 的 setTafLayerTime 保持层当前时刻（不回退 0 日）
   await setTafLayerTime(map, g, items, {});
   expect(pane?.querySelector(".mw-taf-meta-row")?.textContent ?? "").toContain(
@@ -1023,6 +1067,129 @@ describe("控件月锚进位（UI 复验收口：day=31 在 9 月锚＝10/1，�
     input.dispatchEvent(new Event("input", { bubbles: true }));
     // 拨动后标签经 rAF 合帧更新（happy-dom 即时）——进位日号不得回退折回
     expect(input.getAttribute("aria-valuetext") ?? "").toMatch(/北京时10月1日/);
+    map.remove();
+  });
+});
+
+// ---------------------------------------------------------------- 判据批（v0.3）：WS 入红 / SQ 入琥珀 + tierOf 注入
+
+describe("判据批 v0.3：WS 入红 / SQ 入琥珀（内置缺省判据增补，判据核心已下沉 @metweave/core）", () => {
+  // 底座报文：7000 m + BLDU + 阵风 14 m/s + NSC——无 WS/SQ 时按四档判据落 good（干净底座）
+  const WS_BASE = "ZBAA 111630Z 32009G14MPS 290V350 7000 BLDU NSC 19/M12 Q1010";
+
+  it("WS 红锁：报文含风切变组即红（圆点消费面 + 判据函数面四形态；此前落绿＝有意的行为变更）", async () => {
+    const map = freshMap();
+    const g = await addMetarLayer(
+      map,
+      [{ report: parse(`${WS_BASE} WS R02L NOSIG`), position: [40, 116] }],
+      { conditionColors: true },
+    );
+    expect(firstDot(g)).toContain("mw-dot-poor"); // 0747 例文 WS R02L 同型——此前此形态落绿
+    map.remove();
+    // 判据函数面（@metweave/core 单源、本包随包再导出）：标准与实务变体全形态一致
+    const { metarTierOf: tierOf } = await import("./index");
+    for (const ws of ["WS RWY36R", "WS R36R", "WS ALL RWY", "WS RWY ALL"]) {
+      expect(tierOf(parse(`${WS_BASE} ${ws} NOSIG`)), ws).toBe("poor");
+    }
+  });
+
+  it("SQ 琥珀锁：飑单独出现给 caution（保守档——此前 SQ 完全不参与判档）", async () => {
+    const map = freshMap();
+    const g = await addMetarLayer(
+      map,
+      [{ report: parse("ZGGG 120000Z 27008KT 9999 SQ SCT030 26/22 Q1009"), position: [40, 116] }],
+      { conditionColors: true },
+    );
+    expect(firstDot(g)).toContain("mw-dot-caution");
+    map.remove();
+  });
+
+  it("FC/+FC/SS/DS 圆点红锁：漏斗云/龙卷与沙暴/尘暴入红（v0.3 增补——对起降运行的直接危害与 TS 同级；此前只报这些组圆点落绿）", async () => {
+    // 底座与 WS 红锁同款（7000 m + BLDU + 阵风 14 m/s：无直害现象时 good 的干净底座）
+    for (const wx of ["FC", "+FC", "SS", "DS"]) {
+      const map = freshMap();
+      // oxlint-disable-next-line eslint/no-await-in-loop -- 逐形态串行上图断言（各自独立地图，非并发语义）
+      const g = await addMetarLayer(
+        map,
+        [{ report: parse(`${WS_BASE} ${wx} NOSIG`), position: [40, 116] }],
+        { conditionColors: true },
+      );
+      expect(firstDot(g), wx).toContain("mw-dot-poor");
+      map.remove();
+    }
+    // 对照：底座本身不升红（升红确由该组触发）
+    const map = freshMap();
+    const g0 = await addMetarLayer(
+      map,
+      [{ report: parse(`${WS_BASE} NOSIG`), position: [40, 116] }],
+      {
+        conditionColors: true,
+      },
+    );
+    expect(firstDot(g0)).not.toContain("mw-dot-poor");
+    map.remove();
+  });
+});
+
+describe("tierOf 注入（v0.3 方案 C：合法替换通道——一处注入三层生效）", () => {
+  const WS_RAW = "ZBAA 111630Z 32009G14MPS 290V350 7000 BLDU NSC 19/M12 Q1010 WS R02L NOSIG";
+
+  it("自配锁：注入恒 good 的判据 → WS 报文圆点不升红（注入覆盖内置缺省——签派员按本台标准重分档的出口）", async () => {
+    const map = freshMap();
+    const g = await addMetarLayer(map, [{ report: parse(WS_RAW), position: [40, 116] }], {
+      conditionColors: true,
+      tierOf: () => "good",
+    });
+    expect(firstDot(g)).toContain("mw-dot-good");
+    const label = (g.getLayers()[0] as L.Marker)
+      .getElement()
+      ?.querySelector(".mw-dot")
+      ?.getAttribute("aria-label");
+    expect(label).toBe("ZBAA · 天气好"); // aria 档位词随注入档位（第三层之一）
+    map.remove();
+  });
+
+  it("三层生效：圆点色 + aria 档位词 + 弹窗卡片 data-tier 全随注入 verdict（tierOf 转发给 renderCard）", async () => {
+    const map = freshMap();
+    const g = await addMetarLayer(
+      map,
+      [{ report: parse("ZGGG 120000Z 27008KT 9999 SQ SCT030 26/22 Q1009"), position: [40, 116] }],
+      { conditionColors: true, tierOf: () => "poor" },
+    );
+    expect(firstDot(g)).toContain("mw-dot-poor"); // ① 圆点色
+    const label = (g.getLayers()[0] as L.Marker)
+      .getElement()
+      ?.querySelector(".mw-dot")
+      ?.getAttribute("aria-label");
+    expect(label).toContain("天气差"); // ② aria 档位词
+    const marker = g.getLayers()[0] as L.Marker;
+    marker.openPopup();
+    const card = map.getPane?.("popupPane")?.querySelector(".mw-card");
+    expect(card?.getAttribute("data-tier")).toBe("poor"); // ③ 弹窗卡片档位标识
+    map.remove();
+  });
+
+  it("注入函数抛错＝整次 addMetarLayer 失败（Promise 拒绝、原始错误透传——不静默回退内置判据）", async () => {
+    const map = freshMap();
+    const boom = new Error("自定判据炸了");
+    await expect(
+      addMetarLayer(map, [{ report: parse(WS_RAW), position: [40, 116] }], {
+        tierOf: () => {
+          throw boom;
+        },
+      }),
+    ).rejects.toThrow(boom);
+    map.remove();
+  });
+
+  it("注入返回非法档位串＝与注入抛错同口径整次失败（此前静默破相：背景/aria 双 undefined）", async () => {
+    const map = freshMap();
+    await expect(
+      addMetarLayer(map, [{ report: parse(WS_RAW), position: [40, 116] }], {
+        conditionColors: true,
+        tierOf: (() => "por") as unknown as () => "poor",
+      }),
+    ).rejects.toThrow(/非法档位 "por".*unknown\/poor\/caution\/good/);
     map.remove();
   });
 });

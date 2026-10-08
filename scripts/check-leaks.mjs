@@ -100,7 +100,11 @@ function loadLocalSecretValues() {
     )
       .split("\n")
       .filter((f) => f && !f.endsWith(".env.example"));
-  } catch {
+  } catch (err) {
+    // 第二道防线（本机密钥值反查）失效必须可观测——静默失效等于防线不存在
+    console.error(
+      `⚠ 本机密钥值防线读取失败（git ls-files 异常：${err instanceof Error ? err.message : String(err)}）——本轮仅有形状模式防线`,
+    );
     return found;
   }
   for (const f of envFiles) {
@@ -146,6 +150,7 @@ if (!patterns) {
 const effective = patterns ?? GENERIC_PATTERNS;
 
 const findings = [];
+const ignoreHits = []; // leak-ignore 豁免行登记（审计汇总，不判失败）
 for (const file of files) {
   let text;
   try {
@@ -156,7 +161,11 @@ for (const file of files) {
   if (text.includes("\0")) continue; // 二进制文件
   const where = buildFileSet.has(file) ? "构建产物 " : "";
   text.split("\n").forEach((line, i) => {
-    if (line.includes("leak-ignore")) return;
+    if (line.includes("leak-ignore")) {
+      // 豁免行集中登记（审计可见性：豁免是后门，命中必须可枚举、可复查）
+      ignoreHits.push(`${where}${file}:${i + 1}`);
+      return;
+    }
     for (const [name, re] of effective) {
       if (re.test(line))
         findings.push(`${where}${file}:${i + 1}  [${name}]  ${line.trim().slice(0, 80)}`);
@@ -183,3 +192,7 @@ if (findings.length > 0) {
 console.log(
   `check:leaks 通过: ${mode} · ${source} · ${files.length} 文件${buildFiles.length > 0 ? `（含 ${buildFiles.length} 个构建产物文件）` : ""} · ${effective.length} 组模式 · ${localSecrets.length} 个本机密钥值`,
 );
+if (ignoreHits.length > 0) {
+  console.log(`leak-ignore 豁免行（审计清单，请复查每一行是否仍必要）：`);
+  for (const h of ignoreHits) console.log(`  ◦ ${h}`);
+}

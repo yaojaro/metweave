@@ -60,3 +60,24 @@ export const ariaClose = (trigger: HTMLElement | null): void => {
   trigger?.removeAttribute("aria-expanded");
   trigger?.removeAttribute("aria-describedby");
 };
+
+/**
+ * 联动滚动揭示（v0.3 第三期）：把 target 滚进 limit 内各可滚动祖先的视野（悬停主表字段 →
+ * 源面板对应区间滚到可见；反向同理）。源文本面板不挑 TAC/XML——RAW 视图按 span 切片渲染，
+ * span 索引的 raw 是字符电码还是 XML 由解析通道决定，本层无感知。
+ * 只动 limit 范围内的滚动容器（卡片根/弹层容器），不触碰页面滚动；target 已可见时零动作。
+ * 无布局环境（happy-dom 量得 0 矩形）自然退化为 no-op。
+ */
+export const revealWithin = (limit: HTMLElement, target: HTMLElement): void => {
+  for (
+    let node = target.parentElement;
+    node !== null && node !== limit;
+    node = node.parentElement
+  ) {
+    if (node.scrollHeight <= node.clientHeight + 1) continue; // 不可滚动（无溢出）
+    const t = target.getBoundingClientRect();
+    const n = node.getBoundingClientRect();
+    if (t.top < n.top) node.scrollTop -= n.top - t.top;
+    else if (t.bottom > n.bottom) node.scrollTop += t.bottom - n.bottom;
+  }
+};

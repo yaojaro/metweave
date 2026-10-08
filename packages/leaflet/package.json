@@ -1,6 +1,6 @@
 {
   "name": "@metweave/leaflet",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Put parsed METAR/SPECI reports on a Leaflet map: markers, tooltips and report-card popups in one call — bring your own tiles.",
   "keywords": [
     "leaflet",
@@ -62,6 +62,7 @@
   },
   "dependencies": {
     "@metweave/core": "workspace:*",
+    "@metweave/grid": "workspace:*",
     "@metweave/parser": "workspace:*",
     "@metweave/render": "workspace:*"
   },

@@ -7,3 +7,4 @@
  */
 export * from "./errors";
 export * from "./ir";
+export * from "./tier";

@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@metweave/grid": "workspace:*",
     "@metweave/leaflet": "workspace:*",
     "leaflet": "^1.9.4",
     "metweave": "workspace:*"

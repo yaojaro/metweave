@@ -23,6 +23,10 @@ permissions:
 jobs:
   fuzz:
     runs-on: ubuntu-latest
+    # job 级兜底上限：常态（build ~3min + 10 万例 fuzz ~2min）远低于此；解析器若挂死，
+    # 脚本内 runTafFuzz/runFuzz 预算先行触发退出码 124，本上限防预算之外的意外吊死
+    # （缺省 360 分钟太长——每夜 cron 会排队堆积）
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 

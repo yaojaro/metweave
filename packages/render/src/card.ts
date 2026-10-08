@@ -16,6 +16,7 @@ import type {
   RunwayVisualRange,
   VisibilityGroup,
   MetarReport,
+  MetarValues,
   ReportTime,
   RunwayBraking,
   RunwayStateGroup,
@@ -26,9 +27,10 @@ import type {
   WarningCode,
   WeatherGroup,
   WindShearGroup,
+  ConditionTier,
 } from "@metweave/core";
-import { ariaClose, ariaOpen, positionBubbleAt, positionChipNear } from "./linkage";
-import { toValues } from "@metweave/core";
+import { ariaClose, ariaOpen, positionBubbleAt, positionChipNear, revealWithin } from "./linkage";
+import { assertConditionTier, toValues } from "@metweave/core";
 import {
   CAVOK_SHORT,
   CLOUD_GLOSS,
@@ -44,6 +46,17 @@ import {
   weatherGloss,
 } from "./gloss";
 import { type CloudGloss, type WindGloss, type WxGloss, utcDayRefText } from "./gloss";
+
+/**
+ * RAW 备选编码视图表项（altRaws）：同一份观测的另一种编码形态（如 IWXXM XML 卡附 TAC 源电码视图）。
+ * The entry of an alternative encoding view for the RAW section.
+ */
+export interface RenderCardAltRaw {
+  /** tab 标签（如「TAC（源电码）」——文案语言由调用方自理，不入本库 locale 表） */
+  label: string;
+  /** 该编码的已解析 IR——其 raw 与 span 驱动该 tab 的原文视图与悬停联动 */
+  report: MetarReport;
+}
 
 /**
  * Options for renderCard: display locale, RAW cross-check view, host className, and a deterministic clock for age display.
@@ -68,6 +81,24 @@ export interface RenderCardOptions {
   /** 展示时区偏移（分钟）——单制指令：观测时刻行只显一个时区。
    *  缺省 null＝UTC；zh 传 480＝北京时（京dd日 HH:MM）；en 无本地时词表恒 UTC。与 renderTafCard 同语义 */
   utcOffsetMinutes?: number | null;
+  /** 原文区备选编码视图（v0.3 第四期）：数组或按本卡 IR 现取的函数（调用方可在函数内从本卡 raw
+   *  抽出另一编码再解析，如 AWC IWXXM 内嵌的源 TAC 注释）。仅在 `raw: true` 时生效：
+   *  非空时原文区渲染为 tab 组——默认 tab = 本卡 ir.raw（标签按编码形态自动：XML→「IWXXM（XML）」、
+   *  其余→「TAC（字符电码）」，随 locale），每个 altRaw 一个 tab（视图按其 report 的 span 渲染）；
+   *  切走的面板 hidden 隐藏但保留 DOM，联动（悬停同串点亮/浮签/对侧揭示）在当前可见 tab 内生效。
+   *  空数组或缺席 = 单视图现状（零回归面）；抽不出备选编码（如无内嵌注释的非 AWC 源）返回空数组即无 tab */
+  altRaws?: readonly RenderCardAltRaw[] | ((report: MetarReport) => readonly RenderCardAltRaw[]);
+  /** 档位判据注入（v0.3 方案 C，与 addMetarLayer 同名选项同语义）：`(report) => ConditionTier`
+   *  自定判据函数（类型随 @metweave/core 判据单源）。传入时本卡以注入 verdict 在根元素写
+   *  `data-tier` 机读档位（宿主 CSS/面板可按注入判据映射整卡与行色，如
+   *  `[data-tier="poor"] .mw-caution { … }`）；缺省（未传）不产出档位标识、DOM 与既有版本逐字节一致。
+   *  本层生效不依赖 addMetarLayer 的 conditionColors（卡片档位标识独立于圆点模式）；注入函数
+   *  在本函数内每卡调用一次——经 addMetarLayer 转发时同一注入函数每站共两次（圆点层一次＋
+   *  卡片层一次），且宿主同传顶层 tierOf 与 card.tierOf 时 card 级优先（转发语义见 addMetarLayer）。
+   *  行色判据本体与内置档位同源 core 单源（见 gloss.ts 注释），判据语义变化走 minor + 迁移说明。
+   *  不静默纪律：注入函数抛错或返回非法档位串（∉ ConditionTier 合法值集，core 的 CONDITION_TIERS
+   *  单源）＝renderCard 同步抛出（addMetarLayer 透传时整层上图失败），绝不静默回退内置判据。 */
+  tierOf?: (report: MetarReport) => ConditionTier;
 }
 
 /** renderCard 的合法选项键（运行时校验用——拼错的选项键被静默忽略 = 语言/单位/视图悄悄不符预期，
@@ -80,6 +111,8 @@ const RENDER_CARD_OPTION_KEYS: ReadonlySet<string> = new Set([
   "now",
   "stationTitle",
   "utcOffsetMinutes",
+  "altRaws",
+  "tierOf",
 ]);
 
 // ---------------------------------------------------------------- locale 表
@@ -276,6 +309,8 @@ interface LocaleTable {
   /** RAW 对照区身份行（批4#19：与 TAF 卡统一——裸贴电码像乱码报错） */
   rawTitle: string;
   rawHint: string;
+  /** RAW 双编码 tab 组（altRaws 在场时）：默认 tab 标签按编码形态自动（XML→iwxxm / 字符电码→tac）＋ tablist 无障碍名 */
+  rawTab: { iwxxm: string; tac: string; listLabel: string };
 }
 
 /**
@@ -431,6 +466,7 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
     dash: "——",
     rawTitle: "报文原文（专业人员核对用）",
     rawHint: "悬停或 Tab 聚焦可与人话对照",
+    rawTab: { iwxxm: "IWXXM（XML）", tac: "TAC（字符电码）", listLabel: "报文原文编码切换" },
   },
   en: {
     label: {
@@ -571,6 +607,7 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
     dash: " — ",
     rawTitle: "Raw report (for professional cross-check)",
     rawHint: "hover or Tab-focus to cross-link with the plain-language rows",
+    rawTab: { iwxxm: "IWXXM (XML)", tac: "TAC (character code)", listLabel: "raw report encoding" },
   },
 };
 
@@ -581,6 +618,7 @@ const LOCALE: Record<"zh" | "en", LocaleTable> = {
  *  电码走浮签，三通道各司其职不再叠出） */
 const attachHint = (node: HTMLElement, hint: string): void => {
   node.setAttribute("aria-label", hint); // 读屏通道
+  node.setAttribute("role", "button"); // 可聚焦可激活（tabIndex＋Enter/Space）——读屏按按钮语义播报
   node.classList.add("mw-hint"); // 点击/键盘切换气泡（见 root 委托与 .mw-hint-pop 样式）
   node.tabIndex = 0; // 键盘 Tab 可达（Enter/Space 开合气泡）
   node.dataset.hint = hint; // 气泡文案源（不污染 textContent，RAW 对照原样）
@@ -672,6 +710,10 @@ const rvrPad = (n: number): string => String(n).padStart(4, "0");
 
 const STYLE_ID = "mw-card-style";
 
+/** RAW tab 组 id 发号（模块级递增序）：页内多卡并存时 tab ↔ panel 的 aria-controls/aria-labelledby
+ *  引用不撞号——id 只用于本卡的内部关联，不承载跨卡语义 */
+let RAW_TAB_SEQ = 0;
+
 const CARD_CSS = `
 .mw-card { font: 13px/1.6 system-ui, sans-serif; color: #1c2733; background: #fff;
   border: 1px solid #d8dee4; border-radius: 10px; padding: 12px 14px; max-width: 420px; position: relative;
@@ -709,6 +751,12 @@ const CARD_CSS = `
 .mw-card .mw-caution { color: #8a5a12; font-weight: 600; }
 .mw-raw-title { margin: 10px 0 0; font-size: 11px; color: #6b7785; font-weight: 600; }
 .mw-raw-hint { font-weight: 400; }
+/* 双编码 tab 组（altRaws）：tab 条随标题行、面板复用 .mw-raw；激活 tab 反白与徽章同族灰蓝 */
+.mw-raw-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 0; }
+.mw-raw-tab { font: 11px/1.4 system-ui, sans-serif; padding: 1px 9px; border-radius: 999px;
+  border: 1px solid #c3cfdb; color: #44546a; background: #f2f6fa; cursor: pointer; }
+.mw-raw-tab.mw-raw-tab-on { border-color: #44546a; color: #1c2733; background: #fff; font-weight: 600; }
+.mw-raw-tab:focus-visible { outline: 2px solid #4a90d9; outline-offset: 1px; }
 .mw-raw { margin: 4px 0 0; padding: 8px; border-radius: 6px; background: #f6f8fa;
   font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   white-space: pre-wrap; word-break: break-all; }
@@ -734,6 +782,24 @@ const CARD_CSS = `
 .mw-warnings li.mw-warning { color: #7a4d0b; }
 .mw-warnings li.mw-error { color: #b3261e; font-weight: 600; }
 `;
+
+// —— 原码显示面（悬停提示前缀/解码气泡行/告警行）的通道守卫（v0.3 第三期）：span 切片是
+// XML 元素全体时（切片以 "<" 开头——TAC 电码 token 永不含），改用 IR 重建的短码显示。
+// 高亮联动仍指向 XML 源区间（RAW 视图不守卫）——「显示短码、高亮原文」两不相误。
+const codeOf = (raw: string, fallback: string): string => (raw.startsWith("<") ? fallback : raw);
+
+/** 由 IR 重建风组电码形态（XML 通道的解码行短码回退；TAC 通道走原文 regex 切解路径） */
+const windCodeOf = (w: WindGroup): string => {
+  const dir = w.variable
+    ? "VRB"
+    : w.direction === null
+      ? "///"
+      : String(w.direction).padStart(3, "0");
+  const beyond = w.speed.beyond === "above" ? "P" : "";
+  const gust = w.gust === undefined ? "" : `G${w.gust.value}`;
+  const unit = w.speed.unit === "kt" ? "KT" : w.speed.unit === "mps" ? "MPS" : "KMH";
+  return `${dir}${beyond}${w.speed.value}${gust}${unit}`;
+};
 
 function ensureStyle(): void {
   if (typeof document === "undefined" || document.getElementById(STYLE_ID) !== null) return;
@@ -811,6 +877,17 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
 
   const root = el("div", "mw-card");
   if (options.className !== undefined) root.classList.add(options.className);
+  // tierOf 注入（v0.3 方案 C）：注入在位才以注入 verdict 写根元素 data-tier 机读档位——
+  // 缺省（未传）不产出任何档位标识，DOM 与既有版本逐字节一致（零破坏纪律）；
+  // 注入函数抛错即 renderCard 同步抛出（不 try/catch 吞错——回退内置判据＝注入悄悄不生效）；
+  // 返回值校验 ∈ CONDITION_TIERS（core 单源合法值集，assertConditionTier 共用出口）：
+  // 非法档位串不静默写进 data-tier（宿主 CSS 选择器按它映射整卡样式，破相比报错更难查）
+  // ——与注入抛错同口径同步抛
+  if (options.tierOf !== undefined) {
+    const tier = options.tierOf(report);
+    assertConditionTier(tier);
+    root.dataset.tier = tier;
+  }
 
   // —— 头部：站名 + 报文类型徽章 + 更正/自动徽章
   const head = el("h2");
@@ -1007,19 +1084,25 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     return `${code}${T.colon}${runwayStateText(st, T.rwy)}${T.dash}${notes.join(T.dash)}`;
   };
   const wsHintOf = (code: string): string => `${code}${T.colon}${T.windShearNote}`;
-  // 温露同 token（dd/dd 一组）点哪边都是完整解读——两行共用同一合并提示
-  const tempDewParts: string[] = [];
-  if (v.temperature !== undefined)
-    tempDewParts.push(`${T.label.temperature}${T.colon}${v.temperature.celsius}°C`);
-  if (v.dewpoint !== undefined)
-    tempDewParts.push(`${T.label.dewpoint}${T.colon}${v.dewpoint.celsius}°C`);
-  const tempDewHint = tempDewParts.join(T.wind.hintSep);
-  const qnhHint =
-    v.altimeter === undefined
+  // 温露同 token（dd/dd 一组）点哪边都是完整解读——两行共用同一合并提示。
+  // 构造按报告入参（MetarValues）：主表行与 RAW 视图（含 altRaws 备选编码的报告）各自取值、
+  // 同一拼装函数——两处提示语永不漂移（第四期 RAW 视图渲染函数化后跨报告复用）
+  const tempDewHintOf = (val: MetarValues): string => {
+    const parts: string[] = [];
+    if (val.temperature !== undefined)
+      parts.push(`${T.label.temperature}${T.colon}${val.temperature.celsius}°C`);
+    if (val.dewpoint !== undefined)
+      parts.push(`${T.label.dewpoint}${T.colon}${val.dewpoint.celsius}°C`);
+    return parts.join(T.wind.hintSep);
+  };
+  const qnhHintOf = (val: MetarValues): string =>
+    val.altimeter === undefined
       ? ""
-      : `${T.label.altimeter}${T.colon}${v.altimeter.value} ${
-          v.altimeter.unit === "hPa" ? "hPa" : "inHg"
+      : `${T.label.altimeter}${T.colon}${val.altimeter.value} ${
+          val.altimeter.unit === "hPa" ? "hPa" : "inHg"
         }`;
+  const tempDewHint = tempDewHintOf(v);
+  const qnhHint = qnhHintOf(v);
   // 趋势段内容短语（组内要素逐族人话，复用正文同款拼装）
   const trendContentGloss = (elements: TrendElements | undefined): string[] => {
     if (elements === undefined) return [];
@@ -1092,7 +1175,8 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     const m = /^(VRB|\d{3})(\d{2,3})(G\d{2,3})?(KT|MPS|KMH)?$/.exec(raw);
     const dir = m?.[1];
     const speedTok = m?.[2];
-    if (dir === undefined || speedTok === undefined) return [{ code: raw, text: windBasicOf(w) }];
+    if (dir === undefined || speedTok === undefined)
+      return [{ code: codeOf(raw, windCodeOf(w)), text: windBasicOf(w) }];
     const list: DecodeRow[] = [];
     if (dir === "VRB") list.push({ code: "VRB", text: T.wind.vrbNote });
     else
@@ -1111,17 +1195,28 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     return list;
   };
   const windVarDecodeRows = (wv: NonNullable<WindGroup["variation"]>): DecodeRow[] => [
-    { code: rawSlice(wv.span), text: T.wind.variationOf(wv.min, wv.max) },
+    {
+      code: codeOf(
+        rawSlice(wv.span),
+        `${String(wv.min).padStart(3, "0")}V${String(wv.max).padStart(3, "0")}`,
+      ),
+      text: T.wind.variationOf(wv.min, wv.max),
+    },
     { code: "V", text: T.wind.variationNote },
   ];
   const visDecodeRows = (g: VisibilityGroup): DecodeRow[] => [
-    { code: rawSlice(g.span), text: visTextOf(g) },
+    { code: codeOf(rawSlice(g.span), String(g.value)), text: visTextOf(g) },
   ];
   const visMinDecodeRows = (mn: NonNullable<VisibilityGroup["minimum"]>): DecodeRow[] => [
-    { code: rawSlice(mn.span), text: T.cloud.minimumOf(mn.value, mn.direction) },
+    {
+      code: codeOf(rawSlice(mn.span), `${String(mn.value).padStart(4, "0")}${mn.direction}`),
+      text: T.cloud.minimumOf(mn.value, mn.direction),
+    },
   ];
   const rvrDecodeRows = (r: RunwayVisualRange): DecodeRow[] => {
-    const list: DecodeRow[] = [{ code: rawSlice(r.span), text: rvrHumanOf(r) }];
+    const list: DecodeRow[] = [
+      { code: codeOf(rawSlice(r.span), rvrTextOf(r)), text: rvrHumanOf(r) },
+    ];
     if (r.max !== undefined) list.push({ code: "V", text: T.rvrNote.varying });
     if (r.trend !== undefined)
       list.push({
@@ -1176,12 +1271,12 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     const list: DecodeRow[] = [];
     if (report.temperature !== undefined)
       list.push({
-        code: rawSlice(report.temperature.span),
+        code: codeOf(rawSlice(report.temperature.span), `${report.temperature.celsius}`),
         text: `${T.label.temperature} ${report.temperature.celsius}°C`,
       });
     if (report.dewpoint !== undefined)
       list.push({
-        code: rawSlice(report.dewpoint.span),
+        code: codeOf(rawSlice(report.dewpoint.span), `${report.dewpoint.celsius}`),
         text: `${T.label.dewpoint} ${report.dewpoint.celsius}°C`,
       });
     return list;
@@ -1190,7 +1285,7 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     const g = report.altimeter;
     return [
       {
-        code: g === undefined ? "" : rawSlice(g.span),
+        code: g === undefined ? "" : codeOf(rawSlice(g.span), `${g.value} ${g.unit}`),
         text: `${T.label.altimeter} ${value} ${unit}`,
       },
     ];
@@ -1308,7 +1403,7 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     for (const g of weather) {
       if (!wxFirst) frag.append(document.createTextNode(T.sep));
       wxFirst = false;
-      const code = rawSlice(g.span) || weatherCodeOf(g);
+      const code = codeOf(rawSlice(g.span) || weatherCodeOf(g), weatherCodeOf(g));
       const piece = el(
         "span",
         isDangerWeather(g) ? "mw-danger" : isCautionWeather(g) ? "mw-caution" : undefined,
@@ -1343,7 +1438,7 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     for (const layer of clouds.elements) {
       if (!first) frag.append(document.createTextNode(T.sep));
       first = false;
-      const code = rawSlice(layer.span) || cloudCodeOf(layer);
+      const code = codeOf(rawSlice(layer.span) || cloudCodeOf(layer), cloudCodeOf(layer));
       const convective = layer.kind === "layer" && layer.convective !== undefined;
       const piece = el("span", convective ? "mw-danger" : cloudTone(layer), cloudHumanOf(layer));
       attachHint(piece, cloudHintOf(layer, code));
@@ -1381,7 +1476,10 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
         st.closed === true ? "mw-rwy-closed mw-danger" : undefined,
         runwayStateText(st, T.rwy),
       );
-      const code = rawSlice(st.span) || runwayStateText(st, T.rwy);
+      const code = codeOf(
+        rawSlice(st.span) || runwayStateText(st, T.rwy),
+        runwayStateText(st, T.rwy),
+      );
       attachHint(piece, rwyHintOf(st, code));
       registerDecode(rwyHintOf(st, code), rwyDecodeRows(st, code), "runwayState");
       frag.append(piece);
@@ -1391,8 +1489,10 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
   // —— 风切变行（WMO 306 FM15 §15.13.3，危险级着色——起降阶段重大危害；行序在跑道状态之后趋势之前）
   if (v.windShear !== undefined) {
     const ws = v.windShear;
-    const wsCode =
-      rawSlice(ws.span) || (ws.allRunways ? "WS ALL RWY" : `WS RWY ${ws.runways.join(" ")}`);
+    const wsCode = codeOf(
+      rawSlice(ws.span) || (ws.allRunways ? "WS ALL RWY" : `WS RWY ${ws.runways.join(" ")}`),
+      ws.allRunways ? "WS ALL RWY" : `WS RWY ${ws.runways.join(" ")}`,
+    );
     // 纯译文主表：值给人话（全部跑道 / 跑道 07 09）；WS 电码保留在悬停与 RAW
     const wsValue = ws.allRunways ? T.ws.all : T.ws.runways(ws.runways.join(" "));
     registerDecode(wsHintOf(wsCode), wsDecodeRows(wsCode, ws), "windShear");
@@ -1425,135 +1525,235 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
         "li",
         w.severity === "info" ? "mw-info" : w.severity === "warning" ? "mw-warning" : "mw-error",
       );
-      li.textContent = `${w.severity === "info" ? "ℹ" : "⚠"} ${T.warningText(w.code, w.message, rawSlice(w.span))}`;
+      li.textContent = `${w.severity === "info" ? "ℹ" : "⚠"} ${T.warningText(
+        w.code,
+        w.message,
+        codeOf(rawSlice(w.span), ""),
+      )}`;
       list.append(li);
     }
     root.append(list);
   }
 
-  // —— RAW 对照视图：按 span 切原文，已知组与告警高亮（span 缺席的组优雅降级：不高亮不炸）
+  // —— RAW 对照视图：按 span 切原文，已知组与告警高亮（span 缺席的组优雅降级：不高亮不炸）。
+  // 渲染抽为按报告入参的内部函数 renderRawBox（第四期）：本卡 ir.raw 与 altRaws 备选编码的
+  // 视图走同一实现，不复制粘贴；altRaws 空/缺席时单视图直出（与既有行为一致，零回归面）。
+  // tab 组的交互接线在卡片根监听区之后（切 tab 要收气泡清联动——依赖其后定义的闭包）
+  const rawTabButtons: HTMLButtonElement[] = [];
+  const rawTabPanels: HTMLElement[] = [];
+  let rawTablist: HTMLElement | null = null;
   if (options.raw === true) {
     // 身份行（批4#19：与 TAF 卡统一——原文区无标题＝裸贴电码像乱码报错）
     const rawHead = el("p", "mw-raw-title", T.rawTitle);
     rawHead.append(el("span", "mw-raw-hint", `　·　${T.rawHint}`));
     root.append(rawHead);
-    const rawBox = el("div", "mw-raw");
-    const marks: Array<{
-      start: number;
-      end: number;
-      title: string;
-      bad?: boolean;
-      tone?: "mw-danger" | "mw-caution";
-    }> = [];
-    const collect = (
-      span: Span | undefined,
-      title: string,
-      bad = false,
-      tone?: "mw-danger" | "mw-caution",
-    ): void => {
-      if (span !== undefined && span.end > span.start) marks.push({ ...span, title, bad, tone });
+    /** 单一 RAW 视图：按 target 的 span 切 target.raw、组级高亮与告警标注（嵌套区间嵌套渲染）。
+     *  提示语一律取提示语单一来源构建函数（全部按组入参、不闭包主表 report）——与主表行同串，
+     *  对 target 是另一份 IR（altRaws 备选编码）同样成立；温/露与 QNH 的提示语按 target 现取。 */
+    const renderRawBox = (target: MetarReport): HTMLElement => {
+      const raw = target.raw;
+      const tv = toValues(target);
+      const rawBox = el("div", "mw-raw");
+      const slice = (span: Span | undefined): string =>
+        span === undefined ? "" : raw.slice(span.start, span.end);
+      const marks: Array<{
+        start: number;
+        end: number;
+        title: string;
+        bad?: boolean;
+        tone?: "mw-danger" | "mw-caution";
+      }> = [];
+      const collect = (
+        span: Span | undefined,
+        title: string,
+        bad = false,
+        tone?: "mw-danger" | "mw-caution",
+      ): void => {
+        if (span !== undefined && span.end > span.start) marks.push({ ...span, title, bad, tone });
+      };
+      // RAW 对照是语义场景：组级 span 从 IR 取（视图层不含组级 span；缺测组由同 span 的告警高亮）。
+      if (target.wind?.kind === "value") {
+        collect(target.wind.span, windHintOf(target.wind.value));
+        const wv = target.wind.value.variation;
+        if (wv !== undefined) {
+          collect(wv.span, windVarHintOf(wv));
+        }
+      }
+      if (target.visibility?.kind === "value") {
+        collect(
+          target.visibility.span,
+          visHintOf(target.visibility.value),
+          false,
+          visibilityTone(target.visibility.value),
+        );
+        if (target.visibility.value.minimum !== undefined) {
+          const mn = target.visibility.value.minimum;
+          collect(mn.span, visMinimumHintOf(mn));
+        }
+      }
+      if (target.runwayVisualRange?.kind === "value") {
+        // 行级危险口径与主表一致（最低端 < 800 m，英尺折米）
+        const rvrMetersRaw = Math.min(
+          ...target.runwayVisualRange.value.map((r) => {
+            const values = [r.value ?? r.min ?? Number.POSITIVE_INFINITY];
+            if (r.max !== undefined) values.push(r.max);
+            return Math.min(...values) * (r.unit === "ft" ? 0.3048 : 1);
+          }),
+        );
+        const rvrTone = rvrMetersRaw < 800 ? "mw-danger" : undefined;
+        for (const r of target.runwayVisualRange.value)
+          collect(r.span, rvrHintOf(r), false, rvrTone);
+      }
+      if (target.weather?.kind === "value") {
+        for (const g of target.weather.value)
+          collect(
+            g.span,
+            wxHintOf(g, codeOf(slice(g.span) || weatherCodeOf(g), weatherCodeOf(g))),
+            false,
+            isDangerWeather(g) ? "mw-danger" : isCautionWeather(g) ? "mw-caution" : undefined,
+          );
+      }
+      if (target.clouds !== undefined) {
+        for (const e of target.clouds.elements)
+          collect(
+            e.span,
+            cloudHintOf(e, codeOf(slice(e.span) || cloudCodeOf(e), cloudCodeOf(e))),
+            false,
+            e.kind === "layer" && e.convective !== undefined ? "mw-danger" : cloudTone(e),
+          );
+        if (target.clouds.clear !== undefined)
+          collect(target.clouds.clear.span, skyClearHintOf(target.clouds.clear.code));
+      }
+      for (const st of target.runwayStates)
+        collect(
+          st.span,
+          rwyHintOf(
+            st,
+            codeOf(slice(st.span) || runwayStateText(st, T.rwy), runwayStateText(st, T.rwy)),
+          ),
+          false,
+          st.closed === true ? "mw-danger" : undefined,
+        );
+      if (target.windShear !== undefined)
+        collect(
+          target.windShear.span,
+          wsHintOf(
+            slice(target.windShear.span) ||
+              (target.windShear.allRunways
+                ? "WS ALL RWY"
+                : `WS RWY ${target.windShear.runways.join(" ")}`),
+          ),
+          false,
+          "mw-danger",
+        );
+      // 温/露/QNH 补标注（此前 RAW 无高亮——非专业逐 token 点读覆盖面补全）。
+      // 温露同 token（dd/dd 一组）：两 span 完全重合，拆两条会相互覆盖只剩先到者——
+      // 合并单条标注，点哪边都是完整解读（主表温/露两行同提示语）
+      if (target.temperature !== undefined || target.dewpoint !== undefined)
+        collect(target.temperature?.span ?? target.dewpoint?.span, tempDewHintOf(tv));
+      if (target.altimeter !== undefined) collect(target.altimeter.span, qnhHintOf(tv));
+      for (const w of target.warnings)
+        collect(w.span, T.warningText(w.code, w.message, codeOf(slice(w.span), "")), true);
+      // 趋势段与 CAVOK 词位：主表可点（趋势行/徽章），RAW 同样高亮同提示语——覆盖率对齐
+      for (const tr of target.trends) collect(tr.span, trendHintOf(tr));
+      if (target.cavok) collect(target.cavokSpan, T.cavokHint);
+      // 同 start 时告警/缺测（bad）优先：组级 span 让位于告警区间，缺测组才能高亮并悬停解释。
+      // 嵌套区间（外层组区间完整包含内层子元素区间——IWXXM 通道的 span 是 XML 元素区间，组含
+      // 子元素天然嵌套，如风组 surfaceWind 元素含扇区两端元素；TAC 词位互斥不触发本路径）按
+      // 嵌套 DOM 渲染：外层与内层各挂各的提示，悬停各自命中自己的联动；交叉（半重叠）与同区间
+      // 重复按先到者丢弃——对非嵌套输入与旧扁平渲染逐节点等价（TAC 行为锁不受影响）。
+      marks.sort(
+        (a, b) =>
+          a.start - b.start || Number(b.bad === true) - Number(a.bad === true) || b.end - a.end,
+      );
+      type RawMark = (typeof marks)[number];
+      const emitMarks = (
+        box: HTMLElement,
+        from: number,
+        to: number,
+        list: readonly RawMark[],
+      ): void => {
+        let cursor = from;
+        let idx = 0;
+        while (idx < list.length) {
+          const mark = list[idx];
+          if (mark === undefined) break;
+          if (mark.start < cursor) {
+            idx += 1;
+            continue; // 交叉/同区间重复：先到者为准（与旧扁平渲染同判）
+          }
+          if (mark.start > cursor)
+            box.append(document.createTextNode(raw.slice(cursor, mark.start)));
+          // 收集严格包含于本区间的后续标注为内层（嵌套渲染）；首个非包含即止
+          const inner: RawMark[] = [];
+          let j = idx + 1;
+          while (j < list.length) {
+            const c = list[j];
+            if (
+              c === undefined ||
+              c.start >= mark.end ||
+              !(
+                c.start >= mark.start &&
+                c.end <= mark.end &&
+                (c.start !== mark.start || c.end !== mark.end)
+              )
+            )
+              break;
+            inner.push(c);
+            j += 1;
+          }
+          const piece = el("span", mark.bad ? "mw-bad" : mark.tone);
+          attachHint(piece, mark.title);
+          if (inner.length > 0) emitMarks(piece, mark.start, mark.end, inner);
+          else piece.textContent = raw.slice(mark.start, mark.end);
+          box.append(piece);
+          cursor = mark.end;
+          idx = j;
+        }
+        if (cursor < to) box.append(document.createTextNode(raw.slice(cursor, to)));
+      };
+      emitMarks(rawBox, 0, raw.length, marks);
+      return rawBox;
     };
-    // RAW 对照是语义场景：组级 span 从 IR 取（视图层不含组级 span；缺测组由同 span 的告警高亮）。
-    // 提示语一律取自上方单一来源构建函数——与主表行同一字符串，两边永不漂移
-    if (report.wind?.kind === "value") {
-      collect(report.wind.span, windHintOf(report.wind.value));
-      const wv = report.wind.value.variation;
-      if (wv !== undefined) {
-        collect(wv.span, windVarHintOf(wv));
-      }
+    const altList =
+      typeof options.altRaws === "function" ? options.altRaws(report) : (options.altRaws ?? []);
+    if (altList.length === 0) {
+      root.append(renderRawBox(report));
+    } else {
+      // —— 双编码 tab 组：默认 tab = 本卡 ir.raw（标签按编码形态：`<` 开头＝XML→IWXXM，其余→TAC），
+      // 每个 altRaw 一个 tab；面板 hidden 切换、DOM 保留（联动跨 tab 不要求——当前可见 tab 内生效）
+      const views: { label: string; box: HTMLElement }[] = [
+        {
+          label: T.rawTab[report.raw.startsWith("<") ? "iwxxm" : "tac"],
+          box: renderRawBox(report),
+        },
+        ...altList.map((a) => ({ label: a.label, box: renderRawBox(a.report) })),
+      ];
+      const group = el("div", "mw-raw-group");
+      const tablist = el("div", "mw-raw-tabs");
+      tablist.setAttribute("role", "tablist");
+      tablist.setAttribute("aria-label", T.rawTab.listLabel);
+      views.forEach((view, i) => {
+        const btn = el("button", i === 0 ? "mw-raw-tab mw-raw-tab-on" : "mw-raw-tab", view.label);
+        btn.type = "button";
+        btn.id = `mw-raw-tab-${++RAW_TAB_SEQ}`;
+        btn.setAttribute("role", "tab");
+        btn.setAttribute("aria-selected", i === 0 ? "true" : "false");
+        btn.setAttribute("aria-controls", `${btn.id}-panel`);
+        btn.tabIndex = i === 0 ? 0 : -1;
+        view.box.id = `${btn.id}-panel`;
+        view.box.classList.add("mw-raw-panel");
+        view.box.setAttribute("role", "tabpanel");
+        view.box.setAttribute("aria-labelledby", btn.id);
+        view.box.toggleAttribute("hidden", i !== 0);
+        tablist.append(btn);
+        rawTabButtons.push(btn);
+        rawTabPanels.push(view.box);
+      });
+      group.append(tablist, ...rawTabPanels);
+      rawTablist = tablist;
+      root.append(group);
     }
-    if (report.visibility?.kind === "value") {
-      collect(
-        report.visibility.span,
-        visHintOf(report.visibility.value),
-        false,
-        visibilityTone(report.visibility.value),
-      );
-      if (report.visibility.value.minimum !== undefined) {
-        const mn = report.visibility.value.minimum;
-        collect(mn.span, visMinimumHintOf(mn));
-      }
-    }
-    if (report.runwayVisualRange?.kind === "value") {
-      // 行级危险口径与主表一致（最低端 < 800 m，英尺折米）
-      const rvrMetersRaw = Math.min(
-        ...report.runwayVisualRange.value.map((r) => {
-          const values = [r.value ?? r.min ?? Number.POSITIVE_INFINITY];
-          if (r.max !== undefined) values.push(r.max);
-          return Math.min(...values) * (r.unit === "ft" ? 0.3048 : 1);
-        }),
-      );
-      const rvrTone = rvrMetersRaw < 800 ? "mw-danger" : undefined;
-      for (const r of report.runwayVisualRange.value) collect(r.span, rvrHintOf(r), false, rvrTone);
-    }
-    if (report.weather?.kind === "value") {
-      for (const g of report.weather.value)
-        collect(
-          g.span,
-          wxHintOf(g, rawSlice(g.span) || weatherCodeOf(g)),
-          false,
-          isDangerWeather(g) ? "mw-danger" : isCautionWeather(g) ? "mw-caution" : undefined,
-        );
-    }
-    if (report.clouds !== undefined) {
-      for (const e of report.clouds.elements)
-        collect(
-          e.span,
-          cloudHintOf(e, rawSlice(e.span) || cloudCodeOf(e)),
-          false,
-          e.kind === "layer" && e.convective !== undefined ? "mw-danger" : cloudTone(e),
-        );
-      if (report.clouds.clear !== undefined)
-        collect(report.clouds.clear.span, skyClearHintOf(report.clouds.clear.code));
-    }
-    for (const st of report.runwayStates)
-      collect(
-        st.span,
-        rwyHintOf(st, rawSlice(st.span) || runwayStateText(st, T.rwy)),
-        false,
-        st.closed === true ? "mw-danger" : undefined,
-      );
-    if (report.windShear !== undefined)
-      collect(
-        report.windShear.span,
-        wsHintOf(
-          rawSlice(report.windShear.span) ||
-            (report.windShear.allRunways
-              ? "WS ALL RWY"
-              : `WS RWY ${report.windShear.runways.join(" ")}`),
-        ),
-        false,
-        "mw-danger",
-      );
-    // 温/露/QNH 补标注（此前 RAW 无高亮——非专业逐 token 点读覆盖面补全）。
-    // 温露同 token（dd/dd 一组）：两 span 完全重合，拆两条会相互覆盖只剩先到者——
-    // 合并单条标注，点哪边都是完整解读（主表温/露两行同提示语）
-    if (report.temperature !== undefined || report.dewpoint !== undefined)
-      collect(report.temperature?.span ?? report.dewpoint?.span, tempDewHint);
-    if (report.altimeter !== undefined) collect(report.altimeter.span, qnhHint);
-    for (const w of report.warnings)
-      collect(w.span, T.warningText(w.code, w.message, rawSlice(w.span)), true);
-    // 趋势段与 CAVOK 词位：主表可点（趋势行/徽章），RAW 同样高亮同提示语——覆盖率对齐
-    for (const tr of report.trends) collect(tr.span, trendHintOf(tr));
-    if (report.cavok) collect(report.cavokSpan, T.cavokHint);
-    // 同 start 时告警/缺测（bad）优先：组级 span 让位于告警区间，缺测组才能高亮并悬停解释
-    marks.sort((a, b) => a.start - b.start || Number(b.bad === true) - Number(a.bad === true));
-    let cursor = 0;
-    for (const mark of marks) {
-      if (mark.start < cursor) continue; // 重叠区间跳过（告警与组重叠时以先到者为准）
-      if (mark.start > cursor)
-        rawBox.append(document.createTextNode(rawText.slice(cursor, mark.start)));
-      const piece = el(
-        "span",
-        mark.bad ? "mw-bad" : mark.tone,
-        rawText.slice(mark.start, mark.end),
-      );
-      attachHint(piece, mark.title);
-      rawBox.append(piece);
-      cursor = mark.end;
-    }
-    if (cursor < rawText.length) rawBox.append(document.createTextNode(rawText.slice(cursor)));
-    root.append(rawBox);
   }
 
   // 人话提示的点击/键盘通道：title 悬停之外，触屏点击与键盘聚焦同样可读——
@@ -1637,19 +1837,36 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
   // 浮签随行显出该组在 RAW 侧的电码——「这个结论从原文哪里来」一眼可见
   const codeChip = el("span", "mw-codechip");
   const showChip = (near: HTMLElement, codes: string): void => {
-    codeChip.textContent = codes;
+    // XML 通道的 RAW 片段是整段元素（可数百字符）——浮签截断保卡片内可读（完整原码看 RAW 高亮）
+    codeChip.textContent = codes.length > 80 ? `${codes.slice(0, 79)}…` : codes;
     codeChip.style.display = "inline-block";
     positionChipNear(root, codeChip, near); // 共享几何（工程债批）：滚动补偿+钳制单一来源
   };
   const setLinked = (key: string | null, near: HTMLElement | null = null): void => {
     const codes: string[] = [];
+    const linkedNodes: HTMLElement[] = [];
     for (const node of Array.from(root.querySelectorAll<HTMLElement>("[data-hint]"))) {
       const hit = key !== null && node.dataset.hint === key;
       node.classList.toggle("mw-link", hit);
-      if (hit && node.closest(".mw-raw") !== null) codes.push(node.textContent ?? "");
+      if (!hit) continue;
+      // 隐藏的 RAW tab 面板（切走的编码视图）不进浮签与对侧揭示——显示面恒为当前可见编码，
+      // 免得浮签拼接两条编码文本/揭示滚向不可见面板；宿主收起整个原文区（面板外层 hidden）
+      // 不在此列：面板自身未 hidden，悬停主表字段浮签照旧出电码（与既有行为一致）
+      if (node.closest(".mw-raw-panel[hidden]") !== null) continue;
+      linkedNodes.push(node);
+      if (node.closest(".mw-raw") !== null) codes.push(node.textContent ?? "");
     }
     if (key !== null && near !== null && codes.length > 0) showChip(near, codes.join(" "));
     else codeChip.style.display = "none";
+    // 联动滚动揭示（第三期）：悬停任一侧 → 对侧首个同组节点滚进卡内视野（源面板高亮「看得见」——
+    // XML 原文长，不滚到视野联动就不可感；TAC 原文短，已可见时零动作）
+    if (key !== null && near !== null) {
+      const fromRaw = near.closest(".mw-raw") !== null;
+      const counterpart = linkedNodes.find((n) =>
+        fromRaw ? n.closest(".mw-raw") === null : n.closest(".mw-raw") !== null,
+      );
+      if (counterpart !== undefined) revealWithin(root, counterpart);
+    }
   };
   root.addEventListener("mouseover", (ev) => {
     const target = ev.target instanceof HTMLElement ? ev.target : null;
@@ -1668,6 +1885,49 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     if (to?.closest("[data-hint]") === null || to === null) setLinked(null);
   });
   root.append(codeChip);
+
+  // —— RAW 双编码 tab 切换（altRaws 在场时；卡内自包含）：click / 按钮 Enter/Space 原生通道 +
+  //  左右方向键与 Home/End（roving tabindex，选择跟随焦点）；切换 = 激活面板唯一在见（其余
+  //  hidden 保留 DOM）、aria-selected 随行；切走即收气泡清联动（气泡/浮签定位在旧面板上会悬空）。
+  //  监听挂 tablist 局部（与卡片根的气泡/联动监听互不掺和：tab 按钮非 .mw-hint，根 click 委托
+  //  走 closeBubble 分支恰好无害）
+  if (rawTablist !== null && rawTabButtons.length > 1) {
+    const activateRawTab = (idx: number, focus = false): void => {
+      rawTabButtons.forEach((btn, i) => {
+        const on = i === idx;
+        btn.classList.toggle("mw-raw-tab-on", on);
+        btn.setAttribute("aria-selected", on ? "true" : "false");
+        btn.tabIndex = on ? 0 : -1;
+        rawTabPanels[i]?.toggleAttribute("hidden", !on);
+      });
+      closeBubble();
+      setLinked(null);
+      if (focus) rawTabButtons[idx]?.focus();
+    };
+    rawTablist.addEventListener("click", (ev) => {
+      const target = ev.target instanceof HTMLElement ? ev.target : null;
+      const btn = target?.closest<HTMLButtonElement>("button.mw-raw-tab") ?? null;
+      if (btn === null) return;
+      activateRawTab(rawTabButtons.indexOf(btn));
+    });
+    rawTablist.addEventListener("keydown", (ev) => {
+      const target = ev.target instanceof HTMLElement ? ev.target : null;
+      const btn = target?.closest<HTMLButtonElement>("button.mw-raw-tab") ?? null;
+      if (btn === null) return;
+      const cur = rawTabButtons.indexOf(btn);
+      const move = (next: number): void => {
+        ev.preventDefault();
+        activateRawTab(
+          ((next % rawTabButtons.length) + rawTabButtons.length) % rawTabButtons.length,
+          true,
+        );
+      };
+      if (ev.key === "ArrowRight") move(cur + 1);
+      else if (ev.key === "ArrowLeft") move(cur - 1);
+      else if (ev.key === "Home") move(0);
+      else if (ev.key === "End") move(rawTabButtons.length - 1);
+    });
+  }
 
   return root;
 }

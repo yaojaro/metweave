@@ -29,6 +29,12 @@
  * Source span: half-open UTF-16 code-unit range [start, end) into `raw` — raw.slice(start, end) yields the original fragment.
  * 原文位置：raw 的 UTF-16 码元半开区间 [start, end)，raw.slice(start, end) 即原片段。
  *
+ * What `raw` is depends on the parsing channel (v0.3): TAC-side spans index word positions in the
+ * character-code text; IWXXM-side spans (parseIwxxm) index the source element/attribute range in
+ * the XML document carried on the same `raw`. Same contract either way — a slice of that channel's raw.
+ * raw 的语义随解析通道而异（v0.3 起）：TAC 侧 span 索引字符电码原文的词位；IWXXM 侧
+ * （parseIwxxm）span 索引其 raw 所载 XML 文档中的源元素/源属性区间。契约同一——都是本通道 raw 的切片。
+ *
  * Multi-element groups (an array carried on an `Observed` — e.g. `runwayVisualRange`, `weather`)
  * carry a **group-level envelope span**: it runs from the first to the last element and does NOT
  * promise that everything inside belongs to the group (a stray token between two RVR groups falls
@@ -682,6 +688,7 @@ export interface TafReport {
   readonly changes: readonly TafChangeGroup[];
   /** 气温组序列（TX/TN 按报文原序）；空数组 = 无气温组 */
   readonly temperatures: readonly TafTemperatureGroup[];
+  /** 占位同构字段：TAF 语汇无 RMK 组，解析器恒填 []（字段面与 METAR 报同构，消费方无需判空） */
   readonly remarks: readonly RemarkGroup[];
   /** 永远存在，可为空数组 */
   readonly warnings: readonly ParseWarning[];

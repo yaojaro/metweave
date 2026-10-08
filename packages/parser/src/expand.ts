@@ -14,6 +14,7 @@
  * 自检三问（判卷同源，taf-timeline §2）：窗开了吗（开窗前只有基况）？绑到最新完成段了吗？
  * 未列要素回溯了吗（云组落笔）？
  */
+import { MetarParseError } from "@metweave/core";
 import type {
   CloudCondition,
   TafChangeGroup,
@@ -47,10 +48,16 @@ export interface TafResolvedConditions {
 
 /** TEMPO/PROB 发作态：只携带组内所列要素（覆盖语义：天气整列替换、云整体替换、未列继承段值） */
 export interface TafTempoOverlay {
-  readonly conditions: Pick<
-    TafResolvedConditions,
-    "wind" | "visibility" | "weather" | "clouds" | "cavok"
-  >;
+  readonly conditions: {
+    readonly wind?: WindGroup;
+    readonly visibility?: VisibilityGroup;
+    /** 组内所列天气（整列替换）；**省略＝组内未列天气（继承主导段值）**，[] ＝ NSW 显式无天气——
+     * 三态省略与空数组语义不同，消费方 spread 叠加即得「未列继承」的正确合成。 */
+    readonly weather?: readonly WeatherGroup[];
+    readonly clouds?: CloudCondition;
+    /** 组内编 CAVOK 才出现（true）；省略＝未编（继承主导段 CAVOK 判定） */
+    readonly cavok?: boolean;
+  };
   /** PROB 组携带；TEMPO 无概率 */
   readonly probability?: 30 | 40;
   readonly withTempo: boolean;
@@ -193,7 +200,11 @@ export function expandTaf(
   anchor: TafMonthAnchor,
 ): TafExpansion {
   if (report.validity === undefined || report.nil === true || report.cancelled === true) {
-    throw new Error("expandTaf 需要带有效期的完整 TAF（NIL/CNL 报无可展开时间线）");
+    throw new MetarParseError(
+      "taf-not-expandable",
+      report.raw,
+      "expandTaf 需要带有效期的完整 TAF（NIL/CNL 报无可展开时间线）",
+    );
   }
   const v = report.validity;
   const wrapDay = (day: number): number => (day < v.startDay ? day + anchor.daysIn : day);
@@ -242,9 +253,12 @@ export function expandTaf(
       conditions: {
         ...(e.wind !== undefined ? { wind: e.wind } : {}),
         ...(e.visibility !== undefined ? { visibility: e.visibility } : {}),
-        weather: e.nsw !== undefined && e.weather.length === 0 ? [] : e.weather,
+        // 天气三态：NSW → []（显式无天气）；列了 → 整列；未列 → 省略（继承主导段值——
+        // 旧实现未列也归 []，叠加消费方会把基况降水清空、发作窗档位被低估）
+        ...(e.nsw !== undefined ? { weather: [] } : {}),
+        ...(e.weather.length > 0 ? { weather: e.weather } : {}),
         ...(e.clouds !== undefined ? { clouds: e.clouds } : {}),
-        cavok: e.cavok !== undefined,
+        ...(e.cavok !== undefined ? { cavok: true } : {}),
       },
       ...(change.probability !== undefined ? { probability: change.probability } : {}),
       withTempo: change.withTempo === true,
@@ -302,7 +316,11 @@ export function tafSegments(
   anchor: TafMonthAnchor = { daysIn: 31 },
 ): readonly TafSegmentRow[] {
   if (report.validity === undefined || report.nil === true || report.cancelled === true) {
-    throw new Error("tafSegments 需要带有效期的完整 TAF（NIL/CNL 报无可分段）");
+    throw new MetarParseError(
+      "taf-not-expandable",
+      report.raw,
+      "tafSegments 需要带有效期的完整 TAF（NIL/CNL 报无可分段）",
+    );
   }
   const v = report.validity;
   const validFrom = minutesOf(v.startDay, v.startHour, 0);

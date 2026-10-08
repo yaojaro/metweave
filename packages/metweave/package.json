@@ -1,7 +1,7 @@
 {
   "name": "metweave",
-  "version": "0.2.1",
-  "description": "Show live airport weather on a Leaflet map in ten lines — METAR parsing, report cards and map layers, straight from public sources.",
+  "version": "0.3.0",
+  "description": "METAR parsing, report cards and public-source fetchers in one entry — pair it with @metweave/leaflet (the map adapter) to put live airport weather on a map in ten lines.",
   "keywords": [
     "airport",
     "aviation",
@@ -37,16 +37,25 @@
   "exports": {
     ".": {
       "types": "./src/index.ts",
+      "mw-dist": {
+        "import": "./dist/index.js"
+      },
       "import": "./src/index.ts",
       "require": "./src/index.ts"
     },
     "./sources": {
       "types": "./src/sources.ts",
+      "mw-dist": {
+        "import": "./dist/sources.js"
+      },
       "import": "./src/sources.ts",
       "require": "./src/sources.ts"
     },
     "./stations-cn": {
       "types": "./src/stations-cn.ts",
+      "mw-dist": {
+        "import": "./dist/stations-cn.js"
+      },
       "import": "./src/stations-cn.ts",
       "require": "./src/stations-cn.ts"
     }

@@ -19,12 +19,15 @@
     "check:artifact": "rm -rf node_modules/.artifacts && pnpm -r --filter '!metweave-monorepo' --filter '!metweave-examples' pack --pack-destination node_modules/.artifacts && for f in node_modules/.artifacts/*.tgz; do publint \"$f\" && attw --profile node16 \"$f\" || exit 1; done && for f in node_modules/.artifacts/*.tgz; do tar -tzf \"$f\" | grep -qx \"package/LICENSE\" || { echo \"缺 LICENSE: $f\"; exit 1; }; done",
     "fuzz": "node scripts/fuzz.mjs",
     "gen:stations": "node scripts/generate-stations.mjs",
+    "gen:iwxxm": "node scripts/gen-iwxxm.mjs",
     "gen:unknown": "node scripts/gen-unknown-shapes.mjs",
     "publish:all": "pnpm build && pnpm check:artifact && pnpm -r publish --access public",
-    "gen:terms": "node scripts/terms.mjs gen --write",
+    "gen:terms": "node scripts/terms.mjs gen",
     "check:terms": "node scripts/terms.mjs check",
     "ci:rehearsal": "node scripts/ci-rehearsal.mjs",
-    "check:all": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm check:leaks && pnpm check:docs && pnpm check:terms && pnpm check:knip"
+    "bump": "node scripts/bump-version.mjs",
+    "check:all": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm replay:corpus && pnpm check:leaks && pnpm check:docs && pnpm check:terms && pnpm check:knip && pnpm check:workspace && pnpm check:artifact && pnpm build:examples && rm -rf examples/dist",
+    "gen:grid": "node scripts/gen-grid.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

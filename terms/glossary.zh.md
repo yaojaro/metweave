@@ -330,6 +330,14 @@
 |---|---|---|---|---|
 | card.rawHint | 悬停或 Tab 聚焦可与人话对照 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
+## card.rawTab（3 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| card.rawTab.iwxxm | IWXXM（XML） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.rawTab.tac | TAC（字符电码） | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| card.rawTab.listLabel | 报文原文编码切换 | product | packages/render/src/card.ts#LOCALE | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
 ## leaflet.tier（4 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
@@ -350,8 +358,8 @@
     }
   });
 
-/** 四档条件档位名（与 TIER_COLORS 的键一致；宿主面板/图例数据直读用，2026-09-24 评测批2#3） */
-export type ConditionTier = "unknown" \| "poor" \| "caution" \| "good";
+/** 四档条件档位名（@metweave/core 判据单源的类型；随包再导出——宿主不必穿透取型，2026-09-24 评测批2#3） */
+export type { ConditionTier };
 
 /**
  * 四档条件色单一来源（2026-09-24 评测批2#3：图例/面板/圆点色值不一致——两套色系并存）。
@@ -376,115 +384,21 @@ const TIER_WORDS: Record<"zh" \| "en", Record<ConditionTier, string>> = {
   },
 };
 
-/** 降水类现象（caution 判据用，与 WMO 4678 降水族对应——RA/SN/SG/PL/GS/IC/DZ/UP） */
-const PRECIP_PHENOMENA: ReadonlySet<string> = new Set([
-  "RA",
-  "SN",
-  "SG",
-  "PL",
-  "GS",
-  "IC",
-  "DZ",
-  "UP",
-]);
+// —— 档位判据（四档气象条件分级）已下沉 @metweave/core 判据单源（tier 模块）：
+// conditionTierOf（TAF 投影输入面）/ metarTierOf（METAR 直收）——判据语义、诚实声明与
+// WS/SQ 增补注记一律见 core 的 tier 模块注释；本包只做消费接线与展示（圆点/aria/弹窗）。
 
-/** 风速折米/秒（阵风判据统一单位：kt ×0.514444、kmh ÷3.6、mps ×1） */
-const toMps = (value: number, unit: "kt" \| "mps" \| "kmh"): number =>
-  unit === "kt" ? value * 0.514444 : unit === "kmh" ? value / 3.6 : value;
-
-/**
- * 四档气象条件分级（判据本库自拟、初稿待审——显示层扫视启发式）：
- * 阈值由本库拟定，**不对应也不代表任何官方飞行天气分类；本库不提供飞行规则判定**（本期无此功能）。
- * 仅供「一眼扫视哪些站值得注意」，不得作为任何运行判据：
- * - unknown（灰）= NIL（台站无观测）或关键组全缺测（能见度与云均缺测且天气缺测/无——按可得要素无从判读）
- * - poor（红）= 能见度 < 1500 m，或 BKN/OVC 云层（含垂直能见度）云底 < 1000 ft，或天气含 TS 族（任何雷暴，含 VC 邻近）
- *   或现象含 GR/VA，或冻降水（FZ 描述符族，冻雨/冻毛毛雨），或 + 强度显著降水，或阵风 ≥ 25 m/s，或云组含 CB/TCU，或跑道关闭
- * - caution（琥珀）= 能见度 1500–5000 m（能见度分档取国内通行 1500/5000 m 口径），或 BKN/OVC 云底 1000–3000 ft，或任何降水族（RA/SN 等），
- *   或 FZ 描述符以外的结冰现象，或阵风 15–25 m/s
- * - good（绿）= 其余（含 CAVOK）
- * 缺测要素不参与限制（按可得要素判，见 conditionOf 内 unknown 判据的例外）；阈值细则随口径审定后修订。
- */
-/** 判据输入面（结构子集）：METAR 报与 TAF 展开结果皆可喂（渲染层①，2026-09-23）——
- *  MetarReport 结构性满足本接口；TAF 侧由展开结果投影构造（runwayStates 恒缺省） */
-interface ConditionInput {
-  readonly nil?: boolean;
-  readonly cavok: boolean;
-  readonly wind?: Observed<WindGroup>;
-  readonly visibility?: Observed<VisibilityGroup>;
-  readonly weather?: Observed<readonly WeatherGroup[]>;
-  readonly clouds?: CloudCondition;
-  readonly runwayStates?: readonly RunwayStateGroup[];
-}
-
-function conditionOf(report: ConditionInput): ConditionTier {
-  if (report.nil === true) return "unknown";
-  const v = {
-    wind: unwrap(report.wind),
-    visibility: unwrap(report.visibility),
-    weather: unwrap(report.weather),
-    clouds: report.clouds,
-    runwayStates: report.runwayStates ?? [],
-  };
-  // 关键组全缺测：能见度与云均缺测（云组每个体均为全缺测形态）且天气缺测/无——判读无从下手，灰而非绿
-  const visMissing = report.visibility?.kind === "missing";
-  const elements = v.clouds?.elements ?? [];
-  const cloudsAllMissing =
-    !report.cavok &&
-    elements.every(
-      (e) => e.heightFt.value === null && (e.kind === "vertical-visibility" \|\| e.amount === null),
-    );
-  const weatherMissingOrNone =
-    report.weather === undefined \|\|
-    report.weather.kind === "missing" \|\|
-    (report.weather.kind === "value" && report.weather.value.length === 0);
-  if (visMissing && cloudsAllMissing && weatherMissingOrNone) return "unknown";
-
-  // —— poor 判据（任一命中即红）
-  const vis = v.visibility;
-  if (vis !== undefined) {
-    const visMeters = vis.unit === "m" ? vis.value : vis.value * 1609.344;
-    if (visMeters < 1500) return "poor";
-  }
-  const ceilings = elements
-    .filter((e): e is Extract<CloudElement, { kind: "layer" }> => e.kind === "layer")
-    .filter((e) => e.amount === "BKN" \|\| e.amount === "OVC")
-    .map((e) => e.heightFt.value ?? Number.POSITIVE_INFINITY);
-  for (const e of elements) {
-    if (e.kind === "vertical-visibility")
-      ceilings.push(e.heightFt.value ?? Number.POSITIVE_INFINITY);
-  }
-  const ceiling = ceilings.length > 0 ? Math.min(...ceilings) : Number.POSITIVE_INFINITY;
-  if (ceiling < 1000) return "poor";
-  for (const g of v.weather ?? []) {
-    const thunderstorm = g.descriptor === "TS"; // TS 族：任何雷暴（含 VCTS 邻近雷暴）
-    const hailOrAsh = g.phenomena.includes("GR") \|\| g.phenomena.includes("VA");
-    const freezing = g.descriptor === "FZ"; // 冻降水族（FZRA/FZDZ 等）——危害与雷暴同级，2026-09-22 运行视角评审升红
-    const heavyPrecip =
-      g.intensity === "+" &&
-      (g.descriptor === "SH" \|\| g.phenomena.some((p) => PRECIP_PHENOMENA.has(p)));
-    if (thunderstorm \|\| hailOrAsh \|\| freezing \|\| heavyPrecip) return "poor";
-  }
-  const gust = v.wind?.gust;
-  if (gust !== undefined && toMps(gust.value, gust.unit) >= 25) return "poor";
-  const convective = elements.some(
-    (e): e is Extract<CloudElement, { kind: "layer" }> =>
-      e.kind === "layer" && e.convective !== undefined,
-  );
-  if (convective) return "poor";
-  if (v.runwayStates.some((st) => st.closed === true)) return "poor";
-
-  // —— caution 判据（任一命中即琥珀）
-  if (vis !== undefined) {
-    const visMeters = vis.unit === "m" ? vis.value : vis.value * 1609.344;
-    if (visMeters < 5000) return "caution";
-  }
-  if (ceiling < 3000) return "caution";
-  for (const g of v.weather ?? []) {
-    const precip = g.phenomena.some((p) => PRECIP_PHENOMENA.has(p));
-    if (precip) return "caution";
-  }
-  if (gust !== undefined && toMps(gust.value, gust.unit) >= 15) return "caution";
-  return "good";
+/** 圆点层档位求值：注入在位时校验返回值 ∈ CONDITION_TIERS（core 单源合法值集）——非法档位
+ *  串（如 "por"）会静默破相（背景/aria 双 undefined），与注入函数抛错同口径整次调用失败；
+ *  内置判据（metarTierOf）免检：返回面由 core 类型与测试面恒锁合法。 */
+function resolveDotTier(
+  report: MetarReport,
+  tierOf: ((report: MetarReport) => ConditionTier) \| undefined,
+): ConditionTier {
+  if (tierOf === undefined) return metarTierOf(report);
+  const tier = tierOf(report);
+  assertConditionTier(tier);
+  return tier;
 }
 
 /** 天气组显示码：span 在位取原码，缺席由 IR 重建（摘要行的要素原样口径） */
@@ -512,26 +426,15 @@ function cloudCode(report: MetarReport, layer: CloudElement): string {
 /**
  * tooltip 第二行要素摘要（扫视初筛）：`2500m +TSRA BKN030CB` 式——
  * 能见度 / 最显著天气（优先 TS/GR/+ 强度族）/ 最差云（对流云优先，否则最低 BKN/OVC，VV 兜底）。
- * NIL 站显示「缺报（NIL）」、关键组全缺测站显示「数据缺测」（与 conditionOf 的 unknown 判据同款口径）。
+ * NIL 站显示「缺报（NIL）」、关键组全缺测站显示「数据缺测」（与 conditionTierOf 的 unknown 判据同款口径）。
  */
 function summarizeReport(report: MetarReport, locale: "zh" \| "en"): string {
   if (report.nil === true) return locale === "en" ? "No report (NIL)" : "缺报（NIL）";
   if (report.cavok) return "CAVOK";
   const v = toValues(report);
-  // 关键组全缺测（能见度与云均缺测且天气缺测/无）：要素摘要无从拼起，显示缺测占位而非空行
-  const elements = v.clouds?.elements ?? [];
-  const visMissing = report.visibility?.kind === "missing";
-  const cloudsAllMissing =
-    !report.cavok &&
-    elements.every(
-      (e) => e.heightFt.value === null && (e.kind === "vertical-visibility" \|\| e.amount === null),
-    );
-  const weatherMissingOrNone =
-    report.weather === undefined \|\|
-    report.weather.kind === "missing" \|\|
-    (report.weather.kind === "value" && report.weather.value.length === 0);
-  if (visMissing && cloudsAllMissing && weatherMissingOrNone)
-    return locale === "en" ? "Data missing" : "数据缺测";
+  // 关键组全缺测（判据单源谓词，与 conditionTierOf 灰档同款口径）：要素摘要无从拼起，
+  // 显示缺测占位而非空行
+  if (isConditionUnknown(report)) return locale === "en" ? "Data missing" : "数据缺测";
   const parts: string[] = [];
   const vis = v.visibility;
   if (vis !== undefined) {
@@ -548,9 +451,15 @@ function summarizeReport(report: MetarReport, locale: "zh" \| "en"): string {
     );
   }
   const weather = v.weather ?? [];
+  // 最显著天气优先集：TS/FZ 描述符族、GR 冰雹、+ 强度（与 core danger 集对齐——FZ 此前
+  // 缺席属单源化残留，冻降水组优先于普通降水组入选摘要）
   const significant =
     weather.find(
-      (g) => g.descriptor === "TS" \|\| g.phenomena.includes("GR") \|\| g.intensity === "+",
+      (g) =>
+        g.descriptor === "TS" \|\|
+        g.descriptor === "FZ" \|\|
+        g.phenomena.includes("GR") \|\|
+        g.intensity === "+",
     ) ?? weather[0];
   if (significant !== undefined) parts.push(weatherCode(report, significant));
   const layers = v.clouds?.elements ?? [];
@@ -637,8 +546,10 @@ export async function addMetarLayer(
     let marker: Leaflet.Marker;
     if (options.conditionColors === true) {
       // 圆点 divIcon 无 img——alt 失效，改以 role=img + aria-label 保住可访问名称（内容经 HTML 转义）；
-      // aria-label 追加档位词（a11y 1.4.1：档位不只靠颜色传达；语言随 card.locale，缺省中文）
-      const tier = conditionOf(item.report);
+      // aria-label 追加档位词（a11y 1.4.1：档位不只靠颜色传达；语言随 card.locale，缺省中文）。
+      // 档位判据：宿主注入 tierOf 优先（方案 C 合法替换通道），缺省走 core 内置判据；
+      // 注入函数抛错或返回非法档位即整次调用失败（不 try/catch 吞错——回退内置判据＝注入悄悄不生效）
+      const tier = resolveDotTier(item.report, options.tierOf);
       const label = `${name} · ${TIER_WORDS[locale][tier]}`;
       marker = L.marker(item.position, {
         icon: L.divIcon({
@@ -659,6 +570,10 @@ export async function addMetarLayer(
       const cardOpts: Parameters<typeof renderCard>[1] = { ...options.card };
       if (cardOpts.locale === undefined && options.locale !== undefined) {
         cardOpts.locale = options.locale;
+      }
+      // tierOf 注入转发（一处注入三层生效的第三层）：弹窗卡片档位标识与注入判据一致
+      if (cardOpts.tierOf === undefined && options.tierOf !== undefined) {
+        cardOpts.tierOf = options.tierOf;
       }
       const stationName =
         item.title !== undefined && item.title.startsWith(`${item.report.station} `)
@@ -697,7 +612,7 @@ export async function addMetarLayer(
 
 // ---------------------------------------------------------------- TAF 图层（v0.2 渲染层①：预报当观测渲）
 
-/** TAF 展开结果 → 判据输入面投影（runwayStates 恒缺省——TAF 无跑道状态语汇） */
+/** TAF 展开结果 → 判据输入面投影（runwayStates/windShear 恒缺省——TAF 语汇无跑道状态与风切变组位） */
 function asConditionInput(c: TafResolvedConditions, nilLike: boolean): ConditionInput {
   return {
     nil: nilLike,
@@ -776,7 +691,7 @@ const ADD_TAF_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
  * dot, tooltip and popup are driven by `expandTaf` (renderer layer ①: forecast-as-observation).
  * 把一组 TAF 站点按同一时刻的预报值挂上地图：四档圆点/tooltip/弹窗全部由 expandTaf 展开
  * 结果驱动（渲染层①「预报当观测渲」——判据/圆点/摘要与 METAR 侧同一条管线）。
- * 档位判据为本库自拟扫视启发式（同 conditionOf 注释）——**预报值套判据同样不得用作运行判据**，
+ * 档位判据为本库自拟扫视启发式（口径见 @metweave/core 的 tier 模块注释）——**预报值套判据同样不得用作运行判据**，
  * tooltip/弹窗均显式标注「预报」，不与实况混淆。
  */
 export async function addTafLayer(
@@ -816,7 +731,9 @@ const injectTafLayerStyle = (): void => {
   document.head.append(style);
 };
 const codeZoomBound = new WeakSet<Leaflet.Map>();
-/** zoom ≥ 5 常显 ICAO 码，低于则收（38 站全显互相压盖；评测签派 P0-1 的缩放分级折中） */
+/** zoom ≥ 5 常显 ICAO 码，低于则收（39 站全显互相压盖；评测签派 P0-1 的缩放分级折中）。
+ *  生命周期注：本监听绑在 map 容器上、不随层移除（WeakSet 防重复绑定）——同容器重建 map
+ *  的宿主场景会残留旧监听，监听体幂等无害；彻底规避请换容器或销毁 map。 */
 const bindCodeZoom = (map: Leaflet.Map): void => {
   if (codeZoomBound.has(map)) return;
   codeZoomBound.add(map);
@@ -950,15 +867,32 @@ function tafMarkerState(
   const noTimeline = r.nil === true \|\| r.cancelled === true;
   const v = r.validity;
   let tier: ConditionTier = "unknown";
-  let summary = r.nil === true ? "缺报（NIL）" : r.cancelled === true ? "预报取消（CNL）" : "";
+  let summary =
+    r.nil === true
+      ? locale === "en"
+        ? "No report (NIL)"
+        : "缺报（NIL）"
+      : r.cancelled === true
+        ? locale === "en"
+          ? "Forecast cancelled (CNL)"
+          : "预报取消（CNL）"
+        : "";
   const notes: string[] = [];
   if (!noTimeline && v !== undefined && outOfValidity(r, at)) {
     // 出窗：灰 unknown（签派复测 N2——「无有效预报」本身是运行信息；卡内有对应出界提示行）
     const early = absDayHour(at.day, at.hour) < absDayHour(v.startDay, v.startHour);
-    notes.push(early ? "预报尚未生效（按发布时基况显示）" : "预报已过期（按末段显示）");
+    notes.push(
+      early
+        ? locale === "en"
+          ? "Forecast not yet in effect (showing issued base conditions)"
+          : "预报尚未生效（按发布时基况显示）"
+        : locale === "en"
+          ? "Forecast expired (showing the last segment)"
+          : "预报已过期（按末段显示）",
+    );
     return {
       tier: "unknown",
-      label: `${name} · 预报${early ? "未生效" : "已过期"}`,
+      label: `${name} · ${locale === "en" ? `Forecast ${early ? "not yet in effect" : "expired"}` : `预报${early ? "未生效" : "已过期"}`}`,
       summary,
       notes,
     };
@@ -966,28 +900,29 @@ function tafMarkerState(
   if (!noTimeline && v !== undefined) {
     const expansion = expandTaf(r, at, anchor);
     // 发作窗内档位/摘要按「主导段 + TEMPO 叠加」合成态（实测批：雷雨发作窗圆点不升档＝
-    // 图上永远看不到危险窗——叠加合并式与下方提示语同一份，单一来源不漂移）
+    // 图上永远看不到危险窗——叠加合并式与下方提示语同一份，单一来源不漂移）。
+    // spread 即继承：tempo 未列的要素（含天气）沿用主导段——FM 51 语义「变化组只改所列要素」，
+    // NSW（显式无天气）与整列替换由 expand 层三态契约表达（weather 省略≠[]）
     const effective =
       expansion.tempo !== undefined
-        ? {
-            ...expansion.conditions,
-            ...expansion.tempo.conditions,
-            weather: expansion.tempo.conditions.weather ?? [],
-            cavok: expansion.tempo.conditions.cavok,
-          }
+        ? { ...expansion.conditions, ...expansion.tempo.conditions }
         : expansion.conditions;
-    tier = conditionOf(asConditionInput(effective, false));
+    tier = conditionTierOf(asConditionInput(effective, false));
     summary = summarizeTaf(effective, locale);
     if (expansion.uncertain)
       notes.push(
         locale === "en" ? "Transition band — timing uncertain" : "过渡带（变化时刻不确定）",
       );
     if (expansion.tempo !== undefined) {
-      const tempoSummary = summarizeTaf(effective, locale);
-      notes.push((locale === "en" ? "TEMPO bursts: " : "TEMPO 发作可能：") + tempoSummary);
+      // 提示语只标注双态语义（发作态摘要即上方 summary，不重复整段）
+      notes.push(
+        locale === "en"
+          ? "TEMPO bursts possible — summary shows burst conditions"
+          : "含 TEMPO 间歇变化——摘要为发作时刻状态",
+      );
     }
   } else if (v !== undefined) {
-    notes.push(`有效期 ${v.raw}`);
+    notes.push(locale === "en" ? `Validity ${v.raw}` : `有效期 ${v.raw}`);
   }
   return {
     tier,
@@ -1120,24 +1055,21 @@ async function populateTafLayer(
 }
 
 /**
- * 单站某时刻的档位（数据直读，2026-09-24 评测批3#14）：与地图圆点同一判据管线
- * （含出窗灰、TEMPO 发作窗升档、NIL/CNL 灰）——宿主面板/对比基准不再从 marker DOM
- * className 正则回读（状态经渲染产物回流的工程债收口），DOM 只做展示。
- * at 语义同 addTafLayer：calendarAnchor 在位时为层连续序（逐报归一），否则为报锚内日号。
+ * METAR 档位判据公共面（@metweave/core 判据单源的随包再导出，tafTierOf 同款管线）：
+ * 实况面板/图例等消费方与圆点同一判据（数据直读，不从 DOM 回流——批3#14 口径）；
+ * 宿主按自身运行标准重分档请走 `addMetarLayer` 的 `tierOf` 注入通道，本函数恒为内置缺省判据。
  */
-/**
- * METAR 档位判据公共面（conditionOf 薄包装，tafTierOf 同款）：实况面板/图例等消费方
- * 与圆点同一判据管线（数据直读，不从 DOM 回流——批3#14 口径）。
- */
-export function metarTierOf(report: MetarReport): ConditionTier {
-  return conditionOf(report);
-}
+export { metarTierOf } from "@metweave/core";
 
 /** METAR 要素摘要公共面（summarizeReport 薄包装）：「2500m +TSRA BKN030CB」式扫视摘要。 */
 export function summarizeMetarConditions(report: MetarReport, locale: "zh" \| "en"): string {
   return summarizeReport(report, locale);
 }
 
+/** 单站某时刻的档位（数据直读，2026-09-24 评测批3#14）：与地图圆点同一判据管线
+ *  （含出窗灰、TEMPO 发作窗升档、NIL/CNL 灰）——宿主面板/对比基准不再从 marker DOM
+ *  className 正则回读（状态经渲染产物回流的工程债收口），DOM 只做展示。
+ *  at 语义同 addTafLayer：calendarAnchor 在位时为层连续序（逐报归一），否则为报锚内日号。 */
 export function tafTierOf(
   item: TafLayerItem,
   at: TafExpandAt,
@@ -1314,11 +1246,324 @@ export interface TafTimeControlOptions {
 |---|---|---|---|---|
 | leaflet.msg08 | ${String(at.day).padStart(2, "0")}日 | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
+## leaflet.msg09（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg09 | addGridLayer 收到未知选项 "${key}"（可用项见 AddGridLayerOptions） | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg10（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg10 | addGridLayer 需要 Canvas 2D 能力（当前宿主环境不可用——SSR/无头环境请改用 @metweave/grid 的 renderToImageData 自行出图） | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg11（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg11 | );
+
+/** 等值线值格式化：整数原样、非整数保留一位小数（与面板图例 fmtValue 同口径）。 */
+const fmtContourValue = (v: number): string =>
+  Number.isInteger(v) ? `${v}` : `${Math.round(v * 10) / 10}`;
+
+/**
+ * Put contour lines + labels + L/H centers of a gridded field onto a Leaflet map (SVG vector layer).
+ * 把一个格点场的等值线形态贴上 Leaflet 地图：内核 `contoursOf` 出等值线几何（d3-contour
+ * 闭合环，显示单位空间）→ SVG polyline 逐环描线（4 hPa 常规线粗、2 hPa 加密细线、特值线
+ * 红色加粗——档案 `contours` 口径驱动）＋常规线沿程数值标注（白底/挖空描边、恒定像素字号——
+ * SVG/标记缩放不失真；特值线〔如 500hPa 高度 5880 副高线〕标注随线着色加粗）＋`centersOf`
+ * 低压「L」/高压「H」中心标注（含中心值，气象读图惯例）。
+ *
+ * 与 `addGridLayer`（色斑栅格层）正交组合：色斑在下（pane mw-grid，z 350）、等值线与
+ * 标注在上（pane mw-grid-contour，z 360）、宿主矢量/标记/弹窗层再上（≥400）——等值线
+ * 主导形态（如 prmsl）由调用方两函数先后装配。档案缺 contours 口径显式抛错（留位要素
+ * 未接线即红，不静默空层）。几何与检测全部来自 @metweave/grid 纯函数（Node 可测），
+ * 本函数只做矢量装配。异步：leaflet 惰性装载（同 addGridLayer）。
+ */
+export async function addContourLayer(
+  map: Leaflet.Map,
+  grid: Grid,
+  profile: ElementProfile,
+  options: AddContourLayerOptions = {},
+): Promise<Leaflet.LayerGroup> {
+  for (const key of Object.keys(options)) {
+    if (!ADD_CONTOUR_LAYER_OPTION_KEYS.has(key)) {
+      throw new Error(`addContourLayer 收到未知选项  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg12（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg12 | （可用项见 AddContourLayerOptions）`);
+    }
+  }
+  const spec = profile.contours;
+  if (spec === undefined) {
+    throw new Error(
+      `要素 ${profile.shortName} 档案缺等值线口径（contours）——留位要素未接线，无法描线`,
+    );
+  }
+  const color = options.color ??  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg13（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg13 | ;
+  const withLabels = options.labels ?? true;
+  const withMinor = options.minor ?? true;
+  const withCenters = options.centers ?? true;
+
+  const lines = contoursOf(grid, spec, profile.toDisplay);
+  const L = await loadLeaflet();
+  if (map.getPane(CONTOUR_PANE) === undefined) {
+    map.createPane(CONTOUR_PANE).style.zIndex = String(CONTOUR_PANE_Z);
+  }
+  // renderer 首位入组：polylines 经 options.renderer 复用它渲染；renderer 本体随组进退——
+  // removeLayer(group) 时一并回收（否则 renderer 经 polyline 挂 map 后不在返回组里，
+  // 反复 remove+add 会在 pane 累积空 SVG 容器直至 map 销毁）
+  const renderer = L.svg({ pane: CONTOUR_PANE, padding: 0.8 });
+  const group = L.layerGroup();
+  group.addLayer(renderer);
+
+  interface LabelCandidate {
+    readonly lat: number;
+    readonly lon: number;
+    readonly text: string;
+    readonly ringLength: number; // 长环优先（同预算下大系统先得标注）
+    readonly highlighted: boolean; // 特值线标注随线着色加粗（mw-contour-hl）
+  }
+  const labelQueue: LabelCandidate[] = [];
+  const MAX_LABELS = 140; // 标注预算：真实场（中国域 2/4 hPa）常规线 ~10 条，长环多条标注
+
+  for (const line of lines) {
+    if (line.kind ===  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg14（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg14 |  && !withMinor) continue;
+    const style = CONTOUR_STROKE[line.kind];
+    // 特值线（档案 highlighted 点名）走独立基色——气象惯例红色加粗（如 5880 副高线）
+    const strokeColor = line.kind ===  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg15（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg15 |  ? highlightColor : color;
+    for (const ring of line.rings) {
+      if (ring.length < 2) continue;
+      const latlngs: Leaflet.LatLngExpression[] = ring.map(([lat, lon]) => [lat, lon]);
+      L.polyline(latlngs, {
+        color: strokeColor,
+        weight: style.weight,
+        opacity: style.opacity,
+        interactive: false,
+        pane: CONTOUR_PANE,
+        renderer,
+      }).addTo(group);
+      // 数值标注只挂常规线与特值线（加密细线气象惯例不标值）：环足够长才标、沿程均匀取点；
+      // 特值线必标（5880 一类认知锚不受 3° 起标门槛——小环也保一枚标注，线与值不可分）
+      if (withLabels && line.kind !==  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg16（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg16 | ,
+            });
+          }
+        }
+      }
+    }
+  }
+  if (withLabels && labelQueue.length > MAX_LABELS) {
+    labelQueue.sort((a, b) => b.ringLength - a.ringLength);
+    labelQueue.length = MAX_LABELS; // 超预算时长环优先（小环碎片标注信息量低）
+  }
+  for (const cand of labelQueue) {
+    // 标注色随本层选项内联携带（与 polyline 线色同源同色——异色多层同图不串色）
+    const labelColor = cand.highlighted ? highlightColor : color;
+    L.marker([cand.lat, cand.lon], {
+      icon: L.divIcon({
+        className:  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg17（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg17 | >${cand.text}</span>`,
+        iconSize: [0, 0],
+      }),
+      interactive: false,
+      keyboard: false,
+      pane: CONTOUR_PANE,
+    }).addTo(group);
+  }
+
+  if (withCenters) {
+    // 显著深度＝一条（次）密度等值线间隔：中心至少「值得」一条闭合加密/常规线才是系统
+    const minDepth = spec.minorInterval ?? spec.interval / 2;
+    for (const center of centersOf(grid, {
+      convert: profile.toDisplay,
+      minDepth,
+    })) {
+      const letter = center.kind ===  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg18（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg18 | >${fmtContourValue(center.value)}</span></span>`,
+          iconSize: [0, 0],
+        }),
+        interactive: false,
+        keyboard: false,
+        pane: CONTOUR_PANE,
+      }).addTo(group);
+    }
+  }
+
+  injectContourStyle();
+  group.addTo(map);
+  return group;
+}
+
+/** 环点取值（noUncheckedIndexedAccess 的窄化助手）。 */
+const ringAt = (
+  ring: readonly (readonly [number, number])[],
+  i: number,
+): readonly [number, number] => ring[i] ?? [0, 0];
+
+/** 闭合环近似长度（度）：经度分量按纬度余弦折算（高纬不虚胖）。 */
+function ringLengthOf(ring: readonly (readonly [number, number])[]): number {
+  let total = 0;
+  for (let i = 1; i < ring.length; i++) {
+    const [lat0, lon0] = ringAt(ring, i - 1);
+    const [lat1, lon1] = ringAt(ring, i);
+    const k = Math.cos((lat0 * Math.PI) / 180);
+    total += Math.hypot(lat1 - lat0, (lon1 - lon0) * k);
+  }
+  return total;
+}
+
+/** 沿闭合环取弧长分数处的点（线性插值；t ∈ [0,1)）。 */
+function pointAlongRing(ring: readonly (readonly [number, number])[], t: number): [number, number] {
+  const total = ringLengthOf(ring);
+  if (total <= 0) return [...ringAt(ring, 0)] as [number, number];
+  const frac = ((t % 1) + 1) % 1;
+  const target = frac * total;
+  let acc = 0;
+  for (let i = 1; i < ring.length; i++) {
+    const [lat0, lon0] = ringAt(ring, i - 1);
+    const [lat1, lon1] = ringAt(ring, i);
+    const k = Math.cos((lat0 * Math.PI) / 180);
+    const seg = Math.hypot(lat1 - lat0, (lon1 - lon0) * k);
+    if (seg > 0 && acc + seg >= target) {
+      const f = (target - acc) / seg;
+      return [lat0 + (lat1 - lat0) * f, lon0 + (lon1 - lon0) * f];
+    }
+    acc += seg;
+  }
+  return [...ringAt(ring, 0)] as [number, number];
+}
+
+// ---------------------------------------------------------------- 风向杆叠层（v0.3 风切片：双分量形态）
+
+/** 风羽层专用 pane 名：等值线层（mw-grid-contour，z 360）之上、矢量/标记/弹窗层（≥400）之下 */
+const BARB_PANE =  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg19（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg19 | ;
+/** BARB_PANE 的 z-index：等值线 360 与 overlayPane 400 之间的空隙位 */
+const BARB_PANE_Z = 365;
+
+/** addWindBarbLayer 的合法选项键（运行时校验用——拼错的选项键静默忽略违反本库不静默纪律） */
+const ADD_WIND_BARB_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([ | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg20（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg20 | ]);
+
+/**
+ * Options for addWindBarbLayer: barb color.
+ * addWindBarbLayer 的选项：风羽基色。
+ */
+export interface AddWindBarbLayerOptions {
+  /** 风羽基色（缺省深灰蓝 #2c3e50——浅色斑上可辨、与站点站码标签同族深色） */
+  color?: string;
+}
+
+/**
+ * 风羽 glyph 几何常量（SVG 像素）：盒 32×32、站心＝旋转中心 (16,16)、杆恒向上（＝风向
+ * 0°北）长 14 至 y=2、羽在杆左侧（北半球地面图惯例）。风向由层按 direction 施加
+ * `<g transform= | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg21（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg21 | ) };
+}
+
+/**
+ * Put wind barbs of a paired u/v field onto a Leaflet map (constant-size SVG glyphs).
+ * 把一对 u/v 分量场的风向杆（风羽）贴上 Leaflet 地图：内核 `windBarbsOf` 按档案
+ * `barbs` 口径（step 抽稀／calmThreshold 静风阈）出杆位序列 → 每杆一枚 divIcon
+ * marker，内联 SVG 风羽（m/s 中国口径：旗 20／长划 4／短划 2，恒定像素尺寸——缩放
+ * 不失真不变形）按 `direction` 旋转（罗盘口径，SVG rotate 正角＝顺时针）。
+ *
+ * 与 `addGridLayer`（色斑栅格层）正交组合：风速合成色斑在下（pane mw-grid，z 350）、
+ * 风羽在上（pane mw-grid-barb，z 365——等值线 360 之上、宿主矢量 ≥400 之下）——
+ * 双分量形态（`renderForm:  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg22（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg22 | （可用项见 AddWindBarbLayerOptions）`);
+    }
+  }
+  const spec = profile.barbs;
+  if (spec === undefined) {
+    throw new Error(
+      `要素 ${profile.shortName} 档案缺风向杆口径（barbs）——filled+barbs 形态要素须声明，无法出杆`,
+    );
+  }
+  const color = options.color ??  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg23（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg23 | ;
+  const barbs = windBarbsOf(u, v, spec);
+  const L = await loadLeaflet();
+  if (map.getPane(BARB_PANE) === undefined) {
+    map.createPane(BARB_PANE).style.zIndex = String(BARB_PANE_Z);
+  }
+  const group = L.layerGroup();
+  for (const barb of barbs) {
+    const paths = windBarbPath(barb.speed);
+    // 杆海是视觉密度件：aria-hidden（数百枚逐杆播报是读屏反可用性——速度已在色斑档
+    // 有冗余通道，方向随杆形/色斑流向可读，不逐杆立可读名称）
+    const html =
+      `<svg width= | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
 ## sources.msg01（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg01 | IEM 请求超时（>${options.timeoutMs}ms，network=${network}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| sources.msg01 | IEM 请求超时（>${options.timeoutMs ?? "?"}ms，network=${network}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg02（1 条）
 
@@ -1342,7 +1587,7 @@ export interface TafTimeControlOptions {
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg05 | IEM 响应异常：data 存在 station/raw 非字符串的记录（network=${network}，schema 不符） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| sources.msg05 | IEM 响应异常：data 存在字段类型不符的记录（station/raw 须字符串、lat/lon 须数字或 null；network=${network}，schema 不符） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg06（1 条）
 
@@ -1360,7 +1605,7 @@ export interface TafTimeControlOptions {
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg08 | aviationweather TAF 请求超时（>${options.timeoutMs}ms） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| sources.msg08 | aviationweather TAF 请求超时（>${options.timeoutMs ?? "?"}ms） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg09（1 条）
 
@@ -1384,7 +1629,7 @@ export interface TafTimeControlOptions {
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| sources.msg12 | ogimet TAF 请求超时（>${options.timeoutMs}ms，站=${station}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| sources.msg12 | ogimet TAF 请求超时（>${options.timeoutMs ?? "?"}ms，站=${station}） | product | packages/metweave/src/sources.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg13（1 条）
 
@@ -1520,7 +1765,9 @@ export interface TafTimeControlOptions {
   // CCA/CCB/CCC 更正指示符（WMO FM15 §1.3.3 BBB 系列：第一次更正 CCA、第二次 CCB 顺延；
   // 规范槽位即本位——时组后。加拿大 NAV CANADA 明文采用，中国 AFTN 实务沿用；仓库声明的
   // 编码基准含 MANOPS-MET）。语义即更正报——与 COR 同义异位（COR 在类型词位、BBB 在时组后位），
-  // 消费并置 corrected；此前落 unknown-token，更正语义丢失（2026-09-14 复评：基准内形态未实现）
+  // 消费并置 corrected；此前落 unknown-token，更正语义丢失（2026-09-14 复评：基准内形态未实现）。
+  // 正则宽容收编 CCA–CCZ：WMO 只定义到 CCC，CCD 及以后未定义——但组形同源（CC+字母），拒绝
+  // 无收益（更正意图已明确），落 unknown 反而丢语义
   if (/^CC[A-Z]$/.test(peek()?.text ?? "")) {
     corrected = true;
     i += 1;

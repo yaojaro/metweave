@@ -2,6 +2,14 @@
 import { describe, expect, it } from "vitest";
 import type { MetarReport, WarningCode } from "@metweave/core";
 import { parse } from "@metweave/parser";
+import { parseIwxxm as parseIwxxmRaw, type IwxxmReport } from "@metweave/parser";
+
+/** 观测侧收窄：本文件 IWXXM 夹具恒为 METAR 根（TAF 渲染面走 renderTafCard 既有测试）。 */
+const asMetar = (r: IwxxmReport): MetarReport => {
+  if (r.kind === "taf") throw new Error("预期 METAR/SPECI IR，实得 TAF IR——夹具错置");
+  return r;
+};
+const parseIwxxmMetar = (xml: string): MetarReport => asMetar(parseIwxxmRaw(xml));
 import type { RenderCardOptions } from "./card";
 import { DECODE_CITES, DECODE_CITE_KEYS, renderCard } from "./card";
 
@@ -30,6 +38,7 @@ const clickHintText = (
   target: HTMLElement | undefined | null,
 ): string => {
   expect(target).toBeDefined();
+  expect(target!.getAttribute("role")).toBe("button"); // 可聚焦可激活语义对读屏可见
   target!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   const bubble = card.querySelector(".mw-hint-pop")!;
   expect(bubble.classList.contains("mw-hint-on")).toBe(true);
@@ -44,6 +53,13 @@ const rawSpanByTitle = (
   [...card.querySelectorAll<HTMLElement>(".mw-raw span.mw-hint")].find((s) =>
     s.getAttribute("aria-label")?.startsWith(prefix),
   );
+
+/** 取卡片 RAW tab 组的第 i 个 tab 按钮（缺席即抛——测试前提不满足时点名失败） */
+const tabOf = (card: ReturnType<typeof renderCard>, i: number): HTMLButtonElement => {
+  const btn = card.querySelectorAll<HTMLButtonElement>("button.mw-raw-tab")[i];
+  if (btn === undefined) throw new Error(`第 ${i} 个 tab 缺席`);
+  return btn;
+};
 
 describe("术语修订五条（已按专业评测修订）", () => {
   it("TCU 悬停「浓积云」（原「耸积云」废止）；CB 悬停「积雨云」（原「雷暴云」废止）", () => {
@@ -2172,5 +2188,333 @@ describe("月锚进位（2026-09-24 UI 复验收口：连续序 day 超锚月长
       at: { day: 31, hour: 10, minute: 0 },
     });
     expect(card.textContent).toContain("查看时刻 北京时10月1日 18:00");
+  });
+});
+
+// —— IWXXM 通道联动（v0.3 第三期）：span 是 XML 元素区间——RAW 视图嵌套渲染、原码显示面
+// 短码守卫、浮签截断。TAC 侧行为锁见上方各 describe（嵌套渲染对非嵌套输入逐节点等价）。
+describe("IWXXM 通道：XML 源 span 的 RAW 渲染与联动", () => {
+  const XML = `<?xml version="1.0"?>
+<iwxxm:METAR xmlns:iwxxm="http://icao.int/iwxxm/2023-1" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:xlink="http://www.w3.org/1999/xlink" reportStatus="NORMAL">
+  <iwxxm:issueTime><gml:TimeInstant gml:id="t1"><gml:timePosition>2026-10-05T00:00:00Z</gml:timePosition></gml:TimeInstant></iwxxm:issueTime>
+  <iwxxm:aerodrome><aixm:AirportHeliport xmlns:aixm="http://www.aixm.aero/schema/5.1.1"><aixm:timeSlice><aixm:AirportHeliportTimeSlice><aixm:locationIndicatorICAO>ZSPD</aixm:locationIndicatorICAO></aixm:AirportHeliportTimeSlice></aixm:timeSlice></aixm:AirportHeliport></iwxxm:aerodrome>
+  <iwxxm:observationTime xlink:href="#t1"/>
+  <iwxxm:observation><iwxxm:MeteorologicalAerodromeObservation cloudAndVisibilityOK="false">
+    <iwxxm:airTemperature uom="Cel">13</iwxxm:airTemperature><iwxxm:dewpointTemperature uom="Cel">7</iwxxm:dewpointTemperature><iwxxm:qnh uom="hPa">1018</iwxxm:qnh>
+    <iwxxm:surfaceWind><iwxxm:AerodromeSurfaceWind variableWindDirection="true"><iwxxm:meanWindDirection uom="deg">80</iwxxm:meanWindDirection><iwxxm:meanWindSpeed uom="[kn_i]">10</iwxxm:meanWindSpeed><iwxxm:extremeCounterClockwiseWindDirection uom="deg">60</iwxxm:extremeCounterClockwiseWindDirection><iwxxm:extremeClockwiseWindDirection uom="deg">140</iwxxm:extremeClockwiseWindDirection></iwxxm:AerodromeSurfaceWind></iwxxm:surfaceWind>
+    <iwxxm:presentWeather xlink:href="http://codes.wmo.int/306/4678/FG"/>
+    <iwxxm:cloud><iwxxm:AerodromeCloud><iwxxm:layer><iwxxm:CloudLayer><iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/><iwxxm:base uom="[ft_i]">500</iwxxm:base></iwxxm:CloudLayer></iwxxm:layer></iwxxm:AerodromeCloud></iwxxm:cloud>
+  </iwxxm:MeteorologicalAerodromeObservation></iwxxm:observation>
+</iwxxm:METAR>`;
+
+  it("RAW 视图按 XML 元素区间高亮；风组区间内嵌扇区区间（嵌套 span，两侧各挂各的提示）", () => {
+    const card = renderCard(parseIwxxmMetar(XML), { raw: true });
+    const rawBox = card.querySelector(".mw-raw")!;
+    expect(rawBox).toBeDefined();
+    const pieces = [...rawBox.querySelectorAll<HTMLElement>("span[data-hint]")];
+    expect(pieces.length).toBeGreaterThan(0);
+    // 风组外层：surfaceWind 元素全体（含子元素）
+    const windPiece = pieces.find((p) => (p.textContent ?? "").startsWith("<iwxxm:surfaceWind"));
+    expect(windPiece).toBeDefined();
+    // 嵌套：外层内部还有带提示的内层 span（扇区外包络＝两端 extreme 元素）
+    const inner = windPiece?.querySelectorAll("span[data-hint]") ?? [];
+    expect(inner.length).toBeGreaterThan(0);
+    expect(windPiece?.textContent).toContain("<iwxxm:extremeCounterClockwiseWindDirection");
+    expect(windPiece?.textContent).toContain("<iwxxm:extremeClockwiseWindDirection");
+    // 天气组：presentWeather 元素全体为独立高亮段
+    const wxPiece = pieces.find((p) => (p.textContent ?? "").startsWith("<iwxxm:presentWeather"));
+    expect(wxPiece).toBeDefined();
+  });
+
+  it("原码显示面短码守卫：XML 片段不进悬停前缀/解码行（显示短码、高亮原文两不相误）", () => {
+    const card = renderCard(parseIwxxmMetar(XML), { raw: true });
+    // 主表天气行悬停：以重建短码 FG 开头，而非 <iwxxm:presentWeather…
+    const wxSpan = [...card.querySelectorAll<HTMLElement>("dd span[data-hint]")].find((s) =>
+      (s.getAttribute("aria-label") ?? "").includes("雾"),
+    );
+    expect(wxSpan).toBeDefined();
+    expect(wxSpan?.getAttribute("aria-label")).toMatch(/^FG/);
+    // 解码气泡：逐行原码无一以 "<" 开头（温/露/压等 XML 元素切片全部换短码）
+    const bubble = clickHintText(card, wxSpan);
+    expect(bubble).not.toContain("<iwxxm:");
+  });
+
+  it("悬停主表字段：同组 RAW 片段点亮 + 电码浮签截断（XML 长片段不撑爆卡片）", () => {
+    const card = renderCard(parseIwxxmMetar(XML), { raw: true });
+    const windSpan = [...card.querySelectorAll<HTMLElement>("dd span[data-hint]")][0];
+    if (windSpan === undefined) throw new Error("主表联动字段缺席");
+    windSpan.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    const chip = card.querySelector<HTMLElement>(".mw-codechip")!;
+    expect(chip.style.display).toBe("inline-block");
+    expect((chip.textContent ?? "").length).toBeLessThanOrEqual(80);
+    // 主表与 RAW 两侧同组节点都点亮（联动键＝同一提示串）
+    const linked = card.querySelectorAll(".mw-link");
+    expect(linked.length).toBeGreaterThanOrEqual(2);
+    expect([...linked].some((n) => n.closest(".mw-raw") !== null)).toBe(true);
+    expect([...linked].some((n) => n.closest(".mw-raw") === null)).toBe(true);
+  });
+});
+
+// —— RAW 双编码视图（v0.3 第四期）：altRaws 在场时原文区渲染为 tab 组（默认 tab = 本卡 ir.raw，
+// 备选编码各一 tab）；切走的面板 hidden 保留 DOM；联动（同串点亮/浮签/对侧揭示）只在当前可见
+// tab 生效；altRaws 空/缺席与现状逐字节一致（零回归面）。
+describe("RAW 双编码视图：altRaws 的 tab 组渲染/切换/联动", () => {
+  /** 与 TAC_TXT 同观测的 IWXXM XML（风非全向、FG、BKN005、13/07、Q1018——值面与 TAC 逐组相等，
+   *  悬停提示串（联动键）随之两通道一致，跨视图联动可断言） */
+  const XML_TXT = `<?xml version="1.0"?>
+<iwxxm:METAR xmlns:iwxxm="http://icao.int/iwxxm/2023-1" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:xlink="http://www.w3.org/1999/xlink" reportStatus="NORMAL">
+  <iwxxm:issueTime><gml:TimeInstant gml:id="t1"><gml:timePosition>2026-10-05T00:00:00Z</gml:timePosition></gml:TimeInstant></iwxxm:issueTime>
+  <iwxxm:aerodrome><aixm:AirportHeliport xmlns:aixm="http://www.aixm.aero/schema/5.1.1"><aixm:timeSlice><aixm:AirportHeliportTimeSlice><aixm:locationIndicatorICAO>ZSPD</aixm:locationIndicatorICAO></aixm:AirportHeliportTimeSlice></aixm:timeSlice></aixm:AirportHeliport></iwxxm:aerodrome>
+  <iwxxm:observationTime xlink:href="#t1"/>
+  <iwxxm:observation><iwxxm:MeteorologicalAerodromeObservation cloudAndVisibilityOK="false">
+    <iwxxm:airTemperature uom="Cel">13</iwxxm:airTemperature><iwxxm:dewpointTemperature uom="Cel">7</iwxxm:dewpointTemperature><iwxxm:qnh uom="hPa">1018</iwxxm:qnh>
+    <iwxxm:surfaceWind><iwxxm:AerodromeSurfaceWind variableWindDirection="false"><iwxxm:meanWindDirection uom="deg">80</iwxxm:meanWindDirection><iwxxm:meanWindSpeed uom="[kn_i]">10</iwxxm:meanWindSpeed></iwxxm:AerodromeSurfaceWind></iwxxm:surfaceWind>
+    <iwxxm:presentWeather xlink:href="http://codes.wmo.int/306/4678/FG"/>
+    <iwxxm:cloud><iwxxm:AerodromeCloud><iwxxm:layer><iwxxm:CloudLayer><iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/><iwxxm:base uom="[ft_i]">500</iwxxm:base></iwxxm:CloudLayer></iwxxm:layer></iwxxm:AerodromeCloud></iwxxm:cloud>
+  </iwxxm:MeteorologicalAerodromeObservation></iwxxm:observation>
+</iwxxm:METAR>`;
+  const TAC_TXT = "METAR ZSPD 050000Z 08010KT 9999 FG BKN005 13/07 Q1018";
+
+  it("tab 组渲染：默认 tab＝本卡 ir.raw（label 按编码形态自动），altRaw 各一 tab；面板 hidden 切换、DOM 保留", () => {
+    const card = renderCard(parseIwxxmMetar(XML_TXT), {
+      raw: true,
+      altRaws: [{ label: "TAC（源电码）", report: parse(TAC_TXT) }],
+    });
+    const tabs = [...card.querySelectorAll<HTMLButtonElement>("button.mw-raw-tab")];
+    expect(tabs.map((b) => b.textContent)).toEqual(["IWXXM（XML）", "TAC（源电码）"]);
+    // aria 结构：tablist/tab/tabpanel 配对引用（aria-controls ↔ id ↔ aria-labelledby）
+    const tablist = card.querySelector(".mw-raw-tabs")!;
+    expect(tablist.getAttribute("role")).toBe("tablist");
+    for (const btn of tabs) {
+      expect(btn.getAttribute("role")).toBe("tab");
+      const panel = card.querySelector(`#${btn.getAttribute("aria-controls")}`);
+      expect(panel).not.toBeNull();
+      expect(panel?.getAttribute("role")).toBe("tabpanel");
+      expect(panel?.getAttribute("aria-labelledby")).toBe(btn.id);
+    }
+    // 默认态：主 tab 选中、alt 面板 hidden 但 DOM 保留（TAC 原文完整在册）
+    expect(tabOf(card, 0).getAttribute("aria-selected")).toBe("true");
+    expect(tabOf(card, 1).getAttribute("aria-selected")).toBe("false");
+    const panels = [...card.querySelectorAll<HTMLElement>(".mw-raw-panel")];
+    expect(panels[0]?.hasAttribute("hidden")).toBe(false);
+    expect(panels[1]?.hasAttribute("hidden")).toBe(true);
+    expect(panels[1]?.textContent).toBe(TAC_TXT);
+  });
+
+  it("alt 面板的原文视图按其 report 的 span 渲染（切换后 TAC 词组可点读，非纯文本）", () => {
+    const card = renderCard(parseIwxxmMetar(XML_TXT), {
+      raw: true,
+      altRaws: [{ label: "TAC", report: parse(TAC_TXT) }],
+    });
+    const tacPanel = card.querySelectorAll<HTMLElement>(".mw-raw-panel")[1]!;
+    // TAC 侧视图与单视图卡片同款：词组 span + data-hint（悬停联动通道在场）
+    const pieces = [...tacPanel.querySelectorAll<HTMLElement>("span[data-hint]")];
+    expect(pieces.length).toBeGreaterThan(0);
+    expect(pieces.some((p) => p.textContent === "08010KT")).toBe(true);
+  });
+
+  it("函数形态 altRaws：收到本卡 IR，返回表项生效（数组/函数两形态等价）", () => {
+    const seen: MetarReport[] = [];
+    const report = parseIwxxmMetar(XML_TXT);
+    const card = renderCard(report, {
+      raw: true,
+      altRaws: (r) => {
+        seen.push(r);
+        return [{ label: "TAC（源电码）", report: parse(TAC_TXT) }];
+      },
+    });
+    expect(seen).toEqual([report]);
+    expect(card.querySelectorAll("button.mw-raw-tab").length).toBe(2);
+  });
+
+  it("click 切换：aria-selected/hidden 互换、已切走面板 DOM 仍在；主 tab 标签按编码形态（TAC 主卡↔XML 备选）", () => {
+    // TAC 为主卡、XML 为备选：主 tab label 自动取「TAC（字符电码）」
+    const card = renderCard(parse(TAC_TXT), {
+      raw: true,
+      altRaws: [{ label: "IWXXM（源 XML）", report: parseIwxxmMetar(XML_TXT) }],
+    });
+    expect(tabOf(card, 0).textContent).toBe("TAC（字符电码）");
+    tabOf(card, 1).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(tabOf(card, 1).getAttribute("aria-selected")).toBe("true");
+    expect(tabOf(card, 0).getAttribute("aria-selected")).toBe("false");
+    const panels = [...card.querySelectorAll<HTMLElement>(".mw-raw-panel")];
+    expect(panels[0]?.hasAttribute("hidden")).toBe(true);
+    expect(panels[1]?.hasAttribute("hidden")).toBe(false);
+    // 切走的 TAC 面板 DOM 保留（原文完整），可见的 XML 面板带元素原文
+    expect(panels[0]?.textContent).toBe(TAC_TXT);
+    expect(panels[1]?.textContent).toContain("<iwxxm:surfaceWind");
+    // 切回
+    tabOf(card, 0).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(panels[0]?.hasAttribute("hidden")).toBe(false);
+    expect(panels[1]?.hasAttribute("hidden")).toBe(true);
+  });
+
+  it("键盘切换：ArrowRight/ArrowLeft 在 tab 间移动激活（roving tabindex）", () => {
+    const card = renderCard(parseIwxxmMetar(XML_TXT), {
+      raw: true,
+      altRaws: [{ label: "TAC", report: parse(TAC_TXT) }],
+    });
+    expect(tabOf(card, 0).tabIndex).toBe(0);
+    expect(tabOf(card, 1).tabIndex).toBe(-1);
+    tabOf(card, 0).dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+    );
+    expect(tabOf(card, 1).getAttribute("aria-selected")).toBe("true");
+    expect(tabOf(card, 0).tabIndex).toBe(-1);
+    expect(tabOf(card, 1).tabIndex).toBe(0);
+    expect(card.querySelectorAll<HTMLElement>(".mw-raw-panel")[1]?.hasAttribute("hidden")).toBe(
+      false,
+    );
+    tabOf(card, 1).dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+    expect(tabOf(card, 0).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("联动在当前可见 tab 内生效：悬停主表字段点亮可见面板片段；隐藏面板不进电码浮签", () => {
+    const card = renderCard(parseIwxxmMetar(XML_TXT), {
+      raw: true,
+      altRaws: [{ label: "TAC（源电码）", report: parse(TAC_TXT) }],
+    });
+    const windSpan = [...card.querySelectorAll<HTMLElement>("dd span[data-hint]")].find((s) =>
+      (s.getAttribute("aria-label") ?? "").includes("10 kt"),
+    );
+    if (windSpan === undefined) throw new Error("主表风字段缺席");
+    // 默认 XML tab 可见：浮签只收 XML 片段（隐藏的 TAC 面板不拼接——80 字符截断的元素切片）
+    windSpan.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    const chip = card.querySelector<HTMLElement>(".mw-codechip")!;
+    expect(chip.style.display).toBe("inline-block");
+    expect(chip.textContent ?? "").not.toContain("08010KT");
+    // 切到 TAC tab 再悬停：浮签显示 TAC 电码、TAC 面板内片段点亮（同串跨视图天然工作）
+    tabOf(card, 1).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    windSpan.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    expect(chip.textContent).toContain("08010KT");
+    const linkedRaw = [...card.querySelectorAll(".mw-raw-panel:not([hidden]) .mw-link")];
+    expect(linkedRaw.length).toBeGreaterThan(0);
+    expect(
+      linkedRaw.every((n) => n.textContent !== "08010KT" || n.closest(".mw-raw") !== null),
+    ).toBe(true);
+  });
+
+  it("altRaws 空数组：与不传逐字节一致（零回归面）——无 tab 组、单 .mw-raw 直出", () => {
+    const report = parseIwxxmMetar(XML_TXT);
+    const plain = renderCard(report, { raw: true });
+    const empty = renderCard(report, { raw: true, altRaws: [] });
+    const fnEmpty = renderCard(report, { raw: true, altRaws: () => [] });
+    expect(empty.querySelector(".mw-raw-tabs")).toBeNull();
+    expect(empty.querySelectorAll(".mw-raw").length).toBe(1);
+    expect(empty.innerHTML).toBe(plain.innerHTML);
+    expect(fnEmpty.innerHTML).toBe(plain.innerHTML);
+  });
+
+  it("多卡并存 id 不撞（aria-controls 引用只指向本卡面板）；en locale 的 tab 文案随 locale", () => {
+    const options = {
+      raw: true,
+      altRaws: [{ label: "TAC", report: parse(TAC_TXT) }],
+    } as const;
+    const card1 = renderCard(parseIwxxmMetar(XML_TXT), options);
+    const card2 = renderCard(parseIwxxmMetar(XML_TXT), options);
+    const ids1 = new Set([...card1.querySelectorAll("[id]")].map((n) => n.id));
+    for (const node of card2.querySelectorAll("[id]")) expect(ids1.has(node.id)).toBe(false);
+    const en = renderCard(parseIwxxmMetar(XML_TXT), { ...options, locale: "en" as const });
+    expect([...en.querySelectorAll<HTMLButtonElement>("button.mw-raw-tab")][0]?.textContent).toBe(
+      "IWXXM (XML)",
+    );
+  });
+
+  it("raw: false 时 altRaws 不生效（原文区缺席——无 tab 可挂）", () => {
+    const card = renderCard(parseIwxxmMetar(XML_TXT), {
+      altRaws: [{ label: "TAC", report: parse(TAC_TXT) }],
+    });
+    expect(card.querySelector(".mw-raw")).toBeNull();
+    expect(card.querySelector(".mw-raw-tabs")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------- 判据批（v0.3）：行色单源归位 core + SQ 入琥珀 + tierOf 注入
+
+/** 天气行内按 aria-label 关键词找组 span（FC/SS/DS 红锁用——模块级helper免每次渲染重建闭包）。 */
+const fcSpanOf = (card: HTMLElement, token: string): HTMLElement | undefined =>
+  [...card.querySelectorAll<HTMLElement>("dd span")].find((s) =>
+    s.getAttribute("aria-label")?.includes(token),
+  );
+
+describe("判据批 v0.3：SQ 入琥珀（行色随 core 判据单源增补）与 tierOf 注入", () => {
+  const SQ_RAW = "ZGGG 120000Z 27008KT 9999 SQ SCT030 26/22 Q1009";
+
+  it("SQ 飑天气组入琥珀（此前 SQ 无色落空——有意的行为变更，迁移说明见 CHANGELOG 未发布段）", () => {
+    const card = renderCard(parse(SQ_RAW));
+    const sqSpan = [...card.querySelectorAll("dd span")].find((s) =>
+      s.getAttribute("aria-label")?.includes("SQ"),
+    );
+    expect(sqSpan, "天气行应渲染 SQ 组").toBeDefined();
+    expect(sqSpan?.classList.contains("mw-caution")).toBe(true);
+    expect(sqSpan?.classList.contains("mw-danger")).toBe(false);
+    // RAW 对照视图与主表同判据单源：SQ 词位同琥珀
+    const rawCard = renderCard(parse(SQ_RAW), { raw: true });
+    const rawSq = [...rawCard.querySelectorAll(".mw-raw span")].find((s) => s.textContent === "SQ");
+    expect(rawSq?.classList.contains("mw-caution")).toBe(true);
+  });
+
+  it("+SQ 强飑组级行色恒 danger（+ 强度在组级粒度恒红——与报级档位的分工见 core weatherGroupTone 注释）", () => {
+    const card = renderCard(parse("ZGGG 120000Z 27008KT 9999 +SQ SCT030 26/22 Q1009"));
+    const sqSpan = [...card.querySelectorAll("dd span")].find((s) =>
+      s.getAttribute("aria-label")?.includes("+SQ"),
+    );
+    expect(sqSpan?.classList.contains("mw-danger")).toBe(true);
+  });
+
+  it("FC/SS/DS 天气行红锁：漏斗云/龙卷与沙暴/尘暴组级 danger（v0.3 增补，与报级入红同批；此前这些组无色）", () => {
+    // 底座：7000 m + BLDU + NSC——无直害现象时天气行 BLDU 组不着色的干净底座
+    const BASE = "ZBAA 111630Z 32009G14MPS 290V350 7000 BLDU NSC 19/M12 Q1010";
+    const spanOf = fcSpanOf;
+    for (const wx of ["FC", "+FC", "SS", "DS"]) {
+      const card = renderCard(parse(`${BASE} ${wx} NOSIG`));
+      const span = spanOf(card, wx);
+      expect(span, `${wx} 组应渲染在天气行`).toBeDefined();
+      expect(span?.classList.contains("mw-danger"), wx).toBe(true);
+    }
+    // 对照：底座 BLDU 组不着色（升红确由直害组触发）
+    const base = renderCard(parse(`${BASE} NOSIG`));
+    expect(spanOf(base, "BLDU")?.classList.contains("mw-danger")).toBe(false);
+  });
+
+  it("tierOf 注入：注入在位以注入 verdict 写根元素 data-tier 机读档位（宿主 CSS/面板按注入判据映射的挂点）", () => {
+    const good = parse("ZGGG 120000Z 27008KT 9999 SCT030 26/22 Q1009");
+    expect(renderCard(good, { tierOf: () => "poor" }).dataset.tier).toBe("poor");
+    expect(renderCard(good, { tierOf: () => "caution" }).dataset.tier).toBe("caution");
+    expect(renderCard(good, { tierOf: (r) => (r.cavok ? "good" : "unknown") }).dataset.tier).toBe(
+      "unknown",
+    );
+  });
+
+  it("tierOf 注入函数抛错＝renderCard 同步抛出原始错误（不静默回退内置判据——不静默纪律）", () => {
+    const good = parse("ZGGG 120000Z 27008KT 9999 SCT030 26/22 Q1009");
+    const boom = new Error("自定判据炸了");
+    expect(() =>
+      renderCard(good, {
+        tierOf: () => {
+          throw boom;
+        },
+      }),
+    ).toThrow(boom);
+  });
+
+  it("tierOf 注入返回非法档位串＝同步抛中文错误（含非法值与合法值清单——此前静默写进 data-tier，宿主 CSS 映射悄悄破相）", () => {
+    const good = parse("ZGGG 120000Z 27008KT 9999 SCT030 26/22 Q1009");
+    expect(() => renderCard(good, { tierOf: (() => "por") as unknown as () => "poor" })).toThrow(
+      /非法档位 "por".*unknown\/poor\/caution\/good/,
+    );
+  });
+
+  it("缺省（未传 tierOf）不产出档位标识：data-tier 属性缺席，DOM 与既有版本逐字节一致（零破坏口径）", () => {
+    // 与 altRaws 的 innerHTML 对比范本同款：不带 tierOf 渲染两次 + 带 undefined 显式渲染一次，
+    // 三者 innerHTML 逐字节相等——锁定「缺省路径恒不产出档位标识」且渲染确定性
+    const r = parse(SQ_RAW);
+    const a = renderCard(r).innerHTML;
+    const b = renderCard(r).innerHTML;
+    const c = renderCard(r, { tierOf: undefined }).innerHTML;
+    expect(b).toBe(a);
+    expect(c).toBe(a);
+    expect(renderCard(r).hasAttribute("data-tier")).toBe(false);
+    expect(renderCard(r).dataset.tier).toBeUndefined();
   });
 });

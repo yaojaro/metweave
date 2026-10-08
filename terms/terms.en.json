@@ -2617,6 +2617,48 @@
     "packages/render/src/card.ts#LOCALE"
    ]
   },
+  "card.rawTab.iwxxm": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "IWXXM (XML)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rawTab.tac": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "TAC (character code)",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
+  "card.rawTab.listLabel": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "raw report encoding",
+   "usage": [
+    "packages/render/src/card.ts#LOCALE"
+   ]
+  },
   "leaflet.tier.unknown": {
    "kind": "product",
    "refs": [
@@ -2803,6 +2845,21 @@
     }
    ],
    "text": "Some reports in the batch failed to parse entirely (see the summary for per-station reasons)",
+   "usage": [
+    "packages/core/src/errors.ts#EN_MESSAGES"
+   ],
+   "enOnly": true
+  },
+  "errors.taf-not-expandable": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "Product display copy (no matching standard clause; wording approved by the maintainer)",
+     "clause": "Self-authored display copy (no matching standard clause)"
+    }
+   ],
+   "text": "TAF has no expandable timeline (NIL/CNL report or validity group missing) — parse a complete TAF first",
    "usage": [
     "packages/core/src/errors.ts#EN_MESSAGES"
    ],

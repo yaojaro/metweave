@@ -335,6 +335,14 @@
 |---|---|---|---|---|
 | card.rawHint | hover or Tab-focus to cross-link with the plain-language rows | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
+## card.rawTab (3 entries)
+
+| key | Text | kind | Usage | Standard · Document · Clause |
+|---|---|---|---|---|
+| card.rawTab.iwxxm | IWXXM (XML) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.rawTab.tac | TAC (character code) | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+| card.rawTab.listLabel | raw report encoding | product | packages/render/src/card.ts#LOCALE | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+
 ## leaflet.tier (4 entries)
 
 | key | Text | kind | Usage | Standard · Document · Clause |
@@ -397,6 +405,12 @@
 | key | Text | kind | Usage | Standard · Document · Clause |
 |---|---|---|---|---|
 | errors.batch-parse-failed | Some reports in the batch failed to parse entirely (see the summary for per-station reasons) | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
+
+## errors.taf-not-expandable (1 entries)
+
+| key | Text | kind | Usage | Standard · Document · Clause |
+|---|---|---|---|---|
+| errors.taf-not-expandable | TAF has no expandable timeline (NIL/CNL report or validity group missing) — parse a complete TAF first | product | packages/core/src/errors.ts#EN_MESSAGES | PRODUCT · Product display copy (no matching standard clause; wording approved by the maintainer) · Self-authored display copy (no matching standard clause) |
 
 ## errors.http-error (1 entries)
 

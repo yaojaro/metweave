@@ -22,9 +22,11 @@ TypeScript 工具链：解析 → 标准化 → 渲染
 
 ![metweave 实况演示：全国机场实况上图（四档条件色圆点扫视）→ 推近西南（成都/重庆/贵阳多站，琥珀站一眼可辨）→ 悬停站点出摘要气泡 → 点击打开重庆实况卡片（观测龄期、人话要素、中档天气橙色标注与原文电码对照）](docs/screenshots/00-demo-overview.gif)
 
-官方示例（`pnpm --filter metweave-examples dev` 一条命令起）双模式可切，能力一览：
+官方示例（`pnpm --filter metweave-examples dev` 一条命令起）主示例页实况/预报双模式可切，格点填色为同屏图层（默认叠加 GFS 2m 温度色斑背景场）；另有 IWXXM 演示页（`/iwxxm.html`，v0.3 alpha）：
 
-- **实况模式（METAR）**：39 站四档条件色圆点、悬停摘要气泡、点击实况卡（观测龄期、人话要素、RAW 对照与组级联动、电码浮签与解码气泡）；站点列表按观测状态排序（档色点+站名+实况摘要，行点击飞行开卡）。
+- **实况模式（METAR）**：39 站四档条件色圆点、悬停摘要气泡、点击实况卡（观测龄期、人话要素、RAW 对照与组级联动、电码浮签与解码气泡）；卡片原文区可切 TAC⇄IWXXM（AWC）双编码 tab（v0.3 第五期，备选编码后台预取、失败自然降级无 tab）；站点列表按观测状态排序（档色点+站名+实况摘要，行点击飞行开卡）。
+- **格点图层（v0.3 起逐要素进，与站点同屏）**：GFS 格点场渲成色斑图叠在实况/预报图层之下——右上「格点图层」面板控制开关（默认开）、要素（13 要素档案：2m 温度/露点/相对湿度、CAPE、降水率、能见度、反射率、PRMSL、500hPa 高度、地面气压、850hPa 温度、总云量、风；2m 温度为发散蓝-白-红，各要素档案化色标与档位）、不透明度（缺省 0.6，拖杆即时生效）、色标图例与时次溯源；dev 下「拉最新」按钮经 Node 侧 CLI 现取 NOMADS 最新 cycle，无数据时回落仓内冻结基线（静态部署恒可渲染）。
+- **IWXXM 演示页（alpha）**：NOAA AWC 实时流（IWXXM 2025-2）全球站上图——XML 在浏览器本地 `parseIwxxm` 解析成与 TAC 完全同一份 IR 再渲染中文卡，弹窗卡原文区可在 IWXXM（XML）与 TAC（源电码，取自 AWC 报文内嵌注释）间切换；页面下方「同站双形态对照」用官方等价对（2023-1 静态样例）逐字段核对两种官方编码的一致性。
 - **预报模式（TAF）**：同一张图换成「预报当观测渲」——底部时间轴（现在起 24 小时、10 分钟一格）可拖动/点刻度/一键播放扫全程，全图圆点按该时刻的预报状态即时换色（含 TEMPO 发作窗升档）；UTC/北京时一键切换全页统一；在效报池自动补上一发布周期（跨生效边界拖动即自动换报，「现在」永远有在效报）；相对「现在」变差的站点橙描边 + 站点面板「查看时刻 vs 现在」列（拖离现在后出值）；站点面板按当前时刻档位排序、行点击飞行开卡；卡内分段明细（主导段/渐变过渡带/间歇窗口）、气温极值、FM 51 依据行。
 
 ### 为什么是 metweave
@@ -47,14 +49,16 @@ npm install metweave @metweave/leaflet leaflet
 ```bash
 git clone https://github.com/yaojaro/metweave.git
 cd metweave && pnpm install && pnpm build
+# 开发环境需 Node ≥ 22.13（pnpm 11 的要求；engines 的 >=20 是发布产物的消费端承诺，
+# 两者口径不同——CI 单档 Node 22 即此因，见 .github/workflows/ci.yml 注释）
 # 先看效果：一条命令起官方示例，浏览器打开提示的本地地址
 pnpm --filter metweave-examples dev
-# 用在自己的项目：五个包打成 tgz 后连同 leaflet 一起安装（workspace 依赖需 tgz 齐上）
+# 用在自己的项目：六个包打成 tgz 后连同 leaflet 一起安装（workspace 依赖需 tgz 齐上）
 pnpm -r --filter '!metweave-monorepo' --filter '!metweave-examples' pack --pack-destination ./dist-pkg/
 cd 你的项目 && npm install ~/metweave/dist-pkg/metweave-*.tgz leaflet
 ```
 
-> 团队协作提示：tgz 方式会把 `file:` 路径写进 package.json（路径移动即断）——建议把五个 tgz 提交到内网 registry、随仓 vendored，或统一放在仓库内的固定相对路径再安装。
+> 团队协作提示：tgz 方式会把 `file:` 路径写进 package.json（路径移动即断）——建议把六个 tgz 提交到内网 registry、随仓 vendored，或统一放在仓库内的固定相对路径再安装。
 
 ### 快速开始：底图自备，几行代码上图
 
@@ -67,15 +71,13 @@ HTML 里放一个地图容器：`<div id="map" style="height: 420px"></div>`，�
 ```ts
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css"; // 别漏：不引入 CSS 地图不渲染（瓦片错位、控件散架）
-import { getMetarReports } from "metweave/sources";
 import { addMetarLayer } from "@metweave/leaflet";
-
+import { getMetarReports } from "metweave/sources";
 const map = L.map("map", { center: [35.5, 105], zoom: 4 });
 const tk = import.meta.env.VITE_TIANDITU_KEY; // 你自己的天地图浏览器端 key
-L.tileLayer(
-  `https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${tk}`,
-  { subdomains: ["0", "1", "2", "3", "4", "5", "6", "7"], attribution: "底图 © 天地图" },
-).addTo(map);
+const url = `https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${tk}`;
+const subdomains = ["0", "1", "2", "3", "4", "5", "6", "7"];
+L.tileLayer(url, { subdomains, attribution: "底图 © 天地图" }).addTo(map);
 await addMetarLayer(map, await getMetarReports(), { conditionColors: true });
 ```
 
@@ -105,16 +107,11 @@ console.log(toValues(report).temperature?.celsius, report.warnings); // 值 + �
 import { toValues } from "metweave";
 import { getMetarReports } from "metweave/sources";
 const items = await getMetarReports("CN__ASOS");
-console.table(
-  items.map(({ report, title }) => {
-    const { temperature, wind } = toValues(report);
-    return {
-      站: title,
-      温: temperature?.celsius,
-      风: wind && `${wind.speed.value} ${wind.speed.unit}`,
-    };
-  }),
-);
+// 风速值与单位成对展示——小白也能看懂 4 是 4 mps（单位跟组走）
+for (const { report, title } of items) {
+  const { temperature, wind } = toValues(report);
+  console.log(title, temperature?.celsius, wind && `${wind.speed.value} ${wind.speed.unit}`);
+}
 ```
 
 **常用字段速查**（`toValues(report)` 的两态视图：缺测与组省略同为 `undefined`，需细分「明示缺测 vs 未报」时直接消费 IR 的三态与 `warnings`）：
@@ -171,6 +168,21 @@ metweave 的取数通路面向公开数据源，适合**态势感知、原型与
 - **观测数据本身的定位**：METAR 报文经公开通路（IEM / NWS tgftp 等）再分发——属公益公开通路、非官方再分发渠道；商用前请自行核实数据提供方的分发条款。
 - TAF 上游（aviationweather.gov）同样按「现状」提供、无 SLA；浏览器直连须代理/镜像（见上节），且 demo 为单上游无备用源——上游故障即 TAF 面降级（灰态口径在，降级路径自建）。
 
+### 显示档位判据（自拟启发式，可整体注入替换）
+
+地图圆点、读屏档位词与卡片行色的四档条件分级（灰 unknown / 红 poor / 琥珀 caution / 绿 good）是**本库自拟的扫视启发式**：阈值由本库拟定，不对应也不代表任何官方飞行天气分类，本库不提供飞行规则判定——仅供「一眼扫视哪些站值得注意」，**不得用作运行判据**。判据核心是零依赖纯函数，随 `@metweave/core` 单源发布（`metarTierOf` 直收 METAR 报、`conditionTierOf` 收结构子集——TAF 展开结果投影后同喂）；`@metweave/leaflet` 与 `@metweave/render` 的档位与行色消费同一份（`@metweave/leaflet` 随包再导出 `metarTierOf` / `ConditionTier`）。
+
+| 档位            | 触发条件（自上而下任一命中即取该档，未命中落好档）                                                                                                                                                                                                                                                                     |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| unknown（灰）   | NIL（台站无观测）；或能见度与云均缺测且天气缺测/无（关键组全缺测，按可得要素无从判读）                                                                                                                                                                                                                                 |
+| poor（红）      | 能见度 < 1500 m；BKN/OVC 云层（含垂直能见度）云底 < 1000 ft；雷暴 TS 族（含 VC 邻近）；GR 冰雹 / VA 火山灰；冻降水（FZRA/FZDZ 等 FZ 描述符族）；+ 强度显著降水；漏斗云/龙卷（FC/+FC）；沙暴/尘暴（SS/DS）；阵风 ≥ 25 m/s；CB/TCU 对流云；跑道关闭；报文含风切变组（WS，标准 `WS ALL RWY` / `WS RDRDR` 与实务变体同等） |
+| caution（琥珀） | 能见度 1500–5000 m（国内通行分档口径）；BKN/OVC 云底 1000–3000 ft；任何降水族（RA/SN 等）；飑（SQ，单独出现）；FZ 以外结冰现象；阵风 15–25 m/s                                                                                                                                                                         |
+| good（绿）      | 其余（含 CAVOK）                                                                                                                                                                                                                                                                                                       |
+
+缺测要素不参与限制（按可得要素判）。**按自身标准重分档（`tierOf` 注入）**：承认内置判据不权威，就给整体换掉的把手——`addMetarLayer(map, items, { tierOf })` 与 `renderCard(report, { tierOf })` 接受 `(report) => ConditionTier` 自定判据函数，一处注入三层生效（圆点色 / 读屏 aria 档位词 / 弹窗卡片档位标识——卡根 `data-tier` 属性，宿主可按注入判据自行映射行色），缺省走内置判据；注入函数抛错＝整次调用失败，绝不静默回退。卡片行色判据（组级 danger/caution 标注）与档位判据同源 `@metweave/core`，随上表同批演进。
+
+**判据 semver 承诺**：判据语义变化今后一律走 minor 版本 + [CHANGELOG](CHANGELOG.md) 迁移说明，不在 patch 位漂移——WS 入红 / SQ 入琥珀（v0.3）即本承诺下的第一次 minor 判据变更，升级影响面与自定义通道见 CHANGELOG 未发布段。
+
 ### 规范遵循与数据验证
 
 解析器以六套规范**原文**为编码基准，METAR/SPECI 编码面 106 条条款、TAF（FM 51）编码面 24 条清单（结构 4 / 时间 9 / 要素 8 / 验证纪律 3）已逐条做过符合性审计（逐条的规范出处、实现位置与回归锁见 [docs/compliance.md](docs/compliance.md) 审计矩阵），未满足项零容忍修复：
@@ -188,7 +200,7 @@ metweave 的取数通路面向公开数据源，适合**态势感知、原型与
 
 - **真实语料回放**：2,300+ 条全球真实报文（2,400+ 行，多国网络采样）快照基线，未知形态与告警分布漂移即红——`pnpm run replay:corpus`
 - **模糊测试**：种子化变异 5 万例（CI 每夜 10 万档）断言十一项产物不变量——永不崩溃、raw 保真、span 永不越界、两次解析逐字节一致、IR 数值域无非有限值——`pnpm fuzz`
-- **单元与夹具**：290+ 测试，每类反常形态至少一条真实夹具；修复一律带回归锁，且锁必须先通过「突变验证」（能拦住人为破坏才算数）
+- **单元与夹具**：全仓 850+ 测试（规模随版本增长，以 CI 为准），每类反常形态至少一条真实夹具；修复一律带回归锁，且锁必须先通过「突变验证」（能拦住人为破坏才算数）
 - **语义交叉校验**：温露倒挂、CAVOK 与能见度/RVR/天气/云矛盾、QNH 超世界极值、重复组、VV 与云层并存等矛盾形态全部出声
 
 解析纪律（IR 契约，见 [`packages/core/src/ir.ts`](packages/core/src/ir.ts)）：缺测三态（组省略 ≠ 缺测 ≠ 有值）绝不混用；越界值判缺测绝不留假值；看不懂的组进 `warnings[]` 并携带原文 span，原码永远可回溯。
@@ -199,26 +211,30 @@ metweave 的取数通路面向公开数据源，适合**态势感知、原型与
 
 > 新手可以忽略本节——日常消费用 `toValues()` 即可拿到两态字段视图；本节面向需要理解管道契约与包边界的进阶场景。
 
-| 包                                      | 职责                                                                           |
-| --------------------------------------- | ------------------------------------------------------------------------------ |
-| [`@metweave/core`](packages/core)       | IR 数据模型（管道稳定契约）：组级三态缺测、原文 span、告警、两态取值视图       |
-| [`@metweave/parser`](packages/parser)   | METAR/SPECI tolerant 解析 → IR；未知组与缺测一律不静默                         |
-| [`@metweave/render`](packages/render)   | 报文卡片：零框架 DOM 组件，内置样式与 RAW 对照视图（缺测/告警高亮 + 悬停解释） |
-| [`@metweave/leaflet`](packages/leaflet) | Leaflet 适配器：报文卡片上图（marker + tooltip + 卡片弹窗）                    |
-| [`metweave`](packages/metweave)         | 伞包：再导出 core/parser/render；`metweave/sources` 提供取数 helper            |
+| 包                                      | 职责                                                                               |
+| --------------------------------------- | ---------------------------------------------------------------------------------- |
+| [`@metweave/core`](packages/core)       | IR 数据模型（管道稳定契约）：组级三态缺测、原文 span、告警、两态取值视图           |
+| [`@metweave/parser`](packages/parser)   | METAR/SPECI tolerant 解析 → IR；未知组与缺测一律不静默                             |
+| [`@metweave/render`](packages/render)   | 报文卡片：零框架 DOM 组件，内置样式与 RAW 对照视图（缺测/告警高亮 + 悬停解释）     |
+| [`@metweave/grid`](packages/grid)       | 格点线：GRIB2 解码 + 格点要素档案 + 等值线/风羽数据面（d3-contour 唯一运行时依赖） |
+| [`@metweave/leaflet`](packages/leaflet) | Leaflet 适配器：报文卡片上图（marker + tooltip + 卡片弹窗）                        |
+| [`metweave`](packages/metweave)         | 伞包：再导出 core/parser/render；`metweave/sources` 提供取数 helper                |
 
 ### 当前状态
 
 版本政策（v0.x）：
 
 - v0.x 期间遵循 semver 前期惯例：minor（0.x）即可能引入破坏性变更，升级前请看 [CHANGELOG](CHANGELOG.md)。
-- 五包锁步同版本：`@metweave/*` 与 `metweave` 永远同一版本号一起发布（由 `pnpm check:workspace` 把关）。
+- 六包锁步同版本：`@metweave/*` 与 `metweave` 永远同一版本号一起发布（由 `pnpm check:workspace` 把关）。
 - IR 新增 optional 字段属 additive，不算破坏性变更（契约见 [`packages/core/src/ir.ts`](packages/core/src/ir.ts)）；告警/错误 `code` 同理只增不改。
 
 已交付：
 
 - METAR/SPECI tolerant 解析器——真实公开报文夹具验收（每类反常形态至少一条真实样本）：未知组进 `warnings[]`、缺测电码三态（`//` 天气、`////` 能见度、`/////KT` 风、云组 `///` 各归其位）、单位跟组走、脏值（超界 QNH）判缺测并告警、跑道状态组（WMO 15.13.6 六位电码 / CLRD / SNOCLO）、语义交叉校验（温露倒挂、CAVOK 矛盾）
 - TAF（FM 51）预报侧全套——`parseTaf` tolerant 解析（电头/NIL·CNL/变化组/气温组/方言收编）、`expandTaf` 时间线展开（切段→挂载→绑段→合成→叠加）、`tafSegments` 分段明细、`validateTaf` 条文判据校验（C2 VRB 两源阈值 / C3 阵风 / C5 天气白名单双层 / C7 三层选取）、`parseTaf({ mode: "strict" })` 严判模式（违例聚合抛 `strict-violation`）
+- IWXXM（2023-1/2025-2）XML→IR 解析（v0.3 alpha）——`parseIwxxm`（METAR/SPECI **与 TAF**，kind 位分派双 IR）：官方等价对双通道验收（METAR 34 站 30 全等 + TAF 6 站 7 对 3 全等，其余固有分歧快照锁定）、NOAA AWC 2025-2 实时流 41 站语料单通道快照、ECCC TAF 真实流 6 公报过筛、版本分派（支持版本不出声，未知版本尽力+告警）、nilReason 三态落位、RVR 趋势/超限、跑道状态组双向同构（2023-1 侧——2025-2 schema 已删该建模）；core IR 契约零改动（详见 [docs/iwxxm-notes.md](docs/iwxxm-notes.md)）
+- IWXXM 生成侧（v0.3 alpha）——`serializeIwxxm`（`parseIwxxm` 逆过程，任一侧 IR 写回 IWXXM XML）：METAR/SPECI 与 TAF 双侧、CNL/NIL 往返，2023-1 缺省 + 2025-2 同供出口，日历上下文显式注入（IR 无年月位不猜）；官方等价对与 AWC 语料 serialize→re-parse IR 全等往返，生成件过 xmllint + 官方 XSD 全依赖树（双出口全绿）；Schematron 核心规则子集固化为测试、全量校验留官方工具链（详见 [docs/iwxxm-notes.md](docs/iwxxm-notes.md) §十）
+- 格点线 `@metweave/grid`（v0.3）——自研 GRIB2 解码器（complex packing 5.2/5.3，含二阶空间差分；eccodes 权威值基线逐点对账）+ viz-ready 容器（MWGRID1 读写）+ 渲染内核（双线性插值/分级设色/逐像素色斑渲染）+ 13 要素档案（色标与档位单一事实来源）+ 等值线几何/场中心检测/风羽数据面；`pnpm gen:grid` CLI 从 NOMADS 现取 GFS 中国域裁剪落仓内基线
 - 取数双线 sources——`getMetars`/`getMetarReports`（IEM 实况，CORS 全开浏览器直连）与 `getTafs`/`getTafReports`（aviationweather TAF，上游无 CORS 头需代理或镜像，见下方「TAF 取数与 CORS」）；两线各留 `baseUrl` 覆盖位——内网镜像/自建网关只换根，路径与查询串由本层拼装
 - IR 数据模型：解析器与渲染组件之间的唯一契约，纯 JSON 可序列化，一切产物携带原文 span
 - 报文卡片：开箱默认样式、RAW 对照视图、内置中文术语表
@@ -228,8 +244,8 @@ metweave 的取数通路面向公开数据源，适合**态势感知、原型与
 方向：
 
 - 解析覆盖面：METAR 侧 strict 校验（TAF 侧 strict 与判据校验已落地）
-- 图表组件：格点填色、等值线、风羽与流线、meteogram（Canvas 2D 优先渲染内核）
-- 更多地图库适配（MapLibre 等）、IWXXM ↔ TAC 转换、中文底图配方表
+- 图表组件：流线、meteogram（Canvas 2D 优先渲染内核）
+- 更多地图库适配（MapLibre 等）、中文底图配方表
 
 ### 参与
 

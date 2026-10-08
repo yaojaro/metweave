@@ -4,8 +4,9 @@
 // Node 20 矩阵失败、性能冒烟 CI 慢机超时，均在推送后才发现）。
 //
 // 与 CI 的两处已知差异（如实声明，均为本侧更严或已对齐）：
-// ① Node 版本：CI 矩阵 [22]；test 步骤在此以 npx node@22.21.0 执行（与 CI 同版），
-//    其余步骤本机 Node 执行（无版本敏感行为）；
+// ① Node 版本：CI 矩阵 [22]（浮动 latest 22.x）；test 步骤在此以 npx node@22.21.0 执行，
+//    其余步骤本机 Node 执行（无版本敏感行为）。钉版会随 CI 浮动而漂移——升 Node 小版本
+//    时请同步改此钉版（漂移期间预演对「最新 22.x 特有行为」的代表性略降，属已知取舍）；
 // ② 泄露扫描：本机带私有模式清单（fail-closed），比 CI 无变量时的通用降级模式更严——
 //    本机过则 CI 面必过。
 // pnpm install --frozen-lockfile 保留：lockfile 与 package.json 漂移正是 CI 会抓的第一类错。
@@ -29,7 +30,9 @@ const steps = [
   ["check:leaks", "pnpm check:leaks"],
   ["check:docs", "pnpm check:docs"],
   ["check:knip", "pnpm check:knip"],
-  ["build (五包)", "pnpm build"],
+  ["build (六包)", "pnpm build"],
+  // 语料在仓内（corpus/），无网络依赖——与 CI quality job 的 replay:corpus 步同步
+  ["replay:corpus (语料快照基线)", "pnpm replay:corpus"],
   // 空 VITE_TIANDITU_KEY 前缀强制走 keyless 分支（与 CI 无变量环境对齐，本机 .env.local 不内联）
   ["build:examples (keyless)", "VITE_TIANDITU_KEY= pnpm build:examples"],
   ["check:artifact (publint/attw/LICENSE)", "pnpm check:artifact"],

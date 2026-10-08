@@ -119,6 +119,44 @@ export interface MetarReportItem {
 const IEM_BASE = "https://mesonet.agron.iastate.edu";
 
 /**
+ * 超时与外部取消的组合守卫（三取数线共用脚手架）：手工组合不依赖 AbortSignal.any（兼容
+ * Node 20 全系；setTimeout 可被测试假时钟接管）。超时触发的 abort reason 即最终抛出的
+ * MetarSourceError "timeout"（外部 signal 取消不在此列，reason 原样透传——见各取数函数）。
+ * 用法：`const guard = fetchGuard(...)` → fetch 传 `guard.signal` → finally 调 `guard.done()`；
+ * catch 分支用 `guard.aborted()` 区分取消/超时透传与网络包装。
+ */
+function fetchGuard(
+  source: string,
+  options: { signal?: AbortSignal; timeoutMs?: number },
+  timeoutMessage: string,
+): { signal: AbortSignal; aborted: () => boolean; done: () => void } {
+  const controller = new AbortController();
+  const external = options.signal;
+  const forward = (): void => {
+    controller.abort(external?.reason);
+  };
+  if (external !== undefined) {
+    if (external.aborted) forward();
+    else external.addEventListener("abort", forward, { once: true });
+  }
+  const timer =
+    options.timeoutMs === undefined
+      ? undefined
+      : setTimeout(
+          () => controller.abort(new MetarSourceError("timeout", source, timeoutMessage)),
+          options.timeoutMs,
+        );
+  return {
+    signal: controller.signal,
+    aborted: () => controller.signal.aborted,
+    done: () => {
+      if (timer !== undefined) clearTimeout(timer);
+      external?.removeEventListener("abort", forward);
+    },
+  };
+}
+
+/**
  * The IEM whole-network currents endpoint (CORS-open, direct browser access). Defaults to the China ASOS network (39 stations).
  * IEM 整网实况端点（CORS 全开，浏览器可直连）。缺省中国 ASOS 网（39 站）。
  * @param network - IEM network name (e.g. CN__ASOS, RU__ASOS, IA_ASOS). IEM 网络名。
@@ -128,11 +166,16 @@ export function iemCurrentsUrl(network = "CN__ASOS", baseUrl = IEM_BASE): string
   return `${baseUrl}/api/1/currents.json?network=${encodeURIComponent(network)}`;
 }
 
-/** 观测记录守卫：station/raw 均须为字符串（只查键不查类型是旧洞）。 */
+/** 观测记录守卫：station/raw 须字符串、lat/lon 须数字或 null（只查键不查类型是旧洞——坐标也不放行）。 */
 function isObservation(v: unknown): v is MetarObservation {
   if (typeof v !== "object" || v === null) return false;
-  const rec = v as { station?: unknown; raw?: unknown };
-  return typeof rec.station === "string" && typeof rec.raw === "string";
+  const rec = v as { station?: unknown; raw?: unknown; lat?: unknown; lon?: unknown };
+  return (
+    typeof rec.station === "string" &&
+    typeof rec.raw === "string" &&
+    (rec.lat === null || typeof rec.lat === "number") &&
+    (rec.lon === null || typeof rec.lon === "number")
+  );
 }
 
 /**
@@ -147,40 +190,20 @@ export async function getMetars(
   network = "CN__ASOS",
   options: GetMetarsOptions = {},
 ): Promise<MetarObservation[]> {
-  // 手工组合超时与外部信号（不依赖 AbortSignal.any：兼容 Node 20 全系；setTimeout 可被测试假时钟接管）
-  const controller = new AbortController();
-  const external = options.signal;
-  const forward = (): void => {
-    controller.abort(external?.reason);
-  };
-  if (external !== undefined) {
-    if (external.aborted) forward();
-    else external.addEventListener("abort", forward, { once: true });
-  }
-  const timer =
-    options.timeoutMs === undefined
-      ? undefined
-      : setTimeout(
-          () =>
-            controller.abort(
-              // 超时中止原因即最终抛出的错误：code "timeout"（外部 signal 取消不在此列，reason 原样透传）
-              new MetarSourceError(
-                "timeout",
-                network,
-                `IEM 请求超时（>${options.timeoutMs}ms，network=${network}）`,
-              ),
-            ),
-          options.timeoutMs,
-        );
+  const guard = fetchGuard(
+    network,
+    options,
+    `IEM 请求超时（>${options.timeoutMs ?? "?"}ms，network=${network}）`,
+  );
   try {
     let res: Response;
     try {
-      res = await fetch(iemCurrentsUrl(network, options.baseUrl), { signal: controller.signal });
+      res = await fetch(iemCurrentsUrl(network, options.baseUrl), { signal: guard.signal });
     } catch (err) {
       // 取消/超时引发的拒绝（controller 已中止）原样透传——保持 AbortSignal 语义
-      //（超时场景透传的即上方 MetarSourceError "timeout"）；
+      //（超时场景透传的即 fetchGuard 注入的 MetarSourceError "timeout"）；
       // 其余（断网/DNS 的 TypeError 等）包装为 MetarSourceError "network"，原始 message 保留在文末与 cause
-      if (controller.signal.aborted) throw err;
+      if (guard.aborted()) throw err;
       const reason = err instanceof Error ? err.message : String(err);
       throw new MetarSourceError(
         "network",
@@ -202,7 +225,7 @@ export async function getMetars(
     } catch (err) {
       // HTTP 200 但响应体不是 JSON（企业代理/防火墙拦截页的典型形态）——裸 SyntaxError 打穿属错误面缺口；
       // 归入 bad-schema 机读码，人话提示指向代理环境。中止引发的拒绝不在此列（保持取消语义透传）
-      if (controller.signal.aborted) throw err;
+      if (guard.aborted()) throw err;
       const reason = err instanceof Error ? err.message : String(err);
       throw new MetarSourceError(
         "bad-schema",
@@ -228,7 +251,7 @@ export async function getMetars(
       throw new MetarSourceError(
         "bad-schema",
         network,
-        `IEM 响应异常：data 存在 station/raw 非字符串的记录（network=${network}，schema 不符）`,
+        `IEM 响应异常：data 存在字段类型不符的记录（station/raw 须字符串、lat/lon 须数字或 null；network=${network}，schema 不符）`,
       );
     }
     if (rows.length === 0) {
@@ -241,8 +264,7 @@ export async function getMetars(
     }
     return rows;
   } finally {
-    if (timer !== undefined) clearTimeout(timer);
-    external?.removeEventListener("abort", forward);
+    guard.done();
   }
 }
 
@@ -348,6 +370,15 @@ export function awTafUrl(
   return `${options.baseUrl ?? AW_TAF_ENDPOINT}?${params.toString()}`;
 }
 
+/** 电头站码 best-effort 提取（TAF/AMD/COR 剥词；剥不出返回空串）——与 parseTaf 电头判式同源（TAF 词可省、AMD/COR 循环剥、四字符码形） */
+const stationHeadOf = (raw: string): string => {
+  const toks = raw.split(/\s+/);
+  let k = toks[0] === "TAF" ? 1 : 0;
+  while (toks[k] === "AMD" || toks[k] === "COR") k += 1;
+  const head = toks[k] ?? "";
+  return /^[A-Z0-9]{4}$/.test(head) ? head : "";
+};
+
 /** raw 文本 → 整份报文行（缩进续行并回上一份；与报池语义同源）+ best-effort 站码提取 */
 function mergeTafLines(text: string): TafObservation[] {
   const merged: string[] = [];
@@ -356,13 +387,7 @@ function mergeTafLines(text: string): TafObservation[] {
     if (/^\s/.test(line) && merged.length > 0) merged[merged.length - 1] += ` ${line.trim()}`;
     else merged.push(line.trim());
   }
-  return merged.map((raw) => {
-    const toks = raw.split(/\s+/);
-    let k = toks[0] === "TAF" ? 1 : 0;
-    while (toks[k] === "AMD" || toks[k] === "COR") k += 1;
-    const head = toks[k] ?? "";
-    return { station: /^[A-Z0-9]{4}$/.test(head) ? head : "", raw };
-  });
+  return merged.map((raw) => ({ station: stationHeadOf(raw), raw }));
 }
 
 /**
@@ -375,37 +400,18 @@ export async function getTafs(
   ids: string | readonly string[],
   options: GetTafsOptions = {},
 ): Promise<TafObservation[]> {
-  // 手工组合超时与外部信号（与 getMetars 同款：不依赖 AbortSignal.any，兼容 Node 20；假时钟可测）
-  const controller = new AbortController();
-  const external = options.signal;
-  const forward = (): void => {
-    controller.abort(external?.reason);
-  };
-  if (external !== undefined) {
-    if (external.aborted) forward();
-    else external.addEventListener("abort", forward, { once: true });
-  }
-  const timer =
-    options.timeoutMs === undefined
-      ? undefined
-      : setTimeout(
-          () =>
-            controller.abort(
-              new MetarSourceError(
-                "timeout",
-                "aviationweather",
-                `aviationweather TAF 请求超时（>${options.timeoutMs}ms）`,
-              ),
-            ),
-          options.timeoutMs,
-        );
+  const guard = fetchGuard(
+    "aviationweather",
+    options,
+    `aviationweather TAF 请求超时（>${options.timeoutMs ?? "?"}ms）`,
+  );
   try {
     let res: Response;
     try {
-      res = await fetch(awTafUrl(ids, options), { signal: controller.signal });
+      res = await fetch(awTafUrl(ids, options), { signal: guard.signal });
     } catch (err) {
       // 取消/超时引发的拒绝原样透传（AbortSignal 语义）；断网/DNS 包装为 network（原始 message 留文末与 cause）
-      if (controller.signal.aborted) throw err;
+      if (guard.aborted()) throw err;
       const reason = err instanceof Error ? err.message : String(err);
       throw new MetarSourceError(
         "network",
@@ -425,7 +431,7 @@ export async function getTafs(
     try {
       text = await res.text();
     } catch (err) {
-      if (controller.signal.aborted) throw err;
+      if (guard.aborted()) throw err;
       const reason = err instanceof Error ? err.message : String(err);
       throw new MetarSourceError(
         "network",
@@ -444,8 +450,7 @@ export async function getTafs(
     }
     return rows;
   } finally {
-    if (timer !== undefined) clearTimeout(timer);
-    external?.removeEventListener("abort", forward);
+    guard.done();
   }
 }
 
@@ -487,10 +492,12 @@ export async function getTafReports(
   const items: TafReportItem[] = [];
   const failures: string[] = [];
   for (const obs of observations) {
+    // 次序与 getMetarReports 同位：先查站表（未命中跳过、不付解析成本、不计失败），命中才解析。
+    // 取数侧 stationHeadOf 与 parseTaf 电头判式同源，先查不丢行
+    const station = table.get(obs.station);
+    if (station === undefined) continue; // 站表未命中（端点无坐标可回落）——跳过，规则同 getMetarReports
     try {
       const report = parseTaf(obs.raw, spans === false ? { spans: false } : undefined);
-      const station = table.get(report.station);
-      if (station === undefined) continue; // 站表未命中（端点无坐标可回落）——跳过，规则同 getMetarReports
       items.push({
         report,
         position: [station.lat, station.lon],
@@ -575,15 +582,6 @@ export function ogimetTafUrl(
   return `${options.baseUrl ?? OGIMET_TAF_ENDPOINT}?${qs.toString()}`;
 }
 
-/** 电头站码 best-effort 提取（TAF/AMD/COR 剥词；剥不出返回空串）——与 mergeTafLines 同判式（aviationweather 取数线） */
-const stationHeadOf = (raw: string): string => {
-  const toks = raw.split(/\s+/);
-  let k = toks[0] === "TAF" ? 1 : 0;
-  while (toks[k] === "AMD" || toks[k] === "COR") k += 1;
-  const head = toks[k] ?? "";
-  return /^[A-Z0-9]{4}$/.test(head) ? head : "";
-};
-
 /**
  * ogimet 响应解析（<pre> 区）：12 位时间戳前缀行（YYYYMMDDHHmm，收报序）起新记录、无前缀行并入上一条
  * （多行报文并单——与私有管线 parse_tafs 同协议）；# 注释/空行跳过；只收 TAF 起头报文。
@@ -628,35 +626,17 @@ export async function getTafsOgimet(
   window: OgimetTafWindow,
   options: GetTafsOgimetOptions = {},
 ): Promise<TafObservation[]> {
-  const controller = new AbortController();
-  const external = options.signal;
-  const forward = (): void => {
-    controller.abort(external?.reason);
-  };
-  if (external !== undefined) {
-    if (external.aborted) forward();
-    else external.addEventListener("abort", forward, { once: true });
-  }
-  const timer =
-    options.timeoutMs === undefined
-      ? undefined
-      : setTimeout(
-          () =>
-            controller.abort(
-              new MetarSourceError(
-                "timeout",
-                "ogimet",
-                `ogimet TAF 请求超时（>${options.timeoutMs}ms，站=${station}）`,
-              ),
-            ),
-          options.timeoutMs,
-        );
+  const guard = fetchGuard(
+    "ogimet",
+    options,
+    `ogimet TAF 请求超时（>${options.timeoutMs ?? "?"}ms，站=${station}）`,
+  );
   try {
     let res: Response;
     try {
-      res = await fetch(ogimetTafUrl(station, window, options), { signal: controller.signal });
+      res = await fetch(ogimetTafUrl(station, window, options), { signal: guard.signal });
     } catch (err) {
-      if (controller.signal.aborted) throw err;
+      if (guard.aborted()) throw err;
       const reason = err instanceof Error ? err.message : String(err);
       throw new MetarSourceError(
         "network",
@@ -674,7 +654,6 @@ export async function getTafsOgimet(
     }
     return parseOgimetTafs(await res.text(), station);
   } finally {
-    if (timer !== undefined) clearTimeout(timer);
-    external?.removeEventListener("abort", forward);
+    guard.done();
   }
 }

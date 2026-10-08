@@ -99,6 +99,17 @@ describe("getMetars 失败面（不静默：守卫失败一律 throw；五路失
     expect((err as MetarSourceError).code).toBe("bad-schema");
   });
 
+  it("坏 schema（lat 字符串坐标——类型谎言防线，字符串坐标不得静默流进地图层）→ MetarSourceError{code:'bad-schema'}", async () => {
+    vi.stubGlobal(
+      "fetch",
+      okFetch({ data: [{ station: "ZGGG", raw: "ZGGG 120000Z", lat: "23.39", lon: null }] }),
+    );
+    const err = await errorOf(getMetars());
+    expect(err).toBeInstanceOf(MetarSourceError);
+    expect((err as MetarSourceError).code).toBe("bad-schema");
+    expect((err as Error).message).toContain("lat/lon");
+  });
+
   it("timeoutMs 超时中止 → MetarSourceError{code:'timeout'}（错误提示超时，不挂死）", async () => {
     vi.useFakeTimers();
     vi.stubGlobal("fetch", hangingFetch());
@@ -491,7 +502,8 @@ describe("getTafReports（取数→解析→定位一步到位，契约沿 getMe
   });
 
   it("解析失败：缺省聚合抛 batch-parse-failed；onUnparseable 逐行容错回调", async () => {
-    const dirty = "TAF ZBAA 240000Z 2400/2506 32004MPS 9999=\n这是一份坏报文";
+    // 第二行站码命中站表但报文缺时组（整体失败）——失败须可观测
+    const dirty = "TAF ZBAA 240000Z 2400/2506 32004MPS 9999=\nTAF ZBAA";
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({ ok: true, status: 200, text: async () => dirty })),
@@ -503,7 +515,19 @@ describe("getTafReports（取数→解析→定位一步到位，契约沿 getMe
       onUnparseable: (f) => seen.push(f.code),
     });
     expect(items.length).toBe(1);
-    expect(seen).toContain("missing-station");
+    expect(seen).toContain("missing-time");
+  });
+
+  it("站表未命中的脏报文不计失败（先查表后解析——未命中行与 getMetarReports 无坐标行同位过滤，不再拖死整批）", async () => {
+    // 第二行站码剥不出 → 站表未命中 → 跳过（不付解析成本、不计失败），好行照常返回
+    const dirty = "TAF ZBAA 240000Z 2400/2506 32004MPS 9999=\n这是站码剥不出的脏行";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, status: 200, text: async () => dirty })),
+    );
+    const items = await getTafReports("ZBAA", { stations });
+    expect(items.length).toBe(1);
+    expect(items[0]?.report.station).toBe("ZBAA");
   });
 });
 

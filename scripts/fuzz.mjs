@@ -246,7 +246,16 @@ export function runTafFuzz({ parseTaf, tryParseTaf, MetarParseError, pool, cases
   const violations = [];
   let parsed = 0;
   let threw = 0;
+  // 超时守护预算（与 runFuzz 同款）：解析器若在 TAF 输入上退化/挂死，预算耗尽即停并
+  // 置 timedOut——调用方以退出码 124 上报，不无限吊住每夜 CI（job 级另有 timeout-minutes 兜底）
+  const startedAt = Date.now();
+  const budgetMs = Math.max(60_000, cases * 3) + 15_000;
+  let timedOut = false;
   for (let n = 0; n < cases; n += 1) {
+    if ((n & 0x3ff) === 0x3ff && Date.now() - startedAt > budgetMs) {
+      timedOut = true;
+      break;
+    }
     const base = pool[Math.floor(rand() * pool.length)];
     const { kind, text } = mutate(rand, base);
     let report;
@@ -258,16 +267,12 @@ export function runTafFuzz({ parseTaf, tryParseTaf, MetarParseError, pool, cases
     report = r.report;
     parsed += 1;
     const problems = [];
-    if (JSON.stringify(tryParseTaf(text).ok ? JSON.stringify : null) === null)
-      problems.push("ok 态漂移");
+    // ok 态确定性：同一输入再跑一次 Result 入口须同样成功（纯函数、无随机/时间依赖）
+    if (tryParseTaf(text).ok !== true) problems.push("ok 态漂移");
     const again = parseTaf(text);
     if (JSON.stringify(again) !== JSON.stringify(report)) problems.push("两次解析产物不一致");
     if (report.raw !== text) problems.push("raw 不保真");
-    const spansOk =
-      JSON.stringify(report)
-        .match(/"start":(\d+),"end":(\d+)/g)
-        ?.every(() => true) ?? true;
-    if (!spansOk) problems.push("span 序列化异常");
+    // span 界内：产物序列化里出现的每个 span 区间须 start ≤ end ≤ 原文长度
     for (const m of JSON.stringify(report).matchAll(/"start":(\d+),"end":(\d+)/g)) {
       if (Number(m[1]) > Number(m[2]) || Number(m[2]) > text.length) problems.push("span 越界");
     }
@@ -292,7 +297,7 @@ export function runTafFuzz({ parseTaf, tryParseTaf, MetarParseError, pool, cases
     JSON.stringify(parseTaf(text, { spans: false }));
     if (problems.length > 0) violations.push({ case: n, mutator: kind, input: text, problems });
   }
-  return { cases, parsed, threw, violations, violationCount: violations.length };
+  return { cases, parsed, threw, violations, violationCount: violations.length, timedOut };
 }
 
 export function runFuzz({ parse, toValues, MetarParseError, pool, cases, seed }) {
@@ -452,6 +457,10 @@ if (invokedAsCli) {
         console.error(
           `[TAF 违例] 例 ${v.case} · 变异 ${v.mutator} · ${v.problems.join(" | ")}\n  ${v.input}`,
         );
+      if (tafResult.timedOut) {
+        console.error(`fuzz(TAF): 超时守护触发（预算耗尽）——疑似退化或挂死`);
+        process.exit(124);
+      }
       console.log(
         `fuzz(TAF) 完成: ${CASES} 例（解析成功 ${tafResult.parsed} · 整体失败 ${tafResult.threw}）· 违例 ${tafResult.violationCount}`,
       );

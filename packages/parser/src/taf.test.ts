@@ -485,6 +485,34 @@ describe("TAF 批 2.3：时间线展开器黄金测试（清单 B4★–B7★，
   const zsof = () => parseTaf(fx("ogimet-zsof-20250125-0913z").raw);
   const zytl = () => parseTaf(fx("textbook-zytl-260848z-golden").raw); // 教材版＝黄金表权威源（ogimet 变体留结构测试）
 
+  it("TEMPO 天气三态契约：未列＝省略（继承主导段）、NSW＝[]（显式无天气）、列了＝整列", () => {
+    // 未列：TEMPO 只改云——overlay.weather 须省略（undefined），消费方 spread 即继承基况
+    const unlisted = expandTaf(
+      parseTaf("TAF ZPPP 251518Z 2518/2624 04009MPS 6000 -TSRA SCT023 TEMPO 2520/2524 BKN040="),
+      { day: 25, hour: 22, minute: 0 },
+      JAN31,
+    );
+    expect(unlisted.tempo).toBeDefined();
+    expect(unlisted.tempo?.conditions.weather).toBeUndefined();
+    expect(unlisted.tempo?.conditions.clouds?.elements[0]?.heightFt.value).toBe(4000); // 云整列替换：BKN040 单层
+    // NSW：显式无天气——weather 为 []（与未列的三态区分是合成语义的根基）
+    const nsw = expandTaf(
+      parseTaf("TAF ZPPP 251518Z 2518/2624 04009MPS 6000 -TSRA SCT023 TEMPO 2520/2524 NSW="),
+      { day: 25, hour: 22, minute: 0 },
+      JAN31,
+    );
+    expect(nsw.tempo?.conditions.weather).toEqual([]);
+    // 列了：整列替换
+    const listed = expandTaf(
+      parseTaf(
+        "TAF ZPPP 251518Z 2518/2624 04009MPS 6000 -TSRA SCT023 TEMPO 2520/2524 2500 -SHRA BR=",
+      ),
+      { day: 25, hour: 22, minute: 0 },
+      JAN31,
+    );
+    expect(wx(listed.tempo?.conditions.weather)).toBe("-SHRA BR");
+  });
+
   it("§3.1 ZPPP：双 BECMG 继承链（6 时刻）", () => {
     const r = zppp();
     // 25 日 19:00——TEMPO 20Z 才开窗：只有基况（自检三问之一）
@@ -673,7 +701,7 @@ describe("TAF 分段视图 tafSegments（渲染层分段数据面：按拆分时
     expect(rows[3]?.conditions.clouds?.elements[0]?.heightFt.value).toBe(4000);
     // 挂载行：组内所列要素（TSRA + FEW020CB BKN040），主导段值随行（context）
     const ov = rows[1]?.overlay?.conditions;
-    expect(ov?.weather[0]?.descriptor).toBe("TS");
+    expect(ov?.weather?.[0]?.descriptor).toBe("TS");
     const cb = ov?.clouds?.elements.find((x) => x.kind === "layer" && x.convective === "CB");
     expect(cb).toBeDefined(); // FEW020CB＝单层少云挂 CB
     expect(rows[1]?.conditions.wind?.direction).toBe(210);
@@ -702,6 +730,20 @@ describe("TAF 分段视图 tafSegments（渲染层分段数据面：按拆分时
     expect(rows[0]?.kind).toBe("base");
     expect(rows[0]?.conditions.visibility?.value).toBe(3500);
     expect(rows[0]?.conditions.clouds?.clear?.code).toBe("NSC");
+    // NIL 前置条件不满足 → 机读错误面（taf-not-expandable），不抛裸 Error
+    expect(() => tafSegments(parseTaf("TAF ZSAM NIL="))).toThrow(MetarParseError);
     expect(() => tafSegments(parseTaf("TAF ZSAM NIL="))).toThrow("无可分段");
+    try {
+      tafSegments(parseTaf("TAF ZSAM NIL="));
+    } catch (err) {
+      expect(err).toBeInstanceOf(MetarParseError);
+      if (err instanceof MetarParseError) {
+        expect(err.code).toBe("taf-not-expandable");
+        expect(err.raw).toBe("TAF ZSAM NIL=");
+      }
+    }
+    expect(() =>
+      expandTaf(parseTaf("TAF ZSAM NIL="), { day: 1, hour: 0, minute: 0 }, { daysIn: 31 }),
+    ).toThrow(MetarParseError);
   });
 });

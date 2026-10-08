@@ -32,45 +32,123 @@
         <tbody id="taf-panel-body"></tbody>
       </table>
     </aside>
-    <div id="mode-bar" role="toolbar" aria-label="演示模式">
-      <button
-        type="button"
-        id="mode-metar"
-        class="mode-btn active"
-        aria-pressed="true"
-        title="机场此刻的天气实况观测报告（每半小时左右更新一次）"
-      >
-        METAR 实况
-      </button>
-      <button
-        type="button"
-        id="mode-taf"
-        class="mode-btn"
-        aria-pressed="false"
-        title="机场未来一天的天气预报——配合底部时间轴查看任意时刻"
-      >
-        TAF 预报
-      </button>
-      <button
-        type="button"
-        id="mode-list"
-        class="mode-btn"
-        aria-pressed="false"
-        title="按当前模式排序的机场清单（实况＝观测状态；预报＝查看时刻状态；点击行飞到该机场并打开详情）"
-      >
-        站点列表
-      </button>
-      <button
-        type="button"
-        id="tz-btn"
-        class="mode-btn"
-        aria-pressed="false"
-        title="当前显示 UTC，点击切换为北京时"
-      >
-        UTC
-      </button>
+    <!-- 右上控制列（流式竖排：模式条 → 格点图层面板 → 无 key 提示（L99 态显示）→ 站点列表面板）：
+      面板互让由列内顺序自然解决，不再依赖手工 top 偏移 -->
+    <div id="top-right">
+      <div id="mode-bar" role="toolbar" aria-label="演示模式">
+        <button
+          type="button"
+          id="mode-metar"
+          class="mode-btn active"
+          aria-pressed="true"
+          title="机场此刻的天气实况观测报告（每半小时左右更新一次）"
+        >
+          METAR 实况
+        </button>
+        <button
+          type="button"
+          id="mode-taf"
+          class="mode-btn"
+          aria-pressed="false"
+          title="机场未来一天的天气预报——配合底部时间轴查看任意时刻"
+        >
+          TAF 预报
+        </button>
+        <button
+          type="button"
+          id="mode-list"
+          class="mode-btn"
+          aria-pressed="false"
+          title="按当前模式排序的机场清单（实况＝观测状态；预报＝查看时刻状态；点击行飞到该机场并打开详情）"
+        >
+          站点列表
+        </button>
+        <button
+          type="button"
+          id="mode-grid"
+          class="mode-btn"
+          aria-pressed="false"
+          title="格点背景场图层（GFS 色斑/等值线/风羽）——右侧抽屉选要素上图，可再点选中行取消；再点本按钮收起抽屉"
+        >
+          格点图层
+        </button>
+        <button
+          type="button"
+          id="tz-btn"
+          class="mode-btn"
+          aria-pressed="false"
+          title="当前显示 UTC，点击切换为北京时"
+        >
+          UTC
+        </button>
+      </div>
+      <!-- 格点图层控制已迁顶栏「格点图层」按钮＋右侧抽屉（见 body 级 #grid-panel）；
+        此处顺带移除 2cab6bc 遗留的重复 #taf-panel 死标记（ getElementById 恒取
+        body 级首份，本份永不解除 hidden——如实在施工底档记） -->
+      <div id="basemap-hint" role="note" hidden></div>
     </div>
-    <div id="basemap-hint" role="note" hidden></div>
+    <!-- 格点图层抽屉（v0.3.1 产品形态：顶栏「格点图层」唤起、右侧滑出）。拉最新＋不透明度
+      置顶；要素行列表占余高（从所在位置到抽屉底的固定高度框，超出上下滚动）；行可再点
+      取消选中（不选＝不展示图层）；选中行展开整合色卡（值在色带对应位置下方）＋数据源＋
+      要素描述。接线由 src/grid-panel.ts -->
+    <aside id="grid-panel" hidden aria-label="格点图层控制">
+      <div class="gd-head">
+        <div class="gd-title-row">
+          <h3>格点图层</h3>
+          <button
+            type="button"
+            id="grid-close"
+            aria-label="收起抽屉"
+            title="收起抽屉（图层保留在图上；顶栏「格点图层」再点亦收）"
+          >
+            ×
+          </button>
+        </div>
+        <div class="gd-ctl-row">
+          <button id="grid-pull" type="button" hidden>拉最新</button>
+          <span aria-label="预报时效">预报时效</span>
+          <span class="gd-fhour">
+            <button
+              type="button"
+              id="grid-fhour-prev"
+              aria-label="上一时次"
+              title="上一个预报时次（−1 小时，同一起报内）"
+            >
+              ◀
+            </button>
+            <button
+              type="button"
+              id="grid-fhour"
+              aria-pressed="true"
+              title="预报时效——点击切换「自动」（离当前时刻最近）/手动定档；◀ ▶ 逐小时调档（0–72）"
+            >
+              自动
+            </button>
+            <button
+              type="button"
+              id="grid-fhour-next"
+              aria-label="下一时次"
+              title="下一个预报时次（＋1 小时，同一起报内）"
+            >
+              ▶
+            </button>
+          </span>
+          <label for="grid-opacity">不透明度</label>
+          <input
+            id="grid-opacity"
+            type="range"
+            min="0.2"
+            max="0.9"
+            step="0.05"
+            value="0.6"
+            aria-label="色斑不透明度"
+          />
+          <span id="grid-opacity-value">60%</span>
+        </div>
+        <p id="grid-meta" role="status" aria-live="polite"></p>
+      </div>
+      <nav id="grid-elements" aria-label="格点要素"></nav>
+    </aside>
     <aside id="panel" role="alert" hidden></aside>
     <!-- TAF 时间轴：现在起 24h、10 分钟一格的一条窄轴——点刻度/拖动跳时刻，播放自动扫过 -->
     <div id="taf-timeline" hidden aria-label="预报时间轴">
@@ -101,10 +179,11 @@
       <span class="tl-value" id="tl-value"></span>
     </div>
     <footer id="disclaimer">
-      演示用途：数据来自公开通路（IEM / NOAA
-      等），按现状提供、不保证随时可用或即时更新，可能延迟或缺失；
-      本页及本库均<strong>不得用于飞行决策或任何运行决策</strong>。圆点色仅为扫视参考，
-      非标准分级。本演示与 IEM、NOAA/NWS、天地图均无隶属或背书关系。
+      演示用途：报文数据来自公开通路（IEM / NOAA 等），格点背景场为 NOAA/NCEP GFS
+      公开发布场（本地解码渲染；dev 下「拉最新」经本仓库 Node 侧取自
+      NOMADS），按现状提供、不保证随时可用或即时更新，可能延迟或缺失；
+      本页及本库均<strong>不得用于飞行决策或任何运行决策</strong>。圆点色与色斑档位均为扫视参考，
+      非标准分级。本演示与 IEM、NOAA/NWS/NCEP、天地图均无隶属或背书关系。
     </footer>
     <div id="status" role="status" aria-live="polite" hidden>
       <span id="status-spinner" aria-hidden="true"></span>

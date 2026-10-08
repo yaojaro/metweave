@@ -1,8 +1,14 @@
 {
-  "$schema": "./node_modules/knip/schema.json",
+  "$schema": "./node_modules/knip.schema.json",
   "workspaces": {
     ".": {},
     "packages/metweave": {},
-    "examples": {},
+    // examples 第二页面入口（v0.3 起）：knip 的 vite 插件默认只认 index.html——
+    // iwxxm.html 的脚本 src 须显式登记，否则判未用文件
+    //（gen-grid-api.ts 由 vite.config.ts 引用，vite 插件按 config 入口可达；
+    //  格点图层控制 grid-panel.ts 经 index.html 的 main.ts 可达）
+    "examples": {
+      "entry": ["src/iwxxm-main.ts"],
+    },
   },
 }

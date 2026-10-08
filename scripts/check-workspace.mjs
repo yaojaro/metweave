@@ -1,9 +1,13 @@
 // 工作区契约检查：
-//   ① 锁步版本——v0.x 阶段五包必须同版本；
+//   ① 锁步版本——v0.x 阶段六包必须同版本；
 //   ② core 零依赖——IR 包不得有任何运行时依赖 / peerDependencies；
 //   ③ 依赖方向单向——core←parser←render←leaflet（render/leaflet 消费展开器 tafSegments/expandTaf，
 //      2026-09-23 随 TAF 分段明细落地改约；此前 leaflet 运行时 import parser 却只声明 devDep，
 //      dist 外部化引用会令发布件解析失败——本批一并修正声明），伞包全依赖，禁止其他组合；
+//      外部运行时依赖白名单——EXPECTED_EXTERNAL_DEPS（2026-10-05 owner 批 fast-xml-parser 入
+//      @metweave/parser：IWXXM XML 解析，MIT；2026-10-04 owner 终批 d3-contour 入
+//      @metweave/grid：等值线几何追踪（marching-squares 型成熟算法，ISC），grid 的唯一
+//      运行时外部依赖；白名单外出现即失败，保 core 零依赖不变）；
 //   ④ publishConfig 替换就位——开发期 exports 指向 src，发布时必须替换为 dist；
 //   ⑤ 子路径完整——开发期 exports 的每个子路径必须在 publishConfig.exports 有同键 dist 替换
 //     （通用断言：新增子路径忘了发布面 → 发布即 404；产物缺失由 check:artifact 的 publint/attw 拦截）；
@@ -12,17 +16,27 @@
 //   ⑦ 五包 README 语言断言——已随文档语言政策（2026-09-15 双语 → 2026-09-16 中文单源）移交 `pnpm check:docs`。
 // CI 门禁：pnpm check:workspace
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const packagesDir = join(root, "packages");
 
 const EXPECTED_INTERNAL_DEPS = {
   "@metweave/core": [],
   "@metweave/parser": ["@metweave/core"],
   "@metweave/render": ["@metweave/core", "@metweave/parser"],
-  "@metweave/leaflet": ["@metweave/core", "@metweave/parser", "@metweave/render"],
+  // 格点线（2026-10-06 起挂线）：grid 除 d3-contour（等值线几何，owner 2026-10-04 终批——
+  // 本仓格点线唯一第三方内核依赖）外零依赖（渲染内核宿主无关），leaflet 消费其渲染内核与要素档案
+  "@metweave/grid": [],
+  "@metweave/leaflet": ["@metweave/core", "@metweave/parser", "@metweave/render", "@metweave/grid"],
   metweave: ["@metweave/core", "@metweave/parser", "@metweave/render"],
+};
+
+/** 允许的外部运行时依赖（按包白名单；leaflet 的 leaflet peer 另行走 peerDependencies 口径）。 */
+const EXPECTED_EXTERNAL_DEPS = {
+  "@metweave/parser": ["fast-xml-parser"],
+  "@metweave/grid": ["d3-contour"],
 };
 
 const errors = [];
@@ -73,8 +87,15 @@ for (const dir of dirs) {
   for (const dep of expected) {
     if (!internal.includes(dep)) fail(`${pkg.name} 缺少应声明的内部依赖: ${dep}`);
   }
-  if (external.length > 0 && pkg.name !== "@metweave/leaflet") {
-    fail(`${pkg.name} 出现外部运行时依赖: ${external.join(", ")}（如确需，先更新本契约脚本）`);
+  const allowedExternal = EXPECTED_EXTERNAL_DEPS[pkg.name] ?? [];
+  for (const dep of external) {
+    if (pkg.name === "@metweave/leaflet") continue; // leaflet peer 口径（下方 ③b 校验声明面）
+    if (!allowedExternal.includes(dep)) {
+      fail(`${pkg.name} 出现白名单外外部运行时依赖: ${dep}（如确需，先更新本契约脚本）`);
+    }
+  }
+  for (const dep of allowedExternal) {
+    if (!external.includes(dep)) fail(`${pkg.name} 缺少已批外部依赖声明: ${dep}`);
   }
 
   // ④ publishConfig 替换就位（开发期指向 src，发布替换为 dist；import/require 各带 types 子条件）
@@ -163,7 +184,7 @@ for (const dir of dirs) {
   }
 }
 
-if (versions.size > 1) fail(`锁步版本破坏: ${[...versions].join(" / ")}——五包必须同版本`);
+if (versions.size > 1) fail(`锁步版本破坏: ${[...versions].join(" / ")}——六包必须同版本`);
 
 // ⑥ README 十行承诺（owner 裁决降级，2026-09-12）：ts 示例块行数超 10 仅提示不失败——
 //    「十行代码」口号由 code review 守，不由 CI 硬门禁守（裁决来源：第三轮多角色评测，
@@ -184,21 +205,35 @@ if (versions.size > 1) fail(`锁步版本破坏: ${[...versions].join(" / ")}—
 //    → 2026-09-16 中文单源），存在性与镜像章节检查统一由 `pnpm check:docs`
 //    （scripts/check-docs-chinese.mjs）承担，此处不再重复断言。
 
-// ⑧ CI 最小权限锁：workflow 必须显式声明 permissions: contents: read（删除即红——防回退）
+// ⑧ CI 最小权限锁：全部 workflow 必须显式声明 permissions: contents: read（删除即红——防回退；
+//    fuzz.yml 同在 CI 面上，删它的人拿到的拦截不应比删 ci.yml 的人少）
 {
-  const ci = readFileSync(join(root, ".github/workflows/ci.yml"), "utf-8");
-  if (!/^permissions:\s*\n\s*contents:\s*read\b/m.test(ci))
-    fail("ci.yml 缺少 permissions: contents: read 最小权限声明");
+  for (const wf of ["ci.yml", "fuzz.yml"]) {
+    const y = readFileSync(join(root, ".github/workflows", wf), "utf-8");
+    if (!/^permissions:\s*\n\s*contents:\s*read\b/m.test(y))
+      fail(`${wf} 缺少 permissions: contents: read 最小权限声明`);
+  }
 }
 
 // ⑨ CI 矩阵单档锁：node-version 必须是 [22]（2026-09-16 实证回归锁）——
 //    pnpm 11（packageManager 锁定）engines >=22.13，Node 20 档在 setup-node 的
 //    cache: pnpm 解析 store 路径时即失败；多档矩阵改宽即红，防「20 档验证消费端
 //    承诺」式好心回归（消费端承诺由 ES2022 产物 + engines 字段 + attw 守）。
+//    断言面＝ci.yml 中出现的全部 node-version 行（新增低版本 job 也拦，不只查存在性）；
+//    fuzz.yml 用单值形式 node-version: 22，同锁。
 {
   const ci = readFileSync(join(root, ".github/workflows/ci.yml"), "utf-8");
-  if (!/^[ \t]*node-version: \[22\]$/m.test(ci))
-    fail("ci.yml 矩阵必须为单档 node-version: [22]（pnpm 11 不支持更低的 Node，见 ci.yml 注释）");
+  // 只查字面量声明（${{ matrix.* }} 的消费行不是版本声明，过滤后再断言）
+  const ciVersions = [...ci.matchAll(/^[ \t]*node-version:[ \t]*(.+)$/gm)]
+    .map((m) => (m[1] ?? "").trim())
+    .filter((v) => !v.includes("${{"));
+  if (ciVersions.length === 0 || !ciVersions.every((v) => v === "[22]" || v === "22"))
+    fail(
+      "ci.yml 所有 job 的 node-version 必须为单档 22（pnpm 11 不支持更低的 Node，见 ci.yml 注释）",
+    );
+  const fuzz = readFileSync(join(root, ".github/workflows/fuzz.yml"), "utf-8");
+  if (!/^[ \t]*node-version:[ \t]*22$/m.test(fuzz))
+    fail("fuzz.yml node-version 须为 22（与 ci.yml 同档，理由同上）");
 }
 
 if (errors.length > 0) {

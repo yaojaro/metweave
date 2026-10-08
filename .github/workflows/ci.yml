@@ -89,6 +89,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # 真实语料回放（2300+ 条全球报文快照基线）——语料在仓内（corpus/），无网络依赖；
+      # 与 check:all 的门禁顺序一致（build 后跑）
+      - name: Replay corpus (snapshot baseline drift)
+        run: pnpm replay:corpus
+
       # 示例 app 不进根 build：它不是可发布产物（examples 为 private workspace），
       # 而本地带 key 构建会把密钥内联进 examples/dist，与 check:leaks 的产物扫描相冲。
       # 类型检查仍由 pnpm typecheck 覆盖示例；打包单独守一道——CI 无 VITE_TIANDITU_KEY，

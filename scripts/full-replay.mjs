@@ -29,7 +29,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import readline from "node:readline";
 
 const args = process.argv.slice(2);
@@ -42,8 +42,17 @@ let parserPath;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === "--out") out = args[++i];
-  else if (a === "--shard") [shardIdx, shardCount] = args[++i].split("/").map(Number);
-  else if (a === "--types") types = new Set(args[++i].split(","));
+  else if (a === "--shard") {
+    const raw = args[++i];
+    const [si, sc] = raw.split("/").map(Number);
+    // 参数校验：坏分片号静默产出空结果比报错更难察觉（"0" 单值曾致 NaN 空跑）
+    if (!Number.isInteger(si) || !Number.isInteger(sc) || sc < 1 || si < 0 || si >= sc) {
+      console.error(`--shard "${raw}" 非法（须 i/n 形式，0 ≤ i < n，如 1/4）`);
+      process.exit(2);
+    }
+    shardIdx = si;
+    shardCount = sc;
+  } else if (a === "--types") types = new Set(args[++i].split(","));
   else if (a === "--parser") parserPath = args[++i];
   else positional.push(a);
 }
@@ -55,7 +64,7 @@ if (positional.length === 0 || out === "") {
 }
 
 const parserModule =
-  parserPath ?? new URL("../packages/parser/dist/index.js", import.meta.url).pathname;
+  parserPath ?? fileURLToPath(new URL("../packages/parser/dist/index.js", import.meta.url));
 const usesDefaultParser = parserPath === undefined;
 if (!existsSync(parserModule)) {
   console.error(
@@ -82,7 +91,7 @@ if (usesDefaultParser && !process.execArgv.includes(`--conditions=${DIST_CONDITI
 }
 // dist 陈旧自检：src 比 dist 新即提醒（假零漂移防线，理由见头部对拍纪律 2）。
 if (usesDefaultParser) {
-  const repoRoot = new URL("..", import.meta.url).pathname;
+  const repoRoot = fileURLToPath(new URL("..", import.meta.url));
   const srcRoots = ["packages/parser/src", "packages/core/src"];
   let newest = 0;
   let newestFile = "";

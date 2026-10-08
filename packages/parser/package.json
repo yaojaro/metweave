@@ -1,6 +1,6 @@
 {
   "name": "@metweave/parser",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Tolerant METAR/SPECI parser to a JSON IR — unknown groups and missing values are never silent: warnings carry source spans, missing codes map to explicit states.",
   "keywords": [
     "aviation",
@@ -35,8 +35,19 @@
   "exports": {
     ".": {
       "types": "./src/index.ts",
+      "mw-dist": {
+        "import": "./dist/index.js"
+      },
       "import": "./src/index.ts",
       "require": "./src/index.ts"
+    },
+    "./iwxxm": {
+      "types": "./src/iwxxm.ts",
+      "mw-dist": {
+        "import": "./dist/iwxxm.js"
+      },
+      "import": "./src/iwxxm.ts",
+      "require": "./src/iwxxm.ts"
     }
   },
   "publishConfig": {
@@ -53,6 +64,16 @@
           "types": "./dist/index.d.cts",
           "default": "./dist/index.cjs"
         }
+      },
+      "./iwxxm": {
+        "import": {
+          "types": "./dist/iwxxm.d.ts",
+          "default": "./dist/iwxxm.js"
+        },
+        "require": {
+          "types": "./dist/iwxxm.d.cts",
+          "default": "./dist/iwxxm.cjs"
+        }
       }
     },
     "access": "public"
@@ -62,7 +83,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@metweave/core": "workspace:*"
+    "@metweave/core": "workspace:*",
+    "fast-xml-parser": "5.11.2"
   },
   "devDependencies": {
     "@types/node": "^22"

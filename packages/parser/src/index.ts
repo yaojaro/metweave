@@ -66,6 +66,18 @@ export type { TryParseTafResult } from "./taf";
 export { expandTaf, tafSegments } from "./expand";
 // TAF 判据校验层（v0.2 补齐批）：C2/C3/C5/C7 四判据——解析期移交至此的条文判据收口
 export { validateTaf } from "./validate";
+// IWXXM 解析层（v0.3 起）：IWXXM 2023-1 XML→IR——与 TAC 侧 parse 同一份契约；
+// 子路径 @metweave/parser/iwxxm 同源供给（体积敏感消费方可走子路径）；
+// 遗留项 1（2026-10-08）起 TAF 根同入口供给（→ TafReport，kind 位判别，见 IwxxmReport）；
+// 遗留项 5（2026-10-08）起序列化出口同入口供给（IR→IWXXM XML，serializeIwxxm——parseIwxxm 逆过程）
+export { parseIwxxm, serializeIwxxm, tryParseIwxxm } from "./iwxxm";
+export type {
+  IwxxmParseOptions,
+  IwxxmReport,
+  IwxxmSerializeOptions,
+  IwxxmSerializeVersion,
+  TryParseIwxxmResult,
+} from "./iwxxm";
 export type {
   TafValidateOptions,
   TafValidateStandard,
@@ -279,7 +291,9 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
   // CCA/CCB/CCC 更正指示符（WMO FM15 §1.3.3 BBB 系列：第一次更正 CCA、第二次 CCB 顺延；
   // 规范槽位即本位——时组后。加拿大 NAV CANADA 明文采用，中国 AFTN 实务沿用；仓库声明的
   // 编码基准含 MANOPS-MET）。语义即更正报——与 COR 同义异位（COR 在类型词位、BBB 在时组后位），
-  // 消费并置 corrected；此前落 unknown-token，更正语义丢失（2026-09-14 复评：基准内形态未实现）
+  // 消费并置 corrected；此前落 unknown-token，更正语义丢失（2026-09-14 复评：基准内形态未实现）。
+  // 正则宽容收编 CCA–CCZ：WMO 只定义到 CCC，CCD 及以后未定义——但组形同源（CC+字母），拒绝
+  // 无收益（更正意图已明确），落 unknown 反而丢语义
   if (/^CC[A-Z]$/.test(peek()?.text ?? "")) {
     corrected = true;
     i += 1;

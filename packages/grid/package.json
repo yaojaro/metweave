@@ -1,0 +1,94 @@
+{
+  "name": "@metweave/grid",
+  "version": "0.3.0",
+  "description": "Gridded scalar fields for weather maps: viz-ready container (grid header JSON + float32), GRIB2 decoding (complex packing 5.2/5.3) and crop-to-region — renderer-agnostic.",
+  "keywords": [
+    "grib2",
+    "grid",
+    "meteorology",
+    "scalar-field",
+    "visualization",
+    "weather"
+  ],
+  "homepage": "https://github.com/yaojaro/metweave#readme",
+  "bugs": {
+    "url": "https://github.com/yaojaro/metweave/issues"
+  },
+  "license": "MIT",
+  "author": "YaoJaro <yaojaro@metweave.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yaojaro/metweave.git",
+    "directory": "packages/grid"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "mw-dist": {
+        "import": "./dist/index.js"
+      },
+      "import": "./src/index.ts",
+      "require": "./src/index.ts"
+    },
+    "./convert": {
+      "types": "./src/convert.ts",
+      "mw-dist": {
+        "import": "./dist/convert.js"
+      },
+      "import": "./src/convert.ts",
+      "require": "./src/convert.ts"
+    }
+  },
+  "publishConfig": {
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "import": {
+          "types": "./dist/index.d.ts",
+          "default": "./dist/index.js"
+        },
+        "require": {
+          "types": "./dist/index.d.cts",
+          "default": "./dist/index.cjs"
+        }
+      },
+      "./convert": {
+        "import": {
+          "types": "./dist/convert.d.ts",
+          "default": "./dist/convert.js"
+        },
+        "require": {
+          "types": "./dist/convert.d.cts",
+          "default": "./dist/convert.cjs"
+        }
+      }
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "d3-contour": "^4.0.2"
+  },
+  "devDependencies": {
+    "@types/d3-contour": "^3.0.6",
+    "@types/node": "^22"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,37 @@
+<collect:MeteorologicalBulletin gml:id="uuid.3220fc8c-0206-43a8-a572-4e2fec215dc8" xsi:schemaLocation="http://def.wmo.int/collect/2014 http://schemas.wmo.int/collect/1.2/collect.xsd" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:collect="http://def.wmo.int/collect/2014" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:aixm="http://www.aixm.aero/schema/5.1.1">
+    <collect:meteorologicalInformation>
+        <iwxxm:TAF gml:id="uuid.6cf63f7b-30b3-4aee-ab5c-674a870129e7" xmlns:iwxxm="http://icao.int/iwxxm/3.0" xmlns:iwxxm-ca="http://dd.meteo.gc.ca/iwxxm-ca/3.0.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:aixm="http://www.aixm.aero/schema/5.1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://icao.int/iwxxm/3.0 http://schemas.wmo.int/iwxxm/3.0.0/iwxxm.xsd http://dd.meteo.gc.ca/iwxxm-ca/3.0.0 https://dd.meteo.gc.ca/today/aviation/iwxxm/schema/iwxxm-ca.xsd" reportStatus="AMENDMENT" permissibleUsage="OPERATIONAL" isCancelReport="true">
+            <iwxxm:issueTime>
+                <gml:TimeInstant gml:id="uuid.252f3d87-faec-4515-afee-26c440f805ba">
+                    <gml:timePosition>2026-10-08T02:04:00Z</gml:timePosition>
+                </gml:TimeInstant>
+            </iwxxm:issueTime>
+            <iwxxm:aerodrome>
+                <aixm:AirportHeliport gml:id="uuid.ea13433b-3710-4eda-a3c8-d0a0706f5c8e">
+                    <aixm:timeSlice>
+                        <aixm:AirportHeliportTimeSlice gml:id="uuid.653e56c5-0529-44cb-a03e-a4e0f17fab02">
+                            <gml:validTime/>
+                            <aixm:interpretation>SNAPSHOT</aixm:interpretation>
+                            <aixm:locationIndicatorICAO>CYCO</aixm:locationIndicatorICAO>
+                            <aixm:ARP>
+                                <aixm:ElevatedPoint gml:id="uuid.d432fc6b-6f31-4104-9362-cfeb732add26" axisLabels="Lat Long" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+                                    <gml:pos>67.816666667 -115.143888889</gml:pos>
+                                </aixm:ElevatedPoint>
+                            </aixm:ARP>
+                        </aixm:AirportHeliportTimeSlice>
+                    </aixm:timeSlice>
+                </aixm:AirportHeliport>
+            </iwxxm:aerodrome>
+            <iwxxm:cancelledReportValidPeriod>
+                <gml:TimePeriod gml:id="uuid.8633194a-3817-497e-9c81-77429aeebe90">
+                    <gml:beginPosition>2026-10-08T02:04:00Z</gml:beginPosition>
+                    <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                </gml:TimePeriod>
+            </iwxxm:cancelledReportValidPeriod>
+            <iwxxm:extension>
+                <iwxxm-ca:humanReadableText>NO OBS. NXT FCST BY 080700Z</iwxxm-ca:humanReadableText>
+            </iwxxm:extension>
+        </iwxxm:TAF>
+    </collect:meteorologicalInformation>
+    <collect:bulletinIdentifier>A_LTCN23CWAO080000AAA_C_CWAO_20261008000000.xml</collect:bulletinIdentifier>
+</collect:MeteorologicalBulletin>

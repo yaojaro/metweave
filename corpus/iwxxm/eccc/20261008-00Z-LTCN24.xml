@@ -1,0 +1,1249 @@
+<collect:MeteorologicalBulletin gml:id="uuid.f2865d81-869b-4be2-97ab-129d68d9aa81" xsi:schemaLocation="http://def.wmo.int/collect/2014 http://schemas.wmo.int/collect/1.2/collect.xsd" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:collect="http://def.wmo.int/collect/2014" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:aixm="http://www.aixm.aero/schema/5.1.1">
+    <collect:meteorologicalInformation>
+        <iwxxm:TAF gml:id="uuid.95b06512-ddc7-4e1e-95d3-c04531729c1a" xmlns:iwxxm="http://icao.int/iwxxm/3.0" xmlns:iwxxm-ca="http://dd.meteo.gc.ca/iwxxm-ca/3.0.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:aixm="http://www.aixm.aero/schema/5.1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://icao.int/iwxxm/3.0 http://schemas.wmo.int/iwxxm/3.0.0/iwxxm.xsd http://dd.meteo.gc.ca/iwxxm-ca/3.0.0 https://dd.meteo.gc.ca/today/aviation/iwxxm/schema/iwxxm-ca.xsd" reportStatus="NORMAL" permissibleUsage="OPERATIONAL">
+            <iwxxm:issueTime>
+                <gml:TimeInstant gml:id="uuid.1497abd5-9a88-4941-9109-e607d34ff6a9">
+                    <gml:timePosition>2026-10-08T00:40:00Z</gml:timePosition>
+                </gml:TimeInstant>
+            </iwxxm:issueTime>
+            <iwxxm:aerodrome>
+                <aixm:AirportHeliport gml:id="uuid.e64951d7-830e-4579-9093-5452ae4684de">
+                    <aixm:timeSlice>
+                        <aixm:AirportHeliportTimeSlice gml:id="uuid.dc33e7b5-b510-4d9a-ad2d-2bef3794fcc3">
+                            <gml:validTime/>
+                            <aixm:interpretation>SNAPSHOT</aixm:interpretation>
+                            <aixm:locationIndicatorICAO>CYYL</aixm:locationIndicatorICAO>
+                            <aixm:ARP>
+                                <aixm:ElevatedPoint gml:id="uuid.b7896eac-954c-49b9-8ec3-8a3bb71a7a30" axisLabels="Lat Long" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+                                    <gml:pos>56.863888889 -101.076111111</gml:pos>
+                                </aixm:ElevatedPoint>
+                            </aixm:ARP>
+                        </aixm:AirportHeliportTimeSlice>
+                    </aixm:timeSlice>
+                </aixm:AirportHeliport>
+            </iwxxm:aerodrome>
+            <iwxxm:validPeriod>
+                <gml:TimePeriod gml:id="uuid.3f7479e2-dfc2-4501-a349-4b8a323da05f">
+                    <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                    <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                </gml:TimePeriod>
+            </iwxxm:validPeriod>
+            <iwxxm:baseForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.afd685a5-060a-4d2e-a9ed-98a18c53b47a" cloudAndVisibilityOK="false">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.6146b448-9961-4185-afa0-0591f2a10437">
+                            <gml:beginPosition>2026-10-08T00:40:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T04:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">330</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">10</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.4011acb7-1753-41da-ba9b-6e0a31701aee">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">3000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">5000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:baseForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.ff968b03-be1c-4547-b32e-710c25b8742b" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.121e80d9-7aea-478c-b66d-2ce5899c4938">
+                            <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T04:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/-SHRA"/>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.97940afc-b1a5-4e78-9d74-2558be140b4b">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">3000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.d78c5763-1547-446c-b2c6-226a1bea60b1" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.cc225bb2-ac93-4479-bc75-d89c79e10ce7">
+                            <gml:beginPosition>2026-10-08T04:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">330</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">6</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.26ca84b7-232d-47f6-95a1-455ab533e4a7">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">1500</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">3000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.f734c919-26d9-4b00-afd1-f5b569b4fee6" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.ae87c2f2-f2d4-4a9b-9e29-9f8e45c563f8">
+                            <gml:beginPosition>2026-10-08T04:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.eb4bda8f-b87a-4a05-991f-caee895cef07">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">1500</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">2500</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:extension>
+                <iwxxm-ca:humanReadableText>FCST BASED ON AUTO OBS. NXT FCST BY 080700Z</iwxxm-ca:humanReadableText>
+            </iwxxm:extension>
+        </iwxxm:TAF>
+    </collect:meteorologicalInformation>
+    <collect:meteorologicalInformation>
+        <iwxxm:TAF gml:id="uuid.2dbc1c1b-b057-43b9-8480-0f1160f60434" xmlns:iwxxm="http://icao.int/iwxxm/3.0" xmlns:iwxxm-ca="http://dd.meteo.gc.ca/iwxxm-ca/3.0.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:aixm="http://www.aixm.aero/schema/5.1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://icao.int/iwxxm/3.0 http://schemas.wmo.int/iwxxm/3.0.0/iwxxm.xsd http://dd.meteo.gc.ca/iwxxm-ca/3.0.0 https://dd.meteo.gc.ca/today/aviation/iwxxm/schema/iwxxm-ca.xsd" reportStatus="NORMAL" permissibleUsage="OPERATIONAL">
+            <iwxxm:issueTime>
+                <gml:TimeInstant gml:id="uuid.3c2fbb34-2e4e-43ca-a03c-6573a1aa3421">
+                    <gml:timePosition>2026-10-08T00:40:00Z</gml:timePosition>
+                </gml:TimeInstant>
+            </iwxxm:issueTime>
+            <iwxxm:aerodrome>
+                <aixm:AirportHeliport gml:id="uuid.fb3da0ef-ee05-40fe-b27f-827d87d733f5">
+                    <aixm:timeSlice>
+                        <aixm:AirportHeliportTimeSlice gml:id="uuid.40ce3229-89fd-463a-a4f6-b2e8cd17bd03">
+                            <gml:validTime/>
+                            <aixm:interpretation>SNAPSHOT</aixm:interpretation>
+                            <aixm:locationIndicatorICAO>CYQD</aixm:locationIndicatorICAO>
+                            <aixm:ARP>
+                                <aixm:ElevatedPoint gml:id="uuid.7a0bcd46-1b37-4dca-9944-3b1b449d3e5f" axisLabels="Lat Long" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+                                    <gml:pos>53.971388889 -101.091111111</gml:pos>
+                                </aixm:ElevatedPoint>
+                            </aixm:ARP>
+                        </aixm:AirportHeliportTimeSlice>
+                    </aixm:timeSlice>
+                </aixm:AirportHeliport>
+            </iwxxm:aerodrome>
+            <iwxxm:validPeriod>
+                <gml:TimePeriod gml:id="uuid.af8a1b52-e83f-4ddd-bbf5-5d756d06d84b">
+                    <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                    <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                </gml:TimePeriod>
+            </iwxxm:validPeriod>
+            <iwxxm:baseForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.4b481b2f-b472-4d2c-aabc-aa5a93fdcaf5" cloudAndVisibilityOK="false">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.a1bc1667-1143-4802-b940-426f1fd646e5">
+                            <gml:beginPosition>2026-10-08T00:40:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T08:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">280</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">7</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.09815867-e658-4389-9a74-9a86445aeffb">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/FEW"/>
+                                    <iwxxm:base uom="[ft_i]">7000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:baseForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.ffafa6ae-bcb6-4155-b0ca-f3ce0c6b19b6" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.b9037ede-d407-42b8-bbe6-cc297de88270">
+                            <gml:beginPosition>2026-10-08T08:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="true">
+                            <iwxxm:meanWindSpeed uom="[kn_i]">3</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.f3d125c7-3ecc-4b0e-a4fd-d6d3f1163273">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/FEW"/>
+                                    <iwxxm:base uom="[ft_i]">5000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.06e890d5-73fe-4e31-95fc-c0b7477a9438" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.d2fc3ee4-daeb-4dfa-b887-697d1a0b5eac">
+                            <gml:beginPosition>2026-10-08T08:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">1600</iwxxm:prevailingVisibility>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/BR"/>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.96ec7cd0-0b30-4684-9554-cb466dae0401" cloudAndVisibilityOK="false" changeIndicator="PROBABILITY_30">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.e2d3a94b-203b-4499-9933-3e2cdb3d65c9">
+                            <gml:beginPosition>2026-10-08T08:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">800</iwxxm:prevailingVisibility>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/FG"/>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:extension>
+                <iwxxm-ca:humanReadableText>FCST BASED ON AUTO OBS. NXT FCST BY 080700Z</iwxxm-ca:humanReadableText>
+            </iwxxm:extension>
+        </iwxxm:TAF>
+    </collect:meteorologicalInformation>
+    <collect:meteorologicalInformation>
+        <iwxxm:TAF gml:id="uuid.a8e377ba-8927-4cc6-af63-7a45c833a376" xmlns:iwxxm="http://icao.int/iwxxm/3.0" xmlns:iwxxm-ca="http://dd.meteo.gc.ca/iwxxm-ca/3.0.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:aixm="http://www.aixm.aero/schema/5.1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://icao.int/iwxxm/3.0 http://schemas.wmo.int/iwxxm/3.0.0/iwxxm.xsd http://dd.meteo.gc.ca/iwxxm-ca/3.0.0 https://dd.meteo.gc.ca/today/aviation/iwxxm/schema/iwxxm-ca.xsd" reportStatus="NORMAL" permissibleUsage="OPERATIONAL">
+            <iwxxm:issueTime>
+                <gml:TimeInstant gml:id="uuid.3f2ba99f-423e-489e-897a-a14bf79be2d3">
+                    <gml:timePosition>2026-10-08T00:40:00Z</gml:timePosition>
+                </gml:TimeInstant>
+            </iwxxm:issueTime>
+            <iwxxm:aerodrome>
+                <aixm:AirportHeliport gml:id="uuid.68ced999-37a2-4e30-9437-7a7a3c8d46f9">
+                    <aixm:timeSlice>
+                        <aixm:AirportHeliportTimeSlice gml:id="uuid.151ca06b-d9af-497a-9f73-a0cfdcd4b0e6">
+                            <gml:validTime/>
+                            <aixm:interpretation>SNAPSHOT</aixm:interpretation>
+                            <aixm:locationIndicatorICAO>CYNE</aixm:locationIndicatorICAO>
+                            <aixm:ARP>
+                                <aixm:ElevatedPoint gml:id="uuid.1fad1e43-9117-42c5-9a93-0679e2b817ee" axisLabels="Lat Long" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+                                    <gml:pos>53.958333333 -97.844166667</gml:pos>
+                                </aixm:ElevatedPoint>
+                            </aixm:ARP>
+                        </aixm:AirportHeliportTimeSlice>
+                    </aixm:timeSlice>
+                </aixm:AirportHeliport>
+            </iwxxm:aerodrome>
+            <iwxxm:validPeriod>
+                <gml:TimePeriod gml:id="uuid.5286d89a-f73e-4470-9b31-25edba4b1155">
+                    <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                    <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                </gml:TimePeriod>
+            </iwxxm:validPeriod>
+            <iwxxm:baseForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.0bda09c0-43f4-4a1e-85cd-e8c8f5150474" cloudAndVisibilityOK="false">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.5ea29035-2d70-459d-bfd5-44cf65f195ad">
+                            <gml:beginPosition>2026-10-08T00:40:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T03:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">330</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">6</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.88d45a00-68cc-4af4-a07d-fba8b5fae84b">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">4000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">7000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:baseForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.7d691eca-28c7-4946-898a-4819ce58677f" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.a7828174-b837-4511-aeb0-ec1c512b67a3">
+                            <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T03:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/-SHRA"/>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.ca5ef274-cbda-48b2-89cd-da38d2039f8a">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">4000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.d2f571cb-08e7-4c07-a060-a82ed6378b53" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.4101284c-692f-421e-b263-a573d0ac21d3">
+                            <gml:beginPosition>2026-10-08T03:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T09:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">320</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">5</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.7c90595f-55cd-4df8-a8d3-3384e9ab4526">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/FEW"/>
+                                    <iwxxm:base uom="[ft_i]">2000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">4000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.e7c5fee5-bc86-4f45-a5ef-971053831fa8" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.40e016c5-48fe-4f19-aedf-b72e02e0be3b">
+                            <gml:beginPosition>2026-10-08T03:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T09:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.da9db05e-8ad4-4847-9f21-9092fe997442">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">2000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.4519cff0-3b62-496c-b159-b270283a0a75" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.789c7ed5-a5d1-431f-824c-b4b6596e0e9d">
+                            <gml:beginPosition>2026-10-08T09:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="true">
+                            <iwxxm:meanWindSpeed uom="[kn_i]">3</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.93f8c5ce-f219-42e1-bc6e-69aaefb851aa">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/FEW"/>
+                                    <iwxxm:base uom="[ft_i]">2000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.5e413192-442d-46ab-b895-148fba3cda38" cloudAndVisibilityOK="false" changeIndicator="PROBABILITY_30">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.2e2efcde-c19a-49a9-8040-f58a065acc3f">
+                            <gml:beginPosition>2026-10-08T09:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">1600</iwxxm:prevailingVisibility>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/BR"/>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:extension>
+                <iwxxm-ca:humanReadableText>FCST BASED ON AUTO OBS. NXT FCST BY 080700Z</iwxxm-ca:humanReadableText>
+            </iwxxm:extension>
+        </iwxxm:TAF>
+    </collect:meteorologicalInformation>
+    <collect:meteorologicalInformation>
+        <iwxxm:TAF gml:id="uuid.c33d09f3-0c0e-4a6c-bf23-5f8594fba755" xmlns:iwxxm="http://icao.int/iwxxm/3.0" xmlns:iwxxm-ca="http://dd.meteo.gc.ca/iwxxm-ca/3.0.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:aixm="http://www.aixm.aero/schema/5.1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://icao.int/iwxxm/3.0 http://schemas.wmo.int/iwxxm/3.0.0/iwxxm.xsd http://dd.meteo.gc.ca/iwxxm-ca/3.0.0 https://dd.meteo.gc.ca/today/aviation/iwxxm/schema/iwxxm-ca.xsd" reportStatus="NORMAL" permissibleUsage="OPERATIONAL">
+            <iwxxm:issueTime>
+                <gml:TimeInstant gml:id="uuid.9c9237ab-d5e5-4640-a048-eaf7aa24f90a">
+                    <gml:timePosition>2026-10-08T00:40:00Z</gml:timePosition>
+                </gml:TimeInstant>
+            </iwxxm:issueTime>
+            <iwxxm:aerodrome>
+                <aixm:AirportHeliport gml:id="uuid.c7be4404-0377-4aeb-b68a-a77421abba38">
+                    <aixm:timeSlice>
+                        <aixm:AirportHeliportTimeSlice gml:id="uuid.1bbf1e51-894b-44da-b94b-6e76c955f22c">
+                            <gml:validTime/>
+                            <aixm:interpretation>SNAPSHOT</aixm:interpretation>
+                            <aixm:locationIndicatorICAO>CYTH</aixm:locationIndicatorICAO>
+                            <aixm:ARP>
+                                <aixm:ElevatedPoint gml:id="uuid.44efdc2e-59c1-4321-8dce-e0114619cc17" axisLabels="Lat Long" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+                                    <gml:pos>55.804722222 -97.8625</gml:pos>
+                                </aixm:ElevatedPoint>
+                            </aixm:ARP>
+                        </aixm:AirportHeliportTimeSlice>
+                    </aixm:timeSlice>
+                </aixm:AirportHeliport>
+            </iwxxm:aerodrome>
+            <iwxxm:validPeriod>
+                <gml:TimePeriod gml:id="uuid.8244502c-530e-4b35-a8c1-dee55444f9b9">
+                    <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                    <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                </gml:TimePeriod>
+            </iwxxm:validPeriod>
+            <iwxxm:baseForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.cf0f8d52-8b7e-4796-b2b5-44efd0865ee4" cloudAndVisibilityOK="false">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.dff230ac-c746-4575-a6d7-4fa8a56aea1a">
+                            <gml:beginPosition>2026-10-08T00:40:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T03:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">290</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">8</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.188138be-06b5-4796-a71f-8131c133e881">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">3000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">7000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:baseForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.4fc9e746-7c3e-4f17-a033-04322d6956c6" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.071062d3-a11b-454f-889b-0ac1c18732d1">
+                            <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T03:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/-SHRA"/>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.14348128-3849-4765-a56a-48488823c172">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">3000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.472605fb-f6a0-4519-825e-2fbc86ccd7ef" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.4ed76b97-7946-40a7-88f9-76113a44973d">
+                            <gml:beginPosition>2026-10-08T03:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T08:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">320</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">6</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.395344dd-3252-46d5-938f-d20ed1658084">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">3000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.3679e3e4-483c-47c4-a00a-c80209d85ff6" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.0dd91cfa-e176-41c7-a371-d0ea5bd06dd9">
+                            <gml:beginPosition>2026-10-08T03:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T08:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/-SHRA"/>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.f9636c5b-b828-4abd-978c-c82df331eb8c">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">2000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.1b793212-2e88-4750-ab6b-057315a20995" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.a4ba197a-9a23-4d62-896f-9dc8af520e0b">
+                            <gml:beginPosition>2026-10-08T08:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">300</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">5</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.39d7c2b6-1ba5-4898-ac34-c2d18a796e77">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">600</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">2000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.5a3785d3-18d7-477b-bd99-8a7e36462ce3" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.74c12ae3-34d3-4ae3-ba6d-2926e41b9782">
+                            <gml:beginPosition>2026-10-08T08:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">6400</iwxxm:prevailingVisibility>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/-DZ"/>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/BR"/>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.90b1e291-3778-41d3-a61e-fc117373edbe">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">600</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">1000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:extension>
+                <iwxxm-ca:humanReadableText>NXT FCST BY 080700Z</iwxxm-ca:humanReadableText>
+            </iwxxm:extension>
+        </iwxxm:TAF>
+    </collect:meteorologicalInformation>
+    <collect:meteorologicalInformation>
+        <iwxxm:TAF gml:id="uuid.98f84e47-c0f0-4ee7-b999-87b1b645278b" xmlns:iwxxm="http://icao.int/iwxxm/3.0" xmlns:iwxxm-ca="http://dd.meteo.gc.ca/iwxxm-ca/3.0.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:aixm="http://www.aixm.aero/schema/5.1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://icao.int/iwxxm/3.0 http://schemas.wmo.int/iwxxm/3.0.0/iwxxm.xsd http://dd.meteo.gc.ca/iwxxm-ca/3.0.0 https://dd.meteo.gc.ca/today/aviation/iwxxm/schema/iwxxm-ca.xsd" reportStatus="NORMAL" permissibleUsage="OPERATIONAL">
+            <iwxxm:issueTime>
+                <gml:TimeInstant gml:id="uuid.a578956e-3d86-44db-876e-489b40069ef8">
+                    <gml:timePosition>2026-10-08T00:40:00Z</gml:timePosition>
+                </gml:TimeInstant>
+            </iwxxm:issueTime>
+            <iwxxm:aerodrome>
+                <aixm:AirportHeliport gml:id="uuid.98334674-aa1d-42e7-94ea-d5340f06b44d">
+                    <aixm:timeSlice>
+                        <aixm:AirportHeliportTimeSlice gml:id="uuid.de2db5f0-27fd-4f49-8e1b-659318f68fb1">
+                            <gml:validTime/>
+                            <aixm:interpretation>SNAPSHOT</aixm:interpretation>
+                            <aixm:locationIndicatorICAO>CYGX</aixm:locationIndicatorICAO>
+                            <aixm:ARP>
+                                <aixm:ElevatedPoint gml:id="uuid.4cde63b0-c3d1-4d4c-99a5-39f362345e5e" axisLabels="Lat Long" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+                                    <gml:pos>56.357777778 -94.710833333</gml:pos>
+                                </aixm:ElevatedPoint>
+                            </aixm:ARP>
+                        </aixm:AirportHeliportTimeSlice>
+                    </aixm:timeSlice>
+                </aixm:AirportHeliport>
+            </iwxxm:aerodrome>
+            <iwxxm:validPeriod>
+                <gml:TimePeriod gml:id="uuid.163ac77a-c292-4de9-983c-24101d5ef921">
+                    <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                    <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                </gml:TimePeriod>
+            </iwxxm:validPeriod>
+            <iwxxm:baseForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.d36a5f77-8b6d-4ecf-b923-dcce1fbdcd71" cloudAndVisibilityOK="false">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.23dcd08d-7bd5-42da-8a79-3da941283f83">
+                            <gml:beginPosition>2026-10-08T00:40:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T03:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">350</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">12</iwxxm:meanWindSpeed>
+                            <iwxxm:windGustSpeed uom="[kn_i]">22</iwxxm:windGustSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.94741734-9dc9-433d-8d5b-4b1b8cc1daae">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">3000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:baseForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.14d876f4-9fc0-497f-bf46-68d69bdfd0da" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.c53d67b7-579b-4704-ad42-bfcea6d380e5">
+                            <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T03:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/-SHRA"/>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.320f0a43-e087-4912-9ce1-cd832c4dbbad">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">2000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.ff28efc6-4b92-4324-a9f6-d27692020bc1" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.084a624b-f257-4ef7-94e1-712089868d8b">
+                            <gml:beginPosition>2026-10-08T03:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">350</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">8</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.de3c7851-b699-4d79-9707-df2b7ccc8e83">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">600</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">2000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.3fe9542f-61ae-4e0b-ab57-6579a0cb75fd" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.93783f9a-30c7-4523-9a3a-944ede2ac777">
+                            <gml:beginPosition>2026-10-08T03:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">8000</iwxxm:prevailingVisibility>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/-SHRA"/>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/BR"/>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.978121f2-ad16-44b1-9b7f-2bbba125f833">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">600</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">1500</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:extension>
+                <iwxxm-ca:humanReadableText>NXT FCST BY 080700Z</iwxxm-ca:humanReadableText>
+            </iwxxm:extension>
+        </iwxxm:TAF>
+    </collect:meteorologicalInformation>
+    <collect:meteorologicalInformation>
+        <iwxxm:TAF gml:id="uuid.e25b91b3-0725-4899-af63-cd01d7145633" xmlns:iwxxm="http://icao.int/iwxxm/3.0" xmlns:iwxxm-ca="http://dd.meteo.gc.ca/iwxxm-ca/3.0.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:aixm="http://www.aixm.aero/schema/5.1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://icao.int/iwxxm/3.0 http://schemas.wmo.int/iwxxm/3.0.0/iwxxm.xsd http://dd.meteo.gc.ca/iwxxm-ca/3.0.0 https://dd.meteo.gc.ca/today/aviation/iwxxm/schema/iwxxm-ca.xsd" reportStatus="NORMAL" permissibleUsage="OPERATIONAL">
+            <iwxxm:issueTime>
+                <gml:TimeInstant gml:id="uuid.4212fbfb-0989-433f-b2fc-51f14c29f39c">
+                    <gml:timePosition>2026-10-08T00:40:00Z</gml:timePosition>
+                </gml:TimeInstant>
+            </iwxxm:issueTime>
+            <iwxxm:aerodrome>
+                <aixm:AirportHeliport gml:id="uuid.0cf3c309-62c2-4c90-b943-333c3ec18a9b">
+                    <aixm:timeSlice>
+                        <aixm:AirportHeliportTimeSlice gml:id="uuid.3c585087-4a59-491b-9123-2fcf34aeeb74">
+                            <gml:validTime/>
+                            <aixm:interpretation>SNAPSHOT</aixm:interpretation>
+                            <aixm:locationIndicatorICAO>CYPA</aixm:locationIndicatorICAO>
+                            <aixm:ARP>
+                                <aixm:ElevatedPoint gml:id="uuid.6081511b-eedf-467f-af3e-24586298de74" axisLabels="Lat Long" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+                                    <gml:pos>53.214444444 -105.673055556</gml:pos>
+                                </aixm:ElevatedPoint>
+                            </aixm:ARP>
+                        </aixm:AirportHeliportTimeSlice>
+                    </aixm:timeSlice>
+                </aixm:AirportHeliport>
+            </iwxxm:aerodrome>
+            <iwxxm:validPeriod>
+                <gml:TimePeriod gml:id="uuid.695d6d2f-99ac-44a5-b591-f47195d424d4">
+                    <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                    <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                </gml:TimePeriod>
+            </iwxxm:validPeriod>
+            <iwxxm:baseForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.6f300af7-f13d-424a-b47e-279be180e0e2" cloudAndVisibilityOK="false">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.57a198b8-4cb1-46d6-95bd-54d38e5ef6e8">
+                            <gml:beginPosition>2026-10-08T00:40:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T04:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">300</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">6</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.22ab4820-5ce4-40e1-b396-509debb00682">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/FEW"/>
+                                    <iwxxm:base uom="[ft_i]">7000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">25000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:baseForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.2b40f3cb-870f-47e0-8e3a-4d37d6f2ab0c" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.d10848e4-dfa3-458e-bcd7-0723cd46b823">
+                            <gml:beginPosition>2026-10-08T04:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T09:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="true">
+                            <iwxxm:meanWindSpeed uom="[kn_i]">3</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.244aed82-6fb9-4554-8a70-1799e60ba13c">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">22000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.295eb481-a9c9-4264-be1a-8eb1c1d0b594" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.e5261d44-5e2b-487f-b9bc-c906e1e33cf1">
+                            <gml:beginPosition>2026-10-08T09:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="true">
+                            <iwxxm:meanWindSpeed uom="[kn_i]">3</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.70121d14-37b7-4639-bbc4-d2c59174ae96">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">15000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:extension>
+                <iwxxm-ca:humanReadableText>NXT FCST BY 080700Z</iwxxm-ca:humanReadableText>
+            </iwxxm:extension>
+        </iwxxm:TAF>
+    </collect:meteorologicalInformation>
+    <collect:meteorologicalInformation>
+        <iwxxm:TAF gml:id="uuid.c537e1c9-3ab2-486d-ac52-6fb957ebe7d1" xmlns:iwxxm="http://icao.int/iwxxm/3.0" xmlns:iwxxm-ca="http://dd.meteo.gc.ca/iwxxm-ca/3.0.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:aixm="http://www.aixm.aero/schema/5.1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://icao.int/iwxxm/3.0 http://schemas.wmo.int/iwxxm/3.0.0/iwxxm.xsd http://dd.meteo.gc.ca/iwxxm-ca/3.0.0 https://dd.meteo.gc.ca/today/aviation/iwxxm/schema/iwxxm-ca.xsd" reportStatus="NORMAL" permissibleUsage="OPERATIONAL">
+            <iwxxm:issueTime>
+                <gml:TimeInstant gml:id="uuid.28b2cb1f-9da1-4d48-bea9-cf88a6af4267">
+                    <gml:timePosition>2026-10-08T00:40:00Z</gml:timePosition>
+                </gml:TimeInstant>
+            </iwxxm:issueTime>
+            <iwxxm:aerodrome>
+                <aixm:AirportHeliport gml:id="uuid.f7be92b3-8422-40f2-8993-68ace1bb8a8b">
+                    <aixm:timeSlice>
+                        <aixm:AirportHeliportTimeSlice gml:id="uuid.1163bd7a-b7c5-423a-8cf0-d087799135a4">
+                            <gml:validTime/>
+                            <aixm:interpretation>SNAPSHOT</aixm:interpretation>
+                            <aixm:locationIndicatorICAO>CYIV</aixm:locationIndicatorICAO>
+                            <aixm:ARP>
+                                <aixm:ElevatedPoint gml:id="uuid.23c5efc8-9c4d-4f98-86c5-f635c0a908c3" axisLabels="Lat Long" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+                                    <gml:pos>53.857222222 -94.653611111</gml:pos>
+                                </aixm:ElevatedPoint>
+                            </aixm:ARP>
+                        </aixm:AirportHeliportTimeSlice>
+                    </aixm:timeSlice>
+                </aixm:AirportHeliport>
+            </iwxxm:aerodrome>
+            <iwxxm:validPeriod>
+                <gml:TimePeriod gml:id="uuid.c6f6c232-c7e5-4169-aa5c-f4e29338fcb5">
+                    <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                    <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                </gml:TimePeriod>
+            </iwxxm:validPeriod>
+            <iwxxm:baseForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.502bfdda-b27a-44d4-8b5f-89cf46d4dbc4" cloudAndVisibilityOK="false">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.b15416d2-efb0-4119-b59f-0262129a1392">
+                            <gml:beginPosition>2026-10-08T00:40:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T04:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">300</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">12</iwxxm:meanWindSpeed>
+                            <iwxxm:windGustSpeed uom="[kn_i]">22</iwxxm:windGustSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.4504f617-be11-46fa-bb0f-75a0ee149821">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">3000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:baseForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.ad2284c4-c8b2-4d60-92db-124a55267379" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.7f962186-230b-4595-827d-a7b69196d61d">
+                            <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T04:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">8000</iwxxm:prevailingVisibility>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/-SHRA"/>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/BR"/>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.528ad95d-253a-4a92-b177-d77612a3dd38">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">2000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.a20954ce-2e38-4293-b476-2a09295cde9b" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.5770e08f-f95e-4396-bcb6-e5c6f73ea77c">
+                            <gml:beginPosition>2026-10-08T04:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T07:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">330</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">6</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.b220b731-e7f9-4e0f-85d9-442e1f6ba493">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">800</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">2500</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.57db0106-659e-4ad1-8aab-1ead841c0ac3" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.25845cfe-5964-4619-b58c-e7044e9b96d3">
+                            <gml:beginPosition>2026-10-08T04:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T07:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">8000</iwxxm:prevailingVisibility>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/-SHRA"/>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.7a509e76-ed3a-4138-9d58-ef4db4c63298">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">800</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">2000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.08bc4695-0bb0-49e5-803c-9eb44df61995" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.9ee1209c-b8aa-4a24-a10f-a912273831a4">
+                            <gml:beginPosition>2026-10-08T07:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">330</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">6</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.b3736a13-54e2-4ad8-a1cc-f382c76d67e1">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">600</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">1500</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.d5e40c7a-34e6-4d5a-8277-f49cb8d6c071" cloudAndVisibilityOK="false" changeIndicator="TEMPORARY_FLUCTUATIONS">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.cb6732d4-6f27-4011-83d9-66255c69311e">
+                            <gml:beginPosition>2026-10-08T07:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">4800</iwxxm:prevailingVisibility>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/-SHRA"/>
+                    <iwxxm:weather xlink:href="http://codes.wmo.int/306/4678/BR"/>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.594ce978-945f-4519-83d8-f7040ec784d2">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/BKN"/>
+                                    <iwxxm:base uom="[ft_i]">600</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/OVC"/>
+                                    <iwxxm:base uom="[ft_i]">1000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:extension>
+                <iwxxm-ca:humanReadableText>FCST BASED ON AUTO OBS. NXT FCST BY 080700Z</iwxxm-ca:humanReadableText>
+            </iwxxm:extension>
+        </iwxxm:TAF>
+    </collect:meteorologicalInformation>
+    <collect:meteorologicalInformation>
+        <iwxxm:TAF gml:id="uuid.883890fd-f5f2-469e-b2ea-6ab9e61cc410" xmlns:iwxxm="http://icao.int/iwxxm/3.0" xmlns:iwxxm-ca="http://dd.meteo.gc.ca/iwxxm-ca/3.0.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:aixm="http://www.aixm.aero/schema/5.1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://icao.int/iwxxm/3.0 http://schemas.wmo.int/iwxxm/3.0.0/iwxxm.xsd http://dd.meteo.gc.ca/iwxxm-ca/3.0.0 https://dd.meteo.gc.ca/today/aviation/iwxxm/schema/iwxxm-ca.xsd" reportStatus="NORMAL" permissibleUsage="OPERATIONAL">
+            <iwxxm:issueTime>
+                <gml:TimeInstant gml:id="uuid.a2639dd8-ce1e-4803-b497-fe909eb80f49">
+                    <gml:timePosition>2026-10-08T00:40:00Z</gml:timePosition>
+                </gml:TimeInstant>
+            </iwxxm:issueTime>
+            <iwxxm:aerodrome>
+                <aixm:AirportHeliport gml:id="uuid.9f1851b1-d5ef-4425-bba5-61dbb3e4b0c6">
+                    <aixm:timeSlice>
+                        <aixm:AirportHeliportTimeSlice gml:id="uuid.c46ca6e8-2cda-4193-8121-2ab63ddf4268">
+                            <gml:validTime/>
+                            <aixm:interpretation>SNAPSHOT</aixm:interpretation>
+                            <aixm:locationIndicatorICAO>CYVC</aixm:locationIndicatorICAO>
+                            <aixm:ARP>
+                                <aixm:ElevatedPoint gml:id="uuid.ec77412c-9520-4c33-b608-10e32dfbb3a4" axisLabels="Lat Long" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+                                    <gml:pos>55.151388889 -105.266944444</gml:pos>
+                                </aixm:ElevatedPoint>
+                            </aixm:ARP>
+                        </aixm:AirportHeliportTimeSlice>
+                    </aixm:timeSlice>
+                </aixm:AirportHeliport>
+            </iwxxm:aerodrome>
+            <iwxxm:validPeriod>
+                <gml:TimePeriod gml:id="uuid.d37088c1-5bd3-49bc-8792-8ec05b4a1929">
+                    <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                    <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                </gml:TimePeriod>
+            </iwxxm:validPeriod>
+            <iwxxm:baseForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.a6591efc-9c6a-4184-aa7e-2c24f5bb62f3" cloudAndVisibilityOK="false">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.01cfa920-f6f1-405e-bb26-801846d22190">
+                            <gml:beginPosition>2026-10-08T00:40:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T06:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">300</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">10</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.324b224d-0d2a-4976-87e4-6cd28c5466d8">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/FEW"/>
+                                    <iwxxm:base uom="[ft_i]">5000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:baseForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.e3df49a0-641a-471c-8df1-54bd5cedb37c" cloudAndVisibilityOK="false" changeIndicator="BECOMING">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.e74e9102-0f33-4310-a022-02a756ff204d">
+                            <gml:beginPosition>2026-10-08T01:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T03:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="false">
+                            <iwxxm:meanWindDirection uom="deg">280</iwxxm:meanWindDirection>
+                            <iwxxm:meanWindSpeed uom="[kn_i]">6</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:changeForecast>
+                <iwxxm:MeteorologicalAerodromeForecast gml:id="uuid.4510981b-524c-4de1-ac49-bdc54e14893d" cloudAndVisibilityOK="false" changeIndicator="FROM">
+                    <iwxxm:phenomenonTime>
+                        <gml:TimePeriod gml:id="uuid.fb11cf13-a630-4456-b9e9-b4f24a9217bd">
+                            <gml:beginPosition>2026-10-08T06:00:00Z</gml:beginPosition>
+                            <gml:endPosition>2026-10-08T13:00:00Z</gml:endPosition>
+                        </gml:TimePeriod>
+                    </iwxxm:phenomenonTime>
+                    <iwxxm:prevailingVisibility uom="m">10000</iwxxm:prevailingVisibility>
+                    <iwxxm:prevailingVisibilityOperator>ABOVE</iwxxm:prevailingVisibilityOperator>
+                    <iwxxm:surfaceWind>
+                        <iwxxm:AerodromeSurfaceWindForecast variableWindDirection="true">
+                            <iwxxm:meanWindSpeed uom="[kn_i]">3</iwxxm:meanWindSpeed>
+                        </iwxxm:AerodromeSurfaceWindForecast>
+                    </iwxxm:surfaceWind>
+                    <iwxxm:cloud>
+                        <iwxxm:AerodromeCloudForecast gml:id="uuid.c25c83a1-3188-4cee-9fdf-7e698d6654dd">
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">7000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                            <iwxxm:layer>
+                                <iwxxm:CloudLayer>
+                                    <iwxxm:amount xlink:href="http://codes.wmo.int/49-2/CloudAmountReportedAtAerodrome/SCT"/>
+                                    <iwxxm:base uom="[ft_i]">25000</iwxxm:base>
+                                </iwxxm:CloudLayer>
+                            </iwxxm:layer>
+                        </iwxxm:AerodromeCloudForecast>
+                    </iwxxm:cloud>
+                </iwxxm:MeteorologicalAerodromeForecast>
+            </iwxxm:changeForecast>
+            <iwxxm:extension>
+                <iwxxm-ca:humanReadableText>NXT FCST BY 080700Z</iwxxm-ca:humanReadableText>
+            </iwxxm:extension>
+        </iwxxm:TAF>
+    </collect:meteorologicalInformation>
+    <collect:bulletinIdentifier>A_LTCN24CWAO080000_C_CWAO_20261008000000.xml</collect:bulletinIdentifier>
+</collect:MeteorologicalBulletin>

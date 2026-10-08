@@ -460,8 +460,9 @@ function splitWeatherToken(body: string): {
 /** 天气组词身解析：VC 邻近 / -+ 强度 / 双字母组合切分。返回 null 表示不是合法天气组。
  *  signWithVc = 强度符与 VC 并存（-VCTSRA 家族，NWS 自动站实弹）：4678 限定槽四选一
  *  （light −/moderate 无符/heavy +/vicinity VC）、FAA AIM 明文互斥——tolerant 纪律下按切解
- *  收下（强度+邻近+现象语义可无损恢复，与 RATS→outOfOrder 容忍同构），由调用方出声。 */
-function parseWeatherBody(text: string): {
+ *  收下（强度+邻近+现象语义可无损恢复，与 RATS→outOfOrder 容忍同构），由调用方出声。
+ *  v0.3 起导出供 ./iwxxm 复用（4678 电码 URI 尾段与 TAC w'w' token 同构——D0 复核实证）。 */
+export function parseWeatherBody(text: string): {
   intensity?: "-" | "+";
   proximity: boolean;
   descriptor?: WeatherDescriptor;

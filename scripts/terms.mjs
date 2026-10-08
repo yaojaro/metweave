@@ -17,6 +17,10 @@
  * 抽取面（v1）：render/card.ts#LOCALE（词表常量在 render/gloss.ts，经作用域注入求值）、leaflet/index.ts#TIER_WORDS、
  * core/errors.ts#EN_MESSAGES、sources.ts 与 parser/index.ts 的 CJK 字符串字面量。
  * card.ts 内联拼装模板（龄期/日期/云底折米等）以 kind=template 在册，不参与自动比对。
+ *
+ * 已知缺口（2026-10-08 发布前审查记档，挂账下批扩面 v2）：render/taf-card.ts#LOCALE
+ * （TAF 卡全部文案，自带双语、不经本册）、parser/iwxxm.ts 告警文案、grid 包 GridError
+ * 中文消息——三者改动不触发 check:terms；v2 扩面时一并收编，en 对译需逐条人审。
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";

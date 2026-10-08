@@ -15,6 +15,9 @@ import type {
   WeatherGroup,
   WeatherPhenomenon,
 } from "@metweave/core";
+// 行色判据单源在 core（tier 模块）——本文件只做 CSS 类名映射，见下方「扫视色调判据」节注释
+import { cloudLayerTone, visibilityGroupTone, weatherGroupTone } from "@metweave/core";
+import type { ElementTone } from "@metweave/core";
 
 /** 风向三位补零（变程 20°–90° 的电码形态 020V090） */
 const deg3 = (deg: number): string => String(deg).padStart(3, "0");
@@ -348,76 +351,36 @@ export function weatherGloss(g: WeatherGroup, wx: WxGloss): string {
 
 // ---------------------------------------------------------------- 扫视色调判据（card 行色与 taf-card 分段色点共用）
 
-/** 能见度折米（单位跟组走；1 SM = 1609.344 m 精确换算） */
-const visibilityMeters = (vis: {
-  value: number;
-  unit: "m" | "sm";
-  exact: boolean;
-  beyond?: "above" | "below";
-}): number => (vis.unit === "m" ? vis.value : vis.value * 1609.344);
-
-/** 降水类现象（着色判据用，与 WMO 4678 降水族对应） */
-const PRECIP_PHENOMENA: ReadonlySet<WeatherPhenomenon> = new Set([
-  "RA",
-  "SN",
-  "SG",
-  "PL",
-  "GS",
-  "IC",
-  "DZ",
-  "UP",
-]);
-
 /**
- * 危险值分级（值着色口径，本库自拟，初稿待审）：
- * 只是「一眼扫视哪些组更值得注意」的显示层启发式，阈值由本库拟定——
- * **不对应、也不代表任何官方飞行天气分类；本库不提供也不承诺飞行规则判定**（本期无此功能）：
- * - danger（红系 mw-danger）：天气描述符含 TS（雷暴）或 FZ（冻降水族，2026-09-22 运行视角评审升红）或现象含 GR（冰雹）或强度 +（强）；
- *   云层含 CB/TCU（对流云）；能见度 < 1500 m；RVR < 800 m；跑道关闭。
- * - caution（橙系 mw-caution）：降水类现象（RA/SN/SG/PL/GS/IC/DZ/UP）；
- *   能见度 1500–5000 m（能见度分档取国内通行 1500/5000 m 口径）。
- * 阈值与分级细则随术语表版本审定后修订。
+ * 行色判据单源在 @metweave/core（tier 模块，v0.3 方案 C 下沉）：天气组/能见度/云三族
+ * 的语义色调（danger/caution）由 core 的 weatherGroupTone / visibilityGroupTone /
+ * cloudLayerTone 给出——与 @metweave/leaflet 的站点四档判据同一文件对照演进，
+ * 根治 0.1.2 式「两包同改」；本模块只做 CSS 类名映射（mw-danger/mw-caution）。
+ * 诚实声明随判据迁移保留：阈值由本库拟定，**不对应也不代表任何官方飞行天气分类；
+ * 本库不提供也不承诺飞行规则判定**——只是「一眼扫视哪些组更值得注意」的显示层启发式，
+ * 不得用作运行判据；阈值与分级细则随术语表版本审定后修订（判据语义变化走 minor + 迁移说明）。
  */
-export const isDangerWeather = (g: WeatherGroup): boolean =>
-  g.descriptor === "TS" ||
-  g.descriptor === "FZ" ||
-  g.phenomena.includes("GR") ||
-  g.intensity === "+";
 
-export const isCautionWeather = (g: WeatherGroup): boolean =>
-  !isDangerWeather(g) &&
-  (g.descriptor === "FZ" || g.phenomena.some((p) => PRECIP_PHENOMENA.has(p)));
+/** 语义色调 → 卡片 CSS 类名（mw-danger/mw-caution；undefined = 不着色） */
+const toneClass = (tone: ElementTone | undefined): "mw-danger" | "mw-caution" | undefined =>
+  tone === "danger" ? "mw-danger" : tone === "caution" ? "mw-caution" : undefined;
 
-/**
- * 低云底着色（判据本库自拟、初稿待审——显示层扫视口径，非标准分级、非运行判据）：
- * BKN/OVC 云底 < 1000 ft → mw-danger；1000–3000 ft → mw-caution；
- * VV 组任意 → mw-caution，VV < 400 ft → mw-danger。
- * 对流云（CB/TCU）恒 danger（威胁优先于云底档位）；缺测云高不捏造档位不着色。
- */
-export const cloudTone = (layer: CloudElement): "mw-danger" | "mw-caution" | undefined => {
-  if (layer.kind === "vertical-visibility") {
-    const v = layer.heightFt.value;
-    return v !== null && v < 400 ? "mw-danger" : "mw-caution";
-  }
-  if (layer.amount !== "BKN" && layer.amount !== "OVC") return undefined;
-  const h = layer.heightFt.value;
-  if (h === null) return undefined;
-  if (h < 1000) return "mw-danger";
-  if (h <= 3000) return "mw-caution";
-  return undefined;
-};
+/** 天气组行色（core 判据单源的薄映射；danger=TS/FZ/GR/+，caution=降水族/飑 SQ——SQ 入琥珀为 v0.3 增补） */
+export const isDangerWeather = (g: WeatherGroup): boolean => weatherGroupTone(g) === "danger";
 
+export const isCautionWeather = (g: WeatherGroup): boolean => weatherGroupTone(g) === "caution";
+
+/** 能见度行色（core 判据单源薄映射：<1500 danger / <5000 caution） */
 export const visibilityTone = (vis: {
   value: number;
   unit: "m" | "sm";
   exact: boolean;
   beyond?: "above" | "below";
-}): "mw-danger" | "mw-caution" | undefined => {
-  const meters = visibilityMeters(vis);
-  if (meters < 1500) return "mw-danger";
-  if (meters < 5000) return "mw-caution";
-  return undefined;
-};
+}): "mw-danger" | "mw-caution" | undefined => toneClass(visibilityGroupTone(vis));
+
+/** 云组元素行色（core 判据单源薄映射；VV/云底档位与对流云优先级见 core cloudLayerTone 注释） */
+export const cloudTone = (layer: CloudElement): "mw-danger" | "mw-caution" | undefined =>
+  toneClass(cloudLayerTone(layer));
 
 /** 双日界引用（UTC/北京时双日界引用加上」）：北京时制下展示时刻的日期与报文 UTC
  *  日期不同日时，括注 UTC 日号——防与 RAW 电码/外部 UTC 源对表错位（如「北京时9月25日 02:00（UTC 24日）」）。

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>metweave · IWXXM 解析演示（alpha）</title>
+    <!-- favicon：空 data URI 显式声明（消除浏览器默认 /favicon.ico 404；无二进制资产、无痕） -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="guide" role="note"></div>
+    <div id="map-legend" aria-label="圆点状态图例">
+      <span class="lg-item"><i data-tier="good"></i>良好</span>
+      <span class="lg-item"><i data-tier="caution"></i>注意</span>
+      <span class="lg-item"><i data-tier="poor"></i>差</span>
+      <span class="lg-item"><i data-tier="unknown"></i>无数据</span>
+    </div>
+    <main id="iwxxm-compare" aria-label="同站双形态对照">
+      <h3 id="iwxxm-compare-title">同站双形态对照：TAC 卡 vs IWXXM 卡</h3>
+      <p id="iwxxm-compare-note">
+        同一份观测的两种官方编码（wmo-im 翻译中心等价对，IWXXM 2023-1 静态样例）：左边由字符电码
+        （TAC）经 parse 解析，右边由 XML（IWXXM）经 parseIwxxm 解析——两通道产出同一份
+        IR，卡片字段应完全一致（RAW 区各自显示原文形态）。悬停任一张卡的字段或原文高亮段，
+        两张卡的同组位置会一起点亮并浮出电码；XML 卡原文较长，悬停字段会自动把对应 XML
+        区间滚进视野——「XML 的哪一段变成卡片的哪一行」直接看得见；点「报文原文」标题条
+        可收起/展开原文区（地图弹窗卡同享）。上图数据为 AWC 实时流（2025-2），其转换有损（趋势/RVR
+        不转），不适用本对照。
+      </p>
+      <div id="iwxxm-compare-body"></div>
+    </main>
+    <div id="basemap-hint" role="note" hidden></div>
+    <aside id="panel" role="alert" hidden></aside>
+    <footer id="disclaimer">
+      演示用途：上图数据为 NOAA AWC 实时流（IWXXM 2025-2，aviationweather.gov，构建期取数冻结，AWC
+      不可用时降级仓内官方等价对副本）；对照区为 wmo-im/iwxxm-translation
+      官方等价对静态样例。按现状提供、不保证随时可用；本页及本库均<strong>不得用于飞行决策或任何运行决策</strong>。
+      圆点色仅为扫视参考，非标准分级。本演示与 WMO/NOAA 无隶属或背书关系。
+    </footer>
+    <div id="status" role="status" aria-live="polite" hidden>
+      <span id="status-spinner" aria-hidden="true"></span>
+      <span id="status-text"></span>
+    </div>
+    <script type="module" src="/src/iwxxm-main.ts"></script>
+  </body>
+</html>

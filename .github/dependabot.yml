@@ -1,0 +1,25 @@
+# 依赖自动巡更：只开 PR 不自动合并——每次升级仍走全量 CI 门禁 + 本人逐条 review
+# （单人仓纪律：安全补丁不靠人肉盯 Dependabot alerts，行为变更由门禁把关）。
+# workflow 的 action 钉 SHA：dependabot 对 github-actions 生态同样提 SHA 级升级 PR。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # 单 PR 聚组：开发依赖一篮子升（minor/patch 噪音大）；运行时依赖（parser 的
+    # fast-xml-parser、grid 的 d3-contour）升级属行为面，不聚组单独出 PR 逐个过门禁
+    groups:
+      dev-and-monorepo:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday

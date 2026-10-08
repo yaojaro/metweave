@@ -26,7 +26,7 @@ import type {
 import { tafSegments } from "@metweave/parser";
 import { utcDayRefText } from "./gloss";
 import { ariaClose, ariaOpen, positionBubbleAt, positionChipNear } from "./linkage";
-import type { TafExpandAt, TafResolvedConditions } from "@metweave/parser";
+import type { TafExpandAt, TafResolvedConditions, TafSegmentRow } from "@metweave/parser";
 import {
   CAVOK_SHORT,
   CLOUD_GLOSS,
@@ -283,6 +283,7 @@ const el = (tag: string, cls?: string, text?: string): HTMLElement => {
 };
 
 const injectStyle = (): void => {
+  if (typeof document === "undefined") return; // 无 DOM 环境静默跳过（渲染主体自会显式失败，样式注入不先崩）
   if (document.getElementById(STYLE_ID) !== null) return;
   const style = document.createElement("style");
   style.id = STYLE_ID;
@@ -476,6 +477,19 @@ interface DecodeElems {
   weather: readonly WeatherGroup[];
   clouds?: CloudCondition;
 }
+
+/** 挂载行发作时刻状态：主导段 + 变化组所列要素合成（未列继承——expand 层三态契约：
+ *  overlay.weather 省略＝组内未列天气、继承主导段；[]＝NSW 显式无天气；列表＝整列替换。
+ *  发作时刻主导段其余要素依然在场，合成态才是该时刻的真实天气，「只列所列」丢信息） */
+const burstStateOf = (row: TafSegmentRow): TafResolvedConditions =>
+  row.overlay === undefined
+    ? row.conditions
+    : {
+        ...row.conditions,
+        ...row.overlay.conditions,
+        weather: row.overlay.conditions.weather ?? row.conditions.weather,
+        cavok: row.overlay.conditions.cavok ?? row.conditions.cavok,
+      };
 
 /** 解码行：电码 → 人话，按要素族逐组/逐层成对（词表与分段行同一来源 gloss.ts，单一真相） */
 const decodeRowsOf = (
@@ -1011,9 +1025,9 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     const toneWord = { good: t.toneGood, caution: t.toneCaution, danger: t.toneDanger } as const;
     const riskParts: string[] = [];
     for (const row of rows) {
-      const tone = segmentTone(row.overlay?.conditions ?? row.conditions);
+      const tone = segmentTone(burstStateOf(row));
       if (tone === "good") continue;
-      const c = row.overlay?.conditions ?? row.conditions;
+      const c = burstStateOf(row);
       const parts: string[] = [];
       for (const g of c.weather)
         parts.push(weatherGloss(g, WX_GLOSS[locale]).replace(/（[^）]*）/g, ""));
@@ -1042,11 +1056,11 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     const title = el("p", "mw-taf-periods-title", t.periods);
     const ol = el("ol", "mw-taf-periods");
     for (const [rowIdx, row] of rows.entries()) {
-      const tone = segmentTone(row.overlay?.conditions ?? row.conditions);
+      const tone = segmentTone(burstStateOf(row));
       const li = el("li", `mw-taf-period${tone === "good" ? "" : ` mw-taf-period-${tone}`}`);
       rowEls.push(li);
       const src = row.sourceIndex !== undefined ? report.changes[row.sourceIndex] : undefined;
-      const shown = row.overlay?.conditions ?? row.conditions;
+      const shown = burstStateOf(row);
       // 行头：扫视色点 + 时间窗（随展示时区单制）+ 类型徽（评测签派 P1-4：行业词为主中文为辅；TEMPO 带隐含概率）
       const head = el("div", "mw-taf-period-head");
       const dot = el("span", `mw-taf-dot mw-taf-dot-${tone}`, "●");
@@ -1230,7 +1244,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       if (ri === undefined || change.span === undefined) continue;
       const headHint = rowEls[ri]?.textContent ?? change.raw;
       const rowTone = segmentTone(
-        rows[ri]?.overlay?.conditions ?? rows[ri]?.conditions ?? { weather: [], cavok: false },
+        rows[ri] === undefined ? { weather: [], cavok: false } : burstStateOf(rows[ri]),
       );
       pushCut(
         change.span,

@@ -22,7 +22,7 @@
 // 依赖：packages/parser/dist（先 pnpm build；vitest 冒烟锁走 src 不需要本脚本）。
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const args = process.argv.slice(2);
 const files = [];
@@ -44,7 +44,7 @@ if (files.length === 0) {
 }
 
 const parserModule =
-  parserPath ?? new URL("../packages/parser/dist/index.js", import.meta.url).pathname;
+  parserPath ?? fileURLToPath(new URL("../packages/parser/dist/index.js", import.meta.url));
 const usesDefaultParser = parserPath === undefined;
 if (!existsSync(parserModule)) {
   console.error(
@@ -72,7 +72,7 @@ if (usesDefaultParser && !process.execArgv.includes(`--conditions=${DIST_CONDITI
 // 陈旧 dist 回放会产出「旧分布」假快照，这是贡献链路里最隐蔽的坑。--parser 显式
 // 指定时不检查（调用方自带产物责任）；自检自身失败（权限等）不阻断回放。
 if (usesDefaultParser) {
-  const repoRoot = new URL("..", import.meta.url).pathname;
+  const repoRoot = fileURLToPath(new URL("..", import.meta.url));
   const srcRoots = ["packages/parser/src", "packages/core/src"];
   let newest = 0;
   let newestFile = "";

@@ -25,7 +25,10 @@ export type MetarParseErrorCode =
   /** 批量聚合解析失败（伞包 getMetarReports 缺省模式：任一行整体失败即聚合抛出）。
    *  注意 raw 字段语义在本 code 下的调整：承载汇总信息（网络名/失败条数/逐条站名与原因）而非单条报文原文——
    *  单条原文仍可经 message 与 onUnparseable 回调取得，语义差异在本注释声明。 */
-  | "batch-parse-failed";
+  | "batch-parse-failed"
+  /** TAF 派生层（expandTaf / tafSegments）：报文无时间线可展开——NIL/CNL 报或缺有效期组。
+   *  派生层前置条件不满足属可判定的整体失败，与解析错误同一机读纪律（v0.3 收编裸 Error）。 */
+  | "taf-not-expandable";
 
 /**
  * Whole-report parse failure for a METAR/SPECI/TAF report (TAF codes since v0.2; see the ParseError alias).
@@ -90,7 +93,7 @@ export class MetarSourceError extends Error {
 /**
  * English messages for every error code (parse 8 + source 5), for consumers that
  * map `code` to their own UI copy.
- * 全部错误码的英文文案（parse 8 码 + source 5 码），供消费方按 code 映射自己的界面文案。
+ * 全部错误码的英文文案（parse 10 码 + source 5 码），供消费方按 code 映射自己的界面文案。
  *
  * Keyed by the stable machine-readable `code` (add-only contract); the bundled
  * Chinese `message` on each error remains the default narrative.
@@ -110,6 +113,8 @@ export const EN_MESSAGES: Record<MetarParseErrorCode | MetarSourceErrorCode, str
     "TAF strict validation failed: rule violations or warning-severity parse warnings present (see the summary)",
   "batch-parse-failed":
     "Some reports in the batch failed to parse entirely (see the summary for per-station reasons)",
+  "taf-not-expandable":
+    "TAF has no expandable timeline (NIL/CNL report or validity group missing) — parse a complete TAF first",
   "http-error": "Source returned a non-2xx HTTP status",
   "bad-schema": "Response body does not match the agreed schema",
   "empty-data": "HTTP 200 with empty data — typically a wrong network name",
