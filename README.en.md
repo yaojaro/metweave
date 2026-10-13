@@ -114,19 +114,19 @@ for (const { report, title } of items) {
 
 **Common fields** (`toValues(report)` gives a two-state view: omitted group and missing both read `undefined`; use the IR's three-state plus `warnings` to distinguish "explicitly missing" from "not reported"):
 
-| You want         | Path                                                                              | Notes                                                                       |
-| ---------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Station / raw    | `report.station` / `report.raw`                                                   | ICAO code / verbatim raw text                                               |
-| Observation time | `report.time.{day,hour,minute}`                                                   | UTC; no year/month                                                          |
-| Temp / dewpoint  | `v.temperature?.celsius` / `v.dewpoint?.celsius`                                  | °C                                                                          |
-| Wind             | `v.wind?.direction` `v.wind?.speed.{value,unit}`                                  | unit follows the group (kt/mps/kmh); `direction:null` = variable             |
-| Gust             | `v.wind?.gust?.{value,unit}`                                                      | default: no gust                                                            |
-| Visibility       | `v.visibility?.{value,unit,exact,beyond}`                                         | `exact:false` = threshold code (9999 → ≥10 km etc., direction in `beyond`)  |
-| Weather          | `v.weather` (array of `intensity/descriptor/phenomena`)                           | empty array = no significant weather                                        |
-| Clouds           | `v.clouds?.elements` (`amount` + `heightFt.value` in feet) / `v.clouds?.clear?.code` | `heightFt.value:null` = missing ceiling; CAVOK yields the three groups    |
-| Altimeter        | `v.altimeter?.{value,unit}`                                                       | hPa or inHg (unit follows the group)                                        |
-| Trends           | `v.trends` (`kind`/`period`/`raw`)                                                | NOSIG/BECMG/TEMPO                                                           |
-| Warnings         | `report.warnings` (`code`/`severity`/`span`/`message`)                            | always present; branch on `code`, full list in [docs/error-codes.md](docs/error-codes.md) |
+| You want         | Path                                                                                 | Notes                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Station / raw    | `report.station` / `report.raw`                                                      | ICAO code / verbatim raw text                                                             |
+| Observation time | `report.time.{day,hour,minute}`                                                      | UTC; no year/month                                                                        |
+| Temp / dewpoint  | `v.temperature?.celsius` / `v.dewpoint?.celsius`                                     | °C                                                                                        |
+| Wind             | `v.wind?.direction` `v.wind?.speed.{value,unit}`                                     | unit follows the group (kt/mps/kmh); `direction:null` = variable                          |
+| Gust             | `v.wind?.gust?.{value,unit}`                                                         | default: no gust                                                                          |
+| Visibility       | `v.visibility?.{value,unit,exact,beyond}`                                            | `exact:false` = threshold code (9999 → ≥10 km etc., direction in `beyond`)                |
+| Weather          | `v.weather` (array of `intensity/descriptor/phenomena`)                              | empty array = no significant weather                                                      |
+| Clouds           | `v.clouds?.elements` (`amount` + `heightFt.value` in feet) / `v.clouds?.clear?.code` | `heightFt.value:null` = missing ceiling; CAVOK yields the three groups                    |
+| Altimeter        | `v.altimeter?.{value,unit}`                                                          | hPa or inHg (unit follows the group)                                                      |
+| Trends           | `v.trends` (`kind`/`period`/`raw`)                                                   | NOSIG/BECMG/TEMPO                                                                         |
+| Warnings         | `report.warnings` (`code`/`severity`/`span`/`message`)                               | always present; branch on `code`, full list in [docs/error-codes.md](docs/error-codes.md) |
 
 > The station titles above are still ICAO codes — no station metadata was passed. **Precise metadata for the 39 China stations ships with the package**: `import { CN_STATIONS } from "metweave/stations-cn"` and pass it via `getMetarReports("CN__ASOS", { stations: CN_STATIONS })`; `title` becomes "code + station name" and coordinates become exact airport positions (sourced from aviationweather.gov; regenerate with `pnpm gen:stations`; roll your own join from [`examples/stations.json`](examples/stations.json)).
 
@@ -170,12 +170,12 @@ metweave's fetch paths target public data sources, suited to **situational aware
 
 The four-tier condition grading behind the map dots, screen-reader tier words and card row colors (gray unknown / red poor / amber caution / green good) is **this library's own scan heuristic**: thresholds are ours, they neither correspond to nor represent any official flight-weather classification, and the library provides no flight-rules determination — it exists so "a glance shows which stations deserve attention", and it **must not be used as an operational criterion**. The core is a zero-dependency pure function published single-sourced in `@metweave/core` (`metarTierOf` takes a METAR report, `conditionTierOf` a structural subset — feed it the projection of a TAF expansion); `@metweave/leaflet` and `@metweave/render` consume the same source for tiers and row colors (`@metweave/leaflet` re-exports `metarTierOf` / `ConditionTier`).
 
-| Tier            | Trigger (first match from the top wins; otherwise good)                                                                                                                                                                                                                                                                |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| unknown (gray)  | NIL (no observation from the station); or visibility and clouds both missing and weather missing/none (key groups all missing — nothing to judge on)                                                                                                                                                                    |
+| Tier            | Trigger (first match from the top wins; otherwise good)                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| unknown (gray)  | NIL (no observation from the station); or visibility and clouds both missing and weather missing/none (key groups all missing — nothing to judge on)                                                                                                                                                                                                                                                                                                |
 | poor (red)      | Visibility < 1500 m; BKN/OVC layer (incl. vertical visibility) with base < 1000 ft; thunderstorm TS family (incl. VC proximity); GR hail / VA volcanic ash; freezing precipitation (FZRA/FZDZ etc.); + heavy precipitation; funnel cloud / tornado (FC/+FC); sand/dust storm (SS/DS); gust ≥ 25 m/s; CB/TCU convective clouds; runway closure; wind-shear group in the report (WS, standard `WS ALL RWY` / `WS RDRDR` and practical variants alike) |
-| caution (amber) | Visibility 1500–5000 m; BKN/OVC base 1000–3000 ft; any precipitation family (RA/SN etc.); squall (SQ, standalone); non-FZ icing phenomena; gust 15–25 m/s                                                                                                                                                               |
-| good (green)    | everything else (incl. CAVOK)                                                                                                                                                                                                                                                                                           |
+| caution (amber) | Visibility 1500–5000 m; BKN/OVC base 1000–3000 ft; any precipitation family (RA/SN etc.); squall (SQ, standalone); non-FZ icing phenomena; gust 15–25 m/s                                                                                                                                                                                                                                                                                           |
+| good (green)    | everything else (incl. CAVOK)                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 Missing elements don't constrain (judge on what's available). **Re-grade by your own standard (`tierOf` injection)**: since the built-in heuristic is admittedly not authoritative, there is a handle to replace it wholesale — `addMetarLayer(map, items, { tierOf })` and `renderCard(report, { tierOf })` accept a `(report) => ConditionTier` function; one injection takes effect at three layers (dot color / screen-reader tier word / popup tier badge — the card root carries `data-tier` for your own row-color mapping). Default is the built-in heuristic; a throwing inject fails the whole call — never a silent fallback. Card row-color criteria (group-level danger/caution marks) share the source in `@metweave/core` and evolve with the same table.
 
@@ -185,14 +185,14 @@ Missing elements don't constrain (judge on what's available). **Re-grade by your
 
 The parser takes six specification texts **verbatim** as its encoding baseline; the METAR/SPECI encoding surface (106 clauses) and the TAF (FM 51) surface (24-item checklist: 4 structure / 9 time / 8 elements / 3 verification disciplines) have each passed a clause-level conformance audit (per-clause provenance, implementation site and regression locks in the [docs/compliance.md](docs/compliance.md) audit matrix); unmet items were fixed with zero tolerance:
 
-| Specification                                                             | Use in this library                     |
-| ------------------------------------------------------------------------- | --------------------------------------- |
-| WMO No. 306 Vol I.1 (FM 15 METAR/SPECI) + code tables 0919/0519/1079/0366/4678 | International code backbone        |
-| ICAO Annex 3, Meteorological Service for International Air Navigation     | Report templates and element inventory  |
-| CAAC surface observation specification (AP-117-TM-2021-01R2)              | China-region encoding details, Chinese terminology |
-| CAAC issuance & exchange measures (AP-117-TM-01R2)                        | Issuance- and exchange-related clauses  |
-| US FMH-1, Surface Weather Observations                                    | RMK national supplement groups          |
-| Canada MANOPS-MET                                                         | Canadian forms (////SM etc.)            |
+| Specification                                                                  | Use in this library                                |
+| ------------------------------------------------------------------------------ | -------------------------------------------------- |
+| WMO No. 306 Vol I.1 (FM 15 METAR/SPECI) + code tables 0919/0519/1079/0366/4678 | International code backbone                        |
+| ICAO Annex 3, Meteorological Service for International Air Navigation          | Report templates and element inventory             |
+| CAAC surface observation specification (AP-117-TM-2021-01R2)                   | China-region encoding details, Chinese terminology |
+| CAAC issuance & exchange measures (AP-117-TM-01R2)                             | Issuance- and exchange-related clauses             |
+| US FMH-1, Surface Weather Observations                                         | RMK national supplement groups                     |
+| Canada MANOPS-MET                                                              | Canadian forms (////SM etc.)                       |
 
 Four reproducible lines of data validation:
 
@@ -209,14 +209,14 @@ Honesty note: the CAAC specifications are per the current official R2 editions; 
 
 > Newcomers can skip this — `toValues()` alone gives the two-state field view. This section is for advanced scenarios needing the pipeline contract and package boundaries.
 
-| Package                                 | Role                                                                                 |
-| --------------------------------------- | ------------------------------------------------------------------------------------ |
-| [`@metweave/core`](packages/core)       | IR data model (the pipeline's stable contract): group-level three-state missing, raw spans, warnings, two-state value view |
-| [`@metweave/parser`](packages/parser)   | METAR/SPECI tolerant parsing → IR; unknown groups and missing data are never silent  |
+| Package                                 | Role                                                                                                                                         |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@metweave/core`](packages/core)       | IR data model (the pipeline's stable contract): group-level three-state missing, raw spans, warnings, two-state value view                   |
+| [`@metweave/parser`](packages/parser)   | METAR/SPECI tolerant parsing → IR; unknown groups and missing data are never silent                                                          |
 | [`@metweave/render`](packages/render)   | Report cards: framework-free DOM components with built-in styles and RAW side-by-side view (missing/warning highlights + hover explanations) |
-| [`@metweave/grid`](packages/grid)       | Grid line: GRIB2 decoding + gridded element profiles + contour/wind-barb data plane (d3-contour as the sole runtime dependency) |
-| [`@metweave/leaflet`](packages/leaflet) | Leaflet adapter: reports on a map (markers + tooltips + card popups)                 |
-| [`metweave`](packages/metweave)         | Umbrella: re-exports core/parser/render; `metweave/sources` provides fetch helpers   |
+| [`@metweave/grid`](packages/grid)       | Grid line: GRIB2 decoding + gridded element profiles + contour/wind-barb data plane (d3-contour as the sole runtime dependency)              |
+| [`@metweave/leaflet`](packages/leaflet) | Leaflet adapter: reports on a map (markers + tooltips + card popups)                                                                         |
+| [`metweave`](packages/metweave)         | Umbrella: re-exports core/parser/render; `metweave/sources` provides fetch helpers                                                           |
 
 ### Status
 

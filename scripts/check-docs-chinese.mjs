@@ -25,7 +25,12 @@ const ACRONYM = /^[A-Z]{2,}$/; // 全大写词：METAR 文档里几乎都是电�
  *  - README.en.md：2026-10-13 owner 决策豁免——⑬ 国际分发登记（Leaflet 插件目录/awesome-list）
  *    触发政策预留的「国际信号触发时按需恢复」位；中文 README 仍是唯一权威版本，英文版随
  *    中文版演进（同步税自担：对外材料引用以中文版为准）。 */
-const EXEMPT_DOCS = new Set(["SECURITY.md", "terms/glossary.zh.md", "terms/glossary.en.md", "README.en.md"]);
+const EXEMPT_DOCS = new Set([
+  "SECURITY.md",
+  "terms/glossary.zh.md",
+  "terms/glossary.en.md",
+  "README.en.md",
+]);
 
 /**
  * 英文正文判据：正文里存在一段「连续且非纯电码」的英文词串。
