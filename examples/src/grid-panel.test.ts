@@ -937,9 +937,16 @@ describe("面板装配：双分量要素（wind，renderForm filled+barbs 档案
 
 // ---------------------------------------------------------------- 接线契约
 
-describe("index.html 接线契约（面板 id 漂移即红）", () => {
-  const html = (): string => readFileSync(join(here, "..", "index.html"), "utf8");
+/** index.html 原文（接线契约断言的底稿；只依赖模块层 here，置模块层）。 */
+const html = (): string => readFileSync(join(here, "..", "index.html"), "utf8");
+/** 滑杆 HTML 属性读取捷径（attr 只依赖模块层 html 与断言器，置模块层）。 */
+const attr = (name: string): string => {
+  const m = new RegExp(`id="grid-opacity"[^>]*?${name}="([\\d.]+)"`).exec(html());
+  expect(m).not.toBeNull();
+  return m![1]!;
+};
 
+describe("index.html 接线契约（面板 id 漂移即红）", () => {
   it("首页含抽屉全套 id（顶栏入口/收起钮/行列表/控件）；旧开关与旧图例位已退役", () => {
     for (const id of [
       "mode-grid",
@@ -965,11 +972,6 @@ describe("index.html 接线契约（面板 id 漂移即红）", () => {
   });
 
   it("滑杆 HTML 属性与面板常量一致（min/max/step/缺省漂移即红）", () => {
-    const attr = (name: string): string => {
-      const m = new RegExp(`id="grid-opacity"[^>]*?${name}="([\\d.]+)"`).exec(html());
-      expect(m).not.toBeNull();
-      return m![1]!;
-    };
     expect(Number(attr("min"))).toBe(GRID_OPACITY_MIN);
     expect(Number(attr("max"))).toBe(GRID_OPACITY_MAX);
     expect(Number(attr("step"))).toBe(GRID_OPACITY_STEP);

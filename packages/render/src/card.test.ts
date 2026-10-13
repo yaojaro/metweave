@@ -801,9 +801,11 @@ describe("下阶段：风切变行（WS RWY——危险级着色 + 双语悬停�
 
 describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势悬停 / 低云底着色）", () => {
   const METAR_TIME = "METAR ZBAA 110700Z VRB02MPS CAVOK 25/10 Q1019 NOSIG";
+  /** 龄期换档捷径（本 describe 各 it 共用；locale 可选英文档）。 */
+  const at = (iso: string, opts: { locale?: "en" } = {}) =>
+    renderCard(parse(METAR_TIME), { ...opts, now: new Date(iso) });
 
   it("龄期换档：10 分钟→「分钟前」；90 分钟→「1 小时前」；47.5 小时→「47 小时前」；3 天→「3 天前」；超 60 分钟仍 mw-stale", () => {
-    const at = (iso: string) => renderCard(parse(METAR_TIME), { now: new Date(iso) });
     expect(at("2026-09-11T07:10:00Z").querySelector(".mw-time")?.textContent).toContain(
       "（10 分钟前）",
     );
@@ -816,13 +818,12 @@ describe("下阶段：判读链四项（龄期换档 / RVR 悬停解码 / 趋势
   });
 
   it("龄期换档 en：'1 h ago' / '3 d ago'", () => {
-    const at = (iso: string) => renderCard(parse(METAR_TIME), { locale: "en", now: new Date(iso) });
-    expect(at("2026-09-11T08:30:00Z").querySelector(".mw-time")?.textContent).toContain(
-      "(1 h ago)",
-    );
-    expect(at("2026-09-14T07:00:00Z").querySelector(".mw-time")?.textContent).toContain(
-      "(3 d ago)",
-    );
+    expect(
+      at("2026-09-11T08:30:00Z", { locale: "en" }).querySelector(".mw-time")?.textContent,
+    ).toContain("(1 h ago)");
+    expect(
+      at("2026-09-14T07:00:00Z", { locale: "en" }).querySelector(".mw-time")?.textContent,
+    ).toContain("(3 d ago)");
   });
 
   it("RVR 行悬停解码：V 波动 / U·D·N 趋势 / P·M 超界前缀（按在场要素拼装）", () => {

@@ -75,31 +75,31 @@ describe("windSpeedGrid（双分量合成）", () => {
   });
 });
 
-describe("windBarbsOf（风向杆位序列）", () => {
-  /** 均匀场工厂（nx×ny 全点同 u/v）——方向/速度断言的最小底座。 */
-  const uniform = (nx: number, ny: number, uu: number, vv: number): [Grid, Grid] => {
-    const u = gridOf(
-      "UGRD",
-      Array.from({ length: nx * ny }, () => uu),
-    );
-    const v = gridOf(
-      "VGRD",
-      Array.from({ length: nx * ny }, () => vv),
-    );
-    const geometry = {
-      nx,
-      ny,
-      la0: 40,
-      lo0: 100,
-      di: 1,
-      dj: 1,
-      order: "N2S,W2E,row-major",
-    } as const;
-    u.header.grid = geometry;
-    v.header.grid = geometry;
-    return [u, v];
-  };
+/** 均匀场工厂（nx×ny 全点同 u/v）——方向/速度断言的最小底座（只依赖模块层 gridOf，置模块层）。 */
+const uniform = (nx: number, ny: number, uu: number, vv: number): [Grid, Grid] => {
+  const u = gridOf(
+    "UGRD",
+    Array.from({ length: nx * ny }, () => uu),
+  );
+  const v = gridOf(
+    "VGRD",
+    Array.from({ length: nx * ny }, () => vv),
+  );
+  const geometry = {
+    nx,
+    ny,
+    la0: 40,
+    lo0: 100,
+    di: 1,
+    dj: 1,
+    order: "N2S,W2E,row-major",
+  } as const;
+  u.header.grid = geometry;
+  v.header.grid = geometry;
+  return [u, v];
+};
 
+describe("windBarbsOf（风向杆位序列）", () => {
   it("气象来向口径：纯西风分量（u>0,v=0）→ 风向 270、纯南风分量（v>0,u=0）→ 180、3-4-5 → 216.87°", () => {
     const [uE, vE] = uniform(4, 4, 3, 0);
     const east = windBarbsOf(uE, vE, { step: 1, calmThreshold: 0 });

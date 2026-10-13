@@ -708,6 +708,23 @@ const visTextOf = (g: VisibilityGroup): string =>
 /** RVR 数值按电码惯例补齐 4 位（R36/M0050D 的 0050；IR 数值化丢前导零由显示层还原） */
 const rvrPad = (n: number): string => String(n).padStart(4, "0");
 
+/** RVR 原文电码重构（主表 RAW 词组与悬停解码同源；只依赖入参与模块层 rvrPad，故置模块层）。 */
+const rvrTextOf = (r: RunwayVisualRange): string => {
+  const prefixOf = (n: number): string =>
+    `${r.beyondRange === "above" ? "P" : r.beyondRange === "below" ? "M" : ""}${rvrPad(n)}`;
+  const value =
+    r.value !== undefined
+      ? prefixOf(r.value)
+      : r.beyondRange === "above"
+        ? `${rvrPad(r.min ?? 0)}V${prefixOf(r.max ?? 0)}`
+        : r.beyondRange === "below"
+          ? `${prefixOf(r.min ?? 0)}V${rvrPad(r.max ?? 0)}`
+          : `${rvrPad(r.min ?? 0)}V${rvrPad(r.max ?? 0)}`;
+  const trendSuffix =
+    r.trend === "up" ? "/U" : r.trend === "down" ? "/D" : r.trend === "no-change" ? "/N" : "";
+  return `R${r.runway}/${value}${r.unit === "ft" ? "FT" : ""}${trendSuffix}`;
+};
+
 const STYLE_ID = "mw-card-style";
 
 /** RAW tab 组 id 发号（模块级递增序）：页内多卡并存时 tab ↔ panel 的 aria-controls/aria-labelledby
@@ -974,21 +991,6 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
     return `${T.wind.unit[w.speed.unit] ?? ""}${w.variable ? `${T.wind.hintSep}${T.wind.vrbNote}` : ""}${calm ? `${T.wind.hintSep}${T.wind.calmNote}` : ""}`;
   };
 
-  const rvrTextOf = (r: RunwayVisualRange): string => {
-    const prefixOf = (n: number): string =>
-      `${r.beyondRange === "above" ? "P" : r.beyondRange === "below" ? "M" : ""}${rvrPad(n)}`;
-    const value =
-      r.value !== undefined
-        ? prefixOf(r.value)
-        : r.beyondRange === "above"
-          ? `${rvrPad(r.min ?? 0)}V${prefixOf(r.max ?? 0)}`
-          : r.beyondRange === "below"
-            ? `${prefixOf(r.min ?? 0)}V${rvrPad(r.max ?? 0)}`
-            : `${rvrPad(r.min ?? 0)}V${rvrPad(r.max ?? 0)}`;
-    const trendSuffix =
-      r.trend === "up" ? "/U" : r.trend === "down" ? "/D" : r.trend === "no-change" ? "/N" : "";
-    return `R${r.runway}/${value}${r.unit === "ft" ? "FT" : ""}${trendSuffix}`;
-  };
   // —— 主表纯译文构造器（2026-09-15 口径：主表给人读，原码只在 RAW 视图与悬停提示）——
   const rvrHumanOf = (r: RunwayVisualRange): string => {
     const unit = T.rvr.unit[r.unit === "ft" ? "ft" : "m"];

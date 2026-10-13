@@ -155,18 +155,18 @@ describe("contoursOf（等值线几何）", () => {
   });
 });
 
-describe("centersOf（低压/高压中心检测）", () => {
-  /** 8×8 坑场（cheb 距离定价）：中心 (4,4)、值随距离升——单一低压。 */
-  const bowl = (base: number, step: number): Grid => {
-    const vals: number[] = [];
-    for (let y = 0; y < 8; y++) {
-      for (let x = 0; x < 8; x++) {
-        vals.push(base + Math.max(Math.abs(y - 4), Math.abs(x - 4)) * step);
-      }
+/** 8×8 坑场（cheb 距离定价）：中心 (4,4)、值随距离升——单一低压（只依赖模块层 tinyGrid，置模块层）。 */
+const bowl = (base: number, step: number): Grid => {
+  const vals: number[] = [];
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      vals.push(base + Math.max(Math.abs(y - 4), Math.abs(x - 4)) * step);
     }
-    return tinyGrid(vals, 8, 8);
-  };
+  }
+  return tinyGrid(vals, 8, 8);
+};
 
+describe("centersOf（低压/高压中心检测）", () => {
   it("单一坑场出一个 low：位置/值精确，中心值即格点原值", () => {
     const centers = centersOf(bowl(1000, 2), { radius: 3 });
     const lows = centers.filter((c) => c.kind === "low");

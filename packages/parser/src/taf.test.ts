@@ -479,11 +479,13 @@ describe("TAF 批 1.5：基况段四要素 + CAVOK", () => {
   });
 });
 
+// 三站解析捷径（只依赖模块层 fx，置模块层；教材版＝黄金表权威源，ogimet 变体留结构测试）
+const zppp = () => parseTaf(fx("ogimet-zppp-20250125-1518z").raw);
+const zsof = () => parseTaf(fx("ogimet-zsof-20250125-0913z").raw);
+const zytl = () => parseTaf(fx("textbook-zytl-260848z-golden").raw);
+
 describe("TAF 批 2.3：时间线展开器黄金测试（清单 B4★–B7★，taf-timeline §3 三例 13 时刻逐格）", () => {
   const JAN31 = { daysIn: 31 };
-  const zppp = () => parseTaf(fx("ogimet-zppp-20250125-1518z").raw);
-  const zsof = () => parseTaf(fx("ogimet-zsof-20250125-0913z").raw);
-  const zytl = () => parseTaf(fx("textbook-zytl-260848z-golden").raw); // 教材版＝黄金表权威源（ogimet 变体留结构测试）
 
   it("TEMPO 天气三态契约：未列＝省略（继承主导段）、NSW＝[]（显式无天气）、列了＝整列", () => {
     // 未列：TEMPO 只改云——overlay.weather 须省略（undefined），消费方 spread 即继承基况
