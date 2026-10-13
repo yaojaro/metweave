@@ -11,6 +11,8 @@ TypeScript 工具链：解析 → 标准化 → 渲染
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/yaojaro/metweave/actions/workflows/ci.yml/badge.svg)](https://github.com/yaojaro/metweave/actions/workflows/ci.yml)
 
+简体中文 | [English](README.en.md)
+
 </div>
 
 ---

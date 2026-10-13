@@ -21,8 +21,11 @@ const ACRONYM = /^[A-Z]{2,}$/; // 全大写词：METAR 文档里几乎都是电�
 
 /** 豁免清单（显式列举，新增人工文档一律进不了这个集合）：
  *  - SECURITY.md：按 2026-09-16 决策保持双语——安全报告是全球入站通道，内容静态不随功能漂移；
- *  - terms/glossary.*.md：按设计一册一语言的生成术语册，守它们的是 check:terms 逐条比对。 */
-const EXEMPT_DOCS = new Set(["SECURITY.md", "terms/glossary.zh.md", "terms/glossary.en.md"]);
+ *  - terms/glossary.*.md：按设计一册一语言的生成术语册，守它们的是 check:terms 逐条比对。
+ *  - README.en.md：2026-10-13 owner 决策豁免——⑬ 国际分发登记（Leaflet 插件目录/awesome-list）
+ *    触发政策预留的「国际信号触发时按需恢复」位；中文 README 仍是唯一权威版本，英文版随
+ *    中文版演进（同步税自担：对外材料引用以中文版为准）。 */
+const EXEMPT_DOCS = new Set(["SECURITY.md", "terms/glossary.zh.md", "terms/glossary.en.md", "README.en.md"]);
 
 /**
  * 英文正文判据：正文里存在一段「连续且非纯电码」的英文词串。
