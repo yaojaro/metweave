@@ -10,7 +10,8 @@
 
 | 版本  | 支持 |
 | ----- | ---- |
-| 0.1.x | ✅   |
+| 0.3.x | ✅   |
+| < 0.3 | ❌   |
 
 v0.x 的各版本同步发布——请始终升级到最新的 patch。
 
@@ -45,7 +46,8 @@ v0.x 的各版本同步发布——请始终升级到最新的 patch。
 
 | Version | Supported |
 | ------- | --------- |
-| 0.1.x   | ✅        |
+| 0.3.x   | ✅        |
+| < 0.3   | ❌        |
 
 v0.x releases move in lockstep — always upgrade to the latest patch.
 

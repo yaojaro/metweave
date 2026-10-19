@@ -267,6 +267,8 @@ metweave 的取数通路面向公开数据源，适合**态势感知、原型与
 
 - 来源之一 **IEM（Iowa Environmental Mesonet，爱荷华州立大学）**：其站点声明所提供材料属公有领域、可供任何人自由用于合法用途，并希望使用者署名爱荷华州立大学 IEM。
 - 来源之一 **美国 NOAA / NWS**：其网站信息除特别注明外属公有领域，可免费用于合法用途；但不得声称为自己所有、不得暗示与 NOAA/NWS 存在背书或隶属关系、不得修改后作为官方材料呈现。
+- 来源之一 **WMO（世界气象组织）**：`corpus/iwxxm/metar-pairs/` 的 IWXXM 官方等价对样例取自 WMO 的 wmo-im 公开仓（iwxxm-translation，Amd79-80-2023），属 WMO 面向会员与公众开放的技术材料；使用时请遵循 WMO 的公开转载政策与来源署名惯例（来源：World Meteorological Organization / wmo-im）。
+- 来源之一 **ECCC（加拿大环境与气候变化部）**：`corpus/iwxxm/eccc/` 的 TAF IWXXM 真实流样本取自加拿大开放政府数据门户（dd.weather.gc.ca / open.canada.ca），按 **Open Government Licence – Canada** 授权再分发——该许可要求**署名**：使用须注明「Source: Environment and Climate Change Canada」（来源：加拿大环境与气候变化部），并遵守其许可条款（不得暗示 ECCC 背书）。
 - 样本入库只为解析器测试的可复现性。**商用前请自行核实各数据提供方的分发条款**（见上文「数据源与风险披露」）。
 
 **无隶属关系**：本项目与 Iowa State University / IEM、NOAA / NWS、中国气象局、中国民用航空局及天地图运营方均无隶属、合作或背书关系；文中出现的机构名与产品名仅用于指称与说明。
