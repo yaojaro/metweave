@@ -4,44 +4,24 @@
 
 ## [0.3.1] - 2026-10-19
 
-**IWXXM 转换规则补全**：转换语义难点 12 条存活项「测试位+文档位」双落位、生成面有损告警通道、官方 NIL 样本补扫入库、一处跨年回绕真 bug 修复。六包锁步 patch，公共 API 只增不改删（唯一例外：移除全仓无消费方的公共导出 `TEMP_DEW_PATTERN`——见「工程」节，v0.x 口径如实记档）。同日追加红队对抗审查实弹修复轮（四 P0 / 四 P1 / 顺手包四项，全部为「拒收/告警」向收口，既有合法输入行为零变化——见「修复」与「安全与发布卫生」节，逐项记档于 docs/iwxxm-notes.md §十二）。
+IWXXM 转换规则补全 + 一批解析健壮性修复。六包锁步 patch，公共 API 只增不改删。
 
 ### 新增
 
-- **生成面有损告警通道**：`serializeIwxxm` 新增可选 `onWarning` 回调——单向有损面逐处回调 `lossy-conversion`(info) 告警（`@metweave/core` `WarningCode` 新增该枚举成员）：RMK 附加段不落、CLR 收敛 NCD、RVR V 形以 min 落位、逐道 SNOCLO 以全机场形态落位、美制单位固定系数折算、趋势 DDHH//DDHH 窗起不保真、趋势指示组丢失按 BECOMING、VV 高度缺测、TAF 气温单端/多组超承载面、TAF 基况段组省略（TAF.TAF-8 偏差）等。缺省不回调，回调与否不影响产物文本。
-- **IWXXM 解析与生成规则面补测试**：CAVOK 反向等价双向判定（「vis≥10km+无天气+无低云」数值形态不构成 CAVOK——9999≠CAVOK 双锁）；天气压缩词拆解逐电码断言（SHRASN/-SHRASN/VCTS/VCSH/+TSRA，4678 URI 尾段复用 TAC 切解器 + 拆解结果重组原 token）；阈值开闭区间往返（9999→10000m+ABOVE、0000→50m+BELOW、P2000/M0050 RVR 算子——绝不把 ≥10km 生成成精确 10000m）；NIL 三来源选词对齐（整报 NIL/RVRNO/`//` 各回各位，权威对齐表入 `iwxxm.ts` 注释）；VRB/静风/变风扇区双向往返。
-- **官方 METAR NIL 样本入库**（`corpus/iwxxm/extras/metar-NIL-collect.{tac,xml}`，wmo-im/iwxxm 官方仓 2025-2 形态）：解析 → nil:true 零告警、TAC 官方原文同报对齐、2025-2 出口往返保真——METAR 侧 NIL 首份官方双通道实证（2023-1 等价对官方仍未发布，豁免记档）。
+- `serializeIwxxm` 新增可选 `onWarning` 回调：单向有损转换处（RMK 附加段丢弃、CLR 收敛 NCD、美制单位折算等）逐条回调 `lossy-conversion` 告警；缺省不回调，行为不变。
+- 官方 METAR NIL 样本入库，NIL 报文解析首次有官方双通道实证。
 
 ### 修复
 
-- **IWXXM 趋势时窗跨年回绕（真 bug）**：趋势 AT/TL/FM 时刻的日位锚定旧实现 `(day%31)+1` 在 31 日发报、次日电码为 01 时误落同月 1 日（差 30 天）——改按 `Date.UTC` 绝对时刻比较回绕，月末/年末自然正确；TAF 有效期止点同步改 `isoAfterOf` 跨月投影（ddHH 无月位，止点早于起点即次月）。跨年除夕用例（12/31 2350 观测 + TL0010 → 次年 1/1 00:10）与止时 24 午夜特例（3121/3124 → 次年 1/1 00:00）断言锁入。
-- **IWXXM 跨月回绕同族残留三分支（独立审查复审收口）**：TAF 变化组 DDHH/DDHH 窗、TAF 变化组 FM 硬时刻、METAR 趋势 DDHH/DDHH 窗起点原均为当年当月直投影——31 日发报、电码日指向次月时静默落错月（3121/0121 有效期内 BECMG 0103/0109 跑出 12 月 1 日；FM0106 落出早于发报的时刻）。统一收口：带日位电码以锚（有效期起点/发报时刻）投影、早于锚即次月，无日位 HHMM 按次日；31 日发报跨月（趋势窗/变化组窗/FM）与同月中段不误回绕用例锁入。
-- **IWXXM 生成面收尾四项（两轮审查遗留全清，0.3.1 内收口）**：
-  - **TAF 温组达时刻跨月（同族第四处）**：TX26/0520Z 形的 DD 位原为当年当月直投影——有效期跨月且达时刻日码指向次月时静默落错月；改按同族判式（`momentOnOrAfter`，锚＝TAF 有效期起点，早于锚即次月/借位进位）。跨月边界与同月中段不误回绕断言锁入。
-  - **有损告警清单逐行收口**：CAVOK=true 与能见度/RVR/天气/云并存的矛盾 IR 让位（三组不落 XML）、趋势/预报体最低能见度不落两形态原静默——各补一条 `lossy-conversion`(info) 告警（复用既有机读码，零新增），文件头「逐行回调」措辞至此成立。
-  - **CAVOK 让位前提感知**：cavok=true 时能见度/RVR 两组实际不落 XML，美制单位告警却误称「已折算落位」——统计加让位前提跳过（QNH 不参与让位照常出声），矛盾 IR 手拼断言锁入。
-  - **ECCC 扇区形 `variableWindDirection` 反推**：带变化扇区（TAC 080V140 族）的官方译文置 `true` 且保留均值方向（LTCN 判据），此前生成侧直投影 IR `variable` 位致往返后属性位 true→false 单向漂移——生成侧按扇区值在场反推 `true`（解析侧行为零改动，既有 LTCN 明锁测试原样通过），官方对往返保真断言锁入。
-- **红队对抗审查实弹修复轮（2026-10-19，owner 裁决「修」，逐项记档于 docs/iwxxm-notes.md §十二）**：
-  - **P0-1 TAF 变化组窗无数值域门**：`TEMPO 9999/9999` 的窗 {99,99,99,99} 此前静默留 IR 零告警、经序列化放大成跨月荒谬时刻——补数值域门与同文件有效期组同构（越界 throw invalid-validity，止时 24 午夜特例放行，PROB 组同路径同门）。
-  - **P0-2 TAF TX/TN 温组无数值域门 + emit 越界最后闸门**：`TXM99/9907Z TNM99/9999Z` 的 celsius=-99、day=99 此前静默留 IR 并放大成 2027-01 荒谬绝对时刻——解析侧补门（温度 −90–60 与 METAR/IWXXM 两侧同判据、日 01–31 / 时 00–23，越界整组不收 + value-out-of-range）；emit 侧新增 dayHourInGate 最后闸门（day 1–31 / hour 0–24）罩住 validPeriod / 变化组窗 / FM 硬时刻 / 气温达时刻 / 发报时刻——越界不投影、lossy 出声、跳过该绝对时刻，手拼矛盾 IR 一并兜住。
-  - **P0-3 六位 FMddhhmm 整组蒸发**：WMO FM 51 标准形态（`FM060300`，北美主供）此前与其后要素静默并入前序变化组/以 last-wins 覆盖基况段（SKC 与 OVC015 并存实弹）——本期口径＝明确拒收＋全程出声：六位 FM 设为组界，本体注明「WMO FM 51 六位 FM 形态本库未支持」，其后要素逐 token 出声、不入任何变化组、不覆盖基况段；四位 FM 照常认组。完整认组（at 增日/时/分）列 0.4 候选。
-  - **P0-4 短窗借日位 emit 双重回绕（第五处回绕）**：`3112/0106 + TEMPO 0102`（8/31 发报）被「同日次月」判式抬 9/31→溢出落 10/1（下下月），与 expandTaf 跨层矛盾——emit 侧新增 tafMomentOf（expandTaf 同判式：日位 < 有效期起日才落次月），短窗借日语义直投影；TX/TN 达时刻同判式（TX12/3106Z@8/31 不再溢出 10 月）。
-  - **P1-5 METAR NIL 尾部静默蒸发**：`… NIL 3000 BR OVC008 RMK AO2` 尾部整段消失——对齐 TAF 侧 collectTailAsUnknown 先例，NIL 后 token 逐个 unknown-token 出声（纯 NIL 保持零告警）。
-  - **P1-6 变化组负窗零告警且 emit 放大**：`TEMPO 1914/1912` 此前零告警、end 被抬次月成 31 天窗——解析侧补 cross-check-conflict(warning)（IR 如实保留）；emit 侧 end<begin 出声且不放大（变化组 phenomenonTime 落 nil 空载形，validPeriod 同判式整体不落，跨月窗不误伤）。独立复核 P2-甲补刀：TAC 有效期负窗（`1918/1912`）解析侧补同款 warning，与变化组负窗同构（跨月窗/零长窗不误伤）——起时 24 拒收口径 2026-10-19 owner 追认维持。
-  - **P1-7 IWXXM 非法日期静默滚动**：`timePosition=2026-02-30T10:00:00Z` 此前归一落 3/2 零告警（与 TAC 侧 991000Z throw invalid-time 不同构）——timePosition 单一出口补往返自检（字面分量重算墙钟回比，带时差跨日合法形态不误伤），漂移即 throw invalid-time；2/30、13 月、平年 2/29 全拦，闰年 2/29 照常收。独立复核 P2-乙补刀：无冒号 ±hhmm（V8 静默滚动旁路）与纯日期形一并纳入往返自检域；±hh 落原路径 NaN→missing-time 整体失败，无静默滚动面。
-  - **P1-8 XML 侧 CAVOK 矛盾 severity 对齐**：趋势/变化组位 cloudAndVisibilityOK=true 与能见度/天气/云并存此前只落 unknown-token(info) 或零告警——trendElementsOf 补 cross-check-conflict(warning)（与 TAC 观测侧同判据），IR 如实并存零改动。
-  - **P2/P3 顺手包**：RVR 多组累积 O(n²) → 增量构建（行为等价，span 外包络钉子原样通过）；`serializeIwxxm` 的 `onWarning` 非函数由裸 TypeError 收进 MetarParseError(invalid-input) 参数契约；RVR 值域门（R07/9999 判缺测不收 + value-out-of-range，上限米 5000/英尺 6000 兼顾既有合法形态）与 V 形双前缀 `R07/P1500VM2000` max 端 M 前缀出声（此前静默蒸发）；METAR 趋势 `AT9999`/`9999/9999` 由 emit 越界闸门统一兜住（不投影 + lossy 出声）。
-
-### 安全与发布卫生
-
-- **dev 链 source-map-js 1.2.1 → 1.2.2**（安全红队 P1）：postcss 精确钉版、`pnpm update` 不可达——经 pnpm-workspace.yaml `overrides` 覆盖至 `>=1.2.2`，锁文件随 0.3.1 更新。
-- **六包新增 prepublishOnly 守卫**（`scripts/check-publish-manifest.mjs`，防误用 npm publish 发出坏包）：①发布通道闸——非 pnpm 通道一律非零退出（npm publish 不施加 publishConfig 覆盖、不改写 workspace: 协议）；②发布面 main 闸——publishConfig 覆盖后的 main 必须以 `./dist` 开头；③发布面依赖闸——publishConfig.dependencies 不得残留 workspace: 前缀。
-- **README「许可」节与「数据源与风险披露」补 WMO（wmo-im 官方仓等价对样例）与 ECCC（Open Government Licence – Canada 署名要求）两个数据源披露，中英同步**；SECURITY.md 支持版本表 0.1.x → 0.3.x（中英两处）。
-
-### 工程
-
-- 全仓测试 1041 例（基线 956 → +85：规则补全 +44、复审收口跨月回绕 +4、收尾四项 +7、红队对抗修复回归 +27、独立复核补刀 +3。勘误：本条初版记「基线 919 → 1000（+81）」不实——919 系 0.3.0 施工中途计数，v0.3.0 tag、f6845e1、8e80ea0、0e57da3 四锚点静态 it() 实测均为 956）；IWXXM 施工底档新增 §十一（十二条存活项对账总表、有损声明表、天气压缩词拆解表、趋势时窗算子表、官方样本补扫记录、站点元数据裁决）；遗留项 2（2.1 旧架构族）/4（跑道深度位 99）/8（2025-2 未覆盖面）三选一裁决写回（条件触发/豁免+样本出现即补）。
-- **移除未使用公共导出 `TEMP_DEW_PATTERN`**（`@metweave/parser` 主入口，v0.x 口径）：温露组形态正则的实体仍在内部模块（`groups.ts`）照常使用，全仓唯一外部消费方是其自身回归测试——退出公共导出面、测试改内部模块直引，运行时行为零变化。
+- **跨月/跨年时刻投影**：31 日发报且电码日指向次月时，趋势组、变化组、FM 时刻、TAF 气温达时刻此前会静默落错月，个别形态甚至落到下下月——全部修正，与 `expandTaf` 展开层口径一致。
+- **TAF 数值域校验**：变化组时间窗与 TX/TN 气温组此前不校验数值范围，越界值会静默进入结果并被序列化放大成错误时刻——现越界一律拒收；生成侧另加越界闸门兜底。
+- **六位 `FMddhhmm`（WMO FM 51 标准形态，北美主供）**：此前会被静默吞掉并污染相邻组——现明确拒收并逐 token 告警，四位 FM 不受影响（完整支持计划在 0.4）。
+- METAR NIL 报文的尾部残余 token 此前静默消失，现在逐个告警。
+- TAF 负时间窗（止时早于起时）此前无提示且会被放大成超长窗，现在解析与生成两侧都告警。
+- IWXXM 非法日期（如 2 月 30 日）此前被静默滚动到相邻月，现在直接报错。
+- CAVOK 与能见度/天气并存的矛盾输入，XML 侧的告警级别与 TAC 侧对齐。
+- **性能**：RVR 大量重复组的解析由平方复杂度改为线性（10 万组约 2.6s → 0.04s）。
+- 其他小修：RVR 值域校验、`onWarning` 参数错误改为规范报错等。
 
 ## [0.3.0] - 2026-10-08
 
