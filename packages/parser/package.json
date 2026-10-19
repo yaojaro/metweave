@@ -87,7 +87,7 @@
     "fast-xml-parser": "5.11.2"
   },
   "devDependencies": {
-    "@types/node": "^22"
+    "@types/node": "^26"
   },
   "engines": {
     "node": ">=20"
