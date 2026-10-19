@@ -924,3 +924,130 @@ describe("趋势时窗算子表（难点 14 生成侧：TAC 时段词 ↔ TimePe
     expect(xml).not.toContain("<iwxxm:timeIndicator>");
   });
 });
+
+// —— 0.3.1 修复收口（有损清单逐行回调补齐、单位折算让位前提、温组达时刻跨月、扇区属性位反推）——
+// 对账底档 docs/iwxxm-notes.md §十一.9（同族第四处）/§十一.11（扇区单向漂移）。
+
+describe("有损清单逐行回调补齐（0.3.1：CAVOK 矛盾让位与趋势/预报体最低能见度）", () => {
+  it("CAVOK=true 矛盾 IR（能见度/天气/云并存）→ lossy-conversion 让位告警点名，生成件三组不落", () => {
+    const ir = parse("METAR ZBTJ 080600Z 26006KT 9999 -RA BKN012 12/08 Q1010");
+    // 手拼矛盾 IR：cavok=true 且三组在位（TAC 解析侧会清组让位，合成 IR 直入生成面锁行为）
+    const contradictory: MetarReport = { ...ir, cavok: true };
+    const messages = warningsOf(contradictory);
+    expect(
+      messages.some(
+        (m) => m.startsWith("lossy-conversion|info|") && m.includes("CAVOK") && m.includes("让位"),
+      ),
+    ).toBe(true);
+    const generated = serializeIwxxm(contradictory, { calendar: { year: 2026, month: 10 } });
+    expect(generated).toContain('cloudAndVisibilityOK="true"');
+    expect(generated).not.toContain("<iwxxm:visibility");
+    expect(generated).not.toContain("<iwxxm:presentWeather");
+    expect(generated).not.toContain("<iwxxm:cloud");
+    // 无矛盾（TAC CAVOK 报文三组已让位清空）不告警——让位告警只对矛盾 IR 出声
+    const clean = parse("METAR ZBTJ 080600Z 26006KT CAVOK 12/08 Q1010");
+    expect(clean.cavok).toBe(true);
+    expect(warningsOf(clean).some((m) => m.includes("CAVOK"))).toBe(false);
+  });
+  it("趋势/预报体最低能见度不落 → lossy-conversion 告警点名（趋势段与 TAF 基况段两载体）", () => {
+    // 趋势段：TAC 趋势语法对最低能见度组 best-effort 不落 IR——手拼 XML 源可能携带的形态直入生成面
+    const trendIr = parse(
+      "METAR ZBTJ 280600Z 26006KT 8000 BKN012 12/08 Q1010 BECMG AT0700 3000 BR BKN010",
+    );
+    const base = trendIr.trends[0];
+    if (base === undefined || base.elements?.visibility === undefined) {
+      throw new Error("夹具应有趋势段且趋势能见度在位");
+    }
+    const trendWithMin: MetarReport = {
+      ...trendIr,
+      trends: [
+        {
+          ...base,
+          elements: {
+            ...base.elements,
+            visibility: { ...base.elements.visibility, minimum: { value: 800, direction: "NW" } },
+          },
+        },
+      ],
+    };
+    expect(
+      warningsOf(trendWithMin).some(
+        (m) => m.startsWith("lossy-conversion|info|") && m.includes("最低能见度"),
+      ),
+    ).toBe(true);
+    // TAF 基况段：最低能见度组挂主导能见度上（TAC 1200NW 族原生落 IR）
+    const tafIr = parseTaf("TAF ZBAA 280600Z 2806/2912 19008MPS 8000 1200NW BKN030=");
+    expect(
+      warningsOf(tafIr).some(
+        (m) => m.startsWith("lossy-conversion|info|") && m.includes("最低能见度"),
+      ),
+    ).toBe(true);
+    // 无最低能见度组不告警（静默面回归）
+    const plain = parse("METAR ZBTJ 280600Z 26006KT 8000 BKN012 12/08 Q1010 BECMG AT0700 3000 BR");
+    expect(warningsOf(plain).some((m) => m.includes("最低能见度"))).toBe(false);
+  });
+  it("单位折算告警的 CAVOK 让位前提：cavok=true 时 vis sm/RVR ft 不再误称「折算落位」，QNH inHg 恒落位照常出声", () => {
+    const ir = parse("METAR KSEA 080600Z 26006KT P6SM R07R/1500FT -RA BKN012 18/09 A3001");
+    const contradictory: MetarReport = { ...ir, cavok: true };
+    const messages = warningsOf(contradictory);
+    expect(messages.some((m) => m.includes("sm→m"))).toBe(false);
+    expect(messages.some((m) => m.includes("ft→m"))).toBe(false);
+    expect(messages.some((m) => m.includes("inHg→hPa"))).toBe(true);
+    // 让位事实在生成件：RVR/能见度组确实不落
+    const generated = serializeIwxxm(contradictory, { calendar: { year: 2026, month: 10 } });
+    expect(generated).not.toContain("<iwxxm:rvr");
+    expect(generated).not.toContain("<iwxxm:visibility");
+  });
+});
+
+describe("TAF 温组达时刻跨月收口（0.3.1：§十一.9 同族第四处——有效期起点为锚的 DD 位判式）", () => {
+  it("跨月：3121/0121 有效期内 TX26/0120Z TN14/0108Z → 达时刻落次月 1 日（不再直投影 12 月）", () => {
+    const ir = parseTaf("TAF ZBAA 312100Z 3121/0121 19008MPS 8000 BKN030 TX26/0120Z TN14/0108Z=");
+    const generated = serializeIwxxm(ir, { calendar: { year: 2026, month: 12 } });
+    expect(generated).toMatch(/<gml:timePosition>2027-01-01T20:00:00Z<\/gml:timePosition>/);
+    expect(generated).toMatch(/<gml:timePosition>2027-01-01T08:00:00Z<\/gml:timePosition>/);
+    expect(generated).not.toContain("2026-12-01T");
+  });
+  it("同月中段不误回绕（回归面）：2806/2912 有效期内 TX26/2807Z TN14/2901Z 落本日期", () => {
+    const ir = parseTaf("TAF ZBAA 280600Z 2806/2912 19008MPS 8000 BKN030 TX26/2807Z TN14/2901Z=");
+    const generated = serializeIwxxm(ir, { calendar: { year: 2026, month: 10 } });
+    expect(generated).toMatch(/<gml:timePosition>2026-10-28T07:00:00Z<\/gml:timePosition>/);
+    expect(generated).toMatch(/<gml:timePosition>2026-10-29T01:00:00Z<\/gml:timePosition>/);
+    // 同报往返保真（温组数值面不受锚定影响）
+    const reParsed = parseIwxxm(generated);
+    if (reParsed.kind !== "taf") throw new Error("预期预报侧 IR");
+    expect(comparable(reParsed)).toEqual(comparable(ir));
+  });
+});
+
+describe("扇区形 variableWindDirection 反推（0.3.1：§十一.11——emit 对齐官方译文口径，解析侧零改动）", () => {
+  it("LTCN 官方对（11007KT 080V140）往返：解析侧 variable=false 不动，生成件属性反推 true 且保留均值方向（官方原文同形）", () => {
+    const ltcnXml = readFileSync(`${corpusDir}metar-pairs/LTCN-282350Z.xml`, "utf8");
+    const first = parseIwxxm(ltcnXml);
+    if (first.kind === "taf") throw new Error("预期观测侧 IR");
+    if (first.wind?.kind !== "value") throw new Error("风组应有值");
+    // 解析侧行为零改动：扇区在场 → variable=false、扇区走 variation（既有 LTCN 明锁口径）
+    expect(first.wind.value.variable).toBe(false);
+    const { generated, second } = roundTrip(ltcnXml);
+    // 生成侧按官方译文口径（D0 ③）：扇区值在场 → variableWindDirection=true + 均值方向保留
+    expect(generated).toContain('variableWindDirection="true"');
+    expect(generated).toContain('<iwxxm:meanWindDirection uom="deg">110</iwxxm:meanWindDirection>');
+    expect(generated).toContain(
+      '<iwxxm:extremeClockwiseWindDirection uom="deg">140</iwxxm:extremeClockwiseWindDirection>',
+    );
+    // 往返闭合：回读 IR 与首遍全等（属性位单向漂移就此收口）
+    if (second.wind?.kind !== "value") throw new Error("风组应有值");
+    expect(second.wind.value.variable).toBe(false);
+    expect(second.wind.value.variation).toMatchObject({ min: 80, max: 140 });
+    expect(comparable(second)).toEqual(comparable(first));
+  });
+  it("TAC 源属性位三分支回归：扇区→true、VRB→true、普通定向风→false", () => {
+    const cal = { calendar: { year: 2026, month: 10 } };
+    const sector = parse("METAR ZBTJ 080600Z 08010KT 060V140 8000 BKN012 12/08 Q1010");
+    expect(serializeIwxxm(sector, cal)).toContain('variableWindDirection="true"');
+    const vrb = parse("METAR ZBTJ 080600Z VRB02KT 8000 BKN012 12/08 Q1010");
+    expect(serializeIwxxm(vrb, cal)).toContain('variableWindDirection="true"');
+    const plain = parse("METAR ZBTJ 080600Z 26006KT 8000 BKN012 12/08 Q1010");
+    expect(serializeIwxxm(plain, cal)).toContain('variableWindDirection="false"');
+  });
+});

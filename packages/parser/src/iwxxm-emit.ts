@@ -30,7 +30,8 @@
  * - 无云四码：NSC/NCD 走 nilReason 承载（官方主流形态）；SKC 走云量位层形态（ECCC 实证，
  *   49-2 电码表本词无损）；CLR 无官方载体（49-2 电码表无此词）——收敛 nilReason
  *   notDetectedByAutoSystem（与解析侧 CLR/NCD 细辨不可还原同一纪律，回读为 NCD）；
- * - CAVOK 与三组并存的矛盾 IR：按 CAVOK 让位生成（三组不落 XML，与解析侧让位行为对称）；
+ * - CAVOK 与矛盾 IR 并存（cloudAndVisibilityOK=true 而能见度/RVR/天气/云组在 IR）——按 CAVOK
+ *   让位生成（这些组不落 XML，与解析侧让位行为对称；矛盾即出声）；
  * - METAR 趋势 DDHH/DDHH 时窗（TAC 中国主流编法）：IWXXM 趋势时窗只有 AT/UNTIL/FM——窗起窗止
  *   双端点完整落位为 TimePeriod，timeIndicator 按 UNTIL 判读，回读 TL+窗止（窗起不保真）；kind 'unspecified' 趋势无对应 changeIndicator，按 BECOMING
  *   落位（与解析侧「未识别按渐变收」同口径的逆向）；
@@ -38,7 +39,8 @@
  * - TAF 气温：XSD 一元素必载 TX/TN 双端（max/min + 两个达到时刻全必填）——IR 只有单端或达时刻
  *   缺日（ogimet 方言短形态）的读数组整体不落（不捏造另一端）；多组温度超 IWXXM 承载面——取
  *   首个 TX + 首个 TN 落一元素；
- * - TAF FM 硬时刻无日位（TafChangeAt 只有 GGgg）——日位取有效期起日直投影（锚定语义归展开层）；
+ * - TAF FM 硬时刻无日位（TafChangeAt 只有 GGgg）——日位借有效期起日、投影早于有效期起点按次日
+ *   回绕（instantOnOrAfter HHMM 判式；锚定语义归展开层）；
  * - TAC 源逐道 SNOCLO 与深度 99 关闭：XML 侧关闭只有 runwayState nil(inapplicable) 一形
  *  （无逐道载体）——跑道位不保真（回读为全机场形态）；
  * - TAF 基况段 prevailingVisibility/cloud（Schematron TAF-8 必填）：IR 组省略时如实不落（上游
@@ -47,10 +49,12 @@
  *   有该组——观测位照落，趋势/TAF 位不落（XML 源 IR 在这两处本就无此组）；
  * - RMK 附加段：IWXXM 国际模型无位（难点 3），remarks 不落。
  *
- * 有损告警通道（v0.3.1，D3「告警不静默」的生成面落位）：上表逐行在触发时向 options.onWarning
- * 回调一条 lossy-conversion 告警（ParseWarning，机读码见 core WarningCode）——缺省不回调，
- * 产物文本与 0.3.0 逐字节一致（通道纯附加，零行为变化）。解析方向（IWXXM→IR）的有损面
- * （SKC/CLR 细辨、nilReason 选词收敛等）由解析侧既有 warnings[] 承载，不走本通道。
+ * 有损告警通道（v0.3.1，D3「告警不静默」的生成面落位）：上列各条凡触发即逐处向 options.onWarning
+ * 回调一条 lossy-conversion 告警（ParseWarning，机读码见 core WarningCode）——CAVOK 矛盾让位与
+ * 趋势/预报体最低能见度两形态亦各有告警（0.3.1 补齐，至此「逐行回调」成立）；无损落位面
+ * （NSC/NCD/SKC 电码、阈值开闭区间双向、风扇区数值面等）静默。通道本身零行为：回调与否不影响
+ * 产物文本。解析方向（IWXXM→IR）的有损面（SKC/CLR 细辨、nilReason 选词收敛等）由解析侧既有
+ * warnings[] 承载，不走本通道。
  *
  * 合规口径（遗留项 5「另需过 XSD + Schematron 双合规」的落位——详见 notes §十.3）：
  * - XSD：生成件经 xmllint + 官方 XSD 树（GML 3.2.1/AIXM 5.1.1/OM 全依赖，schemas.wmo.int 直取）
@@ -150,9 +154,10 @@ export interface IwxxmSerializeOptions {
   readonly permissibleUsage?: "OPERATIONAL" | "NON-OPERATIONAL";
   /**
    * 有损告警通道（v0.3.1）：生成过程触发的单向有损面（文件头「有损面」清单——RMK 附加段不落、
-   * CLR 收敛 NCD、RVR V 形以 min 落位、趋势 DDHH 窗起不保真、TAF 气温单端不落等）逐处回调一条
-   * lossy-conversion 告警，供管道侧记账与审计。缺省不回调（不提供时行为与 0.3.0 逐字节一致）；
-   * 回调只读告警、不得反改生成过程（void 返回，无中止语义）。
+   * CLR 收敛 NCD、CAVOK 矛盾让位、RVR V 形以 min 落位、趋势 DDHH 窗起不保真、趋势/预报体最低
+   * 能见度不落、TAF 气温单端不落等）逐处回调一条 lossy-conversion 告警，供管道侧记账与审计。
+   * 缺省不回调（通道本身零行为——回调与否不影响产物文本）；回调只读告警、不得反改生成过程
+   * （void 返回，无中止语义）。
    */
   readonly onWarning?: (warning: ParseWarning) => void;
 }
@@ -410,10 +415,16 @@ function emitWind(emit: Emit, bodyTag: string, wind: WindGroup, extraAttrs: Attr
   emit.close("iwxxm:surfaceWind");
 }
 
-/** variableWindDirection 属性（预报风载体 use="required"；观测侧官方语料同样显式给值）。 */
+/**
+ * variableWindDirection 属性（预报风载体 use="required"；观测侧官方语料同样显式给值）。
+ * 官方译文口径（D0 ③，LTCN 判据）：带变化扇区（080V140 族）的译文置 true 且保留均值方向——
+ * IR 的 variable 位只承载 VRB 本体（全向无均值），扇区形按 variation 在场反推 true（0.3.1 收口：
+ * 此前直投影 IR variable 位，官方扇区译文往返后属性位从 true 漂移为 false——单向不保真；
+ * 解析侧收敛行为与既有 LTCN 明锁测试一律不动，仅生成侧对齐官方口径）。
+ */
 const variableAttrOf = (wind: WindGroup): readonly [string, string] => [
   "variableWindDirection",
-  wind.variable ? "true" : "false",
+  wind.variable || wind.variation !== undefined ? "true" : "false",
 ];
 
 /** 风组 Observed 载体（观测侧 surfaceWind 为 XSD 必填元素——缺测走 nil notObservable 官方载体）。 */
@@ -598,6 +609,20 @@ function emitMinimumVisibility(emit: Emit, visibility: VisibilityGroup): void {
   const deg = DIR_8_OUT[visibility.minimum.direction] ?? 0;
   emit.text("iwxxm:minimumVisibility", numText(visibility.minimum.value), [["uom", "m"]]);
   emit.text("iwxxm:minimumVisibilityDirection", numText(deg), [["uom", "deg"]]);
+}
+
+/**
+ * 趋势/预报体能见度落位（METAR 趋势、TAF 基况段与变化组共用）：主导能见度照落；
+ * 最低能见度组（VisibilityGroup.minimum）无 IWXXM 载体（XSD 只在观测侧有该组——XML 源 IR
+ * 在这两处本就没有）——不落并出声（与观测位照落形成对照，绝不静默丢组）。
+ */
+function emitForecastVisibility(emit: Emit, visibility: VisibilityGroup): void {
+  emitPrevailingVisibility(emit, visibility);
+  if (visibility.minimum !== undefined) {
+    emit.warn(
+      `趋势/预报体最低能见度（${visibility.minimum.value}${visibility.minimum.direction}）无 IWXXM 载体（XSD 仅观测侧 AerodromeHorizontalVisibility 有该组）——不落 XML，值经 IR/raw 回溯`,
+    );
+  }
 }
 
 // ---------------------------------------------------------------- 机场快照与时组（难点 11/12 生成侧落位）
@@ -860,7 +885,7 @@ function emitTrendElements(
 ): void {
   if (elements === undefined) return;
   if (elements.cavok === undefined && elements.visibility !== undefined) {
-    emitPrevailingVisibility(emit, elements.visibility);
+    emitForecastVisibility(emit, elements.visibility);
   }
   if (elements.wind !== undefined) {
     // variableWindDirection 仅观测/预报风载体可带（TrendForecast 型无该属性——XSD 实证，EDDP 官方形）
@@ -948,13 +973,18 @@ function emitMetar(
   emitAerodrome(emit, report.station);
   emit.void("iwxxm:observationTime", [["xlink:href", `#${issueId}`]]);
 
-  // —— 美制单位折算告警（汇总一条/报：IWXXM 量纲固定 m/hPa/m，固定系数是本实现常量）
+  // —— 美制单位折算告警（汇总一条/报：IWXXM 量纲固定 m/hPa/m，固定系数是本实现常量）。
+  // CAVOK 让位前提：cavok=true 时能见度/RVR 两组不落 XML（让位语义），无「折算落位」可言——
+  // 不入统计（QNH 不参与让位，恒落位）
   const unitLosses = [
-    ...(report.visibility?.kind === "value" && report.visibility.value.unit === "sm"
+    ...(!report.cavok &&
+    report.visibility?.kind === "value" &&
+    report.visibility.value.unit === "sm"
       ? ["能见度 sm→m"]
       : []),
     ...(report.altimeter?.unit === "inHg" ? ["QNH inHg→hPa"] : []),
-    ...(report.runwayVisualRange?.kind === "value" &&
+    ...(!report.cavok &&
+    report.runwayVisualRange?.kind === "value" &&
     report.runwayVisualRange.value.some((item) => item.unit === "ft")
       ? ["RVR ft→m"]
       : []),
@@ -1021,8 +1051,23 @@ function emitMetar(
   // —— 风（XSD 必填元素；缺测 → nil notObservable）
   emitWindObserved(emit, report.wind, "iwxxm:AerodromeSurfaceWind");
 
-  // —— CAVOK 让位（与解析侧让位行为对称：true 时三组不落 XML）
+  // —— CAVOK 让位（与解析侧让位行为对称：true 时能见度/RVR/天气/云四组不落 XML；
+  // Schematron Observation-1 让位面）。矛盾 IR（布尔与组并存）出声 lossy-conversion——
+  // 让位即丢组值，绝不静默（组值经 IR/raw 回溯）
   const cavok = report.cavok;
+  if (cavok) {
+    const yielded = [
+      ...(report.visibility !== undefined ? ["能见度"] : []),
+      ...(report.runwayVisualRange !== undefined ? ["RVR"] : []),
+      ...(report.weather !== undefined ? ["天气"] : []),
+      ...(report.clouds !== undefined ? ["云"] : []),
+    ];
+    if (yielded.length > 0) {
+      emit.warn(
+        `CAVOK（cloudAndVisibilityOK=true）与${yielded.join("/")}组并存的矛盾 IR——按 CAVOK 让位，这些组不落 XML（与解析侧让位行为对称，组值经 IR/raw 回溯）`,
+      );
+    }
+  }
   if (!cavok && report.visibility !== undefined) {
     if (report.visibility.kind === "missing") {
       emit.void("iwxxm:visibility", [
@@ -1141,6 +1186,8 @@ function emitTafPhenomenonTime(
  * 气温预告 → AerodromeAirTemperatureForecast。XSD 一元素必载 TX/TN 双端（max/min + 两时刻全必填）：
  * IR 仅有单端、或某端达时刻缺日（ogimet 方言短形态）时该组整体不落（不捏造另一端/时刻——与解析侧
  * 「时刻缺失跳过出声」同一纪律的生成面）；多组温度取首个 TX + 首个 TN 落一元素（IWXXM 承载面上限）。
+ * 达时刻（ddHHZ）的日位锚 TAF 有效期起点做跨月回绕（0.3.1 收口：原当年当月直投影在有效期跨月、
+ * 达时刻日码指向次月时静默落错月——与变化组 DDHH 窗同族，momentOnOrAfter 同一判式）。
  */
 function emitTafTemperatures(
   emit: Emit,
@@ -1165,18 +1212,30 @@ function emitTafTemperatures(
       `TAF 气温组 ${report.temperatures.length} 组超 IWXXM 承载面——取首个 TX+首个 TN 落一元素，其余不落`,
     );
   }
+  // 达时刻日位锚＝有效期起点（与变化组 DDHH 窗同一锚定——emitTaf 调用 emitTafPhenomenonTime 同式）
+  const validityBeginMs = momentOf(
+    cal,
+    report.validity?.startDay ?? report.issueTime?.day ?? 1,
+    report.validity?.startHour ?? report.issueTime?.hour ?? 0,
+  );
   emit.open("iwxxm:temperature", []);
   emit.open("iwxxm:AerodromeAirTemperatureForecast", []);
   emit.text("iwxxm:maximumAirTemperature", numText(max.celsius), [["uom", "Cel"]]);
   emit.open("iwxxm:maximumAirTemperatureTime", []);
   emit.open("gml:TimeInstant", [["gml:id", emit.nextId()]]);
-  emit.text("gml:timePosition", isoOf(cal, max.at.day, max.at.hour));
+  emit.text(
+    "gml:timePosition",
+    isoTextOf(momentOnOrAfter(cal, validityBeginMs, max.at.day, max.at.hour)),
+  );
   emit.close("gml:TimeInstant");
   emit.close("iwxxm:maximumAirTemperatureTime");
   emit.text("iwxxm:minimumAirTemperature", numText(min.celsius), [["uom", "Cel"]]);
   emit.open("iwxxm:minimumAirTemperatureTime", []);
   emit.open("gml:TimeInstant", [["gml:id", emit.nextId()]]);
-  emit.text("gml:timePosition", isoOf(cal, min.at.day, min.at.hour));
+  emit.text(
+    "gml:timePosition",
+    isoTextOf(momentOnOrAfter(cal, validityBeginMs, min.at.day, min.at.hour)),
+  );
   emit.close("gml:TimeInstant");
   emit.close("iwxxm:minimumAirTemperatureTime");
   emit.close("iwxxm:AerodromeAirTemperatureForecast");
@@ -1281,7 +1340,7 @@ function emitTaf(
         ["xsi:nil", "true"],
       ]);
     } else {
-      emitPrevailingVisibility(emit, report.visibility.value);
+      emitForecastVisibility(emit, report.visibility.value);
     }
   }
   if (report.wind !== undefined && report.wind.kind === "value") {
