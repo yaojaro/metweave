@@ -2219,3 +2219,66 @@ describe("五角色评测修复批：缺测电码不顶替在场值（重复组 
     expect(r.warnings.some((x) => x.code === "duplicate-group")).toBe(true);
   });
 });
+
+// ————————————————————————————————————————————————————————————————
+// 红队对抗审查修复回归（2026-10-19）：P1-5 / P2-9 / P2-11
+// 复现输入取自红队实弹（/tmp/redteam-sem），断言修复后契约行为。
+// ————————————————————————————————————————————————————————————————
+describe("红队对抗审查修复回归（2026-10-19，METAR 侧）", () => {
+  it("P1-5 METAR NIL 带尾（实弹）：尾部 token 逐个 unknown-token 出声，不整段蒸发", () => {
+    const r = parse("METAR ZBAA 191000Z NIL 3000 BR OVC008 RMK AO2");
+    expect(r.nil).toBe(true);
+    // NIL 后 5 token（3000/BR/OVC008/RMK/AO2）——RMK 段也整段出声，绝不静默
+    expect(r.warnings.filter((w) => w.code === "unknown-token")).toHaveLength(5);
+    expect(r.warnings.every((w) => w.message.includes("NIL 报正文组位出现多余组"))).toBe(true);
+  });
+
+  it("P1-5 边界不回归：纯 NIL（无尾部）保持零告警", () => {
+    expect(parse("METAR ZBAA 191000Z NIL").warnings).toHaveLength(0);
+  });
+
+  it("P2-9 RVR 多组增量构建：行为等价（span 外包络与明细不受 O(n²) 消除影响）", () => {
+    const r = parse("METAR ZBAA 191000Z 32005MPS R07/1500 9999 R25/2000 12/05 Q1013");
+    expect(r.runwayVisualRange?.kind).toBe("value");
+    if (r.runwayVisualRange?.kind !== "value") throw new Error("RVR 应有值");
+    expect(r.runwayVisualRange.value).toHaveLength(2);
+    expect(r.raw.slice(r.runwayVisualRange.span!.start, r.runwayVisualRange.span!.end)).toBe(
+      "R07/1500 9999 R25/2000",
+    );
+    // 缺测组中断后再遇值组：Observed 重建仍零拷贝，明细保真
+    const r2 = parse("METAR ZBAA 191000Z 32005MPS R07/1500 R10//// R25/1800 12/05 Q1013");
+    expect(r2.runwayVisualRange?.kind).toBe("value");
+    if (r2.runwayVisualRange?.kind !== "value") throw new Error("RVR 应有值");
+    expect(r2.runwayVisualRange.value.map((x) => x.runway)).toEqual(["07", "25"]);
+  });
+
+  it("P2-11 R07/9999 越界实弹 → 判缺测不收 + value-out-of-range（绝不静默留假值）", () => {
+    const r = parse("METAR ZBAA 191000Z 32005MPS 9999 R07/9999 12/05 Q1013");
+    expect(r.runwayVisualRange).toBeUndefined();
+    expect(
+      r.warnings.some((w) => w.code === "value-out-of-range" && w.message.includes("9999")),
+    ).toBe(true);
+  });
+
+  it("P2-11 R07/P1500VM2000 实弹：beyondRange 承载 min 端，max 端 M 前缀出声不再静默蒸发", () => {
+    const r = parse("METAR ZBAA 191000Z 32005MPS 9999 R07/P1500VM2000 12/05 Q1013");
+    const item = r.runwayVisualRange?.kind === "value" ? r.runwayVisualRange.value[0] : undefined;
+    expect(item?.min).toBe(1500);
+    expect(item?.max).toBe(2000);
+    expect(item?.beyondRange).toBe("above");
+    expect(
+      r.warnings.some(
+        (w) => w.code === "invalid-format" && w.message.includes("max 端前缀不可表达"),
+      ),
+    ).toBe(true);
+  });
+
+  it("P2-11 边界不回归：P6000FT 顶格与 P2000 前缀照常收（零告警）", () => {
+    const ft = parse("METAR ZBAA 191000Z 32005MPS 9999 R07/P6000FT 12/05 Q1013");
+    expect(ft.runwayVisualRange?.kind).toBe("value");
+    expect(ft.warnings.some((w) => w.code === "value-out-of-range")).toBe(false);
+    const m = parse("METAR ZBAA 191000Z 32005MPS 9999 R07/P2000 12/05 Q1013");
+    expect(m.runwayVisualRange?.kind).toBe("value");
+    expect(m.warnings.some((w) => w.code === "value-out-of-range")).toBe(false);
+  });
+});

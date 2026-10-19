@@ -276,6 +276,38 @@ function isoAfterOf(
   return isoTextOf(momentOnOrAfter(cal, beginMs, day, hour, minute));
 }
 
+/**
+ * TAF 侧 ddHH 日位跨月投影（红队 P0-4 修正：与 expandTaf 同判式——日位小于有效期起日才落次月）。
+ * 此处不复用 momentOnOrAfter（「投影时刻早于锚即同日次月」）：短窗借日位（B9：startDay＝有效期
+ * 起日）在窗时早于有效期起时、或 TX/TN 长窗达时刻早于起时（TX12/3106Z 于 8/31 发报）时被误抬
+ * 「同日次月」——9 月无 31 日经 Date.UTC 溢出落 10 月（下下月），与 expandTaf（8/31 直投影）跨层
+ * 矛盾。expand 判式：日位 ≥ 起日 → 起日所在月直投影；短窗（原报无日位、日位借起日）天然落本分支
+ * 即借日语义，跨月长窗（日 01 < 起日 31）仍落次月，两形态一套判式。月界进位由 Date.UTC 承担
+ * （Date.UTC(year, month, …) 的 month 已是次月 0 基位，跨年自然进位）。
+ */
+function tafMomentOf(
+  cal: { readonly year: number; readonly month: number },
+  validityStartDay: number,
+  day: number,
+  hour: number,
+  minute = 0,
+): number {
+  return day < validityStartDay
+    ? Date.UTC(cal.year, cal.month, day, hour, minute)
+    : Date.UTC(cal.year, cal.month - 1, day, hour, minute);
+}
+
+/**
+ * emit 侧越界最后闸门（红队 P0-2）：ddHH 电码位的 IR 数值越界（day 1–31 / hour 0–24 之外）即
+ * 不可信——Date.UTC 会把日 99/时 99 归一成「看似合法」的绝对时刻（放大假值成 2027-01 荒谬时刻
+ * 的实弹即此通道），此处拦下交调用方出声并跳过该绝对时刻。TAC/XML 两侧解析已在源头上同域设门
+ * （时组/有效期/变化组窗/气温组），本闸门兜手拼矛盾 IR 与未来新增投影点的最后一道，不投影、
+ * 出声、跳过——绝不把越界值放大成合法样子的绝对时刻。
+ */
+function dayHourInGate(day: number, hour: number): boolean {
+  return day >= 1 && day <= 31 && hour >= 0 && hour <= 24;
+}
+
 // ---------------------------------------------------------------- XML 拼装小件
 
 /** 属性值转义（& < > " 四字——XML 1.0 属性值最小集）。 */
@@ -642,12 +674,29 @@ function emitAerodrome(emit: Emit, station: string): void {
   emit.close("iwxxm:aerodrome");
 }
 
-/** issueTime → 内联 gml:TimeInstant（返回 gml:id 供 observationTime/phenomenonTime href 引用）。 */
+/** issueTime → 内联 gml:TimeInstant（返回 gml:id 供 observationTime/phenomenonTime href 引用）。
+ *  越界最后闸门（红队 P0-2 同族）：发报时刻 day/hour/minute 越界的手拼矛盾 IR 无处跳过
+ *  （全文档时刻皆 href 引用本元素）——不投影即整体失败（invalid-input 稳定码），绝不把
+ *  日 99/时 99 经 Date.UTC 归一成「看似合法」的绝对时刻。 */
 function emitIssueTime(
   emit: Emit,
   cal: { readonly year: number; readonly month: number },
   time: { readonly day: number; readonly hour: number; readonly minute: number },
 ): string {
+  if (
+    time.day < 1 ||
+    time.day > 31 ||
+    time.hour < 0 ||
+    time.hour > 23 ||
+    time.minute < 0 ||
+    time.minute > 59
+  ) {
+    throw new MetarParseError(
+      "invalid-input",
+      JSON.stringify(time),
+      `发报时刻数值越界（日 ${time.day} / 时 ${time.hour} / 分 ${time.minute}——须日 01–31 / 时 00–23 / 分 00–59）——越界时刻不可投影绝对时刻（emit 侧越界最后闸门），序列化整体失败`,
+    );
+  }
   const id = emit.nextId();
   emit.open("iwxxm:issueTime", []);
   emit.open("gml:TimeInstant", [["gml:id", id]]);
@@ -797,6 +846,31 @@ function emitTrendPhenomenonTime(
   }
   const atMatch = /^(AT|TL|FM)(\d{2})(\d{2})$/.exec(period);
   const windowMatch = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(period);
+  // 越界最后闸门（红队 P2-12）：AT9999 / 9999/9999 一类越界时段词不投影（此前静默解码——
+  // Date.UTC 归一成「看似合法」的荒谬绝对时刻零告警）。出声后按无时窗形态落位
+  //（phenomenonTime nilReason missing——EDDP 官方形同款；越界值不可信，绝不放大）
+  if (atMatch !== null) {
+    const hour = Number(atMatch[2]);
+    const minute = Number(atMatch[3]);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      emit.warn(
+        `趋势时段词数值越界（${period}——时 00–23 / 分 00–59）——不投影绝对时刻，按无时窗形态落位（emit 侧越界最后闸门）`,
+      );
+      emit.void("iwxxm:phenomenonTime", [["nilReason", uriNil(NIL_MISSING)]]);
+      return;
+    }
+  }
+  if (
+    windowMatch !== null &&
+    (!dayHourInGate(Number(windowMatch[1]), Number(windowMatch[2])) ||
+      !dayHourInGate(Number(windowMatch[3]), Number(windowMatch[4])))
+  ) {
+    emit.warn(
+      `趋势时窗数值越界（${period}——日 01–31 / 时 00–24）——不投影绝对时刻，按无时窗形态落位（emit 侧越界最后闸门）`,
+    );
+    emit.void("iwxxm:phenomenonTime", [["nilReason", uriNil(NIL_MISSING)]]);
+    return;
+  }
   emit.open("iwxxm:phenomenonTime", []);
   if (atMatch !== null) {
     const hour = Number(atMatch[2]);
@@ -1136,9 +1210,11 @@ function changeIndicatorOf(change: TafChangeGroup): string {
 /**
  * 变化组时窗 → phenomenonTime（XSD 明文：TAC FM/TL/AT 由它承载；TAF 预报体 phenomenonTime 恒
  * gml:TimePeriod）。FM：begin＝FM 时刻（TafChangeAt 无日位，日位借有效期起日、投影早于有效期
- * 起点按次日回绕——HHMM 判式）、end＝同时刻 indeterminate after；带窗：DDHH 双端点以有效期
- * 起点为锚做跨月回绕（日「01」早于起日即次月——31 日发报跨月变化组实弹捕获；止时 24 经
- * Date.UTC 归一为次日 00:00——两态等价口径与解析侧一致）。
+ * 起点按次日回绕——HHMM 判式）、end＝同时刻 indeterminate after；带窗：双端点以 expandTaf 同判式
+ * （tafMomentOf）跨月投影（红队 P0-4 修正：短窗借日位不再被「同日次月」误抬——详见该函数注）。
+ * 红队 P1-6/P0-2 闸门：窗止早于起（负窗矛盾）与 ddHH 越界（手拼矛盾 IR）的窗不投影——出声后
+ * phenomenonTime 落 nilReason missing 空载形（绝不把矛盾窗放大成 31 天跨月窗/越界值放大成
+ * 合法样子的绝对时刻；IR 侧矛盾已由解析侧 cross-check-conflict 出声，本通道是生成面兜底）。
  */
 function emitTafPhenomenonTime(
   emit: Emit,
@@ -1148,35 +1224,63 @@ function emitTafPhenomenonTime(
   startHour: number,
 ): void {
   const validityBeginMs = momentOf(cal, startDay, startHour);
-  emit.open("iwxxm:phenomenonTime", []);
-  emit.open("gml:TimePeriod", [["gml:id", emit.nextId()]]);
+  // 投影计划：null ＝ 该绝对时刻不可投影（越界/矛盾——出声后跳过，落 nilReason missing 空载形）
+  let planned: {
+    readonly beginIso: string;
+    readonly endIso: string;
+    readonly endIndeterminate: boolean;
+  } | null;
   if (change.kind === "FM" && change.at !== undefined) {
-    const beginIso = instantOnOrAfter(
-      cal,
-      validityBeginMs,
-      startDay,
-      change.at.hour,
-      change.at.minute,
-    );
-    emit.text("gml:beginPosition", beginIso);
-    emit.text("gml:endPosition", beginIso, [["indeterminatePosition", "after"]]);
+    const at = change.at;
+    if (at.hour < 0 || at.hour > 23 || at.minute < 0 || at.minute > 59) {
+      emit.warn(
+        `变化组 FM 硬时刻数值越界（${at.raw ?? `${at.hour}${String(at.minute).padStart(2, "0")}`}——时 00–23 / 分 00–59）——不投影绝对时刻（emit 侧越界最后闸门，越界值不可信）`,
+      );
+      planned = null;
+    } else {
+      const beginIso = instantOnOrAfter(cal, validityBeginMs, startDay, at.hour, at.minute);
+      planned = { beginIso, endIso: beginIso, endIndeterminate: true };
+    }
   } else if (change.window !== undefined) {
-    const beginMs = momentOnOrAfter(
-      cal,
-      validityBeginMs,
-      change.window.startDay,
-      change.window.startHour,
-    );
-    emit.text("gml:beginPosition", isoTextOf(beginMs));
-    emit.text(
-      "gml:endPosition",
-      isoAfterOf(cal, beginMs, change.window.endDay, change.window.endHour),
-    );
+    const w = change.window;
+    const windowText = w.raw ?? `${w.startDay}${w.startHour}/${w.endDay}${w.endHour}`;
+    if (!dayHourInGate(w.startDay, w.startHour) || !dayHourInGate(w.endDay, w.endHour)) {
+      emit.warn(
+        `变化组窗数值越界（${windowText}——日 01–31 / 时 00–24）——不投影绝对时刻（emit 侧越界最后闸门，解析侧同门之外的手拼矛盾 IR 兜底）`,
+      );
+      planned = null;
+    } else {
+      const beginMs = tafMomentOf(cal, startDay, w.startDay, w.startHour);
+      const endMs = tafMomentOf(cal, startDay, w.endDay, w.endHour);
+      if (endMs < beginMs) {
+        emit.warn(
+          `变化组窗止早于起（${windowText}）——窗矛盾不放大（此前 end 被抬到次月成 31 天窗；与解析侧 cross-check-conflict 同一判式的生成面兜底）`,
+        );
+        planned = null;
+      } else {
+        planned = {
+          beginIso: isoTextOf(beginMs),
+          endIso: isoTextOf(endMs),
+          endIndeterminate: false,
+        };
+      }
+    }
   } else {
     // FM 无时刻 / 变化组无窗（理论不可达——解析侧已保证 FM 必带 at）：起点按有效期起日 00:00 占位
     const beginIso = isoOf(cal, startDay, 0);
-    emit.text("gml:beginPosition", beginIso);
-    emit.text("gml:endPosition", beginIso, [["indeterminatePosition", "after"]]);
+    planned = { beginIso, endIso: beginIso, endIndeterminate: true };
+  }
+  if (planned === null) {
+    emit.void("iwxxm:phenomenonTime", [["nilReason", uriNil(NIL_MISSING)]]);
+    return;
+  }
+  emit.open("iwxxm:phenomenonTime", []);
+  emit.open("gml:TimePeriod", [["gml:id", emit.nextId()]]);
+  emit.text("gml:beginPosition", planned.beginIso);
+  if (planned.endIndeterminate) {
+    emit.text("gml:endPosition", planned.endIso, [["indeterminatePosition", "after"]]);
+  } else {
+    emit.text("gml:endPosition", planned.endIso);
   }
   emit.close("gml:TimePeriod");
   emit.close("iwxxm:phenomenonTime");
@@ -1186,8 +1290,9 @@ function emitTafPhenomenonTime(
  * 气温预告 → AerodromeAirTemperatureForecast。XSD 一元素必载 TX/TN 双端（max/min + 两时刻全必填）：
  * IR 仅有单端、或某端达时刻缺日（ogimet 方言短形态）时该组整体不落（不捏造另一端/时刻——与解析侧
  * 「时刻缺失跳过出声」同一纪律的生成面）；多组温度取首个 TX + 首个 TN 落一元素（IWXXM 承载面上限）。
- * 达时刻（ddHHZ）的日位锚 TAF 有效期起点做跨月回绕（0.3.1 收口：原当年当月直投影在有效期跨月、
- * 达时刻日码指向次月时静默落错月——与变化组 DDHH 窗同族，momentOnOrAfter 同一判式）。
+ * 达时刻（ddHHZ）的日位跨月＝expandTaf 同判式（tafMomentOf：日位小于有效期起日才落次月，0.3.1
+ * 红队 P0-4 修正——原 momentOnOrAfter「早于锚即同日次月」在达时刻早于起时、9 月无 31 日时溢出
+ * 落 10 月；越界达时刻由闸门拦截整体不落，见下）。
  */
 function emitTafTemperatures(
   emit: Emit,
@@ -1206,26 +1311,44 @@ function emitTafTemperatures(
     }
     return;
   }
+  // 达时刻越界最后闸门（红队 P0-2）：解析侧（TAC 温组/IWXXM 温组 ±90 门）已设门，此处兜手拼
+  // 矛盾 IR——day 1–31 / hour 0–24 之外的达时刻不投影（此前 celsius=-99、day=99 的假值曾流经
+  // momentOnOrAfter 放大成 2027-01 荒谬绝对时刻零告警），该组整体不落（XSD 双端一体，单端越界
+  // 即整体不可投影——不捏造另一端）
+  const maxAtUsable = dayHourInGate(max.at.day, max.at.hour);
+  const minAtUsable = dayHourInGate(min.at.day, min.at.hour);
+  if (!maxAtUsable || !minAtUsable) {
+    const bad = !maxAtUsable
+      ? `TX 达时刻 ${max.at.day}日${max.at.hour}时`
+      : `TN 达时刻 ${min.at.day}日${min.at.hour}时`;
+    emit.warn(
+      `TAF 气温组达时刻数值越界（${bad}——日 01–31 / 时 00–24）——不投影绝对时刻，该组整体不落（emit 侧越界最后闸门，越界值不可信）`,
+    );
+    return;
+  }
   // 多组温度超 IWXXM 承载面（温度元素 maxOccurs=2 且每元素必载双端）——取首个 TX+TN，其余不落
   if (report.temperatures.length > 2) {
     emit.warn(
       `TAF 气温组 ${report.temperatures.length} 组超 IWXXM 承载面——取首个 TX+首个 TN 落一元素，其余不落`,
     );
   }
-  // 达时刻日位锚＝有效期起点（与变化组 DDHH 窗同一锚定——emitTaf 调用 emitTafPhenomenonTime 同式）
-  const validityBeginMs = momentOf(
-    cal,
-    report.validity?.startDay ?? report.issueTime?.day ?? 1,
-    report.validity?.startHour ?? report.issueTime?.hour ?? 0,
-  );
   emit.open("iwxxm:temperature", []);
   emit.open("iwxxm:AerodromeAirTemperatureForecast", []);
   emit.text("iwxxm:maximumAirTemperature", numText(max.celsius), [["uom", "Cel"]]);
   emit.open("iwxxm:maximumAirTemperatureTime", []);
   emit.open("gml:TimeInstant", [["gml:id", emit.nextId()]]);
+  // 达时刻日位跨月＝expandTaf 同判式（tafMomentOf）：日位小于有效期起日才落次月——
+  // TX12/3106Z 于 8/31 发报此前被「同日次月」误抬 9/31→10/1（红队 P0-4 同族实弹）
   emit.text(
     "gml:timePosition",
-    isoTextOf(momentOnOrAfter(cal, validityBeginMs, max.at.day, max.at.hour)),
+    isoTextOf(
+      tafMomentOf(
+        cal,
+        report.validity?.startDay ?? report.issueTime?.day ?? 1,
+        max.at.day,
+        max.at.hour,
+      ),
+    ),
   );
   emit.close("gml:TimeInstant");
   emit.close("iwxxm:maximumAirTemperatureTime");
@@ -1234,7 +1357,14 @@ function emitTafTemperatures(
   emit.open("gml:TimeInstant", [["gml:id", emit.nextId()]]);
   emit.text(
     "gml:timePosition",
-    isoTextOf(momentOnOrAfter(cal, validityBeginMs, min.at.day, min.at.hour)),
+    isoTextOf(
+      tafMomentOf(
+        cal,
+        report.validity?.startDay ?? report.issueTime?.day ?? 1,
+        min.at.day,
+        min.at.hour,
+      ),
+    ),
   );
   emit.close("gml:TimeInstant");
   emit.close("iwxxm:minimumAirTemperatureTime");
@@ -1283,21 +1413,40 @@ function emitTaf(
   emitIssueTime(emit, cal, report.issueTime ?? { day: 1, hour: 0, minute: 0 });
   emitAerodrome(emit, report.station);
 
-  // —— 有效期：CNL 走 cancelledReportValidPeriod（被取消报的覆盖窗），常规走 validPeriod
+  // —— 有效期：CNL 走 cancelledReportValidPeriod（被取消报的覆盖窗），常规走 validPeriod。
+  // 红队 P1-6/P0-2 闸门：ddHH 越界（手拼矛盾 IR——解析侧 TAC/XML 均已设门）或止早于起
+  //（负有效期矛盾）的窗不放大——此前止时被「同日次月」判式抬成 31 天跨月窗，此处出声后整体
+  // 跳过 validPeriod（基况段 phenomenonTime 随之落 nilReason missing 空载形，不捏造时窗）
   let validPeriodId: string | undefined;
   if (report.validity !== undefined) {
     const validity = report.validity;
-    validPeriodId = emit.nextId();
-    const tag =
-      report.cancelled === true ? "iwxxm:cancelledReportValidPeriod" : "iwxxm:validPeriod";
-    emit.open(tag, []);
-    emit.open("gml:TimePeriod", [["gml:id", validPeriodId]]);
     const beginMs = momentOf(cal, validity.startDay, validity.startHour);
-    emit.text("gml:beginPosition", isoTextOf(beginMs));
-    // 止点早于起点＝跨月窗（ddHH 无月位——止日 01 意为次月 1 日；Date.UTC 月份进位自然跨年）
-    emit.text("gml:endPosition", isoAfterOf(cal, beginMs, validity.endDay, validity.endHour));
-    emit.close("gml:TimePeriod");
-    emit.close(tag);
+    const gateOk =
+      dayHourInGate(validity.startDay, validity.startHour) &&
+      dayHourInGate(validity.endDay, validity.endHour);
+    // 负有效期判式＝解析侧同款（日同而止时<起时；止日<起日属跨月正常形态不判矛盾）
+    const negativeValidity =
+      validity.endDay === validity.startDay && validity.endHour < validity.startHour;
+    if (!gateOk) {
+      emit.warn(
+        `有效期数值越界（${validity.raw}——日 01–31 / 时 00–24）——不投影绝对时刻，validPeriod 整体不落（emit 侧越界最后闸门，越界值不可信）`,
+      );
+    } else if (negativeValidity) {
+      emit.warn(
+        `有效期止早于起（${validity.raw}）——窗矛盾不放大（此前 end 被抬到次月成 31 天窗；与解析侧负窗同判式的生成面兜底）`,
+      );
+    } else {
+      validPeriodId = emit.nextId();
+      const tag =
+        report.cancelled === true ? "iwxxm:cancelledReportValidPeriod" : "iwxxm:validPeriod";
+      emit.open(tag, []);
+      emit.open("gml:TimePeriod", [["gml:id", validPeriodId]]);
+      emit.text("gml:beginPosition", isoTextOf(beginMs));
+      // 止点早于起点＝跨月窗（ddHH 无月位——止日 01 意为次月 1 日；Date.UTC 月份进位自然跨年）
+      emit.text("gml:endPosition", isoAfterOf(cal, beginMs, validity.endDay, validity.endHour));
+      emit.close("gml:TimePeriod");
+      emit.close(tag);
+    }
   }
 
   if (report.nil === true) {
@@ -1397,6 +1546,16 @@ function emitTaf(
  * @param options - 见 IwxxmSerializeOptions（版本、日历上下文、许可用途占位）。
  */
 export function serializeIwxxm(report: IwxxmReport, options?: IwxxmSerializeOptions): string {
+  // 参数契约校验出声（红队 P2-10）：onWarning 非函数此前在「首个有损告警触发时」才以裸 TypeError
+  // 炸出（通道零告警时静默通过——同一段代码两种失败面）——入口即校验，收进 MetarParseError
+  // invalid-input 稳定码契约（code 可分流、message 中文权威）
+  if (options?.onWarning !== undefined && typeof options.onWarning !== "function") {
+    throw new MetarParseError(
+      "invalid-input",
+      String(options.onWarning),
+      "serializeIwxxm 的 options.onWarning 须为 (warning) => void 函数——收到非函数值，参数契约不符",
+    );
+  }
   if (typeof report !== "object" || report === null || !("kind" in report)) {
     throw new MetarParseError(
       "invalid-input",

@@ -479,18 +479,71 @@ function indexGmlIds(root: XNode, map: Map<string, XNode> = new Map()): Map<stri
  */
 const ZONE_MARKED_RE = /(?:Z|[+-]\d{2}(?::?\d{2})?)$/;
 
-/** timePosition 字串 → UTC 毫秒（单一出口）：无时区标记时按 UTC 解析（确定性）并向
- *  warnings 记账；带 Z/偏移的字串走 Date.parse 原路径，行为不变。 */
+/** timePosition 完整 xsd:dateTime 形态（往返自检的判定域）：年-月-日T时:分〔:秒〔.小数〕〕〔Z|±hh:mm〕
+ *  ——时差只认冒号形（XSD 明文；±hh / ±hhmm 非 xsd 形态，落 Date.parse 原路径照旧 NaN）。 */
+const DATETIME_PARTS_RE =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-]\d{2}:\d{2})?$/;
+
+/**
+ * timePosition 字串 → UTC 毫秒（单一出口）：无时区标记时按 UTC 解析（确定性）并向
+ * warnings 记账；完整 dateTime 形态做往返自检——非法日期（2026-02-30、平年 2 月 29、13 月）
+ * 经 Date.parse/Date.UTC 会被静默归一成「看似合法」的滚动后时刻（红队 P1-7 实弹：2/30 归一
+ * 成 3/2 零告警，与 TAC 侧 991000Z throw invalid-time 不同构）——按字面分量重算墙钟回比，
+ * 漂移即 throw invalid-time 整体失败（带时差字串按「UTC 时刻 + 时差」还原墙钟再比，跨日
+ * 合法形态不误伤）；形态不在正则域的扩展形走 Date.parse 原路径行为不变。
+ */
 function parseTimePositionMs(pos: string, where: string, warnings: ParseWarning[]): number {
-  if (!ZONE_MARKED_RE.test(pos)) {
+  const parts = DATETIME_PARTS_RE.exec(pos);
+  if (parts === null) {
+    if (!ZONE_MARKED_RE.test(pos)) {
+      warnings.push({
+        code: "invalid-format",
+        severity: "info",
+        message: `${where} 无时区标记（${pos}）——按 UTC 折算收下`,
+      });
+      return Date.parse(`${pos}Z`);
+    }
+    return Date.parse(pos);
+  }
+  const [, ys, mos, ds, hs, mins, ss, fract, zone] = parts;
+  const y = Number(ys);
+  const mo = Number(mos);
+  const d = Number(ds);
+  const h = Number(hs);
+  const mi = Number(mins);
+  const s = ss !== undefined ? Number(ss) : 0;
+  const msPart = fract !== undefined ? Number(fract.slice(0, 3).padEnd(3, "0")) : 0;
+  let offsetMinutes = 0;
+  if (zone !== undefined && zone !== "Z") {
+    const sign = zone.startsWith("-") ? -1 : 1;
+    const digits = zone.slice(1).replace(":", "");
+    offsetMinutes = sign * (Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2)));
+  }
+  if (zone === undefined) {
     warnings.push({
       code: "invalid-format",
       severity: "info",
       message: `${where} 无时区标记（${pos}）——按 UTC 折算收下`,
     });
-    return Date.parse(`${pos}Z`);
   }
-  return Date.parse(pos);
+  const ms = Date.UTC(y, mo - 1, d, h, mi, s, msPart) - offsetMinutes * 60_000;
+  // 往返自检：UTC 时刻加回时差须逐位还原字面分量——归一（月/日/闰日溢出进位）即非法日期
+  const wall = new Date(ms + offsetMinutes * 60_000);
+  if (
+    wall.getUTCFullYear() !== y ||
+    wall.getUTCMonth() + 1 !== mo ||
+    wall.getUTCDate() !== d ||
+    wall.getUTCHours() !== h ||
+    wall.getUTCMinutes() !== mi ||
+    wall.getUTCSeconds() !== s
+  ) {
+    throw new MetarParseError(
+      "invalid-time",
+      pos,
+      `${where} 日期非法（${pos}——字面分量经日期归一漂移，如 2 月 30 日 / 13 月 / 平年 2 月 29 日）——非法日期不可静默滚动，与 TAC 侧时组越界同构整体失败`,
+    );
+  }
+  return ms;
 }
 
 /**
@@ -1179,6 +1232,17 @@ function trendElementsOf(
         : cloudsOf(cloudProp, where, warnings, raw);
   const cavokOn = attr(trend, "cloudAndVisibilityOK") === "true";
   const cavokSpan = attrSpanOf(raw, spanOf(trend), "cloudAndVisibilityOK", "true");
+  // CAVOK 让位自洽（红队 P1-8）：true 与能见度/天气/云组并存＝矛盾形态——观测侧与 TAF 基况段
+  // 同判据出声（此前趋势/变化组位零告警，与 TAC 侧 cross-check-conflict warning 不同构）。
+  // IR 如实并存不改动（与 TAC 趋势段 tolerant 口径一致；CAVOK 让位语义由消费面与 emit 侧执行）
+  if (cavokOn && (visibility !== undefined || weathers.length > 0 || clouds !== undefined)) {
+    warnings.push({
+      code: "cross-check-conflict",
+      severity: "warning",
+      message: `${where} cloudAndVisibilityOK=true 与能见度/天气/云组并存（CAVOK 语义要求三组让位）——矛盾出声，IR 如实并存`,
+      ...(spanOf(trend) !== undefined ? { span: spanOf(trend) } : {}),
+    });
+  }
   const hasAny =
     wind !== undefined ||
     visibility !== undefined ||

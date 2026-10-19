@@ -43,6 +43,8 @@ import {
   validateWindGroup,
   verticalVisibilityElementOf,
   warnDuplicateGroup,
+  TEMP_C_MAX,
+  TEMP_C_MIN,
   type Token,
 } from "./groups";
 import { strictGate } from "./validate";
@@ -51,9 +53,14 @@ const STATION_PATTERN = /^[A-Z0-9]{4}$/;
 const ISSUE_TIME_PATTERN = /^(\d{2})(\d{2})(\d{2})Z$/;
 const VALIDITY_PATTERN = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/;
 
-/** 基况段右界（批 2/3.4 接管前的停靠点）：变化组 FM####/BECMG/TEMPO/PROB30|40 与气温组 TX/TN */
+/** 基况段右界（批 2/3.4 接管前的停靠点）：变化组 FM####/BECMG/TEMPO/PROB30|40 与气温组 TX/TN。
+ *  FM\d{6}（WMO FM 51 六位形态 FMddhhmm，北美主供形态）同为组界：若不设界，六位 FM 与其后
+ *  要素会静默并入前序变化组/基况段（红队 P0-3 实弹——SKC/OVC015 以 last-wins 互覆、FM 组蒸发）。
+ *  本期口径＝明确拒收＋全程出声（六位 FM 本体与其后要素逐 token unknown-token，不得覆盖任何段），
+ *  完整认组（ddhhmm → at 日/时/分）留 0.4 候选（docs/iwxxm-notes.md 红队记档节）。 */
 const isChangeBoundary = (text: string): boolean =>
   /^FM\d{4}$/.test(text) ||
+  /^FM\d{6}$/.test(text) ||
   text === "BECMG" ||
   text === "TEMPO" ||
   /^PROB\d{2}$/.test(text) ||
@@ -472,9 +479,34 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     const txTn = /^(TX|TN)(M?\d{2})\/(?:(\d{2})(\d{2})|(\d{2}))Z$/.exec(text);
     if (txTn !== null) {
       // C6★ 气温组：TX/TN 前缀 token、M 负值、1–4 组交错无固定序（跨基况/变化组分布照收）
+      // ——数值域门（红队 P0-2）：温度位与 METAR 正文温组（applyTempDewToken）及 IWXXM 侧
+      //（tafTemperaturesOf ±90 门）同构——超物理可信范围＝值不可信，整组不收不投影
+      //（此前 TXM99/9907Z 的 celsius=-99 静默留 IR，经 serializeIwxxm 的 momentOnOrAfter
+      // 放大成荒谬绝对时刻零告警）；日/时位与变化组窗同门（日 01–31 / 时 00–23）。
+      const celsius = Number(txTn[2]?.replace("M", "-"));
+      const gateDay = txTn[3] !== undefined ? Number(txTn[3]) : undefined;
+      const gateHour = txTn[3] !== undefined ? Number(txTn[4]) : Number(txTn[5]);
+      const rangeFail = celsius < TEMP_C_MIN || celsius > TEMP_C_MAX;
+      const dayFail = gateDay !== undefined && (gateDay < 1 || gateDay > 31);
+      const hourFail = gateHour === undefined || gateHour < 0 || gateHour > 23;
+      if (rangeFail || dayFail || hourFail) {
+        const offenders = [
+          ...(rangeFail ? [`温度 ${celsius} 超物理可信范围 ${TEMP_C_MIN}–${TEMP_C_MAX}°C`] : []),
+          ...(dayFail ? [`日位 ${gateDay} 越界（须 01–31）`] : []),
+          ...(hourFail ? [`时位越界（须 00–23）`] : []),
+        ].join("、");
+        warnings.push({
+          code: "value-out-of-range",
+          severity: "warning",
+          message: `TAF 气温组数值越界（${text}：${offenders}）——整组不可信不收，绝不投影假值，原码经 span 回溯`,
+          span: spanOf(t),
+        });
+        i += 1;
+        continue;
+      }
       temperatures.push({
         extremum: txTn[1] === "TX" ? "max" : "min",
-        celsius: Number(txTn[2]?.replace("M", "-")),
+        celsius,
         ...(txTn[3] !== undefined
           ? { at: { day: Number(txTn[3]), hour: Number(txTn[4]) } }
           : { at: { hour: Number(txTn[5]) } }),
@@ -495,6 +527,20 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
 
     const fm = /^FM(\d{2})(\d{2})$/.exec(text);
     const prob = /^PROB(\d{2})$/.exec(text);
+    // —— 六位 FM 形态（红队 P0-3：WMO FM 51 标准形态 FMddhhmm，北美主供）：明确拒收＋全程出声。
+    // isChangeBoundary 已把它设为组界——基况段与 collectChangeElements 都在此收口，故其后要素
+    // 既不并入前序变化组、也不以 last-wins 覆盖基况段，逐 token 走本循环尾部 unknown-token 出声；
+    // 本体单独注明形态（每处告警可辨「为何拒收」），完整认组（ddhhmm → at 日/时/分）列 0.4 候选
+    if (/^FM\d{6}$/.test(text)) {
+      warnings.push({
+        code: "unknown-token",
+        severity: "info",
+        message: `TAF 变化组段未识别组（${text}——WMO FM 51 六位 FM 形态本库未支持）：明确拒收不认组，其后要素不入任何变化组、不覆盖基况段，逐 token 出声保留原文（完整认组列 0.4 候选）`,
+        span: spanOf(t),
+      });
+      i += 1;
+      continue;
+    }
     if (fm === null && prob === null && text !== "BECMG" && text !== "TEMPO") {
       warnings.push({
         code: "unknown-token",
@@ -575,14 +621,46 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       const w = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(winTok.text);
       const s = /^(\d{2})(\d{2})$/.exec(winTok.text);
       if (w !== null) {
+        // 数值域门（红队 P0-1）：与同文件有效期组（9912/9918 → throw invalid-validity）同构——
+        // ddHH/ddHH 是与有效期组同一语法的结构时组，越界值不可信，绝不把 {99,99,99,99} 一类
+        // 假窗静默留 IR（此前 TEMPO 9999/9999 零告警入 IR，经 serializeIwxxm 放大成跨月荒谬时刻）
+        const wStartDay = Number(w[1]);
+        const wStartHour = Number(w[2]);
+        const wEndDay = Number(w[3]);
+        const wEndHour = Number(w[4]);
+        if (
+          wStartDay < 1 ||
+          wStartDay > 31 ||
+          wStartHour > 23 ||
+          wEndDay < 1 ||
+          wEndDay > 31 ||
+          wEndHour > 24
+        ) {
+          throw new MetarParseError(
+            "invalid-validity",
+            raw,
+            `变化组窗数值越界（${winTok.text}）——日 01–31 / 起时 00–23 / 止时 00–24（24＝午夜合法特例；与有效期组同门，越界值不可信整体失败）`,
+          );
+        }
         window = {
-          startDay: Number(w[1]),
-          startHour: Number(w[2]),
-          endDay: Number(w[3]),
-          endHour: Number(w[4]),
+          startDay: wStartDay,
+          startHour: wStartHour,
+          endDay: wEndDay,
+          endHour: wEndHour,
           raw: winTok.text,
           span: spanOf(winTok),
         };
+        // 负窗矛盾校验（红队 P1-6）：止早于起（1914/1912）——两端各自在域、组形合法，
+        // 属自洽性矛盾而非越界：IR 如实保留，矛盾出声（与温露倒挂同款口径）；
+        // emit 侧对同判式不放大（见 iwxxm-emit「end<begin 不投影」）
+        if (window.endDay === window.startDay && window.endHour < window.startHour) {
+          warnings.push({
+            code: "cross-check-conflict",
+            severity: "warning",
+            message: `变化组窗止早于起（${winTok.text}）——窗矛盾（止<起），报文自洽性存疑，IR 如实保留`,
+            span: spanOf(winTok),
+          });
+        }
         i += 1;
       } else if (
         s !== null &&

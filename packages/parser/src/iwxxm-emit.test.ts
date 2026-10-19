@@ -13,6 +13,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { MetarReport, TafReport } from "@metweave/core";
+import { MetarParseError } from "@metweave/core";
 import { parse, parseTaf } from "./index";
 import { parseIwxxm, serializeIwxxm, type IwxxmReport } from "./iwxxm";
 
@@ -1049,5 +1050,149 @@ describe("扇区形 variableWindDirection 反推（0.3.1：§十一.11——emit
     expect(serializeIwxxm(vrb, cal)).toContain('variableWindDirection="true"');
     const plain = parse("METAR ZBTJ 080600Z 26006KT 8000 BKN012 12/08 Q1010");
     expect(serializeIwxxm(plain, cal)).toContain('variableWindDirection="false"');
+  });
+});
+
+// ————————————————————————————————————————————————————————————————
+// 红队对抗审查修复回归（2026-10-19）：P0-4 / P0-2 闸门 / P1-6 / P2-10 / P2-12
+// 复现输入取自红队实弹（/tmp/redteam-sem），断言修复后契约行为。
+// ————————————————————————————————————————————————————————————————
+/** 红 P0-4/P2-12 回归用：抽取 XML 全部绝对时刻端点（begin/endPosition 与 timePosition）。 */
+const allPositions = (xml: string): string[] =>
+  [
+    ...xml.matchAll(/<gml:(?:begin|end)Position[^>]*>([^<]+)</g),
+    ...xml.matchAll(/<gml:timePosition>([^<]+)</g),
+  ].map((m) => m[1] ?? "");
+
+describe("红队对抗审查修复回归（2026-10-19，emit 侧）", () => {
+  const CAL8 = { calendar: { year: 2026, month: 8 } };
+
+  it("P0-4 短窗借日位（实弹 TEMPO 0102 @ 8/31 有效期）：起日所在月直投影，不落「次月同日」10 月", () => {
+    const xml = serializeIwxxm(
+      parseTaf("TAF ZBAA 310900Z 3112/0106 32008MPS 9999 BKN030 TEMPO 0102 2000 -SN BKN010="),
+      CAL8,
+    );
+    expect(allPositions(xml)).toContain("2026-08-31T01:00:00Z");
+    expect(allPositions(xml)).toContain("2026-08-31T02:00:00Z");
+    expect(xml).not.toContain("2026-10-01");
+  });
+
+  it("P0-4 同月中段双向：短窗时对晚于起时照常直投影（TEMPO 1315 @ 3112/0106）", () => {
+    const xml = serializeIwxxm(
+      parseTaf("TAF ZBAA 310900Z 3112/0106 32008MPS 9999 BKN030 TEMPO 1315 3000 BR="),
+      CAL8,
+    );
+    expect(allPositions(xml)).toContain("2026-08-31T13:00:00Z");
+    expect(allPositions(xml)).toContain("2026-08-31T15:00:00Z");
+  });
+
+  it("P0-4 跨月长窗不回归：BECMG 0103/0105（8/31 有效期）仍落次月 9-1", () => {
+    const xml = serializeIwxxm(
+      parseTaf("TAF ZBAA 310900Z 3112/0106 32008MPS 9999 BKN030 BECMG 0103/0105 3000 BR OVC008="),
+      CAL8,
+    );
+    expect(allPositions(xml)).toContain("2026-09-01T03:00:00Z");
+    expect(allPositions(xml)).toContain("2026-09-01T05:00:00Z");
+  });
+
+  it("P0-4 TX 达时刻同判式（实弹 TX12/3106Z @ 8/31）：落 8-31T06:00 不溢出 10 月；跨年 TN 日 01 落次年 1 月", () => {
+    const xml = serializeIwxxm(
+      parseTaf("TAF ZBAA 310900Z 3112/0106 32008MPS 9999 BKN030 TN03/0112Z TX12/3106Z="),
+      CAL8,
+    );
+    expect(allPositions(xml)).toContain("2026-08-31T06:00:00Z");
+    expect(allPositions(xml)).toContain("2026-09-01T12:00:00Z");
+    expect(xml).not.toContain("2026-10-01");
+    const xmlDec = serializeIwxxm(
+      parseTaf("TAF ZBAA 311100Z 3112/0106 32008MPS 9999 BKN030 TNM02/0104Z TX05/3123Z="),
+      { calendar: { year: 2025, month: 12 } },
+    );
+    expect(allPositions(xmlDec)).toContain("2025-12-31T23:00:00Z");
+    expect(allPositions(xmlDec)).toContain("2026-01-01T04:00:00Z");
+  });
+
+  it("P0-2 emit 越界最后闸门：手拼矛盾 IR（达时刻 day 99）不投影 + lossy 出声 + 组整体不落", () => {
+    const r = JSON.parse(
+      JSON.stringify(
+        parseTaf("TAF ZBAA 191000Z 1912/2018 32008MPS 9999 BKN030 TX12/2007Z TN03/2015Z="),
+      ),
+    ) as { -readonly [K in keyof TafReport]: TafReport[K] };
+    r.temperatures = [
+      { extremum: "max", celsius: 12, at: { day: 99, hour: 7 }, raw: "TX12/9907Z" },
+      { extremum: "min", celsius: 3, at: { day: 20, hour: 15 }, raw: "TN03/2015Z" },
+    ];
+    const warns: string[] = [];
+    const xml = serializeIwxxm(r, {
+      calendar: { year: 2026, month: 10 },
+      onWarning: (w) => warns.push(w.message),
+    });
+    expect(xml).not.toContain("iwxxm:temperature");
+    expect(warns.some((m) => m.includes("达时刻数值越界"))).toBe(true);
+  });
+
+  it("P0-2/P1-6 有效期闸门：手拼负有效期不放大（validPeriod 整体不落 + lossy）", () => {
+    const r = JSON.parse(
+      JSON.stringify(parseTaf("TAF ZBAA 190900Z 1912/2018 32008MPS 9999 BKN030=")),
+    ) as { -readonly [K in keyof TafReport]: TafReport[K] };
+    r.validity = { startDay: 19, startHour: 14, endDay: 19, endHour: 12, raw: "1914/1912" };
+    const warns: string[] = [];
+    const xml = serializeIwxxm(r, {
+      calendar: { year: 2026, month: 10 },
+      onWarning: (w) => warns.push(w.message),
+    });
+    expect(xml).not.toContain("iwxxm:validPeriod");
+    expect(xml).not.toContain("2026-11-19");
+    expect(warns.some((m) => m.includes("止早于起"))).toBe(true);
+  });
+
+  it("P2-12 METAR 趋势越界时段词闸门：AT9999 与 9999/9999 → nil 形落位 + lossy，无荒谬绝对时刻", () => {
+    const at = parse("METAR ZBAA 191000Z 32005MPS 9999 12/05 Q1013 TEMPO AT9999 3000 BR");
+    const warnsAt: string[] = [];
+    const xmlAt = serializeIwxxm(at, {
+      calendar: { year: 2026, month: 10 },
+      onWarning: (w) => warnsAt.push(w.message),
+    });
+    expect(xmlAt).not.toContain("2026-10-23T04:39");
+    expect(xmlAt).toContain(
+      '<iwxxm:phenomenonTime nilReason="http://codes.wmo.int/common/nil/missing"/>',
+    );
+    expect(warnsAt.some((m) => m.includes("趋势时段词数值越界"))).toBe(true);
+    const win = parse("METAR ZBAA 191000Z 32005MPS 9999 12/05 Q1013 TEMPO 9999/9999 3000 BR");
+    const warnsWin: string[] = [];
+    const xmlWin = serializeIwxxm(win, {
+      calendar: { year: 2026, month: 10 },
+      onWarning: (w) => warnsWin.push(w.message),
+    });
+    expect(xmlWin).not.toContain("2027-01");
+    expect(warnsWin.some((m) => m.includes("趋势时窗数值越界"))).toBe(true);
+  });
+
+  it("P2-12 边界不回归：合法趋势时段词（AT1500/TL2300）照常投影零告警", () => {
+    const r = parse("METAR ZBAA 191000Z 32005MPS 9999 12/05 Q1013 BECMG AT1500 9999 NSW");
+    const warns: string[] = [];
+    const xml = serializeIwxxm(r, {
+      calendar: { year: 2026, month: 10 },
+      onWarning: (w) => warns.push(w.message),
+    });
+    expect(allPositions(xml)).toContain("2026-10-19T15:00:00Z");
+    expect(warns.some((m) => m.includes("越界"))).toBe(false);
+  });
+
+  it("P2-10 onWarning 非函数（实弹 {onWarning:'x'}）→ MetarParseError invalid-input 参数契约出声", () => {
+    const r = parse("METAR ZBAA 191000Z 32005MPS 9999 12/05 Q1013");
+    expect(() =>
+      serializeIwxxm(r, {
+        calendar: { year: 2026, month: 10 },
+        onWarning: "x" as unknown as (w: { readonly code: string }) => void,
+      }),
+    ).toThrow(MetarParseError);
+    try {
+      serializeIwxxm(r, {
+        calendar: { year: 2026, month: 10 },
+        onWarning: "x" as unknown as (w: { readonly code: string }) => void,
+      });
+    } catch (err) {
+      expect((err as MetarParseError).code).toBe("invalid-input");
+    }
   });
 });

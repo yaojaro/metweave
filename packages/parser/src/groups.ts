@@ -133,9 +133,10 @@ const ALT_INHG_MIN = 23.5;
 const ALT_INHG_MAX = 32.5;
 /** 温度物理可信范围：世界极值 +56.7°C（Death Valley 1913）/ −89.2°C（Vostok 1983），
  *  取 60/−90 留裕量（与 QNH 世界极值门同款纪律）——两位数模板空间内的物理不可能值
- *  （89/85 构造实弹）不可信判缺测，绝不静默留假值。 */
-const TEMP_C_MIN = -90;
-const TEMP_C_MAX = 60;
+ *  （89/85 构造实弹）不可信判缺测，绝不静默留假值。
+ *  0.3.1 起导出：TAF 气温组（TX/TN，./taf）与 IWXXM 气温预告（./iwxxm 同值常量）共用一份判据防漂移。 */
+export const TEMP_C_MIN = -90;
+export const TEMP_C_MAX = 60;
 /** LTG 尾随词表（FMH-1 雷电视词与方位）：放电类型 IC/CG/CC/CA、位置 OHD/ALQDS/DSNT/VCNTY 与 16 方位点。
  *  实弹（tgftp 全 cycle）LTG 后的方位词此前逐个散落成 unknown remarks（ALQDS/OHD/方位词一片）。 */
 const LTG_TAIL_VOCAB = new Set([
@@ -826,6 +827,47 @@ function beyondRangeOf(flag: string | undefined): "above" | "below" | undefined 
   if (flag === "P") return "above";
   if (flag === "M") return "below";
   return undefined;
+}
+
+/**
+ * RVR 值域门与形态可疑发现（红队 P2-11）。值域判据（与 QNH/温度世界极值门同款纪律）：
+ * RVR 物理可信上限——米制 5000 m、英尺制 6000 ft（美式顶格 P6000FT）——真实业务 RVR 不超
+ * 2–3 km（ICAO Annex 3 步进表顶格 1500 m，超限以 P 前缀编「大于」语义），4 位电码空间的
+ * 上限位 9999 在 RVR 无上限电码语义（与能见度 9999≥10km 不同构），R07/9999 构造实弹即不可信
+ * 值：drop=true 交调用方判缺测不收（绝不把假值留 IR；阈值前缀 P2000 解码 2000 在限内照常收；
+ * 上限取值兼顾仓内既有合法输入行为——R25/3000、1800V2200 等契约钉子/官方样例不受影响）。
+ * 形态发现：V 形两端阈值前缀并存（P…M… / M…P… 等）——IR beyondRange 单值位只承载 min 端，
+ * max 端前缀不可表达，出声留痕（不改 IR 形态，原码经 span/raw 回溯）。
+ */
+export function rvrGateOf(
+  t: Token,
+  item: RunwayVisualRange,
+): { drop: boolean; findings: readonly { message: string; span: Span }[] } {
+  const findings: { message: string; span: Span }[] = [];
+  const limit = item.unit === "ft" ? 6000 : 5000;
+  const lo = item.value ?? item.min;
+  let drop = false;
+  if (lo !== undefined && lo > limit) {
+    drop = true;
+    findings.push({
+      message: `RVR 值超出可信范围（${t.text}，${lo} ${item.unit} 超编报上限 ${limit} ${item.unit}——超限以 P 前缀编报）——该组不可信不收，原码经 span 回溯`,
+      span: spanOf(t),
+    });
+  }
+  if (item.max !== undefined && item.max > limit) {
+    drop = true;
+    findings.push({
+      message: `RVR 值超出可信范围（${t.text}，V 形 max ${item.max} ${item.unit} 超编报上限 ${limit} ${item.unit}）——该组不可信不收，原码经 span 回溯`,
+      span: spanOf(t),
+    });
+  }
+  if (/^R\S*\/[PM]\d{4}V[PM]\d{4}/.test(t.text)) {
+    findings.push({
+      message: `RVR V 形两端阈值前缀并存（${t.text}）——IR beyondRange 单值位只承载 min 端，max 端前缀不可表达（原码经 span/raw 回溯）`,
+      span: spanOf(t),
+    });
+  }
+  return { drop, findings };
 }
 
 /** RVR 组：R07R/1800V2200FT / R36/0500V0800D / P·M 超界 / 斜杠趋势（R13/3500FT/N、R07/P6000FT/U）。

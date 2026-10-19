@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MetarParseError } from "@metweave/core";
-import { parse } from "./index";
+import { parse, serializeIwxxm } from "./index";
 import { expandTaf, tafSegments } from "./expand";
 import { parseTaf, tafDurationHours, tryParseTaf } from "./taf";
 import tafFixtures from "./__fixtures__/taf.json";
@@ -747,5 +747,129 @@ describe("TAF 分段视图 tafSegments（渲染层分段数据面：按拆分时
     expect(() =>
       expandTaf(parseTaf("TAF ZSAM NIL="), { day: 1, hour: 0, minute: 0 }, { daysIn: 31 }),
     ).toThrow(MetarParseError);
+  });
+});
+
+// ————————————————————————————————————————————————————————————————
+// 红队对抗审查修复回归（2026-10-19）：P0-1/P0-2/P0-3/P1-6 解析侧四项
+// 复现输入取自红队实弹（/tmp/redteam-sem），断言修复后契约行为。
+// ————————————————————————————————————————————————————————————————
+describe("红队对抗审查修复回归（2026-10-19，解析侧）", () => {
+  it("P0-1 变化组窗数值越界（9999/9999）→ throw invalid-validity，假窗绝不进 IR（与有效期组同门）", () => {
+    expectThrows(
+      "TAF ZBAA 191000Z 1912/2018 32008MPS 9999 BKN030 TEMPO 9999/9999 2000 -SN=",
+      "invalid-validity",
+    );
+    // 逐位越界各一：起日 00、止日 99、起时 24、止时 25
+    expectThrows("TAF ZBAA 191000Z 1912/2018 TEMPO 0012/2018 2000=", "invalid-validity");
+    expectThrows("TAF ZBAA 191000Z 1912/2018 TEMPO 1912/9918 2000=", "invalid-validity");
+    expectThrows("TAF ZBAA 191000Z 1912/2018 TEMPO 1924/2018 2000=", "invalid-validity");
+    expectThrows("TAF ZBAA 191000Z 1912/2018 TEMPO 1912/1925 2000=", "invalid-validity");
+    // PROB 组同路径同门
+    expectThrows("TAF ZBAA 191000Z 1912/2018 PROB30 9999/9999 2000=", "invalid-validity");
+  });
+
+  it("P0-1 边界不回归：止时 24（午夜特例）与跨月窗照常收", () => {
+    const r = parseTaf("TAF ZBAA 191000Z 1912/2018 TEMPO 1923/2000 2000=");
+    expect(r.changes[0]?.window).toMatchObject({
+      startDay: 19,
+      startHour: 23,
+      endDay: 20,
+      endHour: 0,
+    });
+    const midnight = parseTaf("TAF ZBAA 191000Z 1912/2018 TEMPO 1912/1924 2000=");
+    expect(midnight.changes[0]?.window?.endHour).toBe(24);
+    expect(midnight.warnings.some((w) => w.code === "cross-check-conflict")).toBe(false);
+  });
+
+  it("P0-2 TX/TN 数值越界（TXM99/9907Z TNM99/9999Z 实弹）→ 整组不收 + value-out-of-range（不投影假值）", () => {
+    const r = parseTaf("TAF ZBAA 191000Z 1912/2018 32008MPS 9999 BKN030 TXM99/9907Z TNM99/9999Z=");
+    expect(r.temperatures).toEqual([]);
+    expect(r.warnings.filter((w) => w.code === "value-out-of-range")).toHaveLength(2);
+    // emit 放大通道被根治：serializeIwxxm 不再产出荒谬绝对时刻
+    const warns: string[] = [];
+    const xml = serializeIwxxm(r, {
+      calendar: { year: 2026, month: 10 },
+      onWarning: (w) => warns.push(w.code),
+    });
+    expect(xml).not.toContain("2027-01");
+    expect(warns.some((c) => c === "lossy-conversion")).toBe(false);
+  });
+
+  it("P0-2 边界不回归：世界极值内（TX60/TNM90）照收；越界侧（TXM91/日位 99）不收", () => {
+    const ok = parseTaf("TAF ZBAA 191000Z 1912/2018 TX60/2007Z TNM90/2015Z=");
+    expect(ok.temperatures).toHaveLength(2);
+    expect(ok.temperatures[0]?.celsius).toBe(60);
+    expect(ok.temperatures[1]?.celsius).toBe(-90);
+    expect(ok.warnings.some((w) => w.code === "value-out-of-range")).toBe(false);
+    const badTemp = parseTaf("TAF ZBAA 191000Z 1912/2018 TXM91/2007Z=");
+    expect(badTemp.temperatures).toEqual([]);
+    const badDay = parseTaf("TAF ZBAA 191000Z 1912/2018 TX12/9907Z=");
+    expect(badDay.temperatures).toEqual([]);
+    const badHour = parseTaf("TAF ZBAA 191000Z 1912/2018 TX12/2024Z=");
+    expect(badHour.temperatures).toEqual([]);
+  });
+
+  it("P0-3 六位 FM（KJFK 实弹）：基况段不被其后要素 last-wins 覆盖，两处 FM 均出声注明 WMO 形态", () => {
+    const r = parseTaf(
+      "TAF KJFK 051120Z 0512/0618 09008KT P6SM FEW060 FM060300 14006KT P6SM SKC FM061400 30012KT 3SM -SN OVC015",
+    );
+    expect(r.changes).toEqual([]);
+    // 基况段保真：首组风 8kt / P6SM / FEW060 全在（此前被末 FM 组要素覆盖成 12kt/OVC015）
+    expect(r.wind?.kind === "value" ? r.wind.value.speed.value : undefined).toBe(8);
+    expect(r.visibility?.kind === "value" ? r.visibility.value.beyond : undefined).toBe("above");
+    expect(r.clouds?.elements[0]?.kind === "layer" ? r.clouds.elements[0].amount : undefined).toBe(
+      "FEW",
+    );
+    const fmWarns = r.warnings.filter(
+      (w) => w.code === "unknown-token" && w.message.includes("六位 FM 形态本库未支持"),
+    );
+    expect(fmWarns).toHaveLength(2);
+    // FM 后要素逐 token 出声（不以 last-wins 静默覆盖基况段）
+    expect(r.warnings.filter((w) => w.code === "unknown-token").length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("P0-3 六位 FM 不并入 TEMPO 组（红队恶性形态）：组界收口，其后要素不入组不覆盖基况", () => {
+    const r = parseTaf(
+      "TAF ZBAA 191000Z 1912/2018 32008MPS 9999 BKN030 TEMPO 0102 2000 -SN BKN010 FM011500 34010MPS CAVOK",
+    );
+    expect(r.changes).toHaveLength(1);
+    expect(r.changes[0]?.kind).toBe("TEMPO");
+    expect(r.changes[0]?.elements?.wind).toBeUndefined();
+    expect(r.changes[0]?.elements?.cavok).toBeUndefined();
+    expect(r.changes[0]?.elements?.visibility?.value).toBe(2000);
+    expect(r.clouds?.elements[0]?.kind === "layer" ? r.clouds.elements[0].amount : undefined).toBe(
+      "BKN",
+    );
+    expect(r.warnings.some((w) => w.message.includes("六位 FM 形态本库未支持"))).toBe(true);
+  });
+
+  it("P0-3 边界不回归：四位 FM（FM1900）照常认组", () => {
+    const r = parseTaf("TAF KJFK 051120Z 0512/0618 09008KT P6SM FEW060 FM1900 14006KT P6SM SKC=");
+    expect(r.changes).toHaveLength(1);
+    expect(r.changes[0]?.kind).toBe("FM");
+    expect(r.changes[0]?.at?.hour).toBe(19);
+    expect(r.warnings.some((w) => w.message.includes("六位 FM"))).toBe(false);
+  });
+
+  it("P1-6 变化组负窗（1914/1912 实弹）→ cross-check-conflict 出声，IR 如实保留", () => {
+    const r = parseTaf("TAF ZBAA 190900Z 1912/2018 32008MPS 9999 BKN030 TEMPO 1914/1912 2000 -SN=");
+    expect(r.changes[0]?.window).toMatchObject({
+      startDay: 19,
+      startHour: 14,
+      endDay: 19,
+      endHour: 12,
+    });
+    expect(
+      r.warnings.some((w) => w.code === "cross-check-conflict" && w.message.includes("止早于起")),
+    ).toBe(true);
+    // emit 侧同判式不放大：end 不被抬到次月成 31 天窗
+    const warns: string[] = [];
+    const xml = serializeIwxxm(r, {
+      calendar: { year: 2026, month: 10 },
+      onWarning: (w) => warns.push(w.code + ":" + w.message),
+    });
+    expect(xml).not.toContain("2026-11-19");
+    expect(warns.some((m) => m.includes("止早于起"))).toBe(true);
   });
 });

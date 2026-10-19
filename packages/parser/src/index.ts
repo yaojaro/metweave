@@ -124,6 +124,7 @@ import {
   applyAltimeterReading,
   parseQnhToken,
   parseAltimeterAToken,
+  rvrGateOf,
   validateWindGroup,
   applyVisibilityToken,
   applyTempDewToken,
@@ -298,8 +299,21 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
     i += 1;
   }
 
-  // —— NIL：台站无观测（FM15 代码形注 2 的 NIL 码词；§15.4 是 AUTO 条款）——最小形态：站名/时组凭据保留，正文组不解析（本就无正文），零告警
+  // —— NIL：台站无观测（FM15 代码形注 2 的 NIL 码词；§15.4 是 AUTO 条款）——最小形态：站名/时组凭据保留，正文组不解析（本就无正文），零告警。
+  // NIL 后残余 token 逐个出声（红队 P1-5：此前 `NIL 3000 BR OVC008 RMK AO2` 的尾部整段静默蒸发）——
+  // 与 TAF 侧 collectTailAsUnknown（taf.ts）同一不静默纪律：NIL 后零期待，多余组保留原文出声
   if (peek()?.text === "NIL") {
+    i += 1;
+    for (let k = i; k < tokens.length; k++) {
+      const tailTok = tokens[k];
+      if (tailTok === undefined) break;
+      warnings.push({
+        code: "unknown-token",
+        severity: "info",
+        message: `NIL 报正文组位出现多余组（${tailTok.text}）——NIL 台站无观测，其后零期待，保留原文出声`,
+        span: spanOf(tailTok),
+      });
+    }
     return compactIfEnabled({
       kind,
       raw,
@@ -324,6 +338,11 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
   let directionalAsPrimary = false;
   let rvr: Observed<readonly RunwayVisualRange[]> | undefined;
   const rvrList: RunwayVisualRange[] = [];
+  // 增量构建持有槽（红队 P2-9）：value 直接引用 rvrList 的 Observed 单例——span 可变窄化仅限
+  // 本地构建期（出口前 span 即终态；类型面 readonly 契约对消费方不受影响）
+  let rvrValueObs:
+    | (Observed<readonly RunwayVisualRange[]> & { value: RunwayVisualRange[]; span: Span })
+    | undefined;
   // 多组 RVR 的组级 span 首组至末组（与天气组同口径——单组 span 在各自元素上）
   let rvrSpan: Span | undefined;
   let weather: Observed<readonly WeatherGroup[]> | undefined;
@@ -569,6 +588,21 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
     if ((mask & M_R) !== 0 && text.startsWith("R") && text.includes("/")) {
       const rvrParsed = parseRvrToken(t);
       if (rvrParsed !== null) {
+        // 值域门与形态发现（红队 P2-11）：越界值不可信不收（绝不把假值留 IR——QNH/温度同款
+        // 纪律）；V 形双前缀等形态疑点出声留痕、组照常收
+        const gate = rvrGateOf(t, rvrParsed);
+        for (const finding of gate.findings) {
+          warnings.push({
+            code: gate.drop ? "value-out-of-range" : "invalid-format",
+            severity: gate.drop ? "warning" : "info",
+            message: finding.message,
+            span: finding.span,
+          });
+        }
+        if (gate.drop) {
+          i += 1;
+          continue;
+        }
         // 反向次序对称口径：RVRNO 在前、值组在后同样出声（方案一：可解读为传感器恢复，
         // 值组按明细保留——与正序矛盾并存同一文案口径，见 RVRNO 位注释）
         if (rvr?.kind === "missing") {
@@ -577,7 +611,15 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
         rvrList.push(rvrParsed);
         const s = spanOf(t);
         rvrSpan = rvrSpan === undefined ? s : { start: rvrSpan.start, end: s.end };
-        rvr = { kind: "value", value: [...rvrList], span: rvrSpan };
+        // 增量构建（红队 P2-9）：value 直接引用 rvrList（同一数组随 push 增长）、span 原地换新——
+        // 此前每组全量拷贝 [...rvrList]（O(n²)，10 万组实测 2.6s）。Observed 对象被中断
+        //（applyRvrSlashToken/RVRNO 置 missing）后再遇值组时重建一次，仍零拷贝
+        if (rvrValueObs === undefined || rvr !== rvrValueObs) {
+          rvrValueObs = { kind: "value", value: rvrList, span: rvrSpan };
+        } else {
+          rvrValueObs.span = rvrSpan;
+        }
+        rvr = rvrValueObs;
         i += 1;
         continue;
       }

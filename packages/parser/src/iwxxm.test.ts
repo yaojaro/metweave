@@ -1045,3 +1045,87 @@ describe("VRB 与静风（难点 5 解析侧：与 TAC 同构落位）", () => {
     expect(r.wind.value.speed.value).toBe(0);
   });
 });
+
+// ————————————————————————————————————————————————————————————————
+// 红队对抗审查修复回归（2026-10-19）：P1-7 / P1-8
+// 复现输入取自红队实弹（/tmp/redteam-sem），断言修复后契约行为。
+// ————————————————————————————————————————————————————————————————
+describe("红队对抗审查修复回归（2026-10-19，XML 侧）", () => {
+  it("P1-7 非法日期静默滚动（实弹 2026-02-30）→ throw invalid-time（与 TAC 侧时组越界同构）", () => {
+    expect(() =>
+      parseMetar(observation("").replace("2026-10-05T00:00:00Z", "2026-02-30T10:00:00Z")),
+    ).toThrow(MetarParseError);
+    try {
+      parseMetar(observation("").replace("2026-10-05T00:00:00Z", "2026-02-30T10:00:00Z"));
+    } catch (err) {
+      expect((err as MetarParseError).code).toBe("invalid-time");
+    }
+    // 平年 2 月 29 与 13 月同门
+    expect(() =>
+      parseMetar(observation("").replace("2026-10-05T00:00:00Z", "2027-02-29T10:00:00Z")),
+    ).toThrow(MetarParseError);
+    expect(() =>
+      parseMetar(observation("").replace("2026-10-05T00:00:00Z", "2026-13-01T10:00:00Z")),
+    ).toThrow(MetarParseError);
+  });
+
+  it("P1-7 边界不回归：闰年 2/29 与带时差跨日（合法墙钟）照常收、零告警", () => {
+    const leap = parseMetar(
+      observation("").replace("2026-10-05T00:00:00Z", "2028-02-29T10:00:00Z"),
+    );
+    expect(leap.time).toEqual({ day: 29, hour: 10, minute: 0 });
+    const offset = parseMetar(
+      observation("").replace("2026-10-05T00:00:00Z", "2026-10-06T07:30:00+08:00"),
+    );
+    expect(offset.time).toEqual({ day: 5, hour: 23, minute: 30 });
+    // 秒与小数位
+    const frac = parseMetar(
+      observation("").replace("2026-10-05T00:00:00Z", "2026-10-05T00:00:40.123Z"),
+    );
+    expect(frac.time).toEqual({ day: 5, hour: 0, minute: 0 });
+  });
+
+  it("P1-8 XML 趋势 CAVOK 矛盾（实弹形态）：cloudAndVisibilityOK=true 与 prevailingVisibility 并存 → cross-check-conflict warning（对齐 TAC 侧）", () => {
+    const xml = observation(
+      '<iwxxm:surfaceWind><iwxxm:AerodromeSurfaceWind><iwxxm:meanWindSpeed uom="[kn_i]">8</iwxxm:meanWindSpeed></iwxxm:AerodromeSurfaceWind></iwxxm:surfaceWind>',
+    ).replace(
+      /<\/iwxxm:METAR>/,
+      `  <iwxxm:trendForecast>
+            <iwxxm:MeteorologicalAerodromeTrendForecast changeIndicator="TEMPORARY_FLUCTUATIONS" cloudAndVisibilityOK="true">
+              <iwxxm:prevailingVisibility uom="m">2000</iwxxm:prevailingVisibility>
+            </iwxxm:MeteorologicalAerodromeTrendForecast>
+          </iwxxm:trendForecast>
+        </iwxxm:METAR>`,
+    );
+    const r = parseMetar(xml);
+    const trend = r.trends[0];
+    if (trend === undefined || trend.kind === "nosig") throw new Error("趋势段缺席");
+    expect(trend.elements?.cavok).toBeDefined();
+    expect(trend.elements?.visibility?.value).toBe(2000);
+    expect(
+      r.warnings.some(
+        (w) =>
+          w.code === "cross-check-conflict" &&
+          w.severity === "warning" &&
+          w.message.includes("cloudAndVisibilityOK=true"),
+      ),
+    ).toBe(true);
+  });
+
+  it("P1-8 边界不回归：纯 CAVOK 趋势（无并存组）零告警", () => {
+    const r = parseMetar(
+      observation(
+        '<iwxxm:surfaceWind><iwxxm:AerodromeSurfaceWind><iwxxm:meanWindSpeed uom="[kn_i]">8</iwxxm:meanWindSpeed></iwxxm:AerodromeSurfaceWind></iwxxm:surfaceWind>',
+      ).replace(
+        /<\/iwxxm:METAR>/,
+        `  <iwxxm:trendForecast>
+            <iwxxm:MeteorologicalAerodromeTrendForecast changeIndicator="BECOMING" cloudAndVisibilityOK="true">
+              <iwxxm:timeIndicator>AT</iwxxm:timeIndicator>
+            </iwxxm:MeteorologicalAerodromeTrendForecast>
+          </iwxxm:trendForecast>
+        </iwxxm:METAR>`,
+      ),
+    );
+    expect(r.warnings.some((w) => w.code === "cross-check-conflict")).toBe(false);
+  });
+});
