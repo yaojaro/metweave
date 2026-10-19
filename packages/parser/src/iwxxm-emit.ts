@@ -210,27 +210,57 @@ function isoTextOf(ms: number): string {
 }
 
 /**
- * 跨日回绕投影（趋势 AT/TL/FM 专用）：日位锚发报日，时刻早于发报时刻按次日回绕——以绝对时刻
- * 比较承担月末/年末回绕（v0.3.1 修正：旧「(day%31)+1」日位算法在 31 日发报、次日电码为 01 时
- * 误落同月 1 日（差 30 天，跨年除夕 TL0010 实弹捕获）；Date.UTC 归一化统一出口后此类形态
- * 自然落次月/次年）。
+ * 跨日回绕投影（HHMM 电码专用——无日位的时刻词：METAR 趋势 AT/TL/FM、TAF 变化组 FM 硬时刻）：
+ * 日位借锚所在日（发报日/有效期起日），投影早于锚即按次日回绕——以绝对时刻比较承担月末/年末
+ * 回绕（v0.3.1 修正：旧「(day%31)+1」日位算法在 31 日发报、次日电码为 01 时误落同月 1 日
+ * （差 30 天，跨年除夕 TL0010 实弹捕获）；Date.UTC 归一化统一出口后此类形态自然落次月/次年）。
  */
+function instantOnOrAfter(
+  cal: { readonly year: number; readonly month: number },
+  anchorMs: number,
+  baseDay: number,
+  hour: number,
+  minute: number,
+): string {
+  let ms = momentOf(cal, baseDay, hour, minute);
+  if (ms < anchorMs) ms += 86_400_000;
+  return isoTextOf(ms);
+}
+
+/** 观测侧便捷形：锚＝发报时刻、日位借发报日（trendInstantOf 调用点的固定搭配）。 */
 function trendInstantOf(
   cal: { readonly year: number; readonly month: number },
   issueTime: { readonly day: number; readonly hour: number; readonly minute: number },
   hour: number,
   minute: number,
 ): string {
-  const issueMs = momentOf(cal, issueTime.day, issueTime.hour, issueTime.minute);
-  let ms = momentOf(cal, issueTime.day, hour, minute);
-  if (ms < issueMs) ms += 86_400_000;
-  return isoTextOf(ms);
+  return instantOnOrAfter(
+    cal,
+    momentOf(cal, issueTime.day, issueTime.hour, issueTime.minute),
+    issueTime.day,
+    hour,
+    minute,
+  );
 }
 
 /**
- * 跨月/跨年回绕投影（窗口止点专用）：止点逐位投影早于起点即落入次月（月界/年界通用——
- * TAC ddHH 电码无月位，跨月窗的止日「01」意为次月 1 日；Date.UTC 月份进位自然跨年）。
+ * 跨月/跨年回绕投影（DDHH 电码专用）：日位直投影早于锚即落入次月（月界/年界通用——TAC ddHH
+ * 电码无月位，跨月窗的日「01」意为次月 1 日；Date.UTC 月份进位自然跨年）。与 instantOnOrAfter
+ * 的判式分工：带日位的电码按「同日数次月」回绕，无日位的时刻词按「次日」回绕。
  */
+function momentOnOrAfter(
+  cal: { readonly year: number; readonly month: number },
+  anchorMs: number,
+  day: number,
+  hour: number,
+  minute = 0,
+): number {
+  let ms = momentOf(cal, day, hour, minute);
+  if (ms < anchorMs) ms = Date.UTC(cal.year, cal.month, day, hour, minute);
+  return ms;
+}
+
+/** momentOnOrAfter 的文本出口（窗口止点/起点通用——锚取窗起点毫秒）。 */
 function isoAfterOf(
   cal: { readonly year: number; readonly month: number },
   beginMs: number,
@@ -238,9 +268,7 @@ function isoAfterOf(
   hour: number,
   minute = 0,
 ): string {
-  let ms = momentOf(cal, day, hour, minute);
-  if (ms < beginMs) ms = Date.UTC(cal.year, cal.month, day, hour, minute);
-  return isoTextOf(ms);
+  return isoTextOf(momentOnOrAfter(cal, beginMs, day, hour, minute));
 }
 
 // ---------------------------------------------------------------- XML 拼装小件
@@ -778,7 +806,14 @@ function emitTrendPhenomenonTime(
     emit.warn(
       `趋势 DDHH/DDHH 时窗（${period}）按 UNTIL 判读落位为 gml:TimePeriod——回读 TL+窗止（窗起不保真，IWXXM 趋势时窗只有 AT/UNTIL/FM）`,
     );
-    const beginMs = momentOf(cal, Number(windowMatch[1]), Number(windowMatch[2]));
+    // 窗起点以发报时刻为锚做跨月回绕（v0.3.1 收口：31 日发报、窗日「01」指次月——直投影会静默
+    // 落错月；止点 isoAfterOf 相对已回绕的窗起点，同一判式家族）
+    const beginMs = momentOnOrAfter(
+      cal,
+      momentOf(cal, issueTime.day, issueTime.hour, issueTime.minute),
+      Number(windowMatch[1]),
+      Number(windowMatch[2]),
+    );
     emitTimePeriod(
       emit,
       isoTextOf(beginMs),
@@ -1055,25 +1090,43 @@ function changeIndicatorOf(change: TafChangeGroup): string {
 
 /**
  * 变化组时窗 → phenomenonTime（XSD 明文：TAC FM/TL/AT 由它承载；TAF 预报体 phenomenonTime 恒
- * gml:TimePeriod）。FM：begin＝FM 时刻（日位取有效期起日直投影——TafChangeAt 无日位，锚定归展开层）、
- * end＝同时刻 indeterminate after；带窗：begin/end 直投影（止时 24 经 Date.UTC 归一为次日 00:00——
- * 两态等价口径与解析侧一致）。
+ * gml:TimePeriod）。FM：begin＝FM 时刻（TafChangeAt 无日位，日位借有效期起日、投影早于有效期
+ * 起点按次日回绕——HHMM 判式）、end＝同时刻 indeterminate after；带窗：DDHH 双端点以有效期
+ * 起点为锚做跨月回绕（日「01」早于起日即次月——31 日发报跨月变化组实弹捕获；止时 24 经
+ * Date.UTC 归一为次日 00:00——两态等价口径与解析侧一致）。
  */
 function emitTafPhenomenonTime(
   emit: Emit,
   cal: { readonly year: number; readonly month: number },
   change: TafChangeGroup,
   startDay: number,
+  startHour: number,
 ): void {
+  const validityBeginMs = momentOf(cal, startDay, startHour);
   emit.open("iwxxm:phenomenonTime", []);
   emit.open("gml:TimePeriod", [["gml:id", emit.nextId()]]);
   if (change.kind === "FM" && change.at !== undefined) {
-    const beginIso = isoOf(cal, startDay, change.at.hour, change.at.minute);
+    const beginIso = instantOnOrAfter(
+      cal,
+      validityBeginMs,
+      startDay,
+      change.at.hour,
+      change.at.minute,
+    );
     emit.text("gml:beginPosition", beginIso);
     emit.text("gml:endPosition", beginIso, [["indeterminatePosition", "after"]]);
   } else if (change.window !== undefined) {
-    emit.text("gml:beginPosition", isoOf(cal, change.window.startDay, change.window.startHour));
-    emit.text("gml:endPosition", isoOf(cal, change.window.endDay, change.window.endHour));
+    const beginMs = momentOnOrAfter(
+      cal,
+      validityBeginMs,
+      change.window.startDay,
+      change.window.startHour,
+    );
+    emit.text("gml:beginPosition", isoTextOf(beginMs));
+    emit.text(
+      "gml:endPosition",
+      isoAfterOf(cal, beginMs, change.window.endDay, change.window.endHour),
+    );
   } else {
     // FM 无时刻 / 变化组无窗（理论不可达——解析侧已保证 FM 必带 at）：起点按有效期起日 00:00 占位
     const beginIso = isoOf(cal, startDay, 0);
@@ -1262,6 +1315,7 @@ function emitTaf(
       cal,
       change,
       report.validity?.startDay ?? report.issueTime?.day ?? 1,
+      report.validity?.startHour ?? report.issueTime?.hour ?? 0,
     );
     emitTrendElements(emit, "iwxxm:AerodromeSurfaceWindForecast", change.elements, false);
     emit.close("iwxxm:MeteorologicalAerodromeForecast");

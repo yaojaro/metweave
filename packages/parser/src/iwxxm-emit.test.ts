@@ -847,6 +847,40 @@ describe("跨年除夕日历边界（难点 12 生成侧：年月注入的月末
     expect(generated).toMatch(/<gml:beginPosition>2026-12-31T21:00:00Z<\/gml:beginPosition>/);
     expect(generated).toMatch(/<gml:endPosition>2027-01-01T00:00:00Z<\/gml:endPosition>/);
   });
+  it("31 日发报 METAR 趋势窗跨月：BECMG 0103/0109 → 双端点落次月 1 日 03/09Z（窗起点以发报时刻为锚——直投影残留分支收口，不再静默落 12 月）", () => {
+    const ir = parse(
+      "METAR ZBTJ 312350Z 26006KT 8000 -RA BKN012 02/00 Q1012 BECMG 0103/0109 3000 BR BKN010",
+    );
+    const generated = serializeIwxxm(ir, { calendar: { year: 2026, month: 12 } });
+    expect(generated).toMatch(/<gml:beginPosition>2027-01-01T03:00:00Z<\/gml:beginPosition>/);
+    expect(generated).toMatch(/<gml:endPosition>2027-01-01T09:00:00Z<\/gml:endPosition>/);
+    expect(generated).not.toContain("2026-12-01");
+  });
+  it("跨月 TAF 变化组窗：3121/0121 有效期内 BECMG 0103/0109 → 变化组 phenomenonTime 落次月（有效期起点为锚的 DDHH 次月判式）", () => {
+    const ir = parseTaf(
+      "TAF ZBAA 312100Z 3121/0121 19008MPS 8000 BKN030 BECMG 0103/0109 3000 BR BKN010=",
+    );
+    const generated = serializeIwxxm(ir, { calendar: { year: 2026, month: 12 } });
+    expect(generated).toMatch(/<gml:beginPosition>2026-12-31T21:00:00Z<\/gml:beginPosition>/);
+    expect(generated).toMatch(/<gml:endPosition>2027-01-01T21:00:00Z<\/gml:endPosition>/);
+    expect(generated).toMatch(/<gml:beginPosition>2027-01-01T03:00:00Z<\/gml:beginPosition>/);
+    expect(generated).toMatch(/<gml:endPosition>2027-01-01T09:00:00Z<\/gml:endPosition>/);
+  });
+  it("跨月 TAF FM 硬时刻：FM0106 → 2027-01-01T01:06（HHMM 次日判式——时刻取有效期内首个出现，不再早于发报 21:00）", () => {
+    const ir = parseTaf("TAF ZBAA 312100Z 3121/0121 19008MPS 8000 BKN030 FM0106 3000 BR BKN010=");
+    const generated = serializeIwxxm(ir, { calendar: { year: 2026, month: 12 } });
+    expect(generated).toMatch(/<gml:beginPosition>2027-01-01T01:06:00Z<\/gml:beginPosition>/);
+    expect(generated).not.toContain("2026-12-31T01:06");
+  });
+  it("同月中段不误回绕：2806/2912 有效期内窗 2908/2909 与 FM1200 均落本日期（锚后投影的回归面）", () => {
+    const ir = parseTaf(
+      "TAF ZBAA 280600Z 2806/2912 19008MPS 8000 BKN030 BECMG 2908/2909 3000 BR BKN010 FM1200 3000 BR=",
+    );
+    const generated = serializeIwxxm(ir, { calendar: { year: 2026, month: 10 } });
+    expect(generated).toMatch(/<gml:beginPosition>2026-10-29T08:00:00Z<\/gml:beginPosition>/);
+    expect(generated).toMatch(/<gml:endPosition>2026-10-29T09:00:00Z<\/gml:endPosition>/);
+    expect(generated).toMatch(/<gml:beginPosition>2026-10-28T12:00:00Z<\/gml:beginPosition>/);
+  });
 });
 
 /** 逐算子验算：period 文本 → 生成件（timeIndicator + TimePeriod/TimeInstant 形态）。
