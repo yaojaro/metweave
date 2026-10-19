@@ -141,7 +141,6 @@ import {
   parseRemarkSegment,
 } from "./groups";
 import type { Token } from "./groups";
-export { TEMP_DEW_PATTERN } from "./groups";
 
 /**
  * Parse one METAR/SPECI report (tolerant mode) into the IR — the package's single entry.

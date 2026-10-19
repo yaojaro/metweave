@@ -3,7 +3,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { ParseOptions } from "@metweave/core";
 import { MetarParseError, toValues, unwrap } from "@metweave/core";
-import { parse, TEMP_DEW_PATTERN, tryParse } from "./index";
+import { parse, tryParse } from "./index";
+// TEMP_DEW_PATTERN 0.3.1 起退出公共导出面（index.ts 不再再导出）——测试改内部模块直引
+import { TEMP_DEW_PATTERN } from "./groups";
 import fixturesFile from "./__fixtures__/metar.json";
 
 interface Fixture {

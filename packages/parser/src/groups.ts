@@ -792,8 +792,8 @@ export function parseWindToken(t: Token, next: Token | undefined): WindParsed | 
  * （2026-09-14 复评收紧）；不匹配即落 unknown-token 出声，原码经 span 回溯。
  * The regex requires the `/` separator — a bare "//" is the weather missing group (see the body loop) and must not be swallowed here.
  * 正则必须有 `/` 分隔——裸 `//` 是天气缺测组（见正文循环），不得被本组吞掉。
- * Exported for direct shape assertions in regression tests (red line: "//" must not match; "1/2"/"2/1" must not match either).
- * 导出供回归测试直接对形态断言（红线：对 "//" 与裸分数均不得匹配）。
+ * Exported for direct shape assertions in the package's own regression tests — not on the public API surface (removed from index.ts re-exports in 0.3.1; internal module export only).
+ * 供本包回归测试直接对形态断言——不在公共 API 面（0.3.1 起退出 index.ts 再导出，仅内部模块导出）。
  */
 export const TEMP_DEW_PATTERN = /^(M?\d{2}|\/\/)\/(M?\d{2}|\/\/)$/;
 
