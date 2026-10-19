@@ -51,7 +51,7 @@ const xml2 = serializeIwxxm(report, {
 });
 ```
 
-`parseIwxxm` 的逆过程：接受任一侧 IR（`kind` 位判别 `MetarReport | TafReport`）写回 IWXXM XML 文本——METAR/SPECI 与 TAF 双侧，CNL（`isCancelReport` + `cancelledReportValidPeriod`）与 NIL（observation xsi:nil / 空载 baseForecast）都能往返。忠实原则：**IR 有什么出什么**——站点快照只落 ICAO 四字码的最小合法形（名称/坐标不在 IR，不捏造），`translationCentre` 等来源侧元数据不生成；`permissibleUsage` 是 XSD 必填属性的占位（缺省 OPERATIONAL，测试/演习报文显式传 NON-OPERATIONAL）。有损面如实记档（sm/inHg/RVR-ft 折算、CLR→NCD 收敛、RVR V 形态单值化、趋势 DDHH//DDHH 窗止不保真、TAF 温组单端不落等，全表见 notes §十.3）。验收：官方等价对 34+7 对与 AWC 41 站的 serialize→re-parse IR 全等往返 + 生成件 xmllint 过官方 XSD 全依赖树（2023-1 与 2025-2 双出口全绿）；Schematron 官方规则面需 Saxon（xslt2），核心规则子集固化为测试、全量校验留官方工具链。
+`parseIwxxm` 的逆过程：接受任一侧 IR（`kind` 位判别 `MetarReport | TafReport`）写回 IWXXM XML 文本——METAR/SPECI 与 TAF 双侧，CNL（`isCancelReport` + `cancelledReportValidPeriod`）与 NIL（observation xsi:nil / 空载 baseForecast）都能往返。忠实原则：**IR 有什么出什么**——站点快照只落 ICAO 四字码的最小合法形（名称/坐标不在 IR，不捏造），`translationCentre` 等来源侧元数据不生成；`permissibleUsage` 是 XSD 必填属性的占位（缺省 OPERATIONAL，测试/演习报文显式传 NON-OPERATIONAL）。有损面如实记档（sm/inHg/RVR-ft 折算、CLR→NCD 收敛、RVR V 形态单值化、趋势 DDHH//DDHH 窗止不保真、TAF 温组单端不落等，全表见 notes §十.3 与 §十一.2）。v0.3.1 起这些触发点逐处回调 `onWarning` 通道（`lossy-conversion` info 告警，可选参数，缺省不回调、产物文本不变——「告警不静默」的生成面落位）。验收：官方等价对 34+7 对与 AWC 41 站的 serialize→re-parse IR 全等往返 + 生成件 xmllint 过官方 XSD 全依赖树（2023-1 与 2025-2 双出口全绿）；Schematron 官方规则面需 Saxon（xslt2），核心规则子集固化为测试、全量校验留官方工具链。
 
 ## 许可
 

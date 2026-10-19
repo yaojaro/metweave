@@ -2,6 +2,24 @@
 
 本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，六个包锁步同版本发布。
 
+## [0.3.1] - 2026-10-19
+
+**IWXXM 转换规则补全**：转换语义难点 12 条存活项「测试位+文档位」双落位、生成面有损告警通道、官方 NIL 样本补扫入库、一处跨年回绕真 bug 修复。六包锁步 patch，公共 API 零破坏（仅新增可选参数与新增导出）。
+
+### 新增
+
+- **生成面有损告警通道**：`serializeIwxxm` 新增可选 `onWarning` 回调——单向有损面逐处回调 `lossy-conversion`(info) 告警（`@metweave/core` `WarningCode` 新增该枚举成员）：RMK 附加段不落、CLR 收敛 NCD、RVR V 形以 min 落位、逐道 SNOCLO 以全机场形态落位、美制单位固定系数折算、趋势 DDHH//DDHH 窗起不保真、趋势指示组丢失按 BECOMING、VV 高度缺测、TAF 气温单端/多组超承载面、TAF 基况段组省略（TAF.TAF-8 偏差）等。缺省不回调，产物文本与 0.3.0 逐字节一致。
+- **IWXXM 解析与生成规则面补测试**：CAVOK 反向等价双向判定（「vis≥10km+无天气+无低云」数值形态不构成 CAVOK——9999≠CAVOK 双锁）；天气压缩词拆解逐电码断言（SHRASN/-SHRASN/VCTS/VCSH/+TSRA，4678 URI 尾段复用 TAC 切解器 + 拆解结果重组原 token）；阈值开闭区间往返（9999→10000m+ABOVE、0000→50m+BELOW、P2000/M0050 RVR 算子——绝不把 ≥10km 生成成精确 10000m）；NIL 三来源选词对齐（整报 NIL/RVRNO/`//` 各回各位，权威对齐表入 `iwxxm.ts` 注释）；VRB/静风/变风扇区双向往返。
+- **官方 METAR NIL 样本入库**（`corpus/iwxxm/extras/metar-NIL-collect.{tac,xml}`，wmo-im/iwxxm 官方仓 2025-2 形态）：解析 → nil:true 零告警、TAC 官方原文同报对齐、2025-2 出口往返保真——METAR 侧 NIL 首份官方双通道实证（2023-1 等价对官方仍未发布，豁免记档）。
+
+### 修复
+
+- **IWXXM 趋势时窗跨年回绕（真 bug）**：趋势 AT/TL/FM 时刻的日位锚定旧实现 `(day%31)+1` 在 31 日发报、次日电码为 01 时误落同月 1 日（差 30 天）——改按 `Date.UTC` 绝对时刻比较回绕，月末/年末自然正确；TAF 有效期止点同步改 `isoAfterOf` 跨月投影（ddHH 无月位，止点早于起点即次月）。跨年除夕用例（12/31 2350 观测 + TL0010 → 次年 1/1 00:10）与止时 24 午夜特例（3121/3124 → 次年 1/1 00:00）断言锁入。
+
+### 工程
+
+- 全仓测试 1000 例（基线 919 → +81）；IWXXM 施工底档新增 §十一（十二条存活项对账总表、有损声明表、天气压缩词拆解表、趋势时窗算子表、官方样本补扫记录、站点元数据裁决）；遗留项 2（2.1 旧架构族）/4（跑道深度位 99）/8（2025-2 未覆盖面）三选一裁决写回（条件触发/豁免+样本出现即补）。
+
 ## [0.3.0] - 2026-10-08
 
 **三大主线：IWXXM 双向转换（解析 + 生成）、格点渲染新包 `@metweave/grid`、显示档位判据单源化 + `tierOf` 自定义通道。** 六包锁步发布：`@metweave/core` / `parser` / `grid` / `render` / `leaflet` / `metweave`。

@@ -1,6 +1,6 @@
 {
   "name": "metweave",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "METAR parsing, report cards and public-source fetchers in one entry — pair it with @metweave/leaflet (the map adapter) to put live airport weather on a map in ten lines.",
   "keywords": [
     "airport",
