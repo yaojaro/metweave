@@ -4,7 +4,7 @@
 
 ## [0.3.1] - 2026-10-19
 
-**IWXXM 转换规则补全**：转换语义难点 12 条存活项「测试位+文档位」双落位、生成面有损告警通道、官方 NIL 样本补扫入库、一处跨年回绕真 bug 修复。六包锁步 patch，公共 API 只增不改删（唯一例外：移除全仓无消费方的公共导出 `TEMP_DEW_PATTERN`——见「工程」节，v0.x 口径如实记档）。
+**IWXXM 转换规则补全**：转换语义难点 12 条存活项「测试位+文档位」双落位、生成面有损告警通道、官方 NIL 样本补扫入库、一处跨年回绕真 bug 修复。六包锁步 patch，公共 API 只增不改删（唯一例外：移除全仓无消费方的公共导出 `TEMP_DEW_PATTERN`——见「工程」节，v0.x 口径如实记档）。同日追加红队对抗审查实弹修复轮（四 P0 / 四 P1 / 顺手包四项，全部为「拒收/告警」向收口，既有合法输入行为零变化——见「修复」与「安全与发布卫生」节，逐项记档于 docs/iwxxm-notes.md §十二）。
 
 ### 新增
 
@@ -21,10 +21,26 @@
   - **有损告警清单逐行收口**：CAVOK=true 与能见度/RVR/天气/云并存的矛盾 IR 让位（三组不落 XML）、趋势/预报体最低能见度不落两形态原静默——各补一条 `lossy-conversion`(info) 告警（复用既有机读码，零新增），文件头「逐行回调」措辞至此成立。
   - **CAVOK 让位前提感知**：cavok=true 时能见度/RVR 两组实际不落 XML，美制单位告警却误称「已折算落位」——统计加让位前提跳过（QNH 不参与让位照常出声），矛盾 IR 手拼断言锁入。
   - **ECCC 扇区形 `variableWindDirection` 反推**：带变化扇区（TAC 080V140 族）的官方译文置 `true` 且保留均值方向（LTCN 判据），此前生成侧直投影 IR `variable` 位致往返后属性位 true→false 单向漂移——生成侧按扇区值在场反推 `true`（解析侧行为零改动，既有 LTCN 明锁测试原样通过），官方对往返保真断言锁入。
+- **红队对抗审查实弹修复轮（2026-10-19，owner 裁决「修」，逐项记档于 docs/iwxxm-notes.md §十二）**：
+  - **P0-1 TAF 变化组窗无数值域门**：`TEMPO 9999/9999` 的窗 {99,99,99,99} 此前静默留 IR 零告警、经序列化放大成跨月荒谬时刻——补数值域门与同文件有效期组同构（越界 throw invalid-validity，止时 24 午夜特例放行，PROB 组同路径同门）。
+  - **P0-2 TAF TX/TN 温组无数值域门 + emit 越界最后闸门**：`TXM99/9907Z TNM99/9999Z` 的 celsius=-99、day=99 此前静默留 IR 并放大成 2027-01 荒谬绝对时刻——解析侧补门（温度 −90–60 与 METAR/IWXXM 两侧同判据、日 01–31 / 时 00–23，越界整组不收 + value-out-of-range）；emit 侧新增 dayHourInGate 最后闸门（day 1–31 / hour 0–24）罩住 validPeriod / 变化组窗 / FM 硬时刻 / 气温达时刻 / 发报时刻——越界不投影、lossy 出声、跳过该绝对时刻，手拼矛盾 IR 一并兜住。
+  - **P0-3 六位 FMddhhmm 整组蒸发**：WMO FM 51 标准形态（`FM060300`，北美主供）此前与其后要素静默并入前序变化组/以 last-wins 覆盖基况段（SKC 与 OVC015 并存实弹）——本期口径＝明确拒收＋全程出声：六位 FM 设为组界，本体注明「WMO FM 51 六位 FM 形态本库未支持」，其后要素逐 token 出声、不入任何变化组、不覆盖基况段；四位 FM 照常认组。完整认组（at 增日/时/分）列 0.4 候选。
+  - **P0-4 短窗借日位 emit 双重回绕（第五处回绕）**：`3112/0106 + TEMPO 0102`（8/31 发报）被「同日次月」判式抬 9/31→溢出落 10/1（下下月），与 expandTaf 跨层矛盾——emit 侧新增 tafMomentOf（expandTaf 同判式：日位 < 有效期起日才落次月），短窗借日语义直投影；TX/TN 达时刻同判式（TX12/3106Z@8/31 不再溢出 10 月）。
+  - **P1-5 METAR NIL 尾部静默蒸发**：`… NIL 3000 BR OVC008 RMK AO2` 尾部整段消失——对齐 TAF 侧 collectTailAsUnknown 先例，NIL 后 token 逐个 unknown-token 出声（纯 NIL 保持零告警）。
+  - **P1-6 变化组负窗零告警且 emit 放大**：`TEMPO 1914/1912` 此前零告警、end 被抬次月成 31 天窗——解析侧补 cross-check-conflict(warning)（IR 如实保留）；emit 侧 end<begin 出声且不放大（变化组 phenomenonTime 落 nil 空载形，validPeriod 同判式整体不落，跨月窗不误伤）。
+  - **P1-7 IWXXM 非法日期静默滚动**：`timePosition=2026-02-30T10:00:00Z` 此前归一落 3/2 零告警（与 TAC 侧 991000Z throw invalid-time 不同构）——timePosition 单一出口补往返自检（字面分量重算墙钟回比，带时差跨日合法形态不误伤），漂移即 throw invalid-time；2/30、13 月、平年 2/29 全拦，闰年 2/29 照常收。
+  - **P1-8 XML 侧 CAVOK 矛盾 severity 对齐**：趋势/变化组位 cloudAndVisibilityOK=true 与能见度/天气/云并存此前只落 unknown-token(info) 或零告警——trendElementsOf 补 cross-check-conflict(warning)（与 TAC 观测侧同判据），IR 如实并存零改动。
+  - **P2/P3 顺手包**：RVR 多组累积 O(n²) → 增量构建（行为等价，span 外包络钉子原样通过）；`serializeIwxxm` 的 `onWarning` 非函数由裸 TypeError 收进 MetarParseError(invalid-input) 参数契约；RVR 值域门（R07/9999 判缺测不收 + value-out-of-range，上限米 5000/英尺 6000 兼顾既有合法形态）与 V 形双前缀 `R07/P1500VM2000` max 端 M 前缀出声（此前静默蒸发）；METAR 趋势 `AT9999`/`9999/9999` 由 emit 越界闸门统一兜住（不投影 + lossy 出声）。
+
+### 安全与发布卫生
+
+- **dev 链 source-map-js 1.2.1 → 1.2.2**（安全红队 P1）：postcss 精确钉版、`pnpm update` 不可达——经 pnpm-workspace.yaml `overrides` 覆盖至 `>=1.2.2`，锁文件随 0.3.1 更新。
+- **六包新增 prepublishOnly 守卫**（`scripts/check-publish-manifest.mjs`，防误用 npm publish 发出坏包）：①发布通道闸——非 pnpm 通道一律非零退出（npm publish 不施加 publishConfig 覆盖、不改写 workspace: 协议）；②发布面 main 闸——publishConfig 覆盖后的 main 必须以 `./dist` 开头；③发布面依赖闸——publishConfig.dependencies 不得残留 workspace: 前缀。
+- **README「许可」节与「数据源与风险披露」补 WMO（wmo-im 官方仓等价对样例）与 ECCC（Open Government Licence – Canada 署名要求）两个数据源披露，中英同步**；SECURITY.md 支持版本表 0.1.x → 0.3.x（中英两处）。
 
 ### 工程
 
-- 全仓测试 1011 例（基线 956 → +55：规则补全 +44、复审收口跨月回绕 +4、收尾四项 +7。勘误：本条初版记「基线 919 → 1000（+81）」不实——919 系 0.3.0 施工中途计数，v0.3.0 tag、f6845e1、8e80ea0、0e57da3 四锚点静态 it() 实测均为 956）；IWXXM 施工底档新增 §十一（十二条存活项对账总表、有损声明表、天气压缩词拆解表、趋势时窗算子表、官方样本补扫记录、站点元数据裁决）；遗留项 2（2.1 旧架构族）/4（跑道深度位 99）/8（2025-2 未覆盖面）三选一裁决写回（条件触发/豁免+样本出现即补）。
+- 全仓测试 1038 例（基线 956 → +82：规则补全 +44、复审收口跨月回绕 +4、收尾四项 +7、红队对抗修复回归 +27。勘误：本条初版记「基线 919 → 1000（+81）」不实——919 系 0.3.0 施工中途计数，v0.3.0 tag、f6845e1、8e80ea0、0e57da3 四锚点静态 it() 实测均为 956）；IWXXM 施工底档新增 §十一（十二条存活项对账总表、有损声明表、天气压缩词拆解表、趋势时窗算子表、官方样本补扫记录、站点元数据裁决）；遗留项 2（2.1 旧架构族）/4（跑道深度位 99）/8（2025-2 未覆盖面）三选一裁决写回（条件触发/豁免+样本出现即补）。
 - **移除未使用公共导出 `TEMP_DEW_PATTERN`**（`@metweave/parser` 主入口，v0.x 口径）：温露组形态正则的实体仍在内部模块（`groups.ts`）照常使用，全仓唯一外部消费方是其自身回归测试——退出公共导出面、测试改内部模块直引，运行时行为零变化。
 
 ## [0.3.0] - 2026-10-08
