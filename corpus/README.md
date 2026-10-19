@@ -75,6 +75,7 @@ unknown 形态分布与快照完全一致。
 
 - `gfs-0p25-tmp-2m-20261004-f000.grib2`：GFS 0.25° 全球场 2m 温度单要素 f000（2026-10-04T06Z cycle，504,640B）——GRIB2 5.3 complex packing（二阶空间差分）解码的仓内回归 fixture；
 - `gfs-tmp-2m-cn.f32`：上场的中国域窗口（行 140:300 × 列 280:560，北→南）big-endian float32 权威值（eccodes 2.49 解码产出）——解码器「零漂移」对账基准的仓内份；
+- `prmsl_cn.mwgrid`：GFS cycle 2026100618 f000 中国域 PRMSL 场（232KB，viz-ready MWGRID1 形态，280×208 格点）——格点填色教程（系列第六篇）主角样例：19 条等值线、43 个 H/L 中心、北京 1021.3 hPa 读值及 02/03 两张配图全部绑定此场，读者下载即可逐位复现；来源与 `gen:grid` 自造路径见教程正文（0e57da3 入库）；
 - `fixture.json`：窗口与网格声明。
 
 数据区全量基准（14 要素 15 场逐场 sha256）在 `$METWEAVE_DATA_DIR/grid/baseline-expected/`（环境变量指向时测试自动纳入，CI 无数据区自动跳过——路径由本机环境变量给定，仓不记任何机器路径）。

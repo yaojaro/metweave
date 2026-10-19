@@ -213,14 +213,14 @@ metweave 的取数通路面向公开数据源，适合**态势感知、原型与
 
 > 新手可以忽略本节——日常消费用 `toValues()` 即可拿到两态字段视图；本节面向需要理解管道契约与包边界的进阶场景。
 
-| 包                                      | 职责                                                                               |
-| --------------------------------------- | ---------------------------------------------------------------------------------- |
-| [`@metweave/core`](packages/core)       | IR 数据模型（管道稳定契约）：组级三态缺测、原文 span、告警、两态取值视图           |
-| [`@metweave/parser`](packages/parser)   | METAR/SPECI tolerant 解析 → IR；未知组与缺测一律不静默                             |
-| [`@metweave/render`](packages/render)   | 报文卡片：零框架 DOM 组件，内置样式与 RAW 对照视图（缺测/告警高亮 + 悬停解释）     |
-| [`@metweave/grid`](packages/grid)       | 格点线：GRIB2 解码 + 格点要素档案 + 等值线/风羽数据面（d3-contour 唯一运行时依赖） |
-| [`@metweave/leaflet`](packages/leaflet) | Leaflet 适配器：报文卡片上图（marker + tooltip + 卡片弹窗）                        |
-| [`metweave`](packages/metweave)         | 伞包：再导出 core/parser/render；`metweave/sources` 提供取数 helper                |
+| 包                                      | 职责                                                                                                                                                                |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@metweave/core`](packages/core)       | IR 数据模型（管道稳定契约）：组级三态缺测、原文 span、告警、两态取值视图                                                                                            |
+| [`@metweave/parser`](packages/parser)   | METAR/SPECI tolerant 解析 → IR；未知组与缺测一律不静默                                                                                                              |
+| [`@metweave/render`](packages/render)   | 报文卡片：零框架 DOM 组件，内置样式与 RAW 对照视图（缺测/告警高亮 + 悬停解释）                                                                                      |
+| [`@metweave/grid`](packages/grid)       | 格点线：GRIB2 解码 + 格点要素档案 + 等值线/风羽数据面（d3-contour 唯一运行时依赖）                                                                                  |
+| [`@metweave/leaflet`](packages/leaflet) | Leaflet 适配器：报文卡片上图（marker + tooltip + 卡片弹窗）；格点三件套——`addGridLayer` 色斑 / `addContourLayer` 等值线（含 L/H 中心标注）/ `addWindBarbLayer` 风羽 |
+| [`metweave`](packages/metweave)         | 伞包：再导出 core/parser/render；`metweave/sources` 提供取数 helper                                                                                                 |
 
 ### 当前状态
 
