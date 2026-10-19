@@ -173,6 +173,25 @@ const KNOWN_NIL_WORDS: ReadonlySet<string> = new Set([
   "notObservable",
 ]);
 
+/**
+ * NIL 三来源与 nilReason 对齐表（两套「缺测哲学」的逐位对账——难点 9/10 的落位底档；
+ * 生成侧 serializeIwxxm 按本表逆向选词，解析侧按「词汇收敛到缺测语义」收下）：
+ *
+ * | 缺测来源（IR 语义同为一态 missing/nil） | TAC 形态 | IWXXM 载体与选词 | 回读 |
+ * |---|---|---|---|
+ * | 整报 NIL（台站无观测） | `METAR … NIL` | observation xsi:nil + nilReason=missing | nil:true 最小形态 |
+ * | RVR 设备在但明示不可用 | `RVRNO`（正文位）/ RMK 位 remark | rvr xsi:nil + nilReason=missing | rvr {kind:'missing'} |
+ * | 天气传感器无法观测（自动站） | `//` | presentWeather xsi:nil + nilReason=notObservable | weather {kind:'missing'} |
+ * | 风组缺测 | `/////KT` 族 | surfaceWind xsi:nil + nilReason=notObservable | wind {kind:'missing'} |
+ * | 能见度缺测 | `////` | visibility xsi:nil + nilReason=notObservable | visibility {kind:'missing'} |
+ * | 无云族（观测方式语义，非缺测） | SKC/NSC/NCD/CLR | cloud nilReason=nothingOfOperationalSignificance / notDetectedByAutoSystem | clear 电码二词收敛（info 出声） |
+ *
+ * 选词依据：missing＝数据应有而未得（RVR/NIL——官方对 CWFD/DAOY 选词实证）；notObservable＝
+ * 该量本时次不可观测（自动站传感器面——XSD 元数据注释「not observable」措辞同源）。
+ * 方向不对称性（难点 10）：IWXXM→IR 方向选词细节收敛为缺测语义（未识别词 info 出声不静默，
+ * 语义照收）；IR→IWXXM 方向按本表逆向选词（三来源各回各词，RVRNO 与整报 NIL 不混同）。
+ */
+
 /** nilReason 词提取（容忍全 URI 与裸词两种形态）。 */
 const nilWordOf = (raw: string | undefined): string | undefined => {
   if (raw === undefined) return undefined;

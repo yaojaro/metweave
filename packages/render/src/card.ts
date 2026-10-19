@@ -331,6 +331,10 @@ const WARNINGS_EN: Record<WarningCode, (slice: string) => string> = {
     `Duplicate group${slice === "" ? "" : ` (${slice})`} — the last occurrence is kept; the displaced earlier value stays traceable via the raw text`,
   "cross-check-conflict": (slice) =>
     `Cross-check conflict${slice === "" ? "" : ` (${slice})`} between groups — values kept as reported`,
+  // lossy-conversion 是 serializeIwxxm 生成面专用码（解析器不产）——parse warnings 通道实不会出现，
+  // 映射仅满足 Record 全量性（防御位：消费方自拼 ParseWarning 时有兜底文案）
+  "lossy-conversion": (slice) =>
+    `Lossy conversion${slice === "" ? "" : ` (${slice})`} — information not representable in IWXXM; the source report keeps the original`,
 };
 
 /** locale 表本体：zh 列保持既有口径（测试回归锁），en 列按航空英文惯用（QNH/RVR 等缩写保留）。 */

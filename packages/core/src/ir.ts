@@ -72,7 +72,8 @@ export type WarningCode =
   | "value-out-of-range" /** 数值超物理或条文范围（如 5 位数 QNH Q10054） */
   | "missing-expected" /** 组内必有部分缺测（如 BKN///、/////KT） */
   | "duplicate-group" /** 同族组重复出现（如双能见度组）——tolerant 口径以末组为准，前后值文案随告警、原文经 span/raw 回溯 */
-  | "cross-check-conflict"; /** 双轨自洽校验失败（如 RMK T 组与正文 M 组圆整不符） */
+  | "cross-check-conflict" /** 双轨自洽校验失败（如 RMK T 组与正文 M 组圆整不符） */
+  | "lossy-conversion"; /** 序列化单向有损（IR→IWXXM 生成面的信息丢弃：RMK 附加段不落、CLR 收敛 NCD、RVR V 形以 min 落位等）——serializeIwxxm 的 onWarning 通道专用，解析器不产此码 */
 
 /**
  * A single parse warning: stable machine-readable `code`, severity, narrative `message`, and the source `span`.

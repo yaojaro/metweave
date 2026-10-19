@@ -39,13 +39,18 @@
  *   缺日（ogimet 方言短形态）的读数组整体不落（不捏造另一端）；多组温度超 IWXXM 承载面——取
  *   首个 TX + 首个 TN 落一元素；
  * - TAF FM 硬时刻无日位（TafChangeAt 只有 GGgg）——日位取有效期起日直投影（锚定语义归展开层）；
- * - TAC 源逐道 SNOCLO 与深度位 99 关闭：XML 侧关闭只有 runwayState nil(inapplicable) 一形
+ * - TAC 源逐道 SNOCLO 与深度 99 关闭：XML 侧关闭只有 runwayState nil(inapplicable) 一形
  *  （无逐道载体）——跑道位不保真（回读为全机场形态）；
  * - TAF 基况段 prevailingVisibility/cloud（Schematron TAF-8 必填）：IR 组省略时如实不落（上游
  *   转换中心以补写 10000m+ABOVE 满足该条，本实现不捏造——偏差如实记档）；
  * - 趋势/预报体内的最低能见度（VisibilityGroup.minimum）：XSD 只在观测侧 AerodromeHorizontalVisibility
  *   有该组——观测位照落，趋势/TAF 位不落（XML 源 IR 在这两处本就无此组）；
  * - RMK 附加段：IWXXM 国际模型无位（难点 3），remarks 不落。
+ *
+ * 有损告警通道（v0.3.1，D3「告警不静默」的生成面落位）：上表逐行在触发时向 options.onWarning
+ * 回调一条 lossy-conversion 告警（ParseWarning，机读码见 core WarningCode）——缺省不回调，
+ * 产物文本与 0.3.0 逐字节一致（通道纯附加，零行为变化）。解析方向（IWXXM→IR）的有损面
+ * （SKC/CLR 细辨、nilReason 选词收敛等）由解析侧既有 warnings[] 承载，不走本通道。
  *
  * 合规口径（遗留项 5「另需过 XSD + Schematron 双合规」的落位——详见 notes §十.3）：
  * - XSD：生成件经 xmllint + 官方 XSD 树（GML 3.2.1/AIXM 5.1.1/OM 全依赖，schemas.wmo.int 直取）
@@ -61,6 +66,7 @@
 import type {
   CloudCondition,
   MetarReport,
+  ParseWarning,
   RunwayVisualRange,
   TafChangeGroup,
   TafReport,
@@ -127,7 +133,7 @@ const FT_TO_M = 0.3048;
 // ---------------------------------------------------------------- 日历上下文（难点 12 生成侧落位）
 
 /**
- * Options for `serializeIwxxm`：版本出口、日历上下文与许可用途占位。
+ * Options for `serializeIwxxm`：版本出口、日历上下文、许可用途占位与有损告警通道。
  */
 export interface IwxxmSerializeOptions {
   /** 目标版本：缺省 "2023-1"（运营版）；"2025-2" 同供（跑道状态组在 2025-2 出口下如实不落——schema 已删该建模） */
@@ -142,6 +148,13 @@ export interface IwxxmSerializeOptions {
    * 测试/演习报文的发布面按需显式传 NON-OPERATIONAL
    */
   readonly permissibleUsage?: "OPERATIONAL" | "NON-OPERATIONAL";
+  /**
+   * 有损告警通道（v0.3.1）：生成过程触发的单向有损面（文件头「有损面」清单——RMK 附加段不落、
+   * CLR 收敛 NCD、RVR V 形以 min 落位、趋势 DDHH 窗起不保真、TAF 气温单端不落等）逐处回调一条
+   * lossy-conversion 告警，供管道侧记账与审计。缺省不回调（不提供时行为与 0.3.0 逐字节一致）；
+   * 回调只读告警、不得反改生成过程（void 返回，无中止语义）。
+   */
+  readonly onWarning?: (warning: ParseWarning) => void;
 }
 
 /** 年月上下文校验与固化（年 1600–9999 覆盖 xsd:dateTime 实用全域，月 01–12）。 */
@@ -178,9 +191,56 @@ function isoOf(
   hour: number,
   minute = 0,
 ): string {
-  return new Date(Date.UTC(cal.year, cal.month - 1, day, hour, minute))
-    .toISOString()
-    .replace(/\.\d{3}Z$/, "Z");
+  return isoTextOf(momentOf(cal, day, hour, minute));
+}
+
+/** 绝对时刻（毫秒）：年月由 calendar 注入（isoOf 的数值层——回绕判别需比较，先算毫秒）。 */
+function momentOf(
+  cal: { readonly year: number; readonly month: number },
+  day: number,
+  hour: number,
+  minute = 0,
+): number {
+  return Date.UTC(cal.year, cal.month - 1, day, hour, minute);
+}
+
+/** 毫秒 → xsd:dateTime 文本（ISO 8601 UTC，剥毫秒）。 */
+function isoTextOf(ms: number): string {
+  return new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+/**
+ * 跨日回绕投影（趋势 AT/TL/FM 专用）：日位锚发报日，时刻早于发报时刻按次日回绕——以绝对时刻
+ * 比较承担月末/年末回绕（v0.3.1 修正：旧「(day%31)+1」日位算法在 31 日发报、次日电码为 01 时
+ * 误落同月 1 日（差 30 天，跨年除夕 TL0010 实弹捕获）；Date.UTC 归一化统一出口后此类形态
+ * 自然落次月/次年）。
+ */
+function trendInstantOf(
+  cal: { readonly year: number; readonly month: number },
+  issueTime: { readonly day: number; readonly hour: number; readonly minute: number },
+  hour: number,
+  minute: number,
+): string {
+  const issueMs = momentOf(cal, issueTime.day, issueTime.hour, issueTime.minute);
+  let ms = momentOf(cal, issueTime.day, hour, minute);
+  if (ms < issueMs) ms += 86_400_000;
+  return isoTextOf(ms);
+}
+
+/**
+ * 跨月/跨年回绕投影（窗口止点专用）：止点逐位投影早于起点即落入次月（月界/年界通用——
+ * TAC ddHH 电码无月位，跨月窗的止日「01」意为次月 1 日；Date.UTC 月份进位自然跨年）。
+ */
+function isoAfterOf(
+  cal: { readonly year: number; readonly month: number },
+  beginMs: number,
+  day: number,
+  hour: number,
+  minute = 0,
+): string {
+  let ms = momentOf(cal, day, hour, minute);
+  if (ms < beginMs) ms = Date.UTC(cal.year, cal.month, day, hour, minute);
+  return isoTextOf(ms);
 }
 
 // ---------------------------------------------------------------- XML 拼装小件
@@ -199,18 +259,33 @@ const escText = (text: string): string =>
 /** 数值 → XML 文本（IR 数值本就有限域——String 即十进制短表示）。 */
 const numText = (value: number): string => String(value);
 
+/** 有损告警构造（lossy-conversion 机读码——生成面专用码，解析器不产；见文件头「有损告警通道」段）。 */
+const lossy = (message: string): ParseWarning => ({
+  code: "lossy-conversion",
+  severity: "info",
+  message,
+});
+
 type Attrs = ReadonlyArray<readonly [string, string]>;
 
-/** 序列化画布：行缓冲 + 缩进 + 确定性 gml:id 发号（快照稳定，不引入随机 uuid）。 */
+/** 序列化画布：行缓冲 + 缩进 + 确定性 gml:id 发号（快照稳定，不引入随机 uuid）。
+ *  warnings 槽：有损面触发时记账，序列化收口时统一交 onWarning（Emit 已贯穿全部 emit* 函数——
+ *  借它携带免改各子函数签名）。 */
 class Emit {
   private readonly lines: string[] = [];
   private depth = 0;
   private seq = 0;
+  readonly warnings: ParseWarning[] = [];
 
   /** 发一个 gml:id（mw.gen.N——NCName 合法、逐报递增确定性）。 */
   nextId(): string {
     this.seq += 1;
     return `mw.gen.${this.seq}`;
+  }
+
+  /** 有损面记账（顺序即触发序——文件头「有损面」清单的执行面）。 */
+  warn(message: string): void {
+    this.warnings.push(lossy(message));
   }
 
   /** 原样行（XML 序言等）。 */
@@ -382,6 +457,13 @@ function emitCloud(
 ): void {
   const clear = clouds.clear?.code;
   const hasBody = clouds.elements.length > 0;
+  // CLR 无官方载体（49-2 电码表无此词，codes.wmo.int 直查 404）——收敛 notDetectedByAutoSystem
+  //（纯电码与与层并存两路同此），回读 NCD，细辨不可还原（D0 ④ 同一纪律的有损面）
+  if (clear === "CLR") {
+    emit.warn(
+      "无云电码 CLR 在 IWXXM 无官方载体（49-2 云量电码表无此词）——收敛 nilReason notDetectedByAutoSystem，回读为 NCD（SKC/CLR 细辨不可还原）",
+    );
+  }
   if (!hasBody) {
     if (clear === "SKC") {
       emit.open("iwxxm:cloud", []);
@@ -421,6 +503,9 @@ function emitCloud(
         emit.text("iwxxm:verticalVisibility", numText(element.heightFt.value), [["uom", "[ft_i]"]]);
       } else {
         // VV 高度缺测（TAC VV///）：IWXXM 载体仍需元素在位——nil 空载（回读为元素缺席，如实记损）
+        emit.warn(
+          "垂直能见度高度位缺测（VV///）——nil 空载落位，回读为该组缺席（高度信息无从承载，如实记损）",
+        );
         emit.void("iwxxm:verticalVisibility", [
           ["uom", "N/A"],
           ["xsi:nil", "true"],
@@ -541,6 +626,11 @@ function emitRunwayDirection(emit: Emit, runway: string): void {
  * Schematron 明文；V 波动形态以 min 值落 meanRVR——IWXXM 无 V 位，见文件头有损面）。
  */
 function emitRvrItem(emit: Emit, item: RunwayVisualRange): void {
+  if (item.min !== undefined) {
+    emit.warn(
+      `RVR V 波动形态（R${item.runway}/${item.min}V${item.max}）以 min 值落 meanRVR——IWXXM 只有单值位（V 端 max 不保真）`,
+    );
+  }
   emit.open("iwxxm:rvr", []);
   const attrs: [string, string][] = [];
   if (item.trend === "up") attrs.push(["pastTendency", "UPWARD"]);
@@ -566,6 +656,11 @@ function emitRvrItem(emit: Emit, item: RunwayVisualRange): void {
  */
 function emitRunwayState(emit: Emit, group: MetarReport["runwayStates"][number]): void {
   if (group.closed === true) {
+    if (group.runway !== "") {
+      emit.warn(
+        `逐道关闭（R${group.runway} SNOCLO/深度位 99）以全机场关闭形态落位——XML 侧关闭只有 runwayState nil(inapplicable) 一形（无逐道载体），跑道位不保真`,
+      );
+    }
     emit.void("iwxxm:runwayState", [
       ["nilReason", uriNil(NIL_INAPPLICABLE)],
       ["xsi:nil", "true"],
@@ -632,19 +727,10 @@ function emitWindShear(emit: Emit, shear: NonNullable<MetarReport["windShear"]>)
  * - AT：gml:TimeInstant 硬时刻；
  * - 无时段词：phenomenonTime nilReason missing（EDDP 官方形）。
  *
- * 日位锚定：AT/TL/FM 时段词是 HHMM（时+分，无日位——与 TAF 的 ddHH 不同）——日位锚发报日，
- * 时刻早于发报时刻按次日回绕（跨午夜 TL 的日历归属与 TAC 阅读惯例一致；IR 往返只比较 HHMM，
+ * 日位锚定：AT/TL/FM 时段词是 HHMM（时+分，无日位）——日位锚发报日，时刻早于发报时刻按次日
+ * 回绕（trendInstantOf 以绝对时刻比较承担，月末/年末回绕自然正确；IR 往返只比较 HHMM，
  * 日位仅服务 xsd:dateTime 合法性）。
  */
-function trendDayOf(
-  issueTime: { readonly day: number; readonly hour: number; readonly minute: number },
-  hour: number,
-  minute: number,
-): number {
-  const sameDay = hour > issueTime.hour || (hour === issueTime.hour && minute >= issueTime.minute);
-  return sameDay ? issueTime.day : (issueTime.day % 31) + 1;
-}
-
 function emitTrendPhenomenonTime(
   emit: Emit,
   cal: { readonly year: number; readonly month: number },
@@ -662,10 +748,9 @@ function emitTrendPhenomenonTime(
   if (atMatch !== null) {
     const hour = Number(atMatch[2]);
     const minute = Number(atMatch[3]);
-    const day = trendDayOf(issueTime, hour, minute);
     if (atMatch[1] === "AT") {
       emit.open("gml:TimeInstant", [["gml:id", emit.nextId()]]);
-      emit.text("gml:timePosition", isoOf(cal, day, hour, minute));
+      emit.text("gml:timePosition", trendInstantOf(cal, issueTime, hour, minute));
       emit.close("gml:TimeInstant");
       emit.close("iwxxm:phenomenonTime");
       return;
@@ -677,10 +762,10 @@ function emitTrendPhenomenonTime(
     if (atMatch[1] === "TL") {
       beginIso = isoOf(cal, issueTime.day, issueTime.hour, issueTime.minute);
       beginIndeterminate = true;
-      endIso = isoOf(cal, day, hour, minute);
+      endIso = trendInstantOf(cal, issueTime, hour, minute);
     } else {
       // FROM：begin＝FM 时刻、end＝同时刻 indeterminate after（WSSS/VTUO 官方形）
-      beginIso = isoOf(cal, day, hour, minute);
+      beginIso = trendInstantOf(cal, issueTime, hour, minute);
       endIso = beginIso;
       endIndeterminate = true;
     }
@@ -690,10 +775,14 @@ function emitTrendPhenomenonTime(
   }
   if (windowMatch !== null) {
     // DDHH//DDHH（TAC 中国主流趋势窗）：双端点完整落位，timeIndicator 按 UNTIL 判读——回读 TL+窗止、窗起不保真
+    emit.warn(
+      `趋势 DDHH/DDHH 时窗（${period}）按 UNTIL 判读落位为 gml:TimePeriod——回读 TL+窗止（窗起不保真，IWXXM 趋势时窗只有 AT/UNTIL/FM）`,
+    );
+    const beginMs = momentOf(cal, Number(windowMatch[1]), Number(windowMatch[2]));
     emitTimePeriod(
       emit,
-      isoOf(cal, Number(windowMatch[1]), Number(windowMatch[2])),
-      isoOf(cal, Number(windowMatch[3]), Number(windowMatch[4])),
+      isoTextOf(beginMs),
+      isoAfterOf(cal, beginMs, Number(windowMatch[3]), Number(windowMatch[4])),
       false,
       false,
     );
@@ -773,6 +862,11 @@ function emitTrend(
   emit.open("iwxxm:trendForecast", []);
   // changeIndicator 必填：unspecified（TAC 指示组丢失形态）无对应枚举——按 BECOMING 落位
   //（与解析侧「未识别按渐变收」同口径的逆向，往返后 kind 归 becmg，如实记损）
+  if (trend.kind === "unspecified") {
+    emit.warn(
+      "趋势指示组丢失（kind 'unspecified'）无对应 changeIndicator——按 BECOMING 落位（往返后 kind 归 becmg，如实记损）",
+    );
+  }
   const attrs: Attrs = [
     ["gml:id", emit.nextId()],
     ["changeIndicator", trend.kind === "tempo" ? "TEMPORARY_FLUCTUATIONS" : "BECOMING"],
@@ -818,6 +912,29 @@ function emitMetar(
   const issueId = emitIssueTime(emit, cal, report.time);
   emitAerodrome(emit, report.station);
   emit.void("iwxxm:observationTime", [["xlink:href", `#${issueId}`]]);
+
+  // —— 美制单位折算告警（汇总一条/报：IWXXM 量纲固定 m/hPa/m，固定系数是本实现常量）
+  const unitLosses = [
+    ...(report.visibility?.kind === "value" && report.visibility.value.unit === "sm"
+      ? ["能见度 sm→m"]
+      : []),
+    ...(report.altimeter?.unit === "inHg" ? ["QNH inHg→hPa"] : []),
+    ...(report.runwayVisualRange?.kind === "value" &&
+    report.runwayVisualRange.value.some((item) => item.unit === "ft")
+      ? ["RVR ft→m"]
+      : []),
+  ];
+  if (unitLosses.length > 0) {
+    emit.warn(
+      `美制单位按固定系数折算落位（${unitLosses.join("、")}）——IWXXM 量纲固定 m/hPa/m，原单位不保真（换算因转换中心而异，本系数是本实现常量）`,
+    );
+  }
+  // —— RMK 附加段（难点 3 维持：IWXXM 国际模型无 RMK 位——remarks 整段不落，原文经 IR/raw 回溯）
+  if (report.remarks.length > 0) {
+    emit.warn(
+      `RMK 附加段在 IWXXM 无对应位（${report.remarks.length} 组）——整段不落 XML（原文经 IR remarks/raw 回溯）`,
+    );
+  }
 
   if (report.nil === true) {
     // NIL：observation xsi:nil + nilReason missing（2023-1 主流选词；官方 NIL 等价对未取得，
@@ -980,7 +1097,21 @@ function emitTafTemperatures(
   const max = report.temperatures.find((t) => t.extremum === "max" && t.at.day !== undefined);
   const min = report.temperatures.find((t) => t.extremum === "min" && t.at.day !== undefined);
   // 可选链守卫一并收窄 day 位（find 谓词的类型面不会自动收窄——零断言纪律）
-  if (max?.at.day === undefined || min?.at.day === undefined) return;
+  if (max?.at.day === undefined || min?.at.day === undefined) {
+    // 单端/达时刻缺日（ogimet 方言短形态）的读数组整体不落——不捏造另一端/时刻（有损面如声）
+    if (report.temperatures.length > 0) {
+      emit.warn(
+        "TAF 气温组仅单端或达时刻缺日——XSD 一元素必载 TX/TN 双端且两时刻齐备，该组整体不落（不捏造另一端）",
+      );
+    }
+    return;
+  }
+  // 多组温度超 IWXXM 承载面（温度元素 maxOccurs=2 且每元素必载双端）——取首个 TX+TN，其余不落
+  if (report.temperatures.length > 2) {
+    emit.warn(
+      `TAF 气温组 ${report.temperatures.length} 组超 IWXXM 承载面——取首个 TX+首个 TN 落一元素，其余不落`,
+    );
+  }
   emit.open("iwxxm:temperature", []);
   emit.open("iwxxm:AerodromeAirTemperatureForecast", []);
   emit.text("iwxxm:maximumAirTemperature", numText(max.celsius), [["uom", "Cel"]]);
@@ -1049,8 +1180,10 @@ function emitTaf(
       report.cancelled === true ? "iwxxm:cancelledReportValidPeriod" : "iwxxm:validPeriod";
     emit.open(tag, []);
     emit.open("gml:TimePeriod", [["gml:id", validPeriodId]]);
-    emit.text("gml:beginPosition", isoOf(cal, validity.startDay, validity.startHour));
-    emit.text("gml:endPosition", isoOf(cal, validity.endDay, validity.endHour));
+    const beginMs = momentOf(cal, validity.startDay, validity.startHour);
+    emit.text("gml:beginPosition", isoTextOf(beginMs));
+    // 止点早于起点＝跨月窗（ddHH 无月位——止日 01 意为次月 1 日；Date.UTC 月份进位自然跨年）
+    emit.text("gml:endPosition", isoAfterOf(cal, beginMs, validity.endDay, validity.endHour));
     emit.close("gml:TimePeriod");
     emit.close(tag);
   }
@@ -1079,6 +1212,13 @@ function emitTaf(
     emit.void("iwxxm:phenomenonTime", [["xlink:href", `#${validPeriodId}`]]);
   } else {
     emit.void("iwxxm:phenomenonTime", [["nilReason", uriNil(NIL_MISSING)]]);
+  }
+  // TAF.TAF-8 偏差维持（Schematron 明文基况段 prevailingVisibility/cloud 必填）：组省略即不满足
+  // 该条——如实出声不捏造（上游转换中心的「补写 10000m+ABOVE」口径经裁决不采纳，见 notes §十.6）
+  if (!report.cavok && (report.visibility === undefined || report.clouds === undefined)) {
+    emit.warn(
+      "TAF 基况段 prevailingVisibility/cloud 组省略——Schematron TAF.TAF-8 必填条不满足（不捏造补写；过官方全量校验需调用方 IR 自带该两组）",
+    );
   }
   if (!report.cavok && report.visibility !== undefined) {
     if (report.visibility.kind === "missing") {
@@ -1161,5 +1301,8 @@ export function serializeIwxxm(report: IwxxmReport, options?: IwxxmSerializeOpti
   } else {
     emitMetar(emit, report, cal, version, permissibleUsage);
   }
+  // 有损告警收口：生成完毕后统一交 onWarning（通道纯附加——不提供时零行为变化，
+  // 产物文本与 0.3.0 逐字节一致）
+  for (const warning of emit.warnings) options?.onWarning?.(warning);
   return emit.toString();
 }

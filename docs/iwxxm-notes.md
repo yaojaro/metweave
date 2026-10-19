@@ -4,7 +4,9 @@
 > 转换语义难点的落位决策（对调研报告 §五 14 条的逐条裁决）、真实流探测记录与遗留项清单；
 > 第二期（同日）——AWC 实时流源发现、2025-2 版本支持与接入（见 §五）；
 > 第三期（同日）——解析×渲染联动正解：IWXXM 侧 IR 携带源 span 与对照区联动闭环（见 §六）；
-> 生成侧（2026-10-08，与 §九 TAF 解析同日）——IR→IWXXM 序列化出口与合规验证（见 §十）。
+> 生成侧（2026-10-08，与 §九 TAF 解析同日）——IR→IWXXM 序列化出口与合规验证（见 §十）；
+> 第四期（2026-10-19，v0.3.1 规则补全）——12 条存活难点「测试位+文档位」双落位、官方样本补扫、
+> 遗留项裁决归零（见 §十一；用例清单 v1 落档学习线 T1/W43 笔记——私有工作区侧验收件，不入本仓）。
 > 复核方法：2023-1/2025-2RC1 官方 XSD 原文（schemas.wmo.int 直取）+ wmo-im/iwxxm-translation
 > Amd79-80-2023 官方等价对（34 站 .tac+.xml）+ NOAA AWC 2025-2 实时流（41 站）+ ECCC 真实流样本
 > 多方互证——结论一律标注证据来源，未核实项显式声明，不把推测写成结论。
@@ -70,9 +72,17 @@ CYEK（M1/4SM↔400m、A2962↔1003hPa）、BGTL / VTUO（A 组 inHg↔hPa）、
    支持 TAF 根（直根与 collect 包裹）→ 与 TAC 侧 parseTaf 同一份 TafReport IR（core 契约零改动）；
    官方等价对 6 站 7 对双通道验收 + ECCC 真实流 6 公报全量过筛。剩余口子（PROB40 样本、午夜止窗
    样本、消费方接线）见 §九.5。
-2. **iwxxm 2.1 / 2016-2018 OM 架构族**：站点与观测导航结构不同（om:OM_Observation 包裹、featureOfInterest/sams 采样特征），当前明确失败（missing-station + 版本提示）；若需支持，按版本分派导航器（observation 容器层的 om:result 下钻防御路径已预置，见 §五.3——但该族站名导航不同，实际仍会在 missing-station 层失败，未支持）。
-3. **2023-1 官方 NIL 等价对未取得**（translation 仓无此类样例）——NIL 三态落位以 2.1 官方样例（选词实证）+ XSD 契约（observation nillable）为依据；取得后补双通道断言。**2025-2 侧 NIL 同样无样本**（AWC 实时流不含 NIL 报，41 站语料未覆盖——NIL 在 2025-2 下的形态未验证，解析逻辑按两版共用的 observation 缺席/xsi:nil 判据处理，XSD 两版均保留 nillable 契约）。**TAF 侧 NIL 官方对已取得**（Amd79-80-2023/taf DAOY：空载 baseForecast + nilReason missing，双通道全等验收，§九.4）。
-4. **跑道状态 99 深度位语义**：TAC 表 1079 深度位 99＝跑道不可用（IR closed:true），XML 侧 depthOfDeposit 是毫米真值、runwayState nil(inapplicable) 才承载全关闭——99mm 真值与 99 电码的边界无官方样例，未硬判（SNOCLO 同构形态已按 nil(inapplicable) 落 closed）。**2025-2 注意：schema 已整体删除 runwayState/AerodromeRunwayState 建模（§五.2），该组仅 2023-1 侧存在；解析器对两版本统一按元素在位与否处理（2025-2 文档不出现该元素即无跑道状态组），2025-2 下跑道状态无样本可验。**（TAF XSD 从未载 runwayState，本条与 TAF 无涉——§九.1。）
+2. ~~**iwxxm 2.1 / 2016-2018 OM 架构族**~~ **已裁决（2026-10-19，条件触发）**：维持现状——明确失败
+   （missing-station + invalid-format(info) 版本提示）不静默乱解，`om:result` 下钻防御路径已预置
+   （合成样锁行为）。**触发条件：出现真实 2.1 流样本**（当前 AWC 2025-2 / translation 2023-1 /
+   ECCC 3.0 之外无任何已知 2.1 在网发布源；接样后按版本分派导航器施工，规模一次版本分派 +
+   站名导航适配）。与「明确不做」清单口径一致。
+3. **2023-1 官方 NIL 等价对未取得**（translation 仓无此类样例）——NIL 三态落位以 2.1 官方样例（选词实证）+ XSD 契约（observation nillable）为依据；取得后补双通道断言。**2025-2 侧 NIL 同样无样本**（AWC 实时流不含 NIL 报，41 站语料未覆盖——NIL 在 2025-2 下的形态未验证，解析逻辑按两版共用的 observation 缺席/xsi:nil 判据处理，XSD 两版均保留 nillable 契约）。**TAF 侧 NIL 官方对已取得**（Amd79-80-2023/taf DAOY：空载 baseForecast + nilReason missing，双通道全等验收，§九.4）。**【2026-10-19 补扫更新】METAR 侧 2025-2 官方 NIL 样本已取得入库**（官方主仓 `IWXXM/examples/metar-NIL-collect.{tac,xml}`：observation 裸 nilReason=missing 无 xsi:nil，双通道语义对齐 + 往返断言，iwxxm-corpus.test.ts「官方 METAR NIL 样本」组）——遗留面收窄为 **2023-1 METAR NIL 等价对**一项：translation 仓 metar/ 目录 34 站全名复扫无 NIL 样本（2026-10-19），豁免记档，官方补充即补断言。
+4. ~~**跑道状态 99 深度位语义**~~ **已裁决（2026-10-19，豁免+样本出现即补）**：TAC 表 1079 深度位
+   99＝跑道不可用（IR closed:true），XML 侧 depthOfDeposit 是毫米真值、runwayState nil(inapplicable)
+   才承载全关闭——99mm 真值与 99 电码的边界无官方样例，不硬判。维持现状：SNOCLO/深度 99 同按
+   closed 收、逐道关闭以全机场形态落 XML 并出 lossy-conversion(info)（§十一.2 有损声明表 #4）；
+   官方样例或真实流出现 99 深度位即补对判。**2025-2 注意：schema 已整体删除 runwayState/AerodromeRunwayState 建模（§五.2），该组仅 2023-1 侧存在；解析器对两版本统一按元素在位与否处理（2025-2 文档不出现该元素即无跑道状态组），2025-2 下跑道状态无样本可验。**（TAF XSD 从未载 runwayState，本条与 TAF 无涉——§九.1。）
 5. ~~**IR→IWXXM 生成侧**~~ **已解决（2026-10-08 施工，见 §十）**：serializeIwxxm（iwxxm-emit.ts）
    接受 IwxxmReport（kind 判别）产出 IWXXM XML——METAR/SPECI 与 TAF 双侧、CNL/NIL 形态都能往返；
    「映射表即正向字典」兑现。合规达标层级如实：往返 + 结构断言 + Schematron 核心子集入 CI，
@@ -80,7 +90,14 @@ CYEK（M1/4SM↔400m、A2962↔1003hPa）、BGTL / VTUO（A 组 inHg↔hPa）、
    （xslt2/需 Saxon）如实留官方工具链。
 6. ~~真实流源~~ **已解决（2026-10-05 第二期）**：AWC 实时流接入（§五.1），gen:iwxxm 首选通道改为 awc-live；ECCC 仍仅 TAF（结论维持，探测照旧记录于产物 ecccProbe 字段）；WIS2 MQTT 未接（需引入 mqtt 依赖，无新增动作）。
 7. **浏览器手工验收**：施工环境无浏览器，以 vite 双页构建（模块图零错）+ happy-dom 最小 DOM 断言（iwxxm-demo.test.ts）替代；owner 复验入口：`pnpm --filter metweave-examples dev` 后访问 `/iwxxm.html`。
-8. **2025-2 侧样本未覆盖面**（AWC 转换器不输出，非时点问题）：RVR（TAC 在场也不转，KBOI 实证——2023-1 侧解析逻辑存在且经官方对验收，2025-2 侧未验证）、趋势组/NOSIG（EFHK/VIDP/RJAA 的 TAC 在场也不转，trendForecast 在 41 站中零出现）、跑道状态（§五.2 schema 删除）、风切变、海况、CAVOK 布尔（恒 false）、风向扇区（TAC 080V140 族不转，variableWindDirection 恒 false）、 NIL（见 3）。RVR 的 rvr 元素上限从 4 放开为 unbounded（§五.2）——2025-2 侧同样无样本验证。
+8. ~~**2025-2 侧样本未覆盖面**~~ **已裁决（2026-10-19，条件触发）**：解析逻辑两版本零分叉（§五.3），
+   覆盖面缺口属「转换中心不输出」而非「解析器不支持」——**触发条件：任一 2025-2 源出现真实样本**
+   （AWC 转换器扩面、ECCC 上线 METAR IWXXM、WIS2 流等），样本出现即进 corpus 补断言。
+   面内分项现状：RVR（TAC 在场也不转，KBOI 实证——2023-1 侧经官方对验收，rvr unbounded 放宽
+   无样本验证）、趋势组/NOSIG（41 站零出现）、跑道状态（schema 删除，天然无）、风切变、海况
+   （IR 无位，info 出声跳过已有测试）、CAVOK 布尔（恒 false）、风向扇区（080V140 族不转——
+   解析侧扇区/VRB 落位 2026-10-19 起有合成断言）、NIL（**2025-2 侧已随官方样本入库部分关闭**，
+   见遗留项 3 补扫更新）。
 
 ## 五、AWC 实时流接入与 2025-2 版本支持（第二期施工，2026-10-05）
 
@@ -514,3 +531,127 @@ serializeIwxxm(report: IwxxmReport, options?: {
   未固化——出现真实发布需求时按需增补断言。
 - 生成面中文错误文案未过术语册（术语册 v1 抽取面未含 iwxxm 模块——与解析侧 iwxxm.ts 同现状；
   抽取面扩展时一并入册）。
+
+## 十一、转换语义陷阱对账底档（第四期 v0.3.1 规则补全，2026-10-19）
+
+> W43 ⑮ 施工：调研报告 §五 14 条中 12 条存活项（14 − 已证伪 2 条）逐条「测试位+文档位」双落位，
+> 用例清单（学习线 T1/W43 验收件，与产品线断言一一对应可点验）落档
+> 学习线 T1/W43 的《转换语义陷阱用例清单 v1》（私有工作区侧验收件，不入本仓）。本节记四张规则表、补扫记录与
+> 一处真 bug 修复；遗留项 2/4/8 裁决就地更新于 §四。基线 919 测 → 本期 1000 测全绿。
+
+### 1. 十二条存活项对账总表
+
+| 难点                   | 最终状态                                      | 测试位（文件 · 组）                                                                                  | 文档位                       |
+| ---------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------- |
+| 1 RVR 趋势位           | 已覆盖（证伪撤销，随施工转活测试）            | iwxxm-corpus · 34 站 deep-equal（ZSPD 四条 RVR pastTendency 往返）；iwxxm-emit · ZSPD 结构断言       | §一 D0②、§二                 |
+| 2 跑道状态组           | 已覆盖（证伪撤销，随施工转活测试）            | iwxxm-corpus · 9 站官方对 deep-equal；iwxxm-emit · Schematron 子集 RunwayState-2/-3；2025-2 出口不落 | §一 D0、§五.2                |
+| 3 RMK 国家惯例组       | 本期补齐（有损显式化）                        | iwxxm-emit · 有损告警通道（RMK 点名 + 生成件无 SLP134）；既有解析侧 extension/未知元素跳过           | §十一.2 #1                   |
+| 4 SKC 四码收敛         | 本期补齐（生成面告警；解析面 v0.3 已覆盖）    | iwxxm.test · 无云族 nilReason 映射；iwxxm-emit · 四码收敛往返 + CLR→NCD 告警                         | §一 D0④、§十一.2 #2          |
+| 5 VRB 风向不定与静风   | 本期补齐（双向断言）                          | iwxxm.test · VRB/扇区/静风 3 测；iwxxm-emit · 同面 3 测（往返全等）                                  | §一 D0③                      |
+| 6 CAVOK 布尔           | 本期补齐（反向等价判定）                      | iwxxm.test · 正向 3 测（既有）+ 反向数值形态 3 测；iwxxm-emit · 双向 2 测（9999≠CAVOK 双锁）         | §十一.6                      |
+| 7 天气压缩词           | 本期补齐（拆解表逐电码断言）                  | iwxxm.test · 逐电码 6 测 + 重组同串 5 码验算                                                         | §十一.3                      |
+| 8 9999/8000/M0050 边界 | 本期补齐（生成侧往返）                        | iwxxm.test · 解析侧 2 测（既有）；iwxxm-emit · 4 测（9999/0000/8000/P2000+M0050）                    | §十一.5                      |
+| 9 NIL 报三态           | 本期补齐（三来源对齐 + 官方样本）             | iwxxm.test · 载体 3 测；iwxxm-emit · 选词 4 测；iwxxm-corpus · 官方 2025-2 样本 3 测                 | iwxxm.ts 对齐表注释、§十一.7 |
+| 10 nilReason 词汇对齐  | 已覆盖                                        | iwxxm.test · 未识别词 info 出声（既有）；往返已知词静默（emit NIL 组）                               | iwxxm.ts 对齐表注释、§十一.7 |
+| 11 站点元数据          | 已覆盖（现状确认 + 裁决记档）                 | iwxxm-corpus · 34 站（解析侧零注入实证）；iwxxm-emit · ZSPD 结构断言（最小合法形）                   | §十一.8 裁决                 |
+| 12 日历上下文          | 本期补齐（跨年边界 + 回绕真 bug 修复）        | iwxxm-emit · calendar 缺失必败（既有）+ 跨年除夕 2 测                                                | §十一.9                      |
+| 13 版本容错            | 已覆盖                                        | iwxxm.test · 版本分派 3 测 + ECCC 回归锁；iwxxm-awc-corpus · 2025-2 零版本告警                       | §五.3                        |
+| 14 趋势时窗            | 本期补齐（算子表，止损线内——未牵 TAF 展开层） | iwxxm.test · trendPeriodOf/span（既有）；iwxxm-emit · 算子表 4 测                                    | §十一.4                      |
+
+### 2. 有损声明表（生成面——`serializeIwxxm` 的 onWarning 通道逐行，机读码 `lossy-conversion`）
+
+纪律：绝不把假值留 IR（丢就是丢，不捏造）；告警不静默（onWarning 缺席时产物与 0.3.0 逐字节
+一致——通道纯附加，行为锁测试在案）。解析方向的有损面（SKC/CLR 细辨、nilReason 选词收敛）由
+解析侧既有 warnings[] 承载，不走本通道。
+
+| #   | 触发面                      | XML 落位                               | 回读              | 告警文案要点                           |
+| --- | --------------------------- | -------------------------------------- | ----------------- | -------------------------------------- |
+| 1   | RMK 附加段                  | 不落（国际模型无位）                   | remarks 空        | 点名组数，原文经 IR/raw 回溯           |
+| 2   | 无云 CLR                    | nilReason notDetectedByAutoSystem      | NCD               | 49-2 电码表无此词（codes.wmo.int 404） |
+| 3   | RVR V 波动                  | meanRVR＝min 值                        | 单值（V 端丢）    | 点名电码与 min/max                     |
+| 4   | 逐道 SNOCLO/深度 99         | 全机场 runwayState nil(inapplicable)   | 全机场形态        | 点名跑道号，无逐道载体                 |
+| 5   | 美制单位 sm/inHg/ft         | 固定系数折 m/hPa/m                     | SI 单位           | 汇总一条/报；系数是本实现常量非官方表  |
+| 6   | 趋势 DDHH/DDHH 窗           | TimePeriod 双端点 + UNTIL              | TL+窗止（窗起丢） | 点名电码与窗                           |
+| 7   | 趋势 kind 'unspecified'     | changeIndicator=BECOMING               | 往返后归 becmg    | 指示组丢失面                           |
+| 8   | VV 高度缺测（VV///）        | verticalVisibility nil 空载（uom=N/A） | 组缺席            | 高度无从承载                           |
+| 9   | TAF 气温单端/达时刻缺日     | 温组整体不落                           | 无温组            | 必载 TX/TN 双端，不捏造另一端          |
+| 10  | TAF 气温多组超承载面        | 取首个 TX+TN                           | 其余不落          | 承载面上限（maxOccurs=2）              |
+| 11  | TAF 基况段 vis/cloud 组省略 | 不落（不捏造补写）                     | 结构性偏差        | TAF.TAF-8 必填条不满足，如实出声       |
+
+### 3. 天气压缩词拆解表（难点 7——4678 URI 尾段复用 TAC 切解器 `parseWeatherBody`，逐电码断言）
+
+「一电码多现象」「多电码一现象」不是 IWXXM 特有问题：URI 尾段与 TAC w'w' token 同构，同一套
+切解判式两侧通用（v0.3 起导出复用）。断言面＝逐位拆解 + 拆解结果可重组原 token（双向可逆前提）。
+
+| 电码         | 强度  | VC 邻近 | 描述符 | 现象   | 4678 依据                         |
+| ------------ | ----- | ------- | ------ | ------ | --------------------------------- |
+| SHRASN       | —     | —       | SH     | RA,SN  | 一电码多现象：阵性雨雪混合        |
+| -SHRASN      | -     | —       | SH     | RA,SN  | 强度符+描述符+双现象              |
+| VCTS         | —     | true    | TS     | （空） | VC 邻近雷暴，TS 裸编报合法        |
+| VCSH         | —     | true    | SH     | （空） | 4678 表注：附近阵性降水类型不可辨 |
+| +TSRA / TSRA | + / — | —       | TS     | RA     | 强度位直传                        |
+
+### 4. 趋势时窗算子表（难点 14 生成侧——止损线内：只做出口投影表，不涉 TAF 展开层）
+
+| TAC 时段词   | timeIndicator | XML 载体                                                                        | 回读                            |
+| ------------ | ------------- | ------------------------------------------------------------------------------- | ------------------------------- |
+| TL0130       | UNTIL         | TimePeriod：begin＝发报时刻 indeterminate after、end＝TL 时刻（ZSPD 官方形）    | TL+窗止                         |
+| FM0800       | FROM          | TimePeriod：begin＝FM 时刻、end＝同时刻 indeterminate after（WSSS/VTUO 官方形） | FM                              |
+| AT0400       | AT            | gml:TimeInstant 硬时刻（无 TimePeriod）                                         | AT                              |
+| 无时段词     | （无）        | phenomenonTime nilReason=missing（EDDP 官方形）                                 | 无时窗                          |
+| DDHH/DDHH 窗 | UNTIL         | TimePeriod 双端点完整落位                                                       | TL+窗止（窗起不保真，告警出声） |
+
+AT/TL/FM 是 HHMM（无日位）：时刻早于发报时刻按次日回绕（`trendInstantOf` 绝对时刻比较）——
+回绕判式见 §十一.9。
+
+### 5. 阈值开闭区间（难点 8 往返保真——「绝不把 ≥10km 生成成精确 10000m」）
+
+- TAC 9999（≥10km 开区间）→ XML 10000m + `prevailingVisibilityOperator=ABOVE`；回读 9999
+  above。生成侧断言锁「有 ABOVE 算子在位」，杜绝精确值混淆。
+- TAC 0000（<50m）→ 50m + BELOW；回读 0 below（下限电码两态等价）。
+- 精确值（8000）→ 无算子元素——开闭区间以算子元素有无承载，回读 exact=true。
+- RVR 同构：P2000→meanRVR 2000 + ABOVE、M0050→meanRVR 50 + BELOW，beyondRange 往返保真。
+
+### 6. CAVOK 反向等价判定（难点 6——9999≠CAVOK 双向断言）
+
+- 正向（既有）：cavok=true → 三组让位；在位即 cross-check-conflict 出声。
+- 反向（本期）：「vis≥10000+无天气+无低云」数值形态（含 10000m+ABOVE 阈值形）→ cavok=false
+  - vis 9999 above——**≥10km 数值不构成 CAVOK**（9999 只承诺能见度，不承诺无天气无低云）；
+    与显式布尔 true 的 IR 分岔以「两判对锁」测试固定。生成侧对称：cavok=false 的 9999 报文生成
+    `cloudAndVisibilityOK="false"` + 10000m+ABOVE（不吞并成布尔 true）。
+
+### 7. NIL 三来源与 nilReason 对齐（难点 9/10——对齐表权威文本在 iwxxm.ts `KNOWN_NIL_WORDS` 注释）
+
+整报 NIL / RVRNO / `//`（自动站天气）/ `/////KT`（风）/ `////`（能见度）五载体逐位对账：语义
+同归缺测态，选词各回各位（missing＝应有而未得；notObservable＝本时次不可观测），方向不对称性
+（IWXXM→IR 收敛选词、IR→IWXXM 按表逆向）显式声明。**空载两形并存**：官方 2025-2 METAR NIL
+样本为裸 nilReason（无 xsi:nil）、生成侧为 xsi:nil+nilReason——XSD nillable 元素的两合法空载形，
+解析侧同判（isNilProp 族）、语义同构。
+
+### 8. 站点元数据注入接口裁决（难点 11——现状确认，OurAirports 不施工）
+
+- 解析方向（IWXXM→IR）：零注入——站名/时刻在文档内自足，ARP/标高等快照原样在 raw，34 站官方
+  对实证；不建注入接口。
+- 生成方向（IR→IWXXM）：最小合法形（SNAPSHOT + ICAO 四字码），不捏造名称/坐标/标高；
+  中国站富化走既有 `metweave/stations-cn`（39 站静态目录，gen:stations 单源再生）——**调用方
+  自行联表后自担数据责任，本包不内置全球目录**。OurAirports 接入：豁免不施工（「明确不做」
+  四项之一），触发条件同该清单口径。
+
+### 9. 跨年回绕修正与日历边界（难点 12——本期一处真 bug 修复，跨年除夕用例捕获）
+
+- **真 bug**：趋势时段词日位锚定旧实现 `trendDayOf` 用 `(day%31)+1`——31 日发报、次日电码 01
+  时误落同月 1 日（差 30 天）。跨年除夕用例（12/31 2350 观测 + TL0010）实弹捕获。修正为
+  `trendInstantOf`（Date.UTC 绝对时刻比较，早于发报即 +86400000ms），月末/年末回绕自然正确。
+- **TAF 有效期止点跨月**：新 `isoAfterOf`——止点逐位投影早于起点即落入次月（ddHH 无月位，
+  Date.UTC 月份进位自然跨年）；止时 24 午夜特例两态等价口径不变（3121/3124 → 次年 1/1 00:00
+  断言在案）。
+
+### 10. 官方样本补扫记录（2026-10-19——G2 缺口样本面收口）
+
+| 扫描点                        | 通道与结果                                                                                                                                                  | 处置                                                                         |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| METAR 侧 NIL                  | **取得**：wmo-im/iwxxm 主仓 `IWXXM/examples/metar-NIL-collect.{tac,xml}`（2025-2 命名空间，TAC `METAR YUDO 221630Z NIL`，observation 裸 nilReason=missing） | 入库 `corpus/iwxxm/extras/` + 3 断言（解析/双通道对齐/2025-2 出口往返）      |
+| 2023-1 METAR NIL 等价对       | translation 仓 metar/ 目录 34 站全名复扫无 NIL 样本                                                                                                         | 豁免记档（遗留项 3），官方补充即补断言                                       |
+| TAF PROB40（含 PROB40 TEMPO） | TAFTestCases.txt 全 7 对仅 PROB30 档；官方两仓均无 PROB40 样本                                                                                              | 豁免记档（§九.5 口径）：解析与 30 档同路径（枚举映射），样本出现即补         |
+| TAF 午夜止窗（止点 00 形态）  | 官方 7 对无该形态；止时 24 特例已有合成+跨年断言                                                                                                            | 豁免记档（§九.5 口径）：直投影行为已定，样本出现即补                         |
+| ECCC gen:iwxxm 复跑           | 2026-10-19 实跑：`dd.weather.gc.ca/today/aviation/iwxxm/` 目录仍仅 `taf/`——结论维持；同轮 AWC 实时流 29/30 站正常                                           | 探测结论记档，生成件已恢复原状（探测不改动 examples/iwxxm-data.json 入库版） |

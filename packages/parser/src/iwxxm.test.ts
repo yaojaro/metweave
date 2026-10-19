@@ -872,3 +872,176 @@ describe("TAF 解析（v0.3 遗留项 1：根 iwxxm:TAF → TafReport）", () =>
     expect(r.changes[0]?.raw).toBe("FM0800 18012G22KT");
   });
 });
+
+// —— v0.3.1 规则补全（W43 D2/D3）：CAVOK 反向等价 / 天气压缩词拆解表 / NIL 三来源 /
+// VRB 与静风——12 条存活难点的测试位补齐（对账底档见 docs/iwxxm-notes.md §十一与用例清单 v1）。
+
+// 组内工厂上移模块层（consistent-function-scoping——不捕获组内闭包变量）：CAVOK 反向等价的
+// 能见度组夹具与 4678 电码单天气组夹具。
+const visBody = (value: number, operator?: string): string =>
+  observation(
+    `<iwxxm:visibility><iwxxm:AerodromeHorizontalVisibility><iwxxm:prevailingVisibility uom="m">${value}</iwxxm:prevailingVisibility>${
+      operator !== undefined
+        ? `<iwxxm:prevailingVisibilityOperator>${operator}</iwxxm:prevailingVisibilityOperator>`
+        : ""
+    }</iwxxm:AerodromeHorizontalVisibility></iwxxm:visibility>`,
+  );
+
+const wxOf = (code: string): MetarReport["weather"] =>
+  parseMetar(
+    observation(
+      `<iwxxm:presentWeather xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://codes.wmo.int/306/4678/${code}"/>`,
+    ),
+  ).weather;
+
+describe("CAVOK 反向等价判定（难点 6：9999≠CAVOK——数值形态与显式布尔是两种语义）", () => {
+  it("数值形态（10000m+ABOVE、无天气无云、布尔 false）→ cavok=false + vis 9999 above——≥10km 数值不构成 CAVOK", () => {
+    const r = parseMetar(visBody(10000, "ABOVE"));
+    expect(r.cavok).toBe(false);
+    expect(r.visibility?.kind).toBe("value");
+    if (r.visibility?.kind === "value") {
+      expect(r.visibility.value.value).toBe(9999);
+      expect(r.visibility.value.exact).toBe(false);
+      expect(r.visibility.value.beyond).toBe("above");
+    }
+  });
+  it("精确 9999（无算子）→ exact=true 且 cavok=false——9999 数值本身更不构成 CAVOK", () => {
+    const r = parseMetar(visBody(9999));
+    expect(r.cavok).toBe(false);
+    expect(r.visibility?.kind).toBe("value");
+    if (r.visibility?.kind === "value") {
+      expect(r.visibility.value.value).toBe(9999);
+      expect(r.visibility.value.exact).toBe(true);
+      expect(r.visibility.value.beyond).toBeUndefined();
+    }
+  });
+  it("两判对锁：同一「9999 级能见度」数值形态与显式布尔 true 产出不同的 IR cavok 位", () => {
+    const numeric = parseMetar(visBody(9999));
+    const explicit = parseMetar(
+      visBody(10000, "ABOVE").replace(
+        'cloudAndVisibilityOK="false"',
+        'cloudAndVisibilityOK="true"',
+      ),
+    );
+    expect(numeric.cavok).toBe(false);
+    expect(explicit.cavok).toBe(true);
+    expect(explicit.visibility).toBeUndefined(); // 显式 CAVOK 三组让位
+    expect(numeric.visibility).toBeDefined(); // 数值形态能见度组在位
+  });
+});
+
+describe("天气压缩词拆解表（难点 7：4678 URI 尾段复用 TAC 切解器——逐电码断言）", () => {
+  it("SHRASN（一电码多现象：阵性雨雪混合）→ SH 描述符 + [RA,SN] 双现象、零强度符", () => {
+    const r = wxOf("SHRASN");
+    expect(r?.kind).toBe("value");
+    if (r?.kind !== "value") return;
+    expect(r.value[0]).toMatchObject({
+      intensity: undefined,
+      proximity: false,
+      descriptor: "SH",
+      phenomena: ["RA", "SN"],
+    });
+  });
+  it("-SHRASN（强度符+描述符+双现象）→ intensity='-' + SH + [RA,SN]", () => {
+    const r = wxOf("-SHRASN");
+    if (r?.kind !== "value") throw new Error("天气组应有值");
+    expect(r.value[0]).toMatchObject({ intensity: "-", descriptor: "SH", phenomena: ["RA", "SN"] });
+  });
+  it("VCTS（多电码一现象族的 VC 邻近形态）→ proximity=true + TS 描述符 + 无现象（TS 裸编报合法）", () => {
+    const r = wxOf("VCTS");
+    if (r?.kind !== "value") throw new Error("天气组应有值");
+    expect(r.value[0]).toMatchObject({ proximity: true, descriptor: "TS", phenomena: [] });
+  });
+  it("VCSH（VC 邻近裸阵性——降水类型不可辨，4678 表注合法形态）→ proximity=true + SH + 无现象", () => {
+    const r = wxOf("VCSH");
+    if (r?.kind !== "value") throw new Error("天气组应有值");
+    expect(r.value[0]).toMatchObject({ proximity: true, descriptor: "SH", phenomena: [] });
+  });
+  it("+TSRA（强雷暴伴雨）与 TSRA（中等）→ 强度位直传", () => {
+    const heavy = wxOf("+TSRA");
+    if (heavy?.kind !== "value") throw new Error("天气组应有值");
+    expect(heavy.value[0]).toMatchObject({ intensity: "+", descriptor: "TS", phenomena: ["RA"] });
+    const moderate = wxOf("TSRA");
+    if (moderate?.kind !== "value") throw new Error("天气组应有值");
+    expect(moderate.value[0]).toMatchObject({
+      intensity: undefined,
+      descriptor: "TS",
+      phenomena: ["RA"],
+    });
+  });
+  it("双向可逆前提：拆解结果逐位可重组原 token（weatherTokenOf 同串）——SHRASN/-SHRASN/VCTS/VCSH/+TSRA 五码验算", () => {
+    const tokens = ["SHRASN", "-SHRASN", "VCTS", "VCSH", "+TSRA"];
+    for (const token of tokens) {
+      const r = wxOf(token);
+      if (r?.kind !== "value" || r.value[0] === undefined)
+        throw new Error(`天气组应有值：${token}`);
+      const g = r.value[0];
+      const rebuilt = `${g.intensity ?? ""}${g.proximity ? "VC" : ""}${g.descriptor ?? ""}${g.phenomena.join("")}`;
+      expect(rebuilt, token).toBe(token);
+    }
+  });
+});
+
+describe("NIL 三来源与 nilReason 对齐（难点 9：解析侧——选词收敛为缺测语义）", () => {
+  it("RVRNO 载体（rvr xsi:nil + missing）→ rvr {kind:'missing'}（与整报 NIL 同词不同位）", () => {
+    const r = parseMetar(
+      observation(
+        `<iwxxm:rvr nilReason="http://codes.wmo.int/common/nil/missing" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>`,
+      ),
+    );
+    expect(r.runwayVisualRange?.kind).toBe("missing");
+  });
+  it("`//` 载体（presentWeather xsi:nil + notObservable）→ weather {kind:'missing'}", () => {
+    const r = parseMetar(
+      observation(
+        `<iwxxm:presentWeather nilReason="http://codes.wmo.int/common/nil/notObservable" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>`,
+      ),
+    );
+    expect(r.weather?.kind).toBe("missing");
+  });
+  it("能见度 `////` 载体（visibility xsi:nil + notObservable）→ visibility {kind:'missing'}", () => {
+    const r = parseMetar(
+      observation(
+        `<iwxxm:visibility nilReason="http://codes.wmo.int/common/nil/notObservable" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>`,
+      ),
+    );
+    expect(r.visibility?.kind).toBe("missing");
+  });
+});
+
+describe("VRB 与静风（难点 5 解析侧：与 TAC 同构落位）", () => {
+  it("VRB 本体（variableWindDirection=true 且无均值方向）→ variable=true + direction=null", () => {
+    const r = parseMetar(
+      observation(
+        `<iwxxm:surfaceWind><iwxxm:AerodromeSurfaceWind variableWindDirection="true"><iwxxm:meanWindSpeed uom="[kn_i]">2</iwxxm:meanWindSpeed></iwxxm:AerodromeSurfaceWind></iwxxm:surfaceWind>`,
+      ),
+    );
+    expect(r.wind?.kind).toBe("value");
+    if (r.wind?.kind !== "value") return;
+    expect(r.wind.value.variable).toBe(true);
+    expect(r.wind.value.direction).toBeNull();
+    expect(r.wind.value.speed.value).toBe(2);
+  });
+  it("带扇区的 variable 译文形态（080V140 族，LTCN 官方判据）→ variable=false + 均值方向 + 扇区", () => {
+    const r = parseMetar(
+      observation(
+        `<iwxxm:surfaceWind><iwxxm:AerodromeSurfaceWind variableWindDirection="true"><iwxxm:meanWindDirection uom="deg">80</iwxxm:meanWindDirection><iwxxm:meanWindSpeed uom="[kn_i]">10</iwxxm:meanWindSpeed><iwxxm:extremeCounterClockwiseWindDirection uom="deg">60</iwxxm:extremeCounterClockwiseWindDirection><iwxxm:extremeClockwiseWindDirection uom="deg">140</iwxxm:extremeClockwiseWindDirection></iwxxm:AerodromeSurfaceWind></iwxxm:surfaceWind>`,
+      ),
+    );
+    if (r.wind?.kind !== "value") throw new Error("风组应有值");
+    expect(r.wind.value.variable).toBe(false);
+    expect(r.wind.value.direction).toBe(80);
+    expect(r.wind.value.variation).toMatchObject({ min: 60, max: 140 });
+  });
+  it("静风（方向 0 + 速度 0）→ direction=0 数值直传——方向位数值 0 非缺测", () => {
+    const r = parseMetar(
+      observation(
+        `<iwxxm:surfaceWind><iwxxm:AerodromeSurfaceWind variableWindDirection="false"><iwxxm:meanWindDirection uom="deg">0</iwxxm:meanWindDirection><iwxxm:meanWindSpeed uom="[kn_i]">0</iwxxm:meanWindSpeed></iwxxm:AerodromeSurfaceWind></iwxxm:surfaceWind>`,
+      ),
+    );
+    if (r.wind?.kind !== "value") throw new Error("风组应有值");
+    expect(r.wind.value.variable).toBe(false);
+    expect(r.wind.value.direction).toBe(0);
+    expect(r.wind.value.speed.value).toBe(0);
+  });
+});
