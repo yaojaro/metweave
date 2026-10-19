@@ -1085,6 +1085,33 @@ describe("红队对抗审查修复回归（2026-10-19，XML 侧）", () => {
     expect(frac.time).toEqual({ day: 5, hour: 0, minute: 0 });
   });
 
+  it("P2-乙（复核）非标形态旁路收口：无冒号 ±hhmm 与纯日期形同入往返自检，非法日期 throw invalid-time", () => {
+    expect(() =>
+      parseMetar(observation("").replace("2026-10-05T00:00:00Z", "2026-02-30T10:00:00+0800")),
+    ).toThrow(MetarParseError);
+    expect(() => parseMetar(observation("").replace("2026-10-05T00:00:00Z", "2026-02-30"))).toThrow(
+      MetarParseError,
+    );
+    try {
+      parseMetar(observation("").replace("2026-10-05T00:00:00Z", "2026-02-30"));
+    } catch (err) {
+      expect((err as MetarParseError).code).toBe("invalid-time");
+    }
+  });
+
+  it("P2-乙 边界不回归：无冒号 ±hhmm 合法形折 UTC、纯日期合法形收下（无时区标记 info 同旧）", () => {
+    const noColon = parseMetar(
+      observation("").replace("2026-10-05T00:00:00Z", "2026-10-06T07:30:00+0800"),
+    );
+    expect(noColon.time).toEqual({ day: 5, hour: 23, minute: 30 });
+    expect(noColon.warnings.some((w) => /无时区标记/.test(w.message))).toBe(false);
+    const dateOnly = parseMetar(observation("").replace("2026-10-05T00:00:00Z", "2026-10-19"));
+    expect(dateOnly.time).toEqual({ day: 19, hour: 0, minute: 0 });
+    expect(
+      dateOnly.warnings.some((w) => w.code === "invalid-format" && /无时区标记/.test(w.message)),
+    ).toBe(true);
+  });
+
   it("P1-8 XML 趋势 CAVOK 矛盾（实弹形态）：cloudAndVisibilityOK=true 与 prevailingVisibility 并存 → cross-check-conflict warning（对齐 TAC 侧）", () => {
     const xml = observation(
       '<iwxxm:surfaceWind><iwxxm:AerodromeSurfaceWind><iwxxm:meanWindSpeed uom="[kn_i]">8</iwxxm:meanWindSpeed></iwxxm:AerodromeSurfaceWind></iwxxm:surfaceWind>',

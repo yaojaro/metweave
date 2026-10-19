@@ -479,18 +479,22 @@ function indexGmlIds(root: XNode, map: Map<string, XNode> = new Map()): Map<stri
  */
 const ZONE_MARKED_RE = /(?:Z|[+-]\d{2}(?::?\d{2})?)$/;
 
-/** timePosition 完整 xsd:dateTime 形态（往返自检的判定域）：年-月-日T时:分〔:秒〔.小数〕〕〔Z|±hh:mm〕
- *  ——时差只认冒号形（XSD 明文；±hh / ±hhmm 非 xsd 形态，落 Date.parse 原路径照旧 NaN）。 */
+/** timePosition 往返自检判定域（宽容 xsd 形态）：日期必在；时刻/秒/小数可选（纯日期形一并入检）；
+ *  时差认 Z / ±hh:mm（xsd 冒号形）/ ±hhmm（无冒号磨损形）两写法——复核 P2-乙收口：±hhmm 此前落
+ *  Date.parse 原路径被 V8 静默滚动（「±hhmm 照旧 NaN」的原注记实测只对 ±hh 成立，原注记不准确已撤）；
+ *  ±hh 仍不在本域（V8 原路径即 NaN → 调用方 missing-time 整体失败，无静默滚动面）。 */
 const DATETIME_PARTS_RE =
-  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-]\d{2}:\d{2})?$/;
+  /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?)?(Z|[+-]\d{2}:?\d{2})?$/;
 
 /**
  * timePosition 字串 → UTC 毫秒（单一出口）：无时区标记时按 UTC 解析（确定性）并向
- * warnings 记账；完整 dateTime 形态做往返自检——非法日期（2026-02-30、平年 2 月 29、13 月）
- * 经 Date.parse/Date.UTC 会被静默归一成「看似合法」的滚动后时刻（红队 P1-7 实弹：2/30 归一
- * 成 3/2 零告警，与 TAC 侧 991000Z throw invalid-time 不同构）——按字面分量重算墙钟回比，
- * 漂移即 throw invalid-time 整体失败（带时差字串按「UTC 时刻 + 时差」还原墙钟再比，跨日
- * 合法形态不误伤）；形态不在正则域的扩展形走 Date.parse 原路径行为不变。
+ * warnings 记账；正则域内形态（完整 dateTime / 纯日期 / 双时差写法）一律做往返自检——非法日期
+ * （2026-02-30、平年 2 月 29、13 月）经 Date.parse/Date.UTC 会被静默归一成「看似合法」的滚动后
+ * 时刻（红队 P1-7 实弹：2/30 归一成 3/2 零告警，与 TAC 侧 991000Z throw invalid-time 不同构；
+ * 复核 P2-乙补刀：无冒号 ±hhmm 与纯日期形同滚，已一并纳入）——按字面分量重算墙钟回比，漂移即
+ * throw invalid-time 整体失败（带时差字串按「UTC 时刻 + 时差」还原墙钟再比，跨日合法形态不误伤）；
+ * 形态不在正则域的残留扩展形（±hh 等）走 Date.parse 原路径——V8 对其产 NaN，经调用方 missing-time
+ * 整体失败，同样不满足「静默收下」。
  */
 function parseTimePositionMs(pos: string, where: string, warnings: ParseWarning[]): number {
   const parts = DATETIME_PARTS_RE.exec(pos);
@@ -509,8 +513,9 @@ function parseTimePositionMs(pos: string, where: string, warnings: ParseWarning[
   const y = Number(ys);
   const mo = Number(mos);
   const d = Number(ds);
-  const h = Number(hs);
-  const mi = Number(mins);
+  // 纯日期形（时刻位缺席）按 00:00:00 折算——与 Date.parse 纯日期形语义一致（ES 规范按 UTC）
+  const h = hs !== undefined ? Number(hs) : 0;
+  const mi = mins !== undefined ? Number(mins) : 0;
   const s = ss !== undefined ? Number(ss) : 0;
   const msPart = fract !== undefined ? Number(fract.slice(0, 3).padEnd(3, "0")) : 0;
   let offsetMinutes = 0;

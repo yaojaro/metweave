@@ -852,6 +852,22 @@ describe("红队对抗审查修复回归（2026-10-19，解析侧）", () => {
     expect(r.warnings.some((w) => w.message.includes("六位 FM"))).toBe(false);
   });
 
+  it("P2-甲（复核）有效期负窗（1918/1912）→ cross-check-conflict 与变化组负窗同构；跨月窗与零长窗不误伤", () => {
+    const r = parseTaf("TAF ZBAA 191000Z 1918/1912 32008MPS 9999 BKN030=");
+    expect(r.validity).toMatchObject({ startDay: 19, startHour: 18, endDay: 19, endHour: 12 });
+    expect(
+      r.warnings.some(
+        (w) => w.code === "cross-check-conflict" && w.message.includes("有效期止早于起"),
+      ),
+    ).toBe(true);
+    // 跨月窗（止日<起日）是正常形态，不得误伤
+    const cross = parseTaf("TAF ZBAA 310900Z 3112/0106 32008MPS 9999 BKN030=");
+    expect(cross.warnings.some((w) => w.code === "cross-check-conflict")).toBe(false);
+    // 零长窗（止==起）不算矛盾
+    const zero = parseTaf("TAF ZBAA 191000Z 1912/1912 32008MPS 9999 BKN030=");
+    expect(zero.warnings.some((w) => w.code === "cross-check-conflict")).toBe(false);
+  });
+
   it("P1-6 变化组负窗（1914/1912 实弹）→ cross-check-conflict 出声，IR 如实保留", () => {
     const r = parseTaf("TAF ZBAA 190900Z 1912/2018 32008MPS 9999 BKN030 TEMPO 1914/1912 2000 -SN=");
     expect(r.changes[0]?.window).toMatchObject({

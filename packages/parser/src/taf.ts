@@ -307,6 +307,18 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
       span: spanOf(vTok),
     });
   }
+  // 负有效期矛盾校验（复核 P2-甲，与变化组负窗同构）：止早于起（1918/1912——止时<起时、
+  // 两端各自在域）属自洽性矛盾而非越界：IR 如实保留，矛盾出声；emit 侧同判式不放大（validPeriod
+  // 整体不落闸已先行）。跨月窗「止日<起日」是正常形态不误伤；起时 24 越界门维持拒收
+  //（2026-10-19 owner 追认，WMO 24 只作止时）
+  if (validity.endDay === validity.startDay && validity.endHour < validity.startHour) {
+    warnings.push({
+      code: "cross-check-conflict",
+      severity: "warning",
+      message: `有效期止早于起（${vTok.text}）——窗矛盾（止<起），报文自洽性存疑，IR 如实保留`,
+      span: spanOf(vTok),
+    });
+  }
   i += 1;
 
   // —— A2★ CNL：占**风组位**（有效期之后）＝预报取消——有效期保留（发布与覆盖窗信息不丢），
