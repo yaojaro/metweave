@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { MetarReport, TafReport } from "@metweave/core";
 import { parse, parseTaf } from "./index";
-import { parseIwxxm, type IwxxmReport } from "./iwxxm";
+import { parseIwxxm, serializeIwxxm, type IwxxmReport } from "./iwxxm";
 
 const corpusDir = fileURLToPath(new URL("../../../corpus/iwxxm/", import.meta.url));
 
@@ -448,5 +448,52 @@ describe("旧版官方样例（corpus/iwxxm/extras）", () => {
   it("iwxxm 2.1 OM 架构族 NIL 样例：明确整体失败（站点导航结构不同），不静默乱解", () => {
     const xml = readFileSync(`${corpusDir}extras/NIL-Amd77-2016.xml`, "utf8");
     expect(() => parseIwxxm(xml)).toThrow(/2\.1/);
+  });
+});
+
+describe("官方 METAR NIL 样本（corpus/iwxxm/extras/metar-NIL-collect——v0.3.1 补扫取得）", () => {
+  // 样本出处：wmo-im/iwxxm 仓 IWXXM/examples/metar-NIL-collect.{tac,xml}（2026-10-19 官方仓直取）。
+  // 意义：遗留项 3「METAR 侧 NIL 无官方样本」的 2025-2 侧缺口就此关闭——TAC `METAR YUDO
+  // 221630Z NIL` 与 XML 双侧官方原文；observation 空载为裸 nilReason=missing（无 xsi:nil），
+  // 与生成侧 xsi:nil+nilReason 两形并存（XSD nillable 元素的两合法空载形，语义同构）。
+  // 2023-1 侧 NIL 等价对仍未取得（translation 仓 metar/ 目录 34 站无 NIL 样本，本次全名复扫确认）。
+  const tac = readFileSync(`${corpusDir}extras/metar-NIL-collect.tac`, "utf8");
+  const xml = readFileSync(`${corpusDir}extras/metar-NIL-collect.xml`, "utf8");
+
+  it("XML（iwxxm 2025-2 命名空间 + collect 包裹）→ nil:true 最小形态，版本识别零告警、missing 已知词零告警", () => {
+    const r = parseIwxxm(xml);
+    if (r.kind === "taf") throw new Error("预期观测侧 IR");
+    expect(r.station).toBe("YUDO");
+    expect(r.nil).toBe(true);
+    expect(r.warnings).toHaveLength(0);
+  });
+
+  it("TAC 官方原文同报 → nil:true——两通道语义对齐（NIL 双侧对的第一份官方实证）", () => {
+    // 官方 .tac 是公报形态（SAYU31 报头行 + METAR 行）——单报解析器取报文行（公报拆分归管道层）
+    const metarLine =
+      tac
+        .split("\n")
+        .map((l) => l.trim())
+        .find((l) => l.startsWith("METAR")) ?? "";
+    const r = parse(metarLine);
+    expect(r.station).toBe("YUDO");
+    expect(r.nil).toBe(true);
+  });
+
+  it("往返保真：parse → serialize（2025-2 出口）→ re-parse，NIL 最小形态与站名不丢", () => {
+    const first = parseIwxxm(xml);
+    if (first.kind === "taf") throw new Error("预期观测侧 IR");
+    const generated = serializeIwxxm(first, {
+      version: "2025-2",
+      calendar: { year: 2012, month: 8 },
+    });
+    expect(generated).toContain('xmlns:iwxxm="http://icao.int/iwxxm/2025-2"');
+    expect(generated).toMatch(
+      /<iwxxm:observation[^>]*nilReason="http:\/\/codes\.wmo\.int\/common\/nil\/missing"/,
+    );
+    const second = parseIwxxm(generated);
+    if (second.kind === "taf") throw new Error("预期观测侧 IR");
+    expect(second.nil).toBe(true);
+    expect(second.station).toBe("YUDO");
   });
 });
