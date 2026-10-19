@@ -1,3 +1,7 @@
 packages:
   - packages/*
   - examples
+# 依赖覆盖（0.3.1 安全红队 P1）：dev 链 source-map-js 1.2.1（postcss 精确钉版）有已知修复版
+# 1.2.2——覆盖到 ≥1.2.2，锁文件随 0.3.1 一并更新
+overrides:
+  source-map-js@1.2.1: ">=1.2.2"

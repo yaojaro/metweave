@@ -56,6 +56,7 @@
     "access": "public"
   },
   "scripts": {
+    "prepublishOnly": "node ../../scripts/check-publish-manifest.mjs",
     "build": "tsdown",
     "typecheck": "tsc --noEmit"
   },
