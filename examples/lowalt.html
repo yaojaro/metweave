@@ -8,52 +8,27 @@
     <link rel="icon" href="data:," />
   </head>
   <body class="lw-page">
-    <header class="lw-header">
-      <h1>低空航路天气面板 · 自设航路（示例：兴隆湖 → 龙泉山）</h1>
-      <p class="lw-header-sub">
-        示例航线 ≈23km · 真高 120m｜成都双流 ZUUU 与成都天府 ZUTF 双站地面实况夹持， Open-Meteo
-        近地面多层（10/80/120/180m）沿航路采样剖面；亦可点击地图自设航路。
-        <strong
-          >航线为示意场景，非既有获批航线；真实飞行须空域审批。本页不得用于飞行或任何运行决策。</strong
-        >
-      </p>
+    <!-- 全屏底图＝唯一舞台：取点、实况、剖面、风险全部在这张图上完成 -->
+    <div id="map"></div>
+    <div id="basemap-hint" role="note" hidden></div>
+
+    <header id="lw-topbar">
+      <strong>低空航路天气面板</strong>
+      <span class="lw-topbar-sub"
+        >示例：兴隆湖 → 龙泉山（≈23km）｜自设航路：点击地图取点（≤8），拖拽微调，右键删除</span
+      >
     </header>
-    <div id="status" role="status" aria-live="polite" hidden>
-      <span id="status-spinner" aria-hidden="true"></span>
-      <span id="status-text"></span>
-    </div>
 
-    <section class="lw-section" aria-label="问一 · 地面实况与航路图台">
-      <h2>问一 · 现在地面什么条件？</h2>
-      <p class="lw-note">
-        机场报文是低空飞行最便宜的地面真值：双流/天府两站的例行观测（METAR/SPECI）分钟级可得， 一条
-        curl 就能拿。点击圆点看中文卡（悬停字段见原文）。
-      </p>
-      <div id="map"></div>
-      <div id="basemap-hint" role="note" hidden></div>
-    </section>
+    <!-- 左侧浮动面板：航路工具＋剖面/明细/预报/短临四页签，全部操作不离开底图 -->
+    <aside id="lw-panel" aria-label="航路天气面板">
+      <div class="lw-panel-head">
+        <strong>航路天气</strong>
+        <button id="panel-collapse" type="button" title="收起面板，看完整地图">⟨ 收起</button>
+      </div>
 
-    <section class="lw-section" aria-label="问六 · 目的端机场预报">
-      <h2>问六 · 目的端的机场预报（TAF）</h2>
-      <p class="lw-note">
-        起飞端/降落端共用同一份机场预报口径：未来约 30 小时的官方预报（渐变/间歇/概率变化组）。
-      </p>
-      <div id="taf-card"></div>
-      <p id="taf-hint" role="note" hidden></p>
-    </section>
-
-    <section class="lw-section" aria-label="问二至问五 · 自设航路与沿程天气风险">
-      <h2>问二至问五 · 自设航路的沿程天气与风险</h2>
-      <p class="lw-note">
-        点击地图取点画出你的低空航路（≤8 点，拖拽微调、右键删除），系统沿折线每约 2km
-        取一个气象采样点，
-        拉近地面多层（10/80/120/180m）做沿程-高度剖面：<strong>红色横线＝当前巡航真高的飞行轨迹</strong>，
-        顶部徽标＝各位置参考风险（悬停看因子）。风险为<strong>演示参考阈值，非机型适飞判据、非运行决策依据</strong>。
-      </p>
-      <div class="lw-controls lw-route-bar">
-        <button id="route-preset" type="button">载入示例航线</button>
-        <button id="route-clear" type="button">清空重画</button>
-        <span class="lw-hint">点击地图添加航点（≤8）</span>
+      <div class="lw-route-bar">
+        <button id="route-preset" type="button">示例航线</button>
+        <button id="route-clear" type="button">清空</button>
         <output id="route-info">—</output>
         <button id="route-analyze" type="button" class="lw-primary">分析航路</button>
       </div>
@@ -61,47 +36,82 @@
         <label for="profile-hour">查看时刻</label>
         <input id="profile-hour" type="range" min="0" max="47" step="1" value="0" />
         <output id="profile-hour-label" for="profile-hour">—</output>
-        <button id="profile-now" type="button">回到现在</button>
+        <button id="profile-now" type="button">现在</button>
       </div>
       <div class="lw-controls">
         <label for="cruise-alt">巡航真高</label>
         <input id="cruise-alt" type="range" min="30" max="180" step="5" value="120" />
         <output id="cruise-alt-label" for="cruise-alt">120m</output>
-        <span class="lw-hint">轨迹线与风险评估随此高度联动</span>
       </div>
-      <p id="profile-source" class="lw-source"></p>
-      <figure class="lw-figure">
-        <figcaption>沿程-高度剖面 · 飞行轨迹与参考风险（悬停徽标看因子明细）</figcaption>
-        <div id="profile-svg"></div>
-      </figure>
-      <figure class="lw-figure">
-        <figcaption>采样点明细表（同一数据，按里程列位）</figcaption>
-        <div id="profile-table"></div>
-      </figure>
-      <figure class="lw-figure">
-        <figcaption>晨昏窗口（目视作业参考）</figcaption>
-        <div id="profile-daylight"></div>
-      </figure>
-    </section>
 
-    <section class="lw-section" aria-label="问五补充 · 短临降水接入形态">
-      <h2>问五补充 · 分钟级短临（注册制商业源，接入形态示意）</h2>
-      <p class="lw-note">
-        分钟级降水由商业源（彩云/和风）提供——雷达已被其内化为成品，免费档/按量注册即得。
-        本页不代跑（不携带任何密钥），接入形态：
-      </p>
-      <pre class="lw-code">
+      <nav class="lw-tabs" aria-label="信息页签">
+        <button type="button" data-tab="profile" class="active">沿程剖面</button>
+        <button type="button" data-tab="table">明细表</button>
+        <button type="button" data-tab="taf">机场预报</button>
+        <button type="button" data-tab="nowcast">短临接入</button>
+      </nav>
+
+      <section id="tab-profile" class="lw-tabpage">
+        <div class="lw-scrollbox" id="profile-scrollbox">
+          <div id="profile-svg"></div>
+        </div>
+        <div class="lw-row">
+          <button id="profile-zoom" type="button" class="lw-ghost">⛶ 放大剖面</button>
+          <span class="lw-hint"
+            >色带＝风速 · 红线＝巡航轨迹 · 顶部徽标＝参考风险（悬停看因子）</span
+          >
+        </div>
+        <div id="profile-daylight"></div>
+        <p id="profile-source" class="lw-source"></p>
+      </section>
+
+      <section id="tab-table" class="lw-tabpage" hidden>
+        <p class="lw-note">同一份数据按采样里程列位；左右滑动看全部。</p>
+        <div class="lw-scrollbox"><div id="profile-table"></div></div>
+      </section>
+
+      <section id="tab-taf" class="lw-tabpage" hidden>
+        <p class="lw-note">
+          降落端（天府 ZUTF）的官方机场预报：未来约 30 小时（渐变/间歇/概率变化组）。
+        </p>
+        <div id="taf-card"></div>
+        <p id="taf-hint" role="note" hidden></p>
+      </section>
+
+      <section id="tab-nowcast" class="lw-tabpage" hidden>
+        <p class="lw-note">
+          分钟级短临由商业源提供（雷达已被其内化为成品），免费档/按量注册即得。本页不代跑、不携带任何密钥，接入形态：
+        </p>
+        <pre class="lw-code">
 GET https://api.caiyunapp.com/v2.6/{你的令牌}/{经度},{纬度}/realtime   # 彩云 · 实况
 GET https://api.caiyunapp.com/v2.6/{你的令牌}/{经度},{纬度}/minutely   # 彩云 · 未来 2 小时分钟级
 GET https://dev.qweather.com/v7/weather/now?location={LocationID}&key={你的key}   # 和风 · 实况（每月前 5 万次 0 元）</pre>
-    </section>
+      </section>
+    </aside>
+    <button id="panel-open" type="button" title="展开面板" hidden>⟩ 航路天气</button>
+
+    <div id="status" role="status" aria-live="polite" hidden>
+      <span id="status-spinner" aria-hidden="true"></span>
+      <span id="status-text"></span>
+    </div>
+
+    <!-- 剖面放大 overlay（同一份数据的大图视图） -->
+    <div id="profile-modal" hidden>
+      <div class="lw-modal-card">
+        <div class="lw-modal-head">
+          <strong>沿程-高度剖面（放大视图）</strong>
+          <button id="profile-modal-close" type="button">关闭 ✕</button>
+        </div>
+        <div class="lw-modal-body"><div id="profile-svg-big"></div></div>
+      </div>
+    </div>
 
     <footer id="disclaimer">
-      演示用途：地面实况为 NOAA AWC / Iowa Environmental Mesonet 公开报文；廓线与云雨为 Open-Meteo
-      （ECMWF/GFS
-      近地面层）公开接口；短临为商业源接入形态示意（未实接）。数据来源已按《气象数据管理办法》
-      来源标注义务随文标示。<strong>本页不得用于飞行决策或任何运行决策</strong>；模式近地面风与城市楼宇间真实风存在系统差。
-      本演示与 WMO/NOAA/Open-Meteo/天地图无隶属或背书关系。
+      数据来源（依《气象数据管理办法》标注）：地面实况 NOAA AWC / Iowa Environmental Mesonet ·
+      廓线与云雨 Open-Meteo（ECMWF/GFS 近地面层）· 底图天地图 · 短临为接入形态示意（未实接）。
+      <strong>本页不得用于飞行或任何运行决策</strong
+      >；风险为演示参考阈值，非机型适飞判据；航线为示意场景，非获批航线。与
+      WMO/NOAA/Open-Meteo/天地图无隶属或背书关系。
     </footer>
 
     <script type="module" src="/src/lowalt-main.ts"></script>

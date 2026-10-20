@@ -414,7 +414,7 @@ export const renderRouteProfileSvg = (
 
   const svg = svgEl("svg", {
     viewBox: `0 0 ${width} ${height}`,
-    width: "100%",
+    width: String(width),
     role: "img",
     class: "lw-profile-svg",
   });

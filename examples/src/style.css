@@ -828,48 +828,232 @@ body:has(#iwxxm-compare) #map {
 }
 
 /* ============================================================
-   低空航路天气面板（lowalt.html，2026-10 场景演示件）
+   低空航路天气面板（lowalt.html）——全屏底图应用形态：
+   地图即舞台，控制与信息以浮动层收编（v3，2026-10-20）；
    前缀 lw-，不与主 demo/iwxxm 页类名交叉
    ============================================================ */
 
-.lw-header {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 18px 16px 6px;
+.lw-page {
+  background: #0f1720;
 }
-.lw-header h1 {
-  margin: 0 0 6px;
-  font-size: 20px;
+
+/* 底图铺满视口（免责声明条让出底部一行） */
+.lw-page #map {
+  position: fixed;
+  inset: 0 0 46px 0;
 }
-.lw-header-sub {
-  margin: 0;
+.lw-page #basemap-hint {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  background: #fff;
+  border: 1px solid #e3e8ee;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #8a94a0;
+}
+
+/* 顶栏：标题＋一句话指引（悬浮胶囊） */
+#lw-topbar {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1150;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #e3e8ee;
+  border-radius: 999px;
+  padding: 6px 16px;
+  box-shadow: 0 2px 10px rgba(15, 23, 32, 0.18);
+  white-space: nowrap;
+}
+#lw-topbar strong {
   font-size: 13px;
+}
+.lw-topbar-sub {
+  font-size: 12px;
+  color: #5a6572;
+}
+
+/* 左侧浮动面板：全部操作与信息都在图上 */
+#lw-panel {
+  position: fixed;
+  top: 56px;
+  left: 12px;
+  bottom: 58px;
+  width: 420px;
+  z-index: 1050;
+  background: #fff;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(15, 23, 32, 0.22);
+  padding: 12px 14px;
+  overflow-y: auto;
+  transition: transform 0.18s ease-out;
+}
+#lw-panel.lw-hidden {
+  transform: translateX(-112%);
+}
+.lw-page.lw-panel-hidden #panel-open {
+  display: block;
+}
+#panel-open {
+  display: none;
+  position: fixed;
+  top: 56px;
+  left: 12px;
+  z-index: 1040;
+  border: 1px solid #c9d3dd;
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 32, 0.2);
+}
+.lw-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.lw-panel-head strong {
+  font-size: 14px;
+}
+.lw-panel-head button {
+  border: none;
+  background: none;
+  color: #5a6572;
+  font-size: 12px;
+  cursor: pointer;
+}
+.lw-panel-head button:hover {
+  color: #2b5d9b;
+}
+
+/* 工具行 */
+.lw-route-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 8px;
+}
+.lw-route-bar output {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
   color: #4a5560;
+}
+.lw-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  font-size: 12px;
+}
+.lw-controls label {
+  white-space: nowrap;
+  color: #4a5560;
+}
+.lw-controls input[type="range"] {
+  flex: 1;
+  min-width: 90px;
+}
+.lw-controls output {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 11ch;
+  text-align: right;
+}
+.lw-controls button,
+.lw-route-bar button {
+  border: 1px solid #c9d3dd;
+  background: #f4f7fa;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lw-controls button:hover,
+.lw-route-bar button:hover {
+  background: #e8eef5;
+}
+.lw-controls button.lw-primary,
+.lw-route-bar button.lw-primary {
+  background: #2b5d9b;
+  border-color: #2b5d9b;
+  color: #fff;
+  font-weight: 600;
+}
+.lw-controls button.lw-primary:disabled,
+.lw-route-bar button.lw-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.lw-hint {
+  font-size: 11px;
+  color: #8a94a0;
+}
+.lw-source {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #8a94a0;
   line-height: 1.7;
 }
 
-.lw-section {
-  max-width: 1080px;
-  margin: 14px auto;
-  padding: 14px 16px 16px;
-  background: #fff;
-  border: 1px solid #e3e8ee;
-  border-radius: 10px;
+/* 页签 */
+.lw-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 10px 0 8px;
+  border-bottom: 1px solid #e3e8ee;
 }
-.lw-section h2 {
-  margin: 0 0 6px;
-  font-size: 16px;
-}
-.lw-note {
-  margin: 0 0 10px;
-  font-size: 13px;
-  color: #5a6572;
-  line-height: 1.7;
-}
-.lw-source {
-  margin: 4px 0 8px;
+.lw-tabs button {
+  border: none;
+  background: none;
+  padding: 5px 10px;
   font-size: 12px;
-  color: #8a94a0;
+  color: #5a6572;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  border-bottom: 2px solid transparent;
+}
+.lw-tabs button.active {
+  color: #2b5d9b;
+  font-weight: 600;
+  border-bottom-color: #2b5d9b;
+}
+.lw-tabpage {
+  min-height: 120px;
+}
+
+/* 横向滚动容器（剖面/表格按自然宽度出图，窄面板左右滑动） */
+.lw-scrollbox {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.lw-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.lw-row button.lw-ghost {
+  border: 1px solid #c9d3dd;
+  background: none;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #2b5d9b;
+  white-space: nowrap;
 }
 
 /* 剖面 SVG 文本体系 */
@@ -907,23 +1091,41 @@ body:has(#iwxxm-compare) #map {
   font-size: 11px;
   fill: #6b7684;
 }
+.lw-route-line {
+  stroke: #e2554d;
+  stroke-width: 2.5;
+}
+.lw-route-label {
+  font-size: 12px;
+  font-weight: 700;
+  fill: #e2554d;
+}
+.lw-risk-badge {
+  stroke: #fff;
+  stroke-width: 1.5;
+  cursor: help;
+}
+.lw-risk-badge-text {
+  font-size: 10px;
+  font-weight: 700;
+  fill: #fff;
+  pointer-events: none;
+}
 
 /* 表格卡 */
 .lw-table-wrap {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow-x: auto;
 }
 .lw-table {
   border-collapse: collapse;
-  font-size: 13px;
-  min-width: 520px;
+  font-size: 12px;
 }
 .lw-table th,
 .lw-table td {
   border: 1px solid #e3e8ee;
-  padding: 6px 10px;
+  padding: 4px 8px;
   text-align: center;
   white-space: nowrap;
 }
@@ -935,59 +1137,15 @@ body:has(#iwxxm-compare) #map {
   text-align: left;
   font-weight: 500;
 }
-.lw-table-ground td:not(:first-child) {
-  font-variant-numeric: tabular-nums;
-}
-
-/* 控件行 */
-.lw-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 8px 0;
-  font-size: 13px;
-}
-.lw-controls input[type="range"] {
-  flex: 1;
-  max-width: 420px;
-}
-.lw-controls output {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  min-width: 12ch;
-}
-.lw-controls button {
-  border: 1px solid #c9d3dd;
-  background: #f4f7fa;
-  border-radius: 6px;
-  padding: 4px 12px;
-  font-size: 13px;
-  cursor: pointer;
-}
-.lw-controls button:hover {
-  background: #e8eef5;
-}
-
-/* 版本并列 figure（验收期两版同屏；定稿后收敛） */
-.lw-figure {
-  margin: 12px 0 0;
-  padding: 10px;
-  border: 1px dashed #c9d3dd;
-  border-radius: 8px;
-}
-.lw-figure figcaption {
-  font-size: 12px;
-  color: #8a94a0;
-  margin-bottom: 8px;
-}
 
 /* 晨昏条 */
 .lw-daylight-bar {
   position: relative;
-  height: 18px;
-  border-radius: 9px;
+  height: 14px;
+  border-radius: 7px;
   background: #2c3a4d;
   overflow: hidden;
+  margin-top: 8px;
 }
 .lw-daylight-span {
   position: absolute;
@@ -1003,89 +1161,121 @@ body:has(#iwxxm-compare) #map {
   background: #e2554d;
 }
 .lw-daylight-caption {
-  margin: 6px 0 0;
-  font-size: 12px;
+  margin: 4px 0 0;
+  font-size: 11px;
   color: #5a6572;
 }
 
 /* 短临接入形态代码块 */
 .lw-code {
   margin: 0;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: #f4f7fa;
   border: 1px solid #e3e8ee;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.8;
   overflow-x: auto;
 }
 
-/* 低空页布局覆盖：主 demo 的 #map（满高）/ #disclaimer / #status / #basemap-hint（fixed 定位）
-   均为全屏应用形态，不适配本页分节文档流——以 .lw-page 作用域收编，不动主 demo 一行 */
-.lw-page {
-  background: #f7f9fb;
-  padding-bottom: 8px;
+/* 剖面放大 overlay */
+#profile-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(15, 23, 32, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.lw-page #map {
-  height: 420px;
-  border-radius: 8px;
-  border: 1px solid #e3e8ee;
-}
-.lw-page #disclaimer {
-  position: static;
-  max-width: 1048px;
-  margin: 14px auto 24px;
+.lw-modal-card {
   background: #fff;
-  color: #4a5560;
-  font-size: 12px;
-  line-height: 1.8;
-  border: 1px solid #e3e8ee;
-  border-radius: 10px;
+  border-radius: 12px;
+  width: min(96vw, 1100px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.lw-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 10px 16px;
+  border-bottom: 1px solid #e3e8ee;
 }
-.lw-page #disclaimer strong {
-  color: #a02c2c;
-}
-.lw-page #status {
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 18px;
-  box-shadow: 0 2px 10px rgba(28, 39, 51, 0.15);
-  border-radius: 999px;
-  padding: 6px 16px;
-}
-.lw-page #basemap-hint {
-  position: static;
-  margin-top: 8px;
+.lw-modal-head button {
+  border: 1px solid #c9d3dd;
+  background: none;
+  border-radius: 6px;
+  padding: 3px 12px;
   font-size: 12px;
-  color: #8a94a0;
+  cursor: pointer;
 }
-.lw-page {
-  height: auto;
+.lw-modal-body {
+  overflow: auto;
+  padding: 10px 14px 14px;
 }
 
-/* 自设航路工具条与航点/风险元素（2026-10-20 二期） */
-.lw-route-bar {
-  flex-wrap: wrap;
-}
-.lw-hint {
+/* 状态条（悬浮胶囊，顶栏下方） */
+.lw-page #status {
+  position: fixed;
+  top: 58px;
+  bottom: auto; /* 主 demo 旧规则的 bottom:104px 在此会把胶囊拉成整列高——显式清掉 */
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(76vw, 760px);
+  text-align: center;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e3e8ee;
+  border-radius: 999px;
+  padding: 5px 16px;
   font-size: 12px;
-  color: #8a94a0;
+  box-shadow: 0 2px 10px rgba(15, 23, 32, 0.18);
 }
-.lw-controls button.lw-primary {
-  background: #2b5d9b;
-  border-color: #2b5d9b;
-  color: #fff;
-  font-weight: 600;
+.lw-page #status[data-tone="ok"] {
+  color: #1e6b40;
 }
-.lw-controls button.lw-primary:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.lw-page #status[data-tone="error"] {
+  color: #a02c2c;
 }
-.lw-controls output#route-info {
-  font-variant-numeric: tabular-nums;
-  color: #4a5560;
+#status-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #c9d3dd;
+  border-top-color: #2b5d9b;
+  border-radius: 50%;
+  animation: lw-spin 0.9s linear infinite;
 }
+@keyframes lw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 免责声明：底部常驻条（数据来源标注＝49 号令义务随文落地） */
+.lw-page #disclaimer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1250;
+  background: rgba(28, 39, 51, 0.96);
+  color: #cfd8e2;
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 5px 14px;
+  max-height: 46px;
+  overflow-y: auto;
+}
+.lw-page #disclaimer strong {
+  color: #ffd9a0;
+}
+
 /* 航点序号图标（Leaflet divIcon） */
 .lw-wp-icon {
   background: none;
@@ -1105,26 +1295,4 @@ body:has(#iwxxm-compare) #map {
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(28, 39, 51, 0.4);
   cursor: grab;
-}
-/* 沿程剖面：巡航轨迹线与风险徽标 */
-.lw-route-line {
-  stroke: #e2554d;
-  stroke-width: 2.5;
-  stroke-dasharray: none;
-}
-.lw-route-label {
-  font-size: 11px;
-  font-weight: 700;
-  fill: #e2554d;
-}
-.lw-risk-badge {
-  stroke: #fff;
-  stroke-width: 1.5;
-  cursor: help;
-}
-.lw-risk-badge-text {
-  font-size: 10px;
-  font-weight: 700;
-  fill: #fff;
-  pointer-events: none;
 }

@@ -57,7 +57,8 @@ const stationMetaOf = (icao: string): StationMeta | undefined => {
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 window.scrollTo(0, 0);
 
-const map = L.map("map", { center: [30.5, 104.17], zoom: 11 });
+const map = L.map("map", { center: [30.5, 104.17], zoom: 11, zoomControl: false });
+L.control.zoom({ position: "topright" }).addTo(map);
 const hasBasemap = setupBasemap(map);
 if (!hasBasemap) {
   const hint = document.getElementById("basemap-hint");
@@ -406,6 +407,17 @@ const analyzeRoute = async (): Promise<void> => {
   }
 };
 
+const buildProfileSvg = (risks: readonly RiskAssessment[]): SVGElement | null => {
+  if (bundle === undefined) return null;
+  return renderRouteProfileSvg(bundle.points, {
+    samples: bundle.samples,
+    hourIndex,
+    cruiseAlt,
+    risks,
+    waypointMarks: waypointMarksOf(waypoints),
+  });
+};
+
 const renderAll = (): void => {
   if (bundle === undefined) return;
   const { points, samples } = bundle;
@@ -414,17 +426,15 @@ const renderAll = (): void => {
     riskAtOf(p.hourly, hourIndex, cruiseAlt),
   );
 
+  const svg = buildProfileSvg(risks);
   const svgBox = document.getElementById("profile-svg");
-  if (svgBox !== null) {
-    svgBox.replaceChildren(
-      renderRouteProfileSvg(points, {
-        samples,
-        hourIndex,
-        cruiseAlt,
-        risks,
-        waypointMarks: waypointMarksOf(waypoints),
-      }),
-    );
+  if (svg !== null && svgBox !== null) svgBox.replaceChildren(svg);
+  // 放大 overlay 打开时同步重渲（同一渲染件换容器）
+  const modal = document.getElementById("profile-modal");
+  const bigBox = document.getElementById("profile-svg-big");
+  if (modal !== null && !modal.hidden && bigBox !== null) {
+    const big = buildProfileSvg(risks);
+    if (big !== null) bigBox.replaceChildren(big);
   }
   const tableBox = document.getElementById("profile-table");
   if (tableBox !== null) tableBox.replaceChildren(renderProfileTable(points, hourIndex, samples));
@@ -449,6 +459,47 @@ const renderAll = (): void => {
 };
 
 // ---------------------------------------------------------------- 装配
+
+// 页签切换：剖面 / 明细表 / 机场预报 / 短临接入
+const tabButtons = Array.from(
+  document.querySelectorAll<HTMLButtonElement>(".lw-tabs button[data-tab]"),
+);
+const showTab = (name: string): void => {
+  for (const b of tabButtons) b.classList.toggle("active", b.dataset.tab === name);
+  for (const page of document.querySelectorAll<HTMLElement>(".lw-tabpage")) {
+    page.hidden = page.id !== `tab-${name}`;
+  }
+};
+for (const b of tabButtons) {
+  b.addEventListener("click", () => {
+    if (b.dataset.tab !== undefined) showTab(b.dataset.tab);
+  });
+}
+
+// 面板收起/展开（收起＝整幅底图可玩）
+const panel = document.getElementById("lw-panel");
+const panelOpenBtn = document.getElementById("panel-open");
+document.getElementById("panel-collapse")?.addEventListener("click", () => {
+  panel?.classList.add("lw-hidden");
+  if (panelOpenBtn !== null) panelOpenBtn.hidden = false;
+});
+panelOpenBtn?.addEventListener("click", () => {
+  panel?.classList.remove("lw-hidden");
+  if (panelOpenBtn !== null) panelOpenBtn.hidden = true;
+});
+
+// 剖面放大 overlay（同一渲染件的大图视图）
+const modal = document.getElementById("profile-modal");
+document.getElementById("profile-zoom")?.addEventListener("click", () => {
+  if (modal === null || bundle === undefined) return;
+  const bigBox = document.getElementById("profile-svg-big");
+  const svg = buildProfileSvg(bundle.points.map((p) => riskAtOf(p.hourly, hourIndex, cruiseAlt)));
+  if (bigBox !== null && svg !== null) bigBox.replaceChildren(svg);
+  modal.hidden = false;
+});
+document.getElementById("profile-modal-close")?.addEventListener("click", () => {
+  if (modal !== null) modal.hidden = true;
+});
 
 const main = async (): Promise<void> => {
   setStatus("正在装配低空航路天气面板…", "loading");
