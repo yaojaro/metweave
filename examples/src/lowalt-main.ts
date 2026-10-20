@@ -363,11 +363,15 @@ const analyzeRoute = async (): Promise<void> => {
   const analyzeBtn = document.getElementById("route-analyze");
   if (analyzeBtn instanceof HTMLButtonElement) analyzeBtn.disabled = true;
   setStatus(`正在沿 ${samples.length} 个采样点取数（Open-Meteo 近地面多层）…`, "loading");
+  // ?source=snapshot：快照复现模式（跳过实时取数，直接用仓内快照渲——文章配图与读数可复现的锚）
+  const forceSnapshot =
+    new URLSearchParams(location.search).get("source") === "snapshot" && !customized;
   try {
     let points: readonly OwPointForecast[];
     let source: "live" | "snapshot" = "live";
     let fetchedAt: string | undefined;
     try {
+      if (forceSnapshot) throw new Error("快照复现模式");
       points = await fetchOwPoints(samples);
     } catch (liveErr) {
       if (customized) {
@@ -394,7 +398,9 @@ const analyzeRoute = async (): Promise<void> => {
     setStatus(
       source === "live"
         ? `分析完成：${samples.length} 个采样点 · 全长 ${totalKmOf(waypoints).toFixed(1)}km——拖时刻滑杆看全天，拖巡航真高看风险变化`
-        : `Open-Meteo 实时取数失败，已切仓内快照兜底（${fetchedAt ?? "未知时刻"} 固化）`,
+        : forceSnapshot
+          ? `快照复现模式（?source=snapshot，快照时刻 ${fetchedAt ?? "未知时刻"}）——数字随模式场滚动更新，复现请以此刻为准`
+          : `Open-Meteo 实时取数失败，已切仓内快照兜底（${fetchedAt ?? "未知时刻"} 固化）`,
       "ok",
     );
   } catch (err) {

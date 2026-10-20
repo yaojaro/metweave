@@ -515,7 +515,13 @@ export const renderRouteProfileSvg = (
       class: "lw-route-line",
     }),
   );
-  const tl = svgEl("text", { x: labelW + 6, y: ty - 5, class: "lw-route-label" });
+  // 标注放右端：左端起位会压住前几个采样格的数值文字
+  const tl = svgEl("text", {
+    x: width - padR - 4,
+    y: ty - 5,
+    "text-anchor": "end",
+    class: "lw-route-label",
+  });
   tl.textContent = `巡航真高 ${opts.cruiseAlt}m`;
   svg.append(tl);
 
