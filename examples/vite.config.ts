@@ -59,7 +59,8 @@ export default defineConfig({
     },
   },
   plugins: [genGridDevPlugin()],
-  // 两页面：主 demo（index.html，TAC 实况/TAF＋格点图层面板）+ IWXXM 演示（iwxxm.html，v0.3 alpha）。
+  // 三页面：主 demo（index.html，TAC 实况/TAF＋格点图层面板）+ IWXXM 演示（iwxxm.html，v0.3 alpha）
+  // + 低空航路天气面板（lowalt.html，2026-10 场景演示件）。
   // 格点填色不再单设页面——图层控制并入主示例页（src/grid-panel.ts），`/api/gen-grid`
   // 中间件与 publicDir=data 照旧（首页「拉最新」与 /grid/<file> 直出仍依赖）
   build: {
@@ -67,6 +68,7 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),
         iwxxm: fileURLToPath(new URL("./iwxxm.html", import.meta.url)),
+        lowalt: fileURLToPath(new URL("./lowalt.html", import.meta.url)),
       },
     },
   },

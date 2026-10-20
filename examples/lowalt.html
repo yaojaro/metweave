@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>metweave · 低空航路天气面板（演示）</title>
+    <!-- favicon：空 data URI 显式声明（消除浏览器默认 /favicon.ico 404；无二进制资产、无痕） -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body class="lw-page">
+    <header class="lw-header">
+      <h1>低空航路天气面板 · 兴隆湖 → 龙泉山（示意航线）</h1>
+      <p class="lw-header-sub">
+        示意航线 ≈25km · 真高 120m · 上午作业窗口｜成都双流 ZUUU 与成都天府 ZUTF 双站地面实况夹持，
+        Open-Meteo 近地面多层（10/80/120/180m）沿航线 5 采样点剖面。
+        <strong
+          >航线为示意场景，非既有获批航线；真实飞行须空域审批。本页不得用于飞行或任何运行决策。</strong
+        >
+      </p>
+    </header>
+    <div id="status" role="status" aria-live="polite" hidden>
+      <span id="status-spinner" aria-hidden="true"></span>
+      <span id="status-text"></span>
+    </div>
+
+    <section class="lw-section" aria-label="问一 · 地面实况与航路图台">
+      <h2>问一 · 现在地面什么条件？</h2>
+      <p class="lw-note">
+        机场报文是低空飞行最便宜的地面真值：双流/天府两站的例行观测（METAR/SPECI）分钟级可得， 一条
+        curl 就能拿。点击圆点看中文卡（悬停字段见原文）。
+      </p>
+      <div id="map"></div>
+      <div id="basemap-hint" role="note" hidden></div>
+    </section>
+
+    <section class="lw-section" aria-label="问六 · 目的端机场预报">
+      <h2>问六 · 目的端的机场预报（TAF）</h2>
+      <p class="lw-note">
+        起飞端/降落端共用同一份机场预报口径：未来约 30 小时的官方预报（渐变/间歇/概率变化组）。
+      </p>
+      <div id="taf-card"></div>
+      <p id="taf-hint" role="note" hidden></p>
+    </section>
+
+    <section class="lw-section" aria-label="问二至问五 · 真高风温廓线与沿航线剖面">
+      <h2>问二至问五 · 120 米的风、沿线变化、云雨与雷暴苗头</h2>
+      <p class="lw-note">
+        地面风≠真高风：Open-Meteo 近地面多层沿航线 5 采样点的剖面，时刻滑杆看全天；
+        地面行（温度/露点/云量/CAPE/降水）回答看得见、下不下雨、有没有对流苗头。
+      </p>
+      <div class="lw-controls">
+        <label for="profile-hour">查看时刻</label>
+        <input id="profile-hour" type="range" min="0" max="47" step="1" value="0" />
+        <output id="profile-hour-label" for="profile-hour">—</output>
+        <button id="profile-now" type="button">回到现在</button>
+      </div>
+      <p id="profile-source" class="lw-source"></p>
+      <figure class="lw-figure">
+        <figcaption>版本 A · SVG 剖面图（沿线 × 真高，验收用并列展示，定稿择一）</figcaption>
+        <div id="profile-svg"></div>
+      </figure>
+      <figure class="lw-figure">
+        <figcaption>版本 B · 表格卡（同一数据，语义化表格，验收用并列展示，定稿择一）</figcaption>
+        <div id="profile-table"></div>
+      </figure>
+      <figure class="lw-figure">
+        <figcaption>晨昏窗口（目视作业参考）</figcaption>
+        <div id="profile-daylight"></div>
+      </figure>
+    </section>
+
+    <section class="lw-section" aria-label="问五补充 · 短临降水接入形态">
+      <h2>问五补充 · 分钟级短临（注册制商业源，接入形态示意）</h2>
+      <p class="lw-note">
+        分钟级降水由商业源（彩云/和风）提供——雷达已被其内化为成品，免费档/按量注册即得。
+        本页不代跑（不携带任何密钥），接入形态：
+      </p>
+      <pre class="lw-code">
+GET https://api.caiyunapp.com/v2.6/{你的令牌}/{经度},{纬度}/realtime   # 彩云 · 实况
+GET https://api.caiyunapp.com/v2.6/{你的令牌}/{经度},{纬度}/minutely   # 彩云 · 未来 2 小时分钟级
+GET https://dev.qweather.com/v7/weather/now?location={LocationID}&key={你的key}   # 和风 · 实况（每月前 5 万次 0 元）</pre>
+    </section>
+
+    <footer id="disclaimer">
+      演示用途：地面实况为 NOAA AWC / Iowa Environmental Mesonet 公开报文；廓线与云雨为 Open-Meteo
+      （ECMWF/GFS
+      近地面层）公开接口；短临为商业源接入形态示意（未实接）。数据来源已按《气象数据管理办法》
+      来源标注义务随文标示。<strong>本页不得用于飞行决策或任何运行决策</strong>；模式近地面风与城市楼宇间真实风存在系统差。
+      本演示与 WMO/NOAA/Open-Meteo/天地图无隶属或背书关系。
+    </footer>
+
+    <script type="module" src="/src/lowalt-main.ts"></script>
+  </body>
+</html>

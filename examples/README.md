@@ -39,3 +39,14 @@ dev server 起后访问 `/iwxxm.html`（与主 demo 同一服务）：NOAA AWC �
 
 - **数据面**：`examples/iwxxm-data.json`（入库产物，`pnpm gen:iwxxm` 可再生，站单可用 `--ids=` 或环境变量 `GEN_IWXXM_IDS` 覆盖，缺省全球代表 30 站）——首选 NOAA AWC 实时流（`aviationweather.gov/api/data/metar?ids=<站单>&format=iwxxm`，免鉴权、单请求批量、重试 ×3、超时 60s，成功逐站标注 `fetchSource=awc-live`；`ids=all` 不支持 iwxxm 格式，必须站单列表；端点无 CORS 头，Node 侧取数）；AWC 不可用时降级仓内官方等价对副本（`fetchSource=corpus-local`）；ECCC 真实流探测结果仍记录在产物 `ecccProbe` 字段（现仅 TAF 无 METAR）；页面侧三层兜底：gen 产物＞源码内嵌样例＞状态条报错。
 - **验收**：`examples/src/iwxxm-demo.test.ts` 锁数据面（产物站数与 fetchSource 口径、逐站双通道可解析、对照区内嵌等价对两通道 IR deep-equal、卡片 DOM 渲染）。
+
+## 低空航路天气面板（2026-10 场景演示件）
+
+dev server 起后访问 `/lowalt.html`：「兴隆湖→龙泉山」示意低空航线（≈25km、真高 120m）的天气覆盖演示——机场实况双站夹持（双流 ZUUU/天府 ZUTF）＋ Open-Meteo 近地面多层（10/80/120/180m）沿航线 5 采样点的风温剖面＋晨昏窗口，时刻滑杆联动剖面图与表格卡两视图。**示意航线非获批航线，本页不得用于飞行或任何运行决策。**
+
+- **地面实况（问一）**：首选 `/aw-metar` vite 代理（dev 即时，端点无 CORS 头）；代理不可用降级 IEM 公开通路（`getMetarReports`，CORS 全开、静态部署亦可用，整网拉取 10–40 秒）——两通路显式降级、状态行如实标注来源。
+- **真高廓线（问二/三）**：Open-Meteo 浏览器直连（CORS 开放，`wind_speed_unit=ms` 对齐 METAR 口径，forecast_days=2）；实时取数失败降级仓内快照 `src/lowalt-ow-fallback.json`（快照时刻随文标注，不静默假充实时）。剖面图（SVG）与表格卡两版并列供选型，时刻滑杆＋「回到现在」联动。
+- **目的端 TAF（问六）**：`getTafs` 走 `/aw-taf` 代理渲 `renderTafCard`；静态部署无代理时诚实缺席（提示行，与 iwxxm 预取同一降级纪律）。
+- **短临（问五补充）**：商业源仅展示接入形态（占位令牌示例卡），本页不代跑、不携带任何密钥。
+- **布局注意**：主 demo 的 `#map` 满高与 `#disclaimer`/`#status` 固定定位不适配分节文档流，本页以 `body.lw-page` 作用域覆盖（不动主 demo 一行）；刷新禁用滚动位恢复（`history.scrollRestoration`）——滚动恢复会让地图容器在视口外初始化，Leaflet 按错位尺寸排版后瓦片与取景双输，另以 IntersectionObserver 首次可见时 `invalidateSize` 兜底。
+- **验收**：`examples/src/lowalt-profile.test.ts` 锁纯函数内核（时刻索引/北京时串/八方位/风速分档/箭头角/URL 拼装）。
