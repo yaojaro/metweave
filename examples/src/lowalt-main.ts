@@ -1,11 +1,12 @@
 /**
- * 低空航路天气面板主流程（2026-10-20，场景演示件）：
- * 「兴隆湖→龙泉山」示意航线（≈25km、真高 120m、上午作业窗口）的六问覆盖——
- * 问一 地面实况（AWC 代理直达 → IEM 兜底，两通路显式降级）；
- * 问二/三 真高风温廓线＋沿线剖面（Open-Meteo 直拉 → 仓内快照兜底，时刻滑杆同驱两视图）；
- * 问四 云/能见度（廓线地面行）＋晨昏窗口；问五 雷暴指数（CAPE 列）；短临为请求形态静态卡（不实接）；
- * 问六 目的端 TAF（AWC 代理；静态部署诚实缺席——与 iwxxm 预取同一降级纪律）。
- * 红线：展示官方发布＋标注来源，不做预报研判；示意航线非获批航线，不得用于运行决策。
+ * 低空航路天气面板主流程（2026-10-20，场景演示件；同日升级：用户自设航路）：
+ * 地图点击取点（≤8，拖拽微调、右键删除）→ 折线等弧长采样（≤12 点）→ Open-Meteo 沿采样点
+ * 拉近地面多层 → 沿程-高度剖面（风速色带＋巡航轨迹线＋逐点参考风险徽标，巡航真高滑杆联动）。
+ * 问一 地面实况：AWC 代理直达 → IEM 兜底；问六 目的端 TAF：AWC 代理（静态部署诚实缺席）；
+ * 短临为接入形态静态卡（不实接）。
+ * 降级纪律：示例航线（未改动）实时失败可退仓内快照；用户自设航路无快照可退，诚实报错。
+ * 红线：风险为演示参考阈值（页面常驻口径），非机型适飞判据、非运行决策依据；展示官方发布＋
+ * 标注来源，不做预报研判；示意航线非获批航线。
  */
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -23,10 +24,17 @@ import {
   localHourStrOf,
   hourIndexAt,
   hourLabelOf,
-  renderProfileSvg,
+  haversineKm,
+  resampleRoute,
+  riskAtOf,
+  renderRouteProfileSvg,
   renderProfileTable,
   renderDaylightBar,
+  RISK_THRESHOLDS,
+  type Waypoint,
+  type SamplePoint,
   type OwPointForecast,
+  type RiskAssessment,
 } from "./lowalt-profile";
 import "./style.css";
 
@@ -54,39 +62,11 @@ const hasBasemap = setupBasemap(map);
 if (!hasBasemap) {
   const hint = document.getElementById("basemap-hint");
   if (hint !== null) {
-    hint.textContent = "未配置底图 key（VITE_TIANDITU_KEY）——航线、采样点与实况圆点仍可正常交互。";
+    hint.textContent = "未配置底图 key（VITE_TIANDITU_KEY）——航线、航点与实况圆点仍可正常交互。";
     hint.hidden = false;
   }
 }
-
-// 航线与采样点先上图（静态可信元数据，杜绝空白地图——与主 demo 两阶段同思路）
-L.polyline(
-  ROUTE_POINTS.map((p) => [p.lat, p.lon] as [number, number]),
-  { color: "#4a7fbf", weight: 3, dashArray: "7 7", opacity: 0.85 },
-).addTo(map);
-for (const p of ROUTE_POINTS) {
-  L.circleMarker([p.lat, p.lon], {
-    radius: 7,
-    color: "#2b5d9b",
-    weight: 2,
-    fillColor: "#cfe3f7",
-    fillOpacity: 1,
-  })
-    .bindTooltip(`${p.id} ${p.name}`, { direction: "top", offset: [0, -6] })
-    .addTo(map);
-}
-// 取景＝航线＋双站联合（「双站夹持」叙事要求两站圆点同框可见）
-map.fitBounds(
-  L.latLngBounds([
-    ...ROUTE_POINTS.map((p) => L.latLng(p.lat, p.lon)),
-    ...METAR_STATIONS.map(stationMetaOf)
-      .filter((s): s is StationMeta => s !== undefined)
-      .map((s) => L.latLng(s.lat, s.lon)),
-  ]).pad(0.15),
-);
-
-// 刷新时浏览器恢复滚动位可让地图容器在视口外完成初始化——Leaflet 按当时容器尺寸排版，
-// 瓦片与取景会错位空白；首次进入视口时 invalidateSize 一次重排（一次性， thereafter 零开销）
+// 刷新时地图容器可能在视口外完成初始化——首次进入视口时 invalidateSize 一次重排（一次性）
 const mapBox = document.getElementById("map");
 if (mapBox !== null && typeof IntersectionObserver === "function") {
   const firstSeen = new IntersectionObserver(
@@ -100,6 +80,130 @@ if (mapBox !== null && typeof IntersectionObserver === "function") {
   );
   firstSeen.observe(mapBox);
 }
+
+// ---------------------------------------------------------------- 航路状态与绘制（点击取点/拖拽微调/右键删除）
+
+const MAX_WAYPOINTS = 8;
+const PRESET_WAYPOINTS: readonly Waypoint[] = [
+  { lat: ROUTE_POINTS[0]?.lat ?? 30.44, lon: ROUTE_POINTS[0]?.lon ?? 104.07 },
+  {
+    lat: ROUTE_POINTS[ROUTE_POINTS.length - 1]?.lat ?? 30.56,
+    lon: ROUTE_POINTS[ROUTE_POINTS.length - 1]?.lon ?? 104.27,
+  },
+];
+
+let waypoints: Waypoint[] = [...PRESET_WAYPOINTS];
+let customized = false; // 用户改过航路＝快照兜底失效（快照只对示例航线有效）
+let cruiseAlt = 120;
+
+const routeLayer = L.layerGroup().addTo(map);
+
+const totalKmOf = (wps: readonly Waypoint[]): number => {
+  let total = 0;
+  for (let i = 1; i < wps.length; i += 1) {
+    const a = wps[i - 1];
+    const b = wps[i];
+    if (a !== undefined && b !== undefined) total += haversineKm(a, b);
+  }
+  return total;
+};
+
+const waypointMarksOf = (wps: readonly Waypoint[]): { distKm: number; label: string }[] => {
+  const marks: { distKm: number; label: string }[] = [];
+  let dist = 0;
+  for (let i = 0; i < wps.length; i += 1) {
+    const w = wps[i];
+    if (w === undefined) continue;
+    if (i > 0) {
+      const prev = wps[i - 1];
+      if (prev !== undefined) dist += haversineKm(prev, w);
+    }
+    marks.push({ distKm: dist, label: `航点${i + 1}` });
+  }
+  return marks;
+};
+
+const redrawRoute = (): void => {
+  routeLayer.clearLayers();
+  if (waypoints.length >= 2) {
+    L.polyline(
+      waypoints.map((w) => [w.lat, w.lon] as [number, number]),
+      { color: "#4a7fbf", weight: 3, dashArray: "7 7", opacity: 0.85 },
+    ).addTo(routeLayer);
+  }
+  waypoints.forEach((w, i) => {
+    const marker = L.marker([w.lat, w.lon], {
+      draggable: true,
+      icon: L.divIcon({
+        className: "lw-wp-icon",
+        html: `<span>${i + 1}</span>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      }),
+    });
+    marker.bindTooltip(`航点${i + 1} · 拖拽微调，右键删除`, { direction: "top", offset: [0, -10] });
+    marker.on("dragend", () => {
+      const ll = marker.getLatLng();
+      const idx = waypoints.indexOf(w);
+      if (idx >= 0) waypoints[idx] = { lat: ll.lat, lon: ll.lng };
+      customized = true;
+      redrawRoute();
+      invalidateAnalysis();
+    });
+    marker.on("contextmenu", (e) => {
+      e.originalEvent.preventDefault();
+      waypoints.splice(i, 1);
+      customized = true;
+      redrawRoute();
+      invalidateAnalysis();
+    });
+    routeLayer.addLayer(marker);
+  });
+  const info = document.getElementById("route-info");
+  if (info !== null) {
+    info.textContent =
+      waypoints.length < 2
+        ? `已设 ${waypoints.length} 点（至少 2 点）`
+        : `航点 ${waypoints.length}/${MAX_WAYPOINTS} · 里程 ${totalKmOf(waypoints).toFixed(1)}km`;
+  }
+};
+
+map.on("click", (e: L.LeafletMouseEvent) => {
+  if (waypoints.length >= MAX_WAYPOINTS) {
+    setStatus(`航点上限 ${MAX_WAYPOINTS} 个——如需调整，右键删除后再取点`, "error");
+    return;
+  }
+  waypoints.push({ lat: e.latlng.lat, lon: e.latlng.lng });
+  customized = true;
+  redrawRoute();
+  invalidateAnalysis();
+});
+
+const invalidateAnalysis = (): void => {
+  bundle = undefined;
+  const svgBox = document.getElementById("profile-svg");
+  const tableBox = document.getElementById("profile-table");
+  const daylightBox = document.getElementById("profile-daylight");
+  svgBox?.replaceChildren();
+  tableBox?.replaceChildren();
+  daylightBox?.replaceChildren();
+  const label = document.getElementById("profile-hour-label");
+  if (label !== null) label.textContent = "—";
+  const sourceNote = document.getElementById("profile-source");
+  if (sourceNote !== null) sourceNote.textContent = "航路已改动——点「分析航路」重新取数";
+  const analyze = document.getElementById("route-analyze");
+  if (analyze instanceof HTMLButtonElement) analyze.disabled = waypoints.length < 2;
+};
+
+// 取景＝示例航线＋双站联合（「双站夹持」叙事要求两站圆点同框可见）
+map.fitBounds(
+  L.latLngBounds([
+    ...PRESET_WAYPOINTS.map((p) => L.latLng(p.lat, p.lon)),
+    ...METAR_STATIONS.map(stationMetaOf)
+      .filter((s): s is StationMeta => s !== undefined)
+      .map((s) => L.latLng(s.lat, s.lon)),
+  ]).pad(0.15),
+);
 
 const status = document.getElementById("status");
 const statusText = document.getElementById("status-text");
@@ -203,92 +307,144 @@ const loadTaf = async (): Promise<void> => {
   }
 };
 
-// ---------------------------------------------------------------- 问二/三/四/五：Open-Meteo 廓线（直拉 → 快照兜底）
+// ---------------------------------------------------------------- 问二/三/四/五：沿采样点取数与剖面渲染
 
 interface OwBundle {
   readonly points: readonly OwPointForecast[];
+  readonly samples: readonly SamplePoint[];
   readonly source: "live" | "snapshot";
   readonly fetchedAt?: string;
 }
 
-const loadOpenMeteo = async (): Promise<OwBundle> => {
+let bundle: OwBundle | undefined;
+let hourIndex = 0;
+const localNow = (): string => localHourStrOf(Date.now());
+
+const fetchOwPoints = async (
+  samples: readonly SamplePoint[],
+): Promise<readonly OwPointForecast[]> => {
+  const res = await fetch(owForecastUrl(samples));
+  if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
+  const body: unknown = await res.json();
+  const rows: readonly unknown[] = Array.isArray(body) ? body : [];
+  if (rows.length !== samples.length) throw new Error("返回点数与航线采样不符");
+  if (!rows.every(isOwPointForecast)) throw new Error("响应 schema 不符（缺 hourly/time 骨架）");
+  return rows;
+};
+
+const loadSnapshot = async (): Promise<readonly OwPointForecast[]> => {
+  // 兜底：仓内快照（示例航线固化，快照时刻随文标注——不静默假充实时）；用户自设航路不可用
+  const mod: unknown = await import("./lowalt-ow-fallback.json");
+  if (typeof mod !== "object" || mod === null || !("default" in mod)) {
+    throw new Error("快照产物缺失");
+  }
+  const def: unknown = mod.default;
+  if (typeof def !== "object" || def === null || !("points" in def)) {
+    throw new Error("快照 schema 不符（缺 points）");
+  }
+  const points: readonly unknown[] = Array.isArray(def.points) ? def.points : [];
+  // 快照按示例航线的同一套 resampleRoute 采样坐标固化（坐标即采样点）——只校点数与形状
+  if (
+    points.length !== resampleRoute(PRESET_WAYPOINTS).length ||
+    !points.every(isOwPointForecast)
+  ) {
+    throw new Error("快照点 schema 不符");
+  }
+  return points;
+};
+
+const analyzeRoute = async (): Promise<void> => {
+  const samples = resampleRoute(waypoints);
+  if (samples.length < 2) {
+    setStatus("航路至少需要 2 个航点——点击地图取点后再分析", "error");
+    return;
+  }
+  const analyzeBtn = document.getElementById("route-analyze");
+  if (analyzeBtn instanceof HTMLButtonElement) analyzeBtn.disabled = true;
+  setStatus(`正在沿 ${samples.length} 个采样点取数（Open-Meteo 近地面多层）…`, "loading");
   try {
-    const res = await fetch(owForecastUrl(ROUTE_POINTS));
-    if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
-    const body: unknown = await res.json();
-    const rows: readonly unknown[] = Array.isArray(body) ? body : [];
-    if (rows.length !== ROUTE_POINTS.length) throw new Error("返回点数与航线采样不符");
-    if (!rows.every(isOwPointForecast)) throw new Error("响应 schema 不符（缺 hourly/time 骨架）");
-    return { points: rows, source: "live" };
-  } catch {
-    // 兜底：仓内快照（构建期固化，快照时刻随文标注——不静默假充实时）；同样过形状校验
-    const mod: unknown = await import("./lowalt-ow-fallback.json");
-    if (typeof mod !== "object" || mod === null || !("default" in mod)) {
-      throw new Error("快照产物缺失");
+    let points: readonly OwPointForecast[];
+    let source: "live" | "snapshot" = "live";
+    let fetchedAt: string | undefined;
+    try {
+      points = await fetchOwPoints(samples);
+    } catch (liveErr) {
+      if (customized) {
+        throw liveErr instanceof Error ? liveErr : new Error(String(liveErr));
+      }
+      points = await loadSnapshot();
+      source = "snapshot";
+      const snap: unknown = await import("./lowalt-ow-fallback.json");
+      if (typeof snap === "object" && snap !== null && "default" in snap) {
+        const d: unknown = snap.default;
+        if (
+          typeof d === "object" &&
+          d !== null &&
+          "fetchedAt" in d &&
+          typeof d.fetchedAt === "string"
+        ) {
+          fetchedAt = d.fetchedAt;
+        }
+      }
     }
-    const def: unknown = mod.default;
-    if (typeof def !== "object" || def === null || !("points" in def)) {
-      throw new Error("快照 schema 不符（缺 points）");
-    }
-    const points: readonly unknown[] = Array.isArray(def.points) ? def.points : [];
-    if (points.length !== ROUTE_POINTS.length || !points.every(isOwPointForecast)) {
-      throw new Error("快照点 schema 不符");
-    }
-    const fetchedAt =
-      "fetchedAt" in def && typeof def.fetchedAt === "string" ? def.fetchedAt : "未知时刻";
-    return { points, source: "snapshot", fetchedAt };
+    bundle = { points, samples, source, fetchedAt };
+    hourIndex = hourIndexAt(points[0]?.hourly.time ?? [], localNow());
+    renderAll();
+    setStatus(
+      source === "live"
+        ? `分析完成：${samples.length} 个采样点 · 全长 ${totalKmOf(waypoints).toFixed(1)}km——拖时刻滑杆看全天，拖巡航真高看风险变化`
+        : `Open-Meteo 实时取数失败，已切仓内快照兜底（${fetchedAt ?? "未知时刻"} 固化）`,
+      "ok",
+    );
+  } catch (err) {
+    setStatus(
+      `分析失败：${err instanceof Error ? err.message : String(err)}——上游恢复后重试（示例航线可退仓内快照，自设航路无快照可退）`,
+      "error",
+    );
+  } finally {
+    if (analyzeBtn instanceof HTMLButtonElement) analyzeBtn.disabled = waypoints.length < 2;
   }
 };
 
-const renderProfileSection = (bundle: OwBundle): void => {
-  const points = bundle.points;
+const renderAll = (): void => {
+  if (bundle === undefined) return;
+  const { points, samples } = bundle;
   const times = points[0]?.hourly.time ?? [];
-  const localNow = localHourStrOf(Date.now());
-  let hourIndex = hourIndexAt(times, localNow);
+  const risks: readonly RiskAssessment[] = points.map((p) =>
+    riskAtOf(p.hourly, hourIndex, cruiseAlt),
+  );
 
-  const label = document.getElementById("profile-hour-label");
-  const sliderEl = document.getElementById("profile-hour");
-  const slider = sliderEl instanceof HTMLInputElement ? sliderEl : null;
-  const nowBtn = document.getElementById("profile-now");
   const svgBox = document.getElementById("profile-svg");
-  const tableBox = document.getElementById("profile-table");
-  const daylightBox = document.getElementById("profile-daylight");
-  const sourceNote = document.getElementById("profile-source");
-
-  const renderAll = (): void => {
-    if (svgBox !== null) svgBox.replaceChildren(renderProfileSvg(points, { hourIndex }));
-    if (tableBox !== null) tableBox.replaceChildren(renderProfileTable(points, hourIndex));
-    const daily = points[0]?.daily;
-    if (daylightBox !== null && daily !== undefined) {
-      const dayIndex = Math.min(Math.floor(hourIndex / 24), daily.sunrise.length - 1);
-      daylightBox.replaceChildren(renderDaylightBar(daily, Math.max(dayIndex, 0), localNow));
-    }
-    if (label !== null) {
-      const iso = times[hourIndex] ?? localNow;
-      label.textContent = `${hourLabelOf(iso)}${hourIndex === hourIndexAt(times, localNow) ? "（现在）" : ""}`;
-    }
-  };
-
-  if (slider !== null) {
-    slider.max = String(Math.max(times.length - 1, 0));
-    slider.value = String(hourIndex);
-    slider.addEventListener("input", () => {
-      hourIndex = Number(slider.value);
-      renderAll();
-    });
+  if (svgBox !== null) {
+    svgBox.replaceChildren(
+      renderRouteProfileSvg(points, {
+        samples,
+        hourIndex,
+        cruiseAlt,
+        risks,
+        waypointMarks: waypointMarksOf(waypoints),
+      }),
+    );
   }
-  nowBtn?.addEventListener("click", () => {
-    hourIndex = hourIndexAt(times, localHourStrOf(Date.now()));
-    if (slider !== null) slider.value = String(hourIndex);
-    renderAll();
-  });
-
-  renderAll();
+  const tableBox = document.getElementById("profile-table");
+  if (tableBox !== null) tableBox.replaceChildren(renderProfileTable(points, hourIndex, samples));
+  const daylightBox = document.getElementById("profile-daylight");
+  const daily = points[0]?.daily;
+  if (daylightBox !== null && daily !== undefined) {
+    const dayIndex = Math.min(Math.floor(hourIndex / 24), Math.max(daily.sunrise.length - 1, 0));
+    daylightBox.replaceChildren(renderDaylightBar(daily, Math.max(dayIndex, 0), localNow()));
+  }
+  const label = document.getElementById("profile-hour-label");
+  if (label !== null) {
+    const iso = times[hourIndex] ?? localNow();
+    label.textContent = `${hourLabelOf(iso)}${hourIndex === hourIndexAt(times, localNow()) ? "（现在）" : ""}`;
+  }
+  const sourceNote = document.getElementById("profile-source");
   if (sourceNote !== null) {
     sourceNote.textContent =
       bundle.source === "live"
-        ? "数据源：Open-Meteo（ECMWF/GFS 近地面层，浏览器直连，实时）"
-        : `数据源：Open-Meteo 仓内快照（${bundle.fetchedAt ?? "未知时刻"} 固化——实时取数失败时的诚实兜底）`;
+        ? `数据源：Open-Meteo（ECMWF/GFS 近地面层，实时）· ${samples.length} 采样点 · 参考阈值：风 ${RISK_THRESHOLDS.windMidMs}/${RISK_THRESHOLDS.windHighMs} m/s · CAPE ${RISK_THRESHOLDS.capeMid}/${RISK_THRESHOLDS.capeHigh} J/kg · 降水 ${RISK_THRESHOLDS.precipMidMm}/${RISK_THRESHOLDS.precipHighMm} mm/h（演示口径，非机型判据）`
+        : `数据源：Open-Meteo 仓内快照（${bundle.fetchedAt ?? "未知时刻"} 固化）· 参考阈值见上（演示口径，非机型判据）`;
   }
 };
 
@@ -296,17 +452,49 @@ const renderProfileSection = (bundle: OwBundle): void => {
 
 const main = async (): Promise<void> => {
   setStatus("正在装配低空航路天气面板…", "loading");
+  redrawRoute();
+
+  const hourSliderEl = document.getElementById("profile-hour");
+  const hourSlider = hourSliderEl instanceof HTMLInputElement ? hourSliderEl : null;
+  hourSlider?.addEventListener("input", () => {
+    hourIndex = Number(hourSlider.value);
+    renderAll();
+  });
+  document.getElementById("profile-now")?.addEventListener("click", () => {
+    hourIndex = hourIndexAt(bundle?.points[0]?.hourly.time ?? [], localNow());
+    if (hourSlider !== null) hourSlider.value = String(hourIndex);
+    renderAll();
+  });
+
+  const cruiseEl = document.getElementById("cruise-alt");
+  const cruiseSlider = cruiseEl instanceof HTMLInputElement ? cruiseEl : null;
+  cruiseSlider?.addEventListener("input", () => {
+    cruiseAlt = Number(cruiseSlider.value);
+    const cruiseLabel = document.getElementById("cruise-alt-label");
+    if (cruiseLabel !== null) cruiseLabel.textContent = `${cruiseAlt}m`;
+    renderAll();
+  });
+
+  document.getElementById("route-analyze")?.addEventListener("click", () => {
+    void analyzeRoute();
+  });
+  document.getElementById("route-clear")?.addEventListener("click", () => {
+    waypoints = [];
+    customized = true;
+    redrawRoute();
+    invalidateAnalysis();
+  });
+  document.getElementById("route-preset")?.addEventListener("click", () => {
+    waypoints = [...PRESET_WAYPOINTS];
+    customized = false;
+    redrawRoute();
+    invalidateAnalysis();
+    void analyzeRoute();
+  });
+
   const metar = loadMetar();
   const taf = loadTaf();
-  const ow = loadOpenMeteo().then((bundle) => {
-    renderProfileSection(bundle);
-    if (bundle.source === "snapshot") {
-      setStatus(
-        "问二至问五 · Open-Meteo 实时取数失败，已切仓内快照兜底（快照时刻见面板标注）",
-        "ok",
-      );
-    }
-  });
+  const ow = analyzeRoute();
   await Promise.allSettled([metar, taf, ow]);
 };
 

@@ -53,7 +53,7 @@ const OW_HOURLY_VARS = [
 ] as const;
 
 /** Open-Meteo 预报请求 URL（多点多层单请求；单位 m/s 对齐 METAR；北京时；48 小时） */
-export const owForecastUrl = (points: readonly RoutePoint[]): string =>
+export const owForecastUrl = (points: readonly { lat: number; lon: number }[]): string =>
   `https://api.open-meteo.com/v1/forecast` +
   `?latitude=${points.map((p) => p.lat).join(",")}` +
   `&longitude=${points.map((p) => p.lon).join(",")}` +
@@ -208,26 +208,209 @@ const htmlEl = <K extends keyof HTMLElementTagNameMap>(
   return el;
 };
 
-export interface ProfileSvgOptions {
-  readonly hourIndex: number;
-  readonly cellWidth?: number;
-  readonly rowHeight?: number;
+// ---------------------------------------------------------------- 航线采样（用户自设航路的基础）
+
+export interface Waypoint {
+  readonly lat: number;
+  readonly lon: number;
 }
 
+export interface SamplePoint {
+  readonly lat: number;
+  readonly lon: number;
+  readonly distKm: number;
+}
+
+const EARTH_R_KM = 6371;
+
+/** 两点大圆距离（km）——小范围航线里程与采样的基础 */
+export const haversineKm = (a: Waypoint, b: Waypoint): number => {
+  const p1 = (a.lat * Math.PI) / 180;
+  const p2 = (b.lat * Math.PI) / 180;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLon = ((b.lon - a.lon) * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_R_KM * Math.asin(Math.sqrt(h));
+};
+
+export const MAX_SAMPLES = 12;
+
 /**
- * 剖面图（验收版 A）：x＝沿线采样点（起飞端→降落端），y＝真高（10–180m，按真实高度布行），
- * 格＝该点该层的风速（配色分档＋数值＋风向箭头）。地图不依赖、纯 SVG，截图/缩放不糊。
+ * 折线等弧长采样：沿航点序列按 stepKm 均匀取气象采样点（含起终点，至多 MAX_SAMPLES）。
+ * 二十余公里量级的经纬插值用线性近似即可，误差远小于模式分辨率。
  */
-export const renderProfileSvg = (
-  points: readonly OwPointForecast[],
-  opts: ProfileSvgOptions,
+export const resampleRoute = (waypoints: readonly Waypoint[], stepKm = 2): SamplePoint[] => {
+  if (waypoints.length < 2) return [];
+  const cum: number[] = [0];
+  for (let i = 1; i < waypoints.length; i += 1) {
+    const prev = waypoints[i - 1];
+    const cur = waypoints[i];
+    if (prev === undefined || cur === undefined) return [];
+    const prevCum = cum[i - 1];
+    if (prevCum === undefined) return [];
+    cum.push(prevCum + haversineKm(prev, cur));
+  }
+  const total = cum[cum.length - 1] ?? 0;
+  if (!(total > 0)) return [];
+  const count = Math.min(MAX_SAMPLES, Math.max(2, Math.ceil(total / stepKm) + 1));
+  const samples: SamplePoint[] = [];
+  for (let j = 0; j < count; j += 1) {
+    const d = (total * j) / (count - 1);
+    let k = 0;
+    for (let i = 0; i < cum.length - 1; i += 1) {
+      if ((cum[i] ?? 0) <= d) k = i;
+    }
+    const segStart = cum[k] ?? 0;
+    const segEnd = cum[k + 1] ?? segStart;
+    const t = segEnd > segStart ? (d - segStart) / (segEnd - segStart) : 0;
+    const a = waypoints[k];
+    const b = waypoints[k + 1];
+    if (a === undefined || b === undefined) continue;
+    samples.push({
+      lat: a.lat + (b.lat - a.lat) * t,
+      lon: a.lon + (b.lon - a.lon) * t,
+      distKm: d,
+    });
+  }
+  return samples;
+};
+
+// ---------------------------------------------------------------- 天气风险（参考提示口径，非运行判据）
+
+/** 演示参考阈值（m/s、J/kg、mm/h）——扫视提示口径，非机型适飞判据（判据属航线管道产品位） */
+export const RISK_THRESHOLDS = {
+  windMidMs: 7,
+  windHighMs: 10,
+  capeMid: 400,
+  capeHigh: 1000,
+  precipMidMm: 0.1,
+  precipHighMm: 2,
+} as const;
+
+export type RiskLevel = "low" | "mid" | "high" | "unknown";
+
+export interface RiskAssessment {
+  readonly level: RiskLevel;
+  readonly factors: readonly string[];
+}
+
+export const RISK_LEVEL_LABEL: Record<RiskLevel, string> = {
+  low: "低",
+  mid: "中",
+  high: "高",
+  unknown: "—",
+};
+
+export const RISK_LEVEL_COLOR: Record<RiskLevel, string> = {
+  low: "#8fc98f",
+  mid: "#e8b45c",
+  high: "#d95f52",
+  unknown: "#c9d3dd",
+};
+
+/** 最接近巡航真高的数据层（层间取近者） */
+export const nearestLevelOf = (cruiseAlt: number): HeightLevel => {
+  let best: HeightLevel = HEIGHT_LEVELS[0] ?? 10;
+  for (const l of HEIGHT_LEVELS) {
+    if (Math.abs(l - cruiseAlt) < Math.abs(best - cruiseAlt)) best = l;
+  }
+  return best;
+};
+
+const bumpRisk = (cur: RiskLevel, incoming: "mid" | "high"): RiskLevel =>
+  cur === "high" || incoming === "high" ? "high" : "mid";
+
+/** 单采样点、单时刻的风险评估：风（巡航最近层）+ 对流（CAPE）+ 降水 → 最高档与因子明细 */
+export const riskAtOf = (h: OwHourly, hourIndex: number, cruiseAlt: number): RiskAssessment => {
+  const factors: string[] = [];
+  let level: RiskLevel = "low";
+  let hasData = false;
+
+  const windLevel = nearestLevelOf(cruiseAlt);
+  const speed = levelSpeedOf(h, windLevel, hourIndex);
+  if (speed !== null) {
+    hasData = true;
+    if (speed >= RISK_THRESHOLDS.windHighMs) {
+      level = bumpRisk(level, "high");
+      factors.push(
+        `${windLevel}m 风速 ${speed.toFixed(1)} m/s（≥${RISK_THRESHOLDS.windHighMs}，偏大）`,
+      );
+    } else if (speed >= RISK_THRESHOLDS.windMidMs) {
+      level = bumpRisk(level, "mid");
+      factors.push(
+        `${windLevel}m 风速 ${speed.toFixed(1)} m/s（≥${RISK_THRESHOLDS.windMidMs}，需留意）`,
+      );
+    }
+  }
+
+  const cape = numAt(h.cape, hourIndex);
+  if (cape !== null) {
+    hasData = true;
+    if (cape >= RISK_THRESHOLDS.capeHigh) {
+      level = bumpRisk(level, "high");
+      factors.push(`CAPE ${cape.toFixed(0)} J/kg（≥${RISK_THRESHOLDS.capeHigh}，对流苗头）`);
+    } else if (cape >= RISK_THRESHOLDS.capeMid) {
+      level = bumpRisk(level, "mid");
+      factors.push(`CAPE ${cape.toFixed(0)} J/kg（≥${RISK_THRESHOLDS.capeMid}，留意对流）`);
+    }
+  }
+
+  const precip = numAt(h.precipitation, hourIndex);
+  if (precip !== null) {
+    hasData = true;
+    if (precip >= RISK_THRESHOLDS.precipHighMm) {
+      level = bumpRisk(level, "high");
+      factors.push(`降水 ${precip.toFixed(1)} mm/h（≥${RISK_THRESHOLDS.precipHighMm}）`);
+    } else if (precip >= RISK_THRESHOLDS.precipMidMm) {
+      level = bumpRisk(level, "mid");
+      factors.push(`降水 ${precip.toFixed(1)} mm/h（≥${RISK_THRESHOLDS.precipMidMm}，留意）`);
+    }
+  }
+
+  if (!hasData) return { level: "unknown", factors: ["该时刻数据缺失"] };
+  if (factors.length === 0) factors.push("各参考要素均在演示阈值内");
+  return { level, factors };
+};
+
+// ---------------------------------------------------------------- 沿程-高度剖面（主线图）
+
+export interface RouteProfileOptions {
+  readonly samples: readonly SamplePoint[];
+  readonly hourIndex: number;
+  readonly cruiseAlt: number;
+  readonly risks: readonly RiskAssessment[];
+  readonly waypointMarks: readonly {
+    readonly distKm: number;
+    readonly label: string;
+  }[];
+}
+
+const CHART_MIN_W = 560;
+const CHART_PER_SAMPLE = 64;
+const PROFILE_MAX_ALT = 200;
+
+/**
+ * 沿程-高度剖面（主线图）：x＝沿航线里程，y＝真高（数据层按真实高度布带）；
+ * 背景色带＝各位置各层风速；红色横线＝当前巡航真高的飞行轨迹；顶部徽标行＝
+ * 各采样点参考风险（悬停见因子明细）。演示参考口径，非运行判据。
+ */
+export const renderRouteProfileSvg = (
+  forecasts: readonly OwPointForecast[],
+  opts: RouteProfileOptions,
 ): SVGElement => {
-  const cellW = opts.cellWidth ?? 96;
-  const rowH = opts.rowHeight ?? 40;
-  const labelW = 52;
-  const headH = 26;
-  const width = labelW + points.length * cellW + 16;
-  const height = headH + HEIGHT_LEVELS.length * rowH + 30;
+  const labelW = 46;
+  const padR = 12;
+  const riskRowH = 30;
+  const headH = 16;
+  const areaH = 168;
+  const chartW = Math.max(CHART_MIN_W, opts.samples.length * CHART_PER_SAMPLE);
+  const width = labelW + chartW + padR;
+  const areaTop = riskRowH + headH;
+  const baseY = areaTop + areaH;
+  const height = baseY + 46;
+  const totalKm = opts.samples[opts.samples.length - 1]?.distKm ?? 0;
+  const xOf = (distKm: number): number => labelW + (totalKm > 0 ? distKm / totalKm : 0) * chartW;
+  const yOf = (alt: number): number => areaTop + (1 - alt / PROFILE_MAX_ALT) * areaH;
 
   const svg = svgEl("svg", {
     viewBox: `0 0 ${width} ${height}`,
@@ -236,88 +419,108 @@ export const renderProfileSvg = (
     class: "lw-profile-svg",
   });
 
-  // 列头：采样点名（与 ROUTE_POINTS 按序对齐——OwPointForecast 本身不含名号）
-  for (let c = 0; c < points.length; c += 1) {
-    const p = points[c];
-    const label = svgEl("text", {
-      x: labelW + c * cellW + cellW / 2,
-      y: 17,
-      "text-anchor": "middle",
-      class: "lw-profile-colhead",
+  // 顶部：风险徽标行（每采样点一枚；悬停 title 出因子明细）
+  for (let i = 0; i < opts.samples.length; i += 1) {
+    const s = opts.samples[i];
+    const risk = opts.risks[i];
+    if (s === undefined || risk === undefined) continue;
+    const cx = xOf(s.distKm);
+    const badge = svgEl("circle", {
+      cx,
+      cy: riskRowH / 2 + 2,
+      r: 10,
+      fill: RISK_LEVEL_COLOR[risk.level],
+      class: "lw-risk-badge",
     });
-    label.textContent =
-      p === undefined ? "" : `${ROUTE_POINTS[c]?.id ?? ""} ${ROUTE_POINTS[c]?.name ?? ""}`.trim();
-    svg.append(label);
+    const tip = svgEl("title", {});
+    tip.textContent = `里程 ${s.distKm.toFixed(1)}km · 风险${RISK_LEVEL_LABEL[risk.level]}：${risk.factors.join("；")}`;
+    badge.append(tip);
+    svg.append(badge);
+    const tag = svgEl("text", {
+      x: cx,
+      y: riskRowH / 2 + 6,
+      "text-anchor": "middle",
+      class: "lw-risk-badge-text",
+    });
+    tag.textContent = RISK_LEVEL_LABEL[risk.level];
+    svg.append(tag);
   }
 
-  // 行：真高层自顶向下布行（顶层在上；含 0m 地面基线刻度）＋格
-  for (let r = 0; r < HEIGHT_LEVELS.length; r += 1) {
-    const level = HEIGHT_LEVELS[HEIGHT_LEVELS.length - 1 - r];
+  // 风速色带：每采样点 × 每层，x＝相邻采样点中点分段，y＝层真实高度带（相邻层中点分界）
+  const bandEdges = [0];
+  for (let i = 0; i < HEIGHT_LEVELS.length - 1; i += 1) {
+    const a = HEIGHT_LEVELS[i];
+    const b = HEIGHT_LEVELS[i + 1];
+    if (a !== undefined && b !== undefined) bandEdges.push((a + b) / 2);
+  }
+  bandEdges.push(PROFILE_MAX_ALT);
+  for (let li = 0; li < HEIGHT_LEVELS.length; li += 1) {
+    const level = HEIGHT_LEVELS[li];
     if (level === undefined) continue;
-    const y = headH + r * rowH;
-    const rowLabel = svgEl("text", { x: 6, y: y + rowH / 2 + 4, class: "lw-profile-rowlabel" });
-    rowLabel.textContent = `${level}m`;
-    svg.append(rowLabel);
-    for (let c = 0; c < points.length; c += 1) {
-      const point = points[c];
-      if (point === undefined) continue;
-      const h = point.hourly;
-      const speed = levelSpeedOf(h, level, opts.hourIndex);
-      const dir = levelDirOf(h, level, opts.hourIndex);
-      const cell = windBucketOf(speed);
-      const x = labelW + c * cellW;
+    const yTop = yOf(bandEdges[bandEdges.length - 1 - li] ?? PROFILE_MAX_ALT);
+    const yBot = yOf(bandEdges[bandEdges.length - 2 - li] ?? 0);
+    for (let i = 0; i < opts.samples.length; i += 1) {
+      const f = forecasts[i];
+      const s = opts.samples[i];
+      if (f === undefined || s === undefined) continue;
+      const distL = i === 0 ? 0 : (opts.samples[i - 1]?.distKm ?? 0);
+      const distR =
+        i === opts.samples.length - 1 ? totalKm : (opts.samples[i + 1]?.distKm ?? totalKm);
+      const xL = i === 0 ? labelW : (xOf(distL) + xOf(s.distKm)) / 2;
+      const xR = i === opts.samples.length - 1 ? width - padR : (xOf(s.distKm) + xOf(distR)) / 2;
+      const speed = levelSpeedOf(f.hourly, level, opts.hourIndex);
+      const bucket = windBucketOf(speed);
       svg.append(
         svgEl("rect", {
-          x: x + 3,
-          y: y + 3,
-          width: cellW - 6,
-          height: rowH - 6,
-          rx: 6,
-          fill: cell?.color ?? "#f0f0f0",
+          x: xL + 1,
+          y: yTop + 1,
+          width: Math.max(xR - xL - 2, 2),
+          height: Math.max(yBot - yTop - 2, 2),
+          rx: 4,
+          fill: bucket?.color ?? "#f0f0f0",
         }),
       );
-      const text = svgEl("text", {
-        x: x + cellW / 2 - (dir === null ? 0 : 10),
-        y: y + rowH / 2 + 5,
-        "text-anchor": "middle",
-        class: "lw-profile-celltext",
-      });
-      text.textContent = cell === null ? "—" : (speed?.toFixed(1) ?? "—");
-      svg.append(text);
-      const rot = arrowRotationOf(dir);
-      if (rot !== null) {
-        const arrow = svgEl("text", {
-          x: x + cellW / 2 + 16,
-          y: y + rowH / 2 + 5,
+      if (xR - xL >= 34) {
+        const t = svgEl("text", {
+          x: (xL + xR) / 2,
+          y: (yTop + yBot) / 2 + 4,
           "text-anchor": "middle",
-          class: "lw-profile-arrow",
-          transform: `rotate(${rot} ${x + cellW / 2 + 16} ${y + rowH / 2})`,
+          class: "lw-profile-celltext",
         });
-        arrow.textContent = "↑";
-        arrow.setAttribute("aria-label", `风向 ${compassOf(dir) ?? "未知"}（来向）`);
-        svg.append(arrow);
-      }
-      const compass = compassOf(dir);
-      if (compass !== null) {
-        const sub = svgEl("text", {
-          x: x + cellW / 2,
-          y: y + rowH - 4,
-          "text-anchor": "middle",
-          class: "lw-profile-cellsub",
-        });
-        sub.textContent = compass + "风";
-        svg.append(sub);
+        t.textContent = bucket === null ? "—" : (speed?.toFixed(1) ?? "—");
+        svg.append(t);
       }
     }
+    const rowLabel = svgEl("text", {
+      x: 6,
+      y: (yTop + yBot) / 2 + 4,
+      class: "lw-profile-rowlabel",
+    });
+    rowLabel.textContent = `${level}m`;
+    svg.append(rowLabel);
   }
 
-  // 底部：0m 地面基线
-  const baseY = headH + HEIGHT_LEVELS.length * rowH;
+  // 巡航轨迹线（当前真高等高横线）＋标注
+  const ty = yOf(opts.cruiseAlt);
+  svg.append(
+    svgEl("line", {
+      x1: labelW,
+      y1: ty,
+      x2: width - padR,
+      y2: ty,
+      class: "lw-route-line",
+    }),
+  );
+  const tl = svgEl("text", { x: labelW + 6, y: ty - 5, class: "lw-route-label" });
+  tl.textContent = `巡航真高 ${opts.cruiseAlt}m`;
+  svg.append(tl);
+
+  // 0m 地面基线＋里程刻度（航点位置）
   svg.append(
     svgEl("line", {
       x1: labelW,
       y1: baseY,
-      x2: width - 8,
+      x2: width - padR,
       y2: baseY,
       class: "lw-profile-baseline",
     }),
@@ -325,14 +528,38 @@ export const renderProfileSvg = (
   const baseLabel = svgEl("text", { x: 6, y: baseY + 4, class: "lw-profile-rowlabel" });
   baseLabel.textContent = "0m";
   svg.append(baseLabel);
+  for (const m of opts.waypointMarks) {
+    const x = xOf(m.distKm);
+    svg.append(
+      svgEl("line", { x1: x, y1: baseY, x2: x, y2: baseY + 5, class: "lw-profile-baseline" }),
+    );
+    const t = svgEl("text", {
+      x,
+      y: baseY + 17,
+      "text-anchor": "middle",
+      class: "lw-profile-legendtext",
+    });
+    t.textContent = m.label;
+    svg.append(t);
+  }
 
-  // 图例：分档色块
-  let lx = labelW;
-  const legendY = baseY + 20;
-  const legendTitle = svgEl("text", { x: lx, y: legendY, class: "lw-profile-legendtitle" });
-  legendTitle.textContent = "风速 m/s";
+  // 图例：风险三档 + 风速分档
+  const legendY = baseY + 34;
+  const legendTitle = svgEl("text", { x: labelW, y: legendY, class: "lw-profile-legendtitle" });
+  legendTitle.textContent = "风险";
   svg.append(legendTitle);
-  lx += 52;
+  let lx = labelW + 34;
+  for (const lvl of ["low", "mid", "high"] as const) {
+    svg.append(svgEl("circle", { cx: lx + 6, cy: legendY - 4, r: 6, fill: RISK_LEVEL_COLOR[lvl] }));
+    const t = svgEl("text", { x: lx + 16, y: legendY, class: "lw-profile-legendtext" });
+    t.textContent = RISK_LEVEL_LABEL[lvl];
+    svg.append(t);
+    lx += 16 + RISK_LEVEL_LABEL[lvl].length * 11 + 12;
+  }
+  const windTitle = svgEl("text", { x: lx + 8, y: legendY, class: "lw-profile-legendtitle" });
+  windTitle.textContent = "风速 m/s";
+  svg.append(windTitle);
+  lx += 66;
   for (const b of WIND_BUCKETS) {
     svg.append(
       svgEl("rect", { x: lx, y: legendY - 10, width: 14, height: 12, rx: 3, fill: b.color }),
@@ -352,7 +579,12 @@ export const renderProfileSvg = (
 export const renderProfileTable = (
   points: readonly OwPointForecast[],
   hourIndex: number,
+  samples: readonly SamplePoint[] = [],
 ): HTMLDivElement => {
+  const labelOf = (i: number): string => {
+    const s = samples[i];
+    return s === undefined ? `S${i + 1}` : `${s.distKm.toFixed(1)}km`;
+  };
   const wrap = htmlEl("div", "lw-table-wrap");
 
   const windTable = htmlEl("table", "lw-table");
@@ -365,8 +597,7 @@ export const renderProfileTable = (
     const p = points[r];
     if (p === undefined) continue;
     const row = body.insertRow();
-    row.insertCell().textContent =
-      `${ROUTE_POINTS[r]?.id ?? ""} ${ROUTE_POINTS[r]?.name ?? ""}`.trim();
+    row.insertCell().textContent = labelOf(r);
     const h = p.hourly;
     for (const level of HEIGHT_LEVELS) {
       const cell = windCellTextOf(
@@ -380,7 +611,7 @@ export const renderProfileTable = (
 
   const groundTable = htmlEl("table", "lw-table lw-table-ground");
   const gHead = groundTable.createTHead().insertRow();
-  for (const text of ["地面要素", ...ROUTE_POINTS.map((p) => p.id)]) {
+  for (const text of ["地面要素", ...points.map((_, i) => labelOf(i))]) {
     gHead.insertCell().textContent = text;
   }
   const gBody = groundTable.createTBody();

@@ -9,10 +9,10 @@
   </head>
   <body class="lw-page">
     <header class="lw-header">
-      <h1>低空航路天气面板 · 兴隆湖 → 龙泉山（示意航线）</h1>
+      <h1>低空航路天气面板 · 自设航路（示例：兴隆湖 → 龙泉山）</h1>
       <p class="lw-header-sub">
-        示意航线 ≈25km · 真高 120m · 上午作业窗口｜成都双流 ZUUU 与成都天府 ZUTF 双站地面实况夹持，
-        Open-Meteo 近地面多层（10/80/120/180m）沿航线 5 采样点剖面。
+        示例航线 ≈23km · 真高 120m｜成都双流 ZUUU 与成都天府 ZUTF 双站地面实况夹持， Open-Meteo
+        近地面多层（10/80/120/180m）沿航路采样剖面；亦可点击地图自设航路。
         <strong
           >航线为示意场景，非既有获批航线；真实飞行须空域审批。本页不得用于飞行或任何运行决策。</strong
         >
@@ -42,25 +42,40 @@
       <p id="taf-hint" role="note" hidden></p>
     </section>
 
-    <section class="lw-section" aria-label="问二至问五 · 真高风温廓线与沿航线剖面">
-      <h2>问二至问五 · 120 米的风、沿线变化、云雨与雷暴苗头</h2>
+    <section class="lw-section" aria-label="问二至问五 · 自设航路与沿程天气风险">
+      <h2>问二至问五 · 自设航路的沿程天气与风险</h2>
       <p class="lw-note">
-        地面风≠真高风：Open-Meteo 近地面多层沿航线 5 采样点的剖面，时刻滑杆看全天；
-        地面行（温度/露点/云量/CAPE/降水）回答看得见、下不下雨、有没有对流苗头。
+        点击地图取点画出你的低空航路（≤8 点，拖拽微调、右键删除），系统沿折线每约 2km
+        取一个气象采样点，
+        拉近地面多层（10/80/120/180m）做沿程-高度剖面：<strong>红色横线＝当前巡航真高的飞行轨迹</strong>，
+        顶部徽标＝各位置参考风险（悬停看因子）。风险为<strong>演示参考阈值，非机型适飞判据、非运行决策依据</strong>。
       </p>
+      <div class="lw-controls lw-route-bar">
+        <button id="route-preset" type="button">载入示例航线</button>
+        <button id="route-clear" type="button">清空重画</button>
+        <span class="lw-hint">点击地图添加航点（≤8）</span>
+        <output id="route-info">—</output>
+        <button id="route-analyze" type="button" class="lw-primary">分析航路</button>
+      </div>
       <div class="lw-controls">
         <label for="profile-hour">查看时刻</label>
         <input id="profile-hour" type="range" min="0" max="47" step="1" value="0" />
         <output id="profile-hour-label" for="profile-hour">—</output>
         <button id="profile-now" type="button">回到现在</button>
       </div>
+      <div class="lw-controls">
+        <label for="cruise-alt">巡航真高</label>
+        <input id="cruise-alt" type="range" min="30" max="180" step="5" value="120" />
+        <output id="cruise-alt-label" for="cruise-alt">120m</output>
+        <span class="lw-hint">轨迹线与风险评估随此高度联动</span>
+      </div>
       <p id="profile-source" class="lw-source"></p>
       <figure class="lw-figure">
-        <figcaption>版本 A · SVG 剖面图（沿线 × 真高，验收用并列展示，定稿择一）</figcaption>
+        <figcaption>沿程-高度剖面 · 飞行轨迹与参考风险（悬停徽标看因子明细）</figcaption>
         <div id="profile-svg"></div>
       </figure>
       <figure class="lw-figure">
-        <figcaption>版本 B · 表格卡（同一数据，语义化表格，验收用并列展示，定稿择一）</figcaption>
+        <figcaption>采样点明细表（同一数据，按里程列位）</figcaption>
         <div id="profile-table"></div>
       </figure>
       <figure class="lw-figure">

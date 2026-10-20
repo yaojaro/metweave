@@ -1063,3 +1063,68 @@ body:has(#iwxxm-compare) #map {
 .lw-page {
   height: auto;
 }
+
+/* 自设航路工具条与航点/风险元素（2026-10-20 二期） */
+.lw-route-bar {
+  flex-wrap: wrap;
+}
+.lw-hint {
+  font-size: 12px;
+  color: #8a94a0;
+}
+.lw-controls button.lw-primary {
+  background: #2b5d9b;
+  border-color: #2b5d9b;
+  color: #fff;
+  font-weight: 600;
+}
+.lw-controls button.lw-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.lw-controls output#route-info {
+  font-variant-numeric: tabular-nums;
+  color: #4a5560;
+}
+/* 航点序号图标（Leaflet divIcon） */
+.lw-wp-icon {
+  background: none;
+  border: none;
+}
+.lw-wp-icon span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #2b5d9b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(28, 39, 51, 0.4);
+  cursor: grab;
+}
+/* 沿程剖面：巡航轨迹线与风险徽标 */
+.lw-route-line {
+  stroke: #e2554d;
+  stroke-width: 2.5;
+  stroke-dasharray: none;
+}
+.lw-route-label {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #e2554d;
+}
+.lw-risk-badge {
+  stroke: #fff;
+  stroke-width: 1.5;
+  cursor: help;
+}
+.lw-risk-badge-text {
+  font-size: 10px;
+  font-weight: 700;
+  fill: #fff;
+  pointer-events: none;
+}
