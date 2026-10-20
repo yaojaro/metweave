@@ -446,7 +446,9 @@ export const renderRouteProfileSvg = (
     svg.append(tag);
   }
 
-  // 风速色带：每采样点 × 每层，x＝相邻采样点中点分段，y＝层真实高度带（相邻层中点分界）
+  // 风速色带：每采样点 × 每层，x＝相邻采样点中点分段，y＝层真实高度带（相邻层中点分界）。
+  // 布带与 bandEdges 同序（高度向上递增）：10m→[0,45]、80m→[45,100]、120m→[100,150]、180m→[150,200]——
+  // 轨迹线 yOf(巡航真高) 必须与层带同一坐标系，否则「写的高 120」和画的 120 对不上（实测踩坑）
   const bandEdges = [0];
   for (let i = 0; i < HEIGHT_LEVELS.length - 1; i += 1) {
     const a = HEIGHT_LEVELS[i];
@@ -457,8 +459,10 @@ export const renderRouteProfileSvg = (
   for (let li = 0; li < HEIGHT_LEVELS.length; li += 1) {
     const level = HEIGHT_LEVELS[li];
     if (level === undefined) continue;
-    const yTop = yOf(bandEdges[bandEdges.length - 1 - li] ?? PROFILE_MAX_ALT);
-    const yBot = yOf(bandEdges[bandEdges.length - 2 - li] ?? 0);
+    const altLo = bandEdges[li] ?? 0;
+    const altHi = bandEdges[li + 1] ?? PROFILE_MAX_ALT;
+    const yTop = yOf(altHi);
+    const yBot = yOf(altLo);
     for (let i = 0; i < opts.samples.length; i += 1) {
       const f = forecasts[i];
       const s = opts.samples[i];
