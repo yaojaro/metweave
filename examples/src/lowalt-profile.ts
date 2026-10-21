@@ -393,6 +393,8 @@ const PROFILE_MAX_ALT = 200;
  * 沿程-高度剖面（主线图）：x＝沿航线里程，y＝真高（数据层按真实高度布带）；
  * 背景色带＝各位置各层风速；红色横线＝当前巡航真高的飞行轨迹；顶部徽标行＝
  * 各采样点参考风险（悬停见因子明细）。演示参考口径，非运行判据。
+ * 只画风非偷懒：免费源近地面带高度分层的量仅风（温度露点 2 米、CAPE/降水整层单值），
+ * 其余要素沿程值由「明细表」页签承担——lowalt.html 剖面页签与放大弹层常驻注已向用户说明。
  */
 export const renderRouteProfileSvg = (
   forecasts: readonly OwPointForecast[],

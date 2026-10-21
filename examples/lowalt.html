@@ -61,6 +61,10 @@
             >色带＝风速 · 红线＝巡航轨迹 · 顶部徽标＝参考风险（悬停看因子）</span
           >
         </div>
+        <p class="lw-note">
+          为什么只画风：免费源近地面带高度分层的量只有风——温度/露点＝2
+          米单值、CAPE/降水＝整层单值，没有高度维可画；其余要素的沿程数值见「明细表」页签，综合参考风险见顶部徽标。
+        </p>
         <div id="profile-daylight"></div>
         <p id="profile-source" class="lw-source"></p>
       </section>
@@ -102,6 +106,9 @@ GET https://dev.qweather.com/v7/weather/now?location={LocationID}&key={你的key
           <strong>沿程-高度剖面（放大视图）</strong>
           <button id="profile-modal-close" type="button">关闭 ✕</button>
         </div>
+        <p class="lw-note">
+          只画风：免费源近地面多层仅风有高度分层；其余要素见「明细表」页签，综合参考风险见顶部徽标。
+        </p>
         <div class="lw-modal-body"><div id="profile-svg-big"></div></div>
       </div>
     </div>
