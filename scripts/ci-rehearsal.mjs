@@ -4,14 +4,19 @@
 // Node 20 矩阵失败、性能冒烟 CI 慢机超时，均在推送后才发现）。
 //
 // 与 CI 的两处已知差异（如实声明，均为本侧更严或已对齐）：
-// ① Node 版本：CI 矩阵 [22]（浮动 latest 22.x）；test 步骤在此以 npx node@22.21.0 执行，
-//    其余步骤本机 Node 执行（无版本敏感行为）。钉版会随 CI 浮动而漂移——升 Node 小版本
-//    时请同步改此钉版（漂移期间预演对「最新 22.x 特有行为」的代表性略降，属已知取舍）；
+// ① Node 版本：CI 矩阵 [22]（浮动 latest 22.x）；test 步骤在此断言本机 Node 大版本 = 22 后
+//    直接用本机 node 跑 vitest（2026-10-22 起弃用 `npx -p node@22.21.0` 钉小版本——npx 依赖
+//    npm 包缓存的建删，缓存故障会被误判成测试失败而拦下推送；详见该步注释）；
 // ② 泄露扫描：本机带私有模式清单（fail-closed），比 CI 无变量时的通用降级模式更严——
 //    本机过则 CI 面必过。
 // pnpm install --frozen-lockfile 保留：lockfile 与 package.json 漂移正是 CI 会抓的第一类错。
 
 import { spawnSync } from "node:child_process";
+
+// Node 大版本断言（与 ci.yml 矩阵同档）：单行内联，避免为一个断言新增脚本文件（knip 会判未用文件）。
+const NODE_MAJOR_ASSERT =
+  `node -e "const m=process.versions.node.split('.')[0];` +
+  `if(m!=='22'){console.error('预演要求 Node 22.x 档位，当前 '+process.version);process.exit(1)}"`;
 
 const steps = [
   // 第 0 步清构建产物：模拟 CI 全新 checkout——本地残留的 examples/dist 携带本机 key
@@ -22,7 +27,12 @@ const steps = [
   ["typecheck", "pnpm typecheck"],
   [
     "test (Node 22，与 CI 同版)",
-    "npx -y -p node@22.21.0 node ./node_modules/vitest/vitest.mjs run",
+    // 2026-10-22 改：不再用 `npx -y -p node@22.21.0`。npx 要靠 npm 包缓存（`_npx/<hash>/
+    // concurrency.lock` 的建与删）才能跑，缓存目录一旦不可写/不可删就以非零退出，预演会把
+    // 「缓存故障」误判成「测试失败」并拦下推送（当日实测两次）。CI 矩阵本就只跑 22.x 浮动档
+    // （check:workspace 断言⑨锁定），故改为：断言本机 Node 大版本 = 22，然后用本机 node 跑
+    // vitest——门禁依赖的是代码与测试，不是包缓存的健康度。
+    `${NODE_MAJOR_ASSERT} && node ./node_modules/vitest/vitest.mjs run`,
   ],
   ["format:check", "pnpm format:check"],
   ["check:workspace", "pnpm check:workspace"],
