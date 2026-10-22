@@ -22,7 +22,10 @@ if [ -n "$METWEAVE_LEAK_PATTERNS" ]; then
   node "$(dirname "$0")/../check-leaks.mjs" --staged || exit 1
 elif [ "$owner_like" -ne 0 ]; then
   echo "pre-commit: 未设置 METWEAVE_LEAK_PATTERNS，owner 身份拒绝以弱模式提交。"
-  echo "  设置：~/.zshrc 加入 export METWEAVE_LEAK_PATTERNS=<私有敏感词清单绝对路径>"
+  echo "  设置：~/.zshenv 加入 export METWEAVE_LEAK_PATTERNS=<私有敏感词清单绝对路径>"
+  echo "  （为何是 zshenv 不是 zshrc：zshenv 对交互与非交互 shell 都生效；zshrc 只对交互生效。"
+  echo "   仍报此错说明当前 shell 未加载启动文件——如 zsh -f、CI、或某些工具的受限 shell，"
+  echo "   此时请显式带变量：METWEAVE_LEAK_PATTERNS=<路径> git commit ...）"
   exit 1
 else
   echo "pre-commit: 外部贡献者无私有清单，跳过暂存区泄露扫描——CI 的通用模式扫描（check:leaks --all）仍会执行"

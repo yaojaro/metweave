@@ -9,6 +9,8 @@ if [ -n "$METWEAVE_LEAK_PATTERNS" ]; then
   node "$(dirname "$0")/../check-leaks.mjs" --msg-file "$1" || exit 1
 elif [ "$owner_like" -ne 0 ]; then
   echo "commit-msg: 未设置 METWEAVE_LEAK_PATTERNS，owner 身份拒绝以弱模式提交。"
+  echo "  设置：~/.zshenv 加入 export METWEAVE_LEAK_PATTERNS=<私有敏感词清单绝对路径>"
+  echo "  （zshenv 全模式生效；若已设置仍报此错，说明当前 shell 未加载启动文件，请显式带变量。）"
   exit 1
 else
   echo "commit-msg: 外部贡献者无私有清单，跳过提交信息扫描——CI 的通用模式扫描仍会执行"
