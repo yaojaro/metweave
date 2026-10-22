@@ -26,6 +26,10 @@ const steps = [
   ],
   ["format:check", "pnpm format:check"],
   ["check:workspace", "pnpm check:workspace"],
+  // 2026-10-22 补：绿区补网新增的两道门禁也进预演——否则「预演绿、CI 红」的缺口正好开在
+  // 新检查上（预演与 ci.yml 的步骤表必须同步增删，任何一侧漏项都等于没有这道门禁）
+  ["check:api (公共 API 面快照)", "pnpm check:api"],
+  ["check:doc-integrity (文档完整性四查)", "pnpm check:doc-integrity"],
   ["check:terms", "pnpm check:terms"],
   ["check:leaks", "pnpm check:leaks"],
   ["check:docs", "pnpm check:docs"],
