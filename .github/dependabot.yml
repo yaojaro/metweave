@@ -18,6 +18,13 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    # @types/node 的 major 跟随 Node 运行时大版本，属「运行时契约」决策而非例行升级：
+    # 我们的 engines 是 >=20、CI 只跑 22，类型跳到 26 会放过「Node 26 独有 API 在 20 上不存在」
+    # 的代码（CI 抓不到）。故 major 由人决定，minor/patch 照收（2026-10-22 关掉 PR #9 时立）。
+    ignore:
+      - dependency-name: "@types/node"
+        update-types:
+          - "version-update:semver-major"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
