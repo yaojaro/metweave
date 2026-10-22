@@ -11,7 +11,7 @@
  * 真实风与模式近地面风存在系统差——粗判够展示、不够判决（适飞判据不在本演示范围）。
  */
 
-export const HEIGHT_LEVELS = [10, 80, 120, 180] as const;
+const HEIGHT_LEVELS = [10, 80, 120, 180] as const;
 export type HeightLevel = (typeof HEIGHT_LEVELS)[number];
 
 export interface RoutePoint {
@@ -148,7 +148,7 @@ export const compassOf = (dir: NumOrNull): string | null => {
 };
 
 /** 风速配色分档（m/s）——扫视参考档，非标准分级；数值印在格内承信息主责 */
-export const WIND_BUCKETS = [
+const WIND_BUCKETS = [
   { max: 3, color: "#dff0df", label: "<3" },
   { max: 6, color: "#bfe3bf", label: "3–6" },
   { max: 9, color: "#f2e3b3", label: "6–9" },
@@ -174,7 +174,7 @@ export const arrowRotationOf = (dir: NumOrNull): number | null => {
 };
 
 /** 单元格风况文本：「6.7」+ 方位；缺失 → null（调用方渲「—」） */
-export const windCellTextOf = (
+const windCellTextOf = (
   speed: NumOrNull,
   dir: NumOrNull,
 ): { readonly speed: string; readonly compass: string | null } | null => {
@@ -287,21 +287,21 @@ export const RISK_THRESHOLDS = {
   precipHighMm: 2,
 } as const;
 
-export type RiskLevel = "low" | "mid" | "high" | "unknown";
+type RiskLevel = "low" | "mid" | "high" | "unknown";
 
 export interface RiskAssessment {
   readonly level: RiskLevel;
   readonly factors: readonly string[];
 }
 
-export const RISK_LEVEL_LABEL: Record<RiskLevel, string> = {
+const RISK_LEVEL_LABEL: Record<RiskLevel, string> = {
   low: "低",
   mid: "中",
   high: "高",
   unknown: "—",
 };
 
-export const RISK_LEVEL_COLOR: Record<RiskLevel, string> = {
+const RISK_LEVEL_COLOR: Record<RiskLevel, string> = {
   low: "#8fc98f",
   mid: "#e8b45c",
   high: "#d95f52",

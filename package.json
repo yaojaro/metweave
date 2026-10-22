@@ -11,6 +11,8 @@
     "build": "pnpm -r --filter '!metweave-examples' run build",
     "build:examples": "pnpm --filter metweave-examples run build",
     "check:workspace": "node scripts/check-workspace.mjs",
+    "check:api": "node scripts/check-api-surface.mjs",
+    "check:doc-integrity": "node scripts/check-doc-integrity.mjs",
     "check:leaks": "node scripts/check-leaks.mjs --all",
     "check:docs": "node scripts/check-docs-chinese.mjs",
     "replay:corpus": "node scripts/replay-corpus.mjs corpus/*.txt --baseline corpus/snapshot.json",
@@ -26,7 +28,7 @@
     "check:terms": "node scripts/terms.mjs check",
     "ci:rehearsal": "node scripts/ci-rehearsal.mjs",
     "bump": "node scripts/bump-version.mjs",
-    "check:all": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm replay:corpus && pnpm check:leaks && pnpm check:docs && pnpm check:terms && pnpm check:knip && pnpm check:workspace && pnpm check:artifact && pnpm build:examples && rm -rf examples/dist",
+    "check:all": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm replay:corpus && pnpm check:leaks && pnpm check:docs && pnpm check:terms && pnpm check:knip && pnpm check:workspace && pnpm check:api && pnpm check:doc-integrity && pnpm check:artifact && pnpm build:examples && rm -rf examples/dist",
     "gen:grid": "node scripts/gen-grid.mjs"
   },
   "devDependencies": {

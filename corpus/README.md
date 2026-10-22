@@ -52,6 +52,17 @@ node scripts/replay-corpus.mjs corpus/*.txt --json corpus/snapshot.json
 样本切片刷新）。`pnpm test` 里的冒烟锁（`packages/parser/src/corpus.test.ts`）断言
 unknown 形态分布与快照完全一致。
 
+## TAF 回放语料（corpus/taf/，v0.2 起）
+
+与 METAR 语料**分机制、不共用快照**：METAR 侧 `replay-corpus.mjs` 只吃 `corpus/*.txt`（非递归），
+TAF 侧由 `packages/parser/src/taf-corpus.test.ts` 直接读本目录并锁四件事（全部可解析、unknown-token
+仅 1 枚且出声不丢、扩展层标记为主量、duplicate-group 有上限且零越界/缺测告警）。
+
+- `ogimet-sample.txt`：OGIMET TAF 十六年回填的分层抽样，13 个月 × 每月 24 条 = 312 行，抽样种子
+  20260923（2026-09-23 入仓，见 v0.2 批 4.1 提交）。抽样当日即抓到三条真方言——有效期无斜杠形态
+  `dddddd`（ZWWW 160024）、TX/TN 无日短形态 `HHZ`（8/312 例）、BECMG 短窗 `0203`——三者均已收编为
+  回归用例；本语料是「形态覆盖率」的底档，改动请连同快照与用例一起审。
+
 ## IWXXM 等价对语料（corpus/iwxxm/，v0.3 起）
 
 双通道测试的数据面（与上述 TAC 回放语料是两套机制，不进 snapshot.json）：

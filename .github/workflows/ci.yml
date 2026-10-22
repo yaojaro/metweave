@@ -74,6 +74,14 @@ jobs:
       - name: Workspace contract (lockstep versions · dep direction · publishConfig)
         run: pnpm check:workspace
 
+      # 绿区补网（2026-10-22）：公共 API 面快照（只增不改删，删须登记）+ 文档完整性四查
+      # （CHANGELOG 链接闭合 / 顶部版本与包版本一致 / corpus 样本出处 / 包结构表与源码对得上）
+      - name: Public API surface (export snapshot · removal registry)
+        run: pnpm check:api
+
+      - name: Doc integrity (changelog links · corpus provenance · package map)
+        run: pnpm check:doc-integrity
+
       - name: Terminology glossary conformance (all user-visible copy registered)
         run: pnpm check:terms
 
