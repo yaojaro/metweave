@@ -2,6 +2,12 @@
 
 本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，六个包锁步同版本发布。
 
+## [未发布]
+
+### 新增
+
+- `code/` 目录：教程《风不是一个数：一根杆、一张场、一个扇区、一条廓线》的配套取数脚本——`fetch.mjs`（Open-Meteo 取 16 层廓线与 850 hPa 风场）、`rose.mjs`（IEM ASOS 年度观测算风玫瑰）。独立可跑，只依赖 Node 标准库；文章读者照文中取数节可直接下载复跑。
+
 ## [0.3.2] - 2026-10-23
 
 补全风羽这一层：一根杆怎么读、两套口径怎么切、卡片里怎么给数、缩放下画多密。六包同版本发布，公共 API 只增不改删。
@@ -178,3 +184,4 @@ TAF（FM 51）预报侧工具链全量落地：解析 → 时间线展开 → �
 [0.3.0]: https://github.com/yaojaro/metweave/releases/tag/v0.3.0
 [0.3.1]: https://github.com/yaojaro/metweave/releases/tag/v0.3.1
 [0.3.2]: https://github.com/yaojaro/metweave/releases/tag/v0.3.2
+[未发布]: https://github.com/yaojaro/metweave/compare/v0.3.2...HEAD

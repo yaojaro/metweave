@@ -1,7 +1,11 @@
 {
   "$schema": "./node_modules/knip.schema.json",
   "workspaces": {
-    ".": {},
+    ".": {
+      // code/：教程《风不是一个数》配套取数脚本——读者侧独立入口，不被仓内任何
+      // 模块引用，显式登记为 entry，否则 knip 判未用文件
+      "entry": ["code/fetch.mjs", "code/rose.mjs"],
+    },
     "packages/metweave": {},
     // examples 第二页面入口（v0.3 起）：knip 的 vite 插件默认只认 index.html——
     // iwxxm.html 的脚本 src 须显式登记，否则判未用文件

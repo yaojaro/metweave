@@ -14,7 +14,6 @@
     "no-alert": "error",
     "eqeqeq": "error",
     "no-non-null-assertion": "warn",
-
     "no-unsafe-assignment": "error",
     "no-unsafe-call": "error",
     "no-unsafe-member-access": "error",
@@ -29,6 +28,21 @@
   "overrides": [
     {
       "files": ["scripts/**"],
+      "rules": {
+        "no-console": "allow",
+        "no-unsafe-assignment": "allow",
+        "no-unsafe-call": "allow",
+        "no-unsafe-member-access": "allow",
+        "no-unsafe-return": "allow",
+        "no-unsafe-argument": "allow",
+        "no-floating-promises": "allow",
+        "no-misused-promises": "allow",
+        "no-base-to-string": "allow",
+        "switch-exhaustiveness-check": "allow"
+      }
+    },
+    {
+      "files": ["code/**"],
       "rules": {
         "no-console": "allow",
         "no-unsafe-assignment": "allow",
