@@ -338,6 +338,8 @@ const mountFixture = (): void => {
           <label for="grid-opacity">不透明度</label>
           <input id="grid-opacity" type="range" min="0.2" max="0.9" step="0.05" value="0.6" />
           <span id="grid-opacity-value">60%</span>
+          <label for="grid-contours" id="grid-contours-label" hidden>等值线</label>
+          <input id="grid-contours" type="checkbox" hidden />
         </div>
         <p id="grid-meta" role="status" aria-live="polite"></p>
       </div>
@@ -878,6 +880,28 @@ const windFetch = async (url: string): Promise<unknown> => {
   return url.startsWith("/grid/") ? notFound : okBuf(corpusF32());
 };
 
+/**
+ * 有梯度的 u/v 场（u 2→16 m/s 逐列递增、v=0）：**等值线测试专用**——全场同速的均匀场
+ * 值域退化（min＝max），`contoursOf` 按契约返回空，看不出等值线开没开。
+ */
+const gradientWindPair = (): [Uint8Array, Uint8Array] => [
+  serializeGrid(
+    windHeaderOf("UGRD"),
+    Array.from({ length: 64 }, (_, i) => 2 + (i % 8) * 2),
+  ),
+  serializeGrid(
+    windHeaderOf("VGRD"),
+    Array.from({ length: 64 }, () => 0),
+  ),
+];
+
+const windGradientFetch = async (url: string): Promise<unknown> => {
+  if (url === "/api/gen-grid") return { ok: false, status: 400, json: async () => ({}) };
+  if (url.startsWith("/grid/windu_cn.mwgrid")) return okBuf(gradientWindPair()[0]);
+  if (url.startsWith("/grid/windv_cn.mwgrid")) return okBuf(gradientWindPair()[1]);
+  return url.startsWith("/grid/") ? notFound : okBuf(corpusF32());
+};
+
 describe("面板装配：双分量要素（wind，renderForm filled+barbs 档案驱动）", () => {
   it("清单含 wind 位（第十三位）；选 wind：合成风速色斑＋风羽杆成套上图（pane z 365、方向旋转），meta 联动", async () => {
     const map = await boot(windFetch);
@@ -894,7 +918,42 @@ describe("面板装配：双分量要素（wind，renderForm filled+barbs 档案
     expect(svgs).toHaveLength(1);
     // 全场西风（u=5,v=0）→ 来向 270；速度 5 m/s＝1 长划（4）＋1 短划（2 缺——5=4+1 只长划）
     expect(svgs[0]?.querySelector("g")?.getAttribute("transform")).toBe("rotate(270 16 16)");
-    expect(map.getPane("mw-grid-contour")?.querySelectorAll("path").length ?? 0).toBe(0); // 不背等值线层
+    expect(map.getPane("mw-grid-contour")?.querySelectorAll("path").length ?? 0).toBe(0); // 等值线缺省不叠（档案 defaultOn:false）
+  });
+
+  it("等值线开关（0.3.2 T7）：只有真能画线的要素才显示控件；风缺省关、勾上出现、取消即摘", async () => {
+    const map = await boot(windGradientFetch);
+    await vi.waitFor(() => expect(srcLine()).toContain("起报"));
+    const toggle = document.getElementById("grid-contours") as HTMLInputElement;
+    // 启动自动上图的默认要素是 filled 形态（不描线）→ 控件隐藏（只判 contours 口径会造出死开关）
+    expect(toggle.hidden).toBe(true);
+
+    rowBtnOf("10m 风").click();
+    await vi.waitFor(() => expect(srcLine()).toContain("10m 风（m/s）"));
+    expect(toggle.hidden).toBe(false); // 风是三叠形态 → 控件出现
+    expect(toggle.checked).toBe(false); // 档案 defaultOn:false → 缺省不勾
+    expect(map.getPane("mw-grid-contour")?.querySelectorAll("path").length ?? 0).toBe(0);
+
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event("change"));
+    await vi.waitFor(() =>
+      expect(map.getPane("mw-grid-contour")?.querySelectorAll("path").length ?? 0).toBeGreaterThan(
+        0,
+      ),
+    );
+
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event("change"));
+    await vi.waitFor(() =>
+      expect(map.getPane("mw-grid-contour")?.querySelectorAll("path").length ?? 0).toBe(0),
+    );
+
+    // 取消选中（再点选中行）：控件隐藏、状态清零；再选风仍按档案缺省（不勾）
+    rowBtnOf("10m 风").click();
+    await vi.waitFor(() => expect(toggle.hidden).toBe(true));
+    rowBtnOf("10m 风").click();
+    await vi.waitFor(() => expect(toggle.hidden).toBe(false));
+    expect(toggle.checked).toBe(false);
   });
 
   it("wind → tmp 切换：杆层整层摘除（filled 要素不背杆层），再切回缓存重建", async () => {

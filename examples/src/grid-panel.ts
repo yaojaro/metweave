@@ -25,7 +25,8 @@
  * （"filled+barbs"）叠风向杆层——显隐随选中/切换同进退，面板零要素名特判。
  */
 import { addContourLayer, addGridLayer, addWindBarbLayer } from "@metweave/leaflet";
-import { buildColorScale } from "@metweave/grid";
+import { WIND_BARB_SCALES, buildColorScale, windProfile } from "@metweave/grid";
+import type { ElementProfile } from "@metweave/grid";
 import type * as LeafletNS from "leaflet";
 import {
   GRID_ELEMENTS,
@@ -207,7 +208,8 @@ const ELEMENT_DESCRIPTIONS: Readonly<Record<string, string>> = {
   pres: "地面气压（模式地面，含地形效应——高原极低值非天气低压）——淡紫底衬叠 16 hPa 稀疏参考线；细密度分析请切「海平面气压」。",
   t850: "850hPa 温度——4°C 等温线，0°C 红色特值线＝零度层（雨雪分界参考）。",
   tcdc: "总云量（整层大气）——业务 4 级制（晴/少云/多云/阴），灰白渐进越深云越厚。",
-  wind: "10 米风——风速色斑＋风向杆（m/s 中国口径：三角旗 20、长划 4、短划 2），静风区不出杆。",
+  // 刻度与等值线间隔都从档案/常量表插值（不在这里写第二份数字——源头一改，文案跟着改）
+  wind: `10 米风——风速色斑＋风向杆（m/s 中国口径：三角旗 ${WIND_BARB_SCALES["m/s"].pennant}、长划 ${WIND_BARB_SCALES["m/s"].long}、短划 ${WIND_BARB_SCALES["m/s"].short}），静风区不出杆；杆密度随缩放分四级（放大更密），${windProfile.contours?.interval ?? 0} m/s 等值线属可选叠加（缺省关，勾上方「等值线」才画）。`,
 };
 
 /** 面板挂载选项：fetchImpl 注入可测（真实 fetch 结构满足 UrlFetch/JsonFetch 两面）。 */
@@ -232,6 +234,21 @@ const inputById = (id: string): HTMLInputElement | null => {
 };
 
 /**
+ * 渲染形态按 `+` 分段识别（v0.3.2：三态枚举扩为四态，"filled+barbs+contours" 三叠由此
+ * 天然支持——请勿再写 `renderForm === "..."` 的整串相等判断，新增组合会漏接线）。
+ */
+const formParts = (profile: ElementProfile): ReadonlySet<string> =>
+  new Set(profile.renderForm.split("+"));
+
+/**
+ * 等值线控件可见性＝「真能画出等值线」：既要有 `contours` 口径，**又要** renderForm 里有
+ * `contours` 特征位。只判前者会骗人——tmp/dpt/rh 等多数要素只有留位口径、形态是
+ * `filled`，装配分支根本不会描线（独立审查 P1-1：那是个点了没反应的死开关）。
+ */
+const hasContours = (profile: ElementProfile | undefined): boolean =>
+  profile !== undefined && profile.contours !== undefined && formParts(profile).has("contours");
+
+/**
  * 把格点图层抽屉接到地图上（DOM 元素由 index.html 提供，id 见实现内查询）。
  * 幂等假设：每页一次。数据/缓存/竞态语义见 grid-data.ts 与文件头注。
  */
@@ -248,6 +265,8 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
   const fhourNextBtn = btnById("grid-fhour-next");
   const opacityInput = inputById("grid-opacity");
   const opacityValue = elById("grid-opacity-value");
+  const contourToggle = inputById("grid-contours");
+  const contourToggleLabel = elById("grid-contours-label");
   const metaLine = elById("grid-meta");
 
   const cache = new Map<string, LoadedGrid>();
@@ -260,8 +279,10 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
   let overlay: LeafletNS.ImageOverlay | undefined;
   /** 等值线叠层（档案 renderForm "filled+contours" 的要素才有；随色斑层同建同摘） */
   let contourLayer: LeafletNS.LayerGroup | undefined;
-  /** 风向杆叠层（档案 renderForm "filled+barbs" 的要素才有；随色斑层同建同摘） */
+  /** 风向杆叠层（档案 renderForm 含 barbs 的要素才有；随色斑层同建同摘） */
   let barbLayer: LeafletNS.LayerGroup | undefined;
+  /** 最近一次成功装配的要素与数据（等值线开关切换时就地重建，不重新取数） */
+  let lastBuilt: { spec: GridElementSpec; loaded: LoadedGrid } | undefined;
   let opacity = GRID_OPACITY_DEFAULT;
   let bust: string | undefined;
   /** 逐次自增的换代令牌：慢响应回来时若已切走/已取消，丢弃不渲染 */
@@ -384,11 +405,46 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
     barbLayer = undefined;
   };
 
+  // —— 等值线叠加开关（v0.3.2 T7）：声明了 contours 的要素才显示；缺省按档案 defaultOn
+  //（prmsl/t850 等「等值线主导」形态 defaultOn 未声明＝true，观感与 v0.3.1 一致；
+  // wind 声明 defaultOn:false＝可选叠加，缺省不压在色斑与风羽之上）。
+  // 覆盖值按要素短名记：在某要素上关掉，不会牵连另一个要素的缺省。
+  const contourOverrides = new Map<string, boolean>();
+  const contourOn = (profile: ElementProfile): boolean =>
+    contourOverrides.get(profile.shortName) ?? profile.contours?.defaultOn !== false;
+  const syncContourControl = (profile: ElementProfile | undefined): void => {
+    const has = hasContours(profile);
+    if (contourToggleLabel !== null) contourToggleLabel.hidden = !has;
+    if (contourToggle !== null) {
+      contourToggle.hidden = !has;
+      contourToggle.checked = has && profile !== undefined && contourOn(profile);
+    }
+  };
+  contourToggle?.addEventListener("change", () => {
+    const built = lastBuilt;
+    // 先记覆盖值（装载途中点开关也要记住，否则装完按档案缺省画、复选框与图不一致）
+    if (currentSpec !== undefined) {
+      contourOverrides.set(currentSpec.profile.shortName, contourToggle.checked);
+    }
+    if (built === undefined) return;
+    // 只就地重建「当前要素」的层：跨要素或已切走时交给正在进行的 showElement，
+    // 否则会把上一要素的层画回新会话（独立审查 P2-5）
+    if (
+      currentSpec === undefined ||
+      built.spec.profile.shortName !== currentSpec.profile.shortName
+    ) {
+      return;
+    }
+    void buildOverlay(built.spec, built.loaded);
+  });
+
   /** 取消选中（不选＝不展示）：摘层＋收行＋在途装载作废；缓存保留（再选零 fetch）。 */
   const deselect = (): void => {
     generation++;
     currentSpec = undefined;
+    lastBuilt = undefined;
     removeLayers();
+    syncContourControl(undefined);
     setRows(undefined, false);
     for (const { body } of rows.values()) {
       body.replaceChildren();
@@ -401,22 +457,28 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
 
   /**
    * 建新层成功后才摘旧层（渲染失败旧图保留）；透明度随滑杆现值。
-   * 等值线主导形态（档案 renderForm "filled+contours"，如 prmsl）在色斑之上再叠
-   * 等值线＋数值标注层（addContourLayer；L/H 中心标注随档案 contours.centers 缺省
-   * 开——温度场一类声明 false 只描线不出中心）——显隐/样式全由档案驱动，面板
-   * 不对具体要素做特判；滑杆只调色斑不透明度（等值线与标注是形态主导，不随滑杆淡出）。
-   * 双分量形态（renderForm "filled+barbs"，如 wind）同构：色斑之上再叠风向杆层
-   * （addWindBarbLayer——色斑吃 loaded.grid 合成风速场，杆层吃 components 分量原场，
-   * 两层零交涉）；无伴生分量（数据面异常缺席）即不叠杆——形态声明与数据形态对齐。
+   * 形态装配**按 renderForm 的 `+` 分段识别**（v0.3.2：三态扩为四态，新增
+   * "filled+barbs+contours" 三叠，故不再整串相等判断）：
+   * - 含 contours 且开关有效 → 叠等值线＋数值标注层（addContourLayer；L/H 中心随档案
+   *   `contours.centers`；是否缺省叠由档案 `defaultOn` 决定，面板只给开关）；
+   * - 含 barbs 且数据有伴生分量 → 叠风向杆层（addWindBarbLayer——色斑吃 loaded.grid
+   *   合成风速场，杆层吃 components 分量原场，两层零交涉）；
+   * 显隐/样式全由档案驱动，面板不对具体要素做特判；滑杆只调色斑不透明度（等值线与
+   * 标注是形态主导，不随滑杆淡出）。
    */
   const buildOverlay = async (spec: GridElementSpec, loaded: LoadedGrid): Promise<void> => {
     const built = await addGridLayer(map, loaded.grid, spec.profile, { opacity });
     if (overlay !== undefined) map.removeLayer(overlay);
     overlay = built;
-    if (spec.profile.renderForm === "filled+contours") {
-      // L/H 中心标注随档案口径（气压习语缺省开；温度场一类声明 centers:false 只描线）
+    lastBuilt = { spec, loaded };
+    const parts = formParts(spec.profile);
+    // L/H 中心标注随档案口径（气压习语缺省开；温度场一类声明 centers:false 只描线）
+    if (parts.has("contours") && contourOn(spec.profile)) {
       const builtContours = await addContourLayer(map, loaded.grid, spec.profile, {
         centers: spec.profile.contours?.centers ?? true,
+        // 与风羽同图的要素（含 barbs）：等值线是辅形态，不标数值——标注与杆、色斑三者
+        // 争夺同一片视觉，实测把图读成噪点（UI 审查）。独立的等值线主导形态照旧标值。
+        ...(parts.has("barbs") ? { labels: false } : {}),
       });
       if (contourLayer !== undefined) map.removeLayer(contourLayer);
       contourLayer = builtContours;
@@ -424,7 +486,7 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
       map.removeLayer(contourLayer);
       contourLayer = undefined;
     }
-    if (spec.profile.renderForm === "filled+barbs" && loaded.components !== undefined) {
+    if (parts.has("barbs") && loaded.components !== undefined) {
       const builtBarbs = await addWindBarbLayer(
         map,
         loaded.components.u,
@@ -443,7 +505,9 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
   async function showElement(spec: GridElementSpec, force = false, fhour = 0): Promise<void> {
     const gen = ++generation;
     currentSpec = spec;
+    lastBuilt = undefined; // 装载期间禁止用上一要素的层就地重建（审查 P2-5）
     setRows(spec, true);
+    syncContourControl(spec.profile);
     setFhourBusy(true);
     if (pullBtn !== null) pullBtn.disabled = false;
     const cached = force ? undefined : cache.get(cacheKeyOf(spec, fhour));

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>metweave · 风不是一个数（演示）</title>
+    <!-- favicon：空 data URI 显式声明（消除浏览器默认 /favicon.ico 404；无二进制资产、无痕） -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body class="wd-page">
+    <header id="wd-topbar">
+      <strong>风不是一个数</strong>
+      <span class="wd-sub"
+        >下面四块看的是同一阵风：ZUUU 的 240°、5
+        m/s。风羽＝气象图上那根带小旗的杆：旗和划的数量表示风速，杆的朝向表示风从哪来。图形都是现算的，不是贴图。</span
+      >
+    </header>
+
+    <main id="wd-main">
+      <section class="wd-block" aria-labelledby="wd-chip-title">
+        <h2 id="wd-chip-title">① 数值牌：同一条报文的风，三种状态</h2>
+        <p class="wd-hint">
+          把报文里的风组摆成数字：有风给风向／风速／阵风，静风（00000）一行，风组缺测一行。单位跟着报文走，不做换算——牌上写
+          5 m/s，报文里就是 5MPS。每张牌下方的小字是报文原文，方便逐字对照。
+        </p>
+        <div id="wd-chips" class="wd-chips"></div>
+      </section>
+
+      <section class="wd-block" aria-labelledby="wd-legend-title">
+        <h2 id="wd-legend-title">② 风羽图例：两套画法</h2>
+        <p class="wd-hint">
+          同一阵风，中国地面图用 m/s（旗 20、长划 4、短划 2），国际航空用 kt（旗 50、长划 10、短划
+          5）。两套刻度不通用——同一根杆换个画法就长得不一样（20 m/s 是 1 面旗；同样的风折成 kt 是 3
+          长划＋1 短划）。按钮只换刻度，<strong>不替你换算数值</strong>。
+        </p>
+        <div id="wd-legend"></div>
+      </section>
+
+      <section class="wd-block" aria-labelledby="wd-glyph-title">
+        <h2 id="wd-glyph-title">③ 四档风速 × 两种画法</h2>
+        <p class="wd-hint">
+          左列风羽（方向＋速度），右列箭头（只方向）。风向一律
+          240°＝风<strong>从</strong>西南偏西吹来——气象图上杆和箭头都指向风<strong>来的方向</strong>，不是吹去的方向。
+        </p>
+        <div class="wd-glyphs-head" aria-hidden="true">
+          <span>风速</span><span>风羽</span><span>箭头</span
+          ><span>这根杆怎么读（旗／长划／短划）</span>
+        </div>
+        <div id="wd-glyphs" class="wd-glyphs"></div>
+      </section>
+
+      <section class="wd-block" aria-labelledby="wd-map-title">
+        <h2 id="wd-map-title">④ 单站：只有一条报文的风，也能上图</h2>
+        <p class="wd-hint">
+          手上没有格点场、只有某个站的「240°、5 m/s」时，把杆位序列直接交给
+          <code>addWindBarbGlyphs</code> 就能上图，不必为了画一根杆去伪造 1×1
+          格点场。下图四根杆分别对应成都／北京／广州／上海的位置，只用来说明形态。
+        </p>
+        <div id="wd-mini-map" role="img" aria-label="四站风羽示意（无底图）"></div>
+      </section>
+
+      <section class="wd-block" aria-labelledby="wd-code-title">
+        <h2 id="wd-code-title">⑤ 这几件事在代码里长什么样</h2>
+        <pre class="wd-code"><code>import { parse } from "metweave";
+import { windBarbOf, toKnots, WIND_LEGEND_UNITS } from "@metweave/grid";
+import { windBarbPath, addWindBarbGlyphs } from "@metweave/leaflet";
+import { renderWindChip, renderWindLegend } from "metweave";
+
+const report = parse("METAR ZUUU 211200Z 24005MPS 3000 BR SCT020 18/16 Q1013");
+document.body.append(renderWindChip(report));            // ① 数值牌（三态自动判）
+
+const paths = windBarbPath(5);                            // ③ 一根 5 m/s 的杆（几何）
+const reading = windBarbOf(240, 5);                       // 它的读数：几旗几划（240 为来向）
+
+document.body.append(renderWindLegend({ units: WIND_LEGEND_UNITS })); // ② 图例（两套刻度）
+
+// map 是你已经建好的 L.Map（同仓 addMetarLayer 用的那张）
+await addWindBarbGlyphs(map, [                            // ④ 单点上图
+  { lat: 30.58, lon: 103.95, direction: 240, speed: 5 },
+]);
+await addWindBarbGlyphs(map, [                            // kt 填图：先换算再声明口径
+  { lat: 30.58, lon: 103.95, direction: 240, speed: toKnots(5) },
+], { unit: "kt" });</code></pre>
+      </section>
+    </main>
+
+    <footer id="wd-footer">
+      图形由 <code>windBarbPath</code> / <code>windArrowPath</code> 现算，读数由
+      <code>windBarbOf</code> 给出；两套刻度取自 <code>@metweave/grid</code> 的
+      <code>WIND_BARB_SCALES</code>（单一来源）。本页为产品演示，不构成任何气象研判。
+    </footer>
+
+    <script type="module" src="/src/wind-main.ts"></script>
+  </body>
+</html>

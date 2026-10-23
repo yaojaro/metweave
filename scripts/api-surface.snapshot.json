@@ -67,6 +67,7 @@
     "WindShearGroup"
   ],
   "@metweave/grid#.": [
+    "BarbLodStep",
     "BarbSpec",
     "binIndexAt",
     "buildColorScale",
@@ -94,6 +95,7 @@
     "HEADER_VERSION",
     "interpolateBilinear",
     "MAGIC",
+    "MPS_PER_KT",
     "parseGrid",
     "prateProfile",
     "prmslProfile",
@@ -110,11 +112,23 @@
     "tcdcProfile",
     "thresholdBreaks",
     "tmpProfile",
+    "toKnots",
+    "toMps",
     "visProfile",
+    "WIND_BARB_SCALES",
+    "WIND_LEGEND_UNITS",
     "WindBarb",
+    "WindBarbEncoding",
+    "windBarbOf",
+    "WindBarbOfOptions",
+    "WindBarbScale",
     "windBarbsOf",
+    "WindBarbsOptions",
+    "windBarbStepAt",
     "windProfile",
-    "windSpeedGrid"
+    "windSpeedGrid",
+    "WindSpeedUnit",
+    "WindSpeedUnitInput"
   ],
   "@metweave/grid#./convert": [
     "CN_WINDOW",
@@ -145,6 +159,8 @@
     "AddMetarLayerOptions",
     "addTafLayer",
     "AddTafLayerOptions",
+    "addWindBarbGlyphs",
+    "AddWindBarbGlyphsOptions",
     "addWindBarbLayer",
     "AddWindBarbLayerOptions",
     "AltimeterReading",
@@ -173,6 +189,7 @@
     "MetarSourceErrorCode",
     "metarTierOf",
     "MetarValues",
+    "MPS_PER_KT",
     "Observed",
     "ParseError",
     "ParseOptions",
@@ -221,7 +238,10 @@
     "weatherGroupTone",
     "WeatherIntensity",
     "WeatherPhenomenon",
+    "windArrowPath",
+    "WindArrowPathOptions",
     "windBarbPath",
+    "WindBarbPathOptions",
     "WindGroup",
     "WindShearGroup"
   ],
@@ -272,6 +292,10 @@
     "RenderCardOptions",
     "renderTafCard",
     "RenderTafCardOptions",
+    "renderWindChip",
+    "RenderWindChipOptions",
+    "renderWindLegend",
+    "RenderWindLegendOptions",
     "ReportKind",
     "ReportTime",
     "RunwayBraking",
@@ -329,6 +353,7 @@
     "WeatherIntensity",
     "WeatherPhenomenon",
     "WindGroup",
+    "WindLegendUnit",
     "WindShearGroup"
   ],
   "metweave#./sources": [
@@ -537,7 +562,12 @@
     "RenderCardOptions",
     "renderTafCard",
     "RenderTafCardOptions",
+    "renderWindChip",
+    "RenderWindChipOptions",
+    "renderWindLegend",
+    "RenderWindLegendOptions",
     "summarizeTafConditions",
-    "TafCalendarAnchor"
+    "TafCalendarAnchor",
+    "WindLegendUnit"
   ]
 }

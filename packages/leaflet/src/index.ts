@@ -24,9 +24,19 @@ import {
   contoursOf,
   centersOf,
   windBarbsOf,
+  windBarbOf,
+  windBarbStepAt,
+  MPS_PER_KT,
   type ColorScale,
 } from "@metweave/grid";
-import type { ElementProfile, Grid } from "@metweave/grid";
+import type {
+  BarbSpec,
+  ElementProfile,
+  Grid,
+  WindBarb,
+  WindSpeedUnit,
+  WindSpeedUnitInput,
+} from "@metweave/grid";
 import { renderCard, renderTafCard, summarizeTafConditions } from "@metweave/render";
 import type { RenderTafCardOptions, TafCalendarAnchor } from "@metweave/render";
 import { expandTaf } from "@metweave/parser";
@@ -1527,8 +1537,22 @@ const BARB_PANE = "mw-grid-barb";
 /** BARB_PANE 的 z-index：等值线 360 与 overlayPane 400 之间的空隙位 */
 const BARB_PANE_Z = 365;
 
+/**
+ * 单层出杆上限（视口内）：超过就自动把步长翻倍降密。
+ * 依据：档案最密档在中国域全量约 1.46 万根（zoom 8 / step 2），divIcon marker 全量建
+ * 会把浏览器卡住数秒；视口裁剪后仍超此数说明这一屏根本读不了，疏一档更有用。
+ */
+const BARB_MARKER_LIMIT = 2500;
+
 /** addWindBarbLayer 的合法选项键（运行时校验用——拼错的选项键静默忽略违反本库不静默纪律） */
-const ADD_WIND_BARB_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set(["color"]);
+const ADD_WIND_BARB_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set(["color", "unit"]);
+
+// 换算常数真源在 @metweave/grid（口径所在处），本包只转出以保持既有 import 路径可用
+//（1 kt = 0.514444 m/s，NIST SP 811；只在显示侧用，不动存储语义）
+// 注意：用「先 import 再 export 本地绑定」而不是 `export { … } from "…"`——后者会让
+// api-surface 快照把 grid 的整包导出都算进本包（实测 +63 个假导出）。
+export { MPS_PER_KT };
+const KT_PER_MPS = 1 / MPS_PER_KT;
 
 /**
  * Options for addWindBarbLayer: barb color.
@@ -1537,6 +1561,22 @@ const ADD_WIND_BARB_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set(["color"]);
 export interface AddWindBarbLayerOptions {
   /** 风羽基色（缺省深灰蓝 #2c3e50——浅色斑上可辨、与站点站码标签同族深色） */
   color?: string;
+  /**
+   * 填图口径（缺省跟随格点场存储单位：m/s 场出 m/s 填图、kt 场出 kt 填图）。
+   *
+   * 传 `kt` 而场是 m/s 时，层内做**一次**换算（1 kt = 0.514444 m/s，NIST 定义；
+   * 换算只发生在显示侧，`barb.speed` 与内核、色斑一律保持存储单位不动）。
+   * 传 `m/s` 而场是 kt 时反向换算。两个口径的形态差异见 `windBarbPath`。
+   */
+  unit?: WindSpeedUnitInput;
+}
+
+/** `addWindBarbGlyphs` 的选项：基色 + 杆位序列里速度的单位声明（不做换算）。 */
+export interface AddWindBarbGlyphsOptions {
+  /** 风羽基色（缺省深灰蓝 #2c3e50） */
+  readonly color?: string;
+  /** `barbs[].speed` 的单位（缺省 m/s，接受 "mps" 别名）；**只声明口径，不做数值换算** */
+  readonly unit?: WindSpeedUnitInput;
 }
 
 /**
@@ -1556,51 +1596,263 @@ const SHORT_DY = 4;
 const STROKE_GAP = 5; // 划沿杆排列间距
 
 /**
- * 风羽 glyph 的 SVG path 数据（纯函数，m/s 中国口径：三角旗 20 m/s＋长划 4 m/s＋短划
- * 2 m/s——中国气象业务地面图填图规范，与 m/s 存储单位同源，不折节换算）。
+ * 风羽 glyph 的 SVG path 数据（纯函数）。口径由 `@metweave/grid` 的 `windBarbOf` 出编码
+ * （单一事实来源：旗/划阈值只在 grid 的 `WIND_BARB_SCALES` 写一份），本函数**只负责几何**。
+ *
+ * 两套单位口径：
+ * - 缺省 `m/s`＝中国气象业务地面图（旗 20 / 长划 4 / 短划 2），与 v0.3.1 逐字节相同；
+ * - `kt`＝国际航空惯例（旗 50 / 长划 10 / 短划 5）。同一根杆在两套口径下形态不同是**正确**的
+ *   （20 m/s ＝ 1 面旗；同一风速的 39 kt ＝ 3 长划 + 1 短划、无旗）——这不是 bug，是两套
+ *   业务读图惯例的差异，图例（render 包）必须同步切刻度。
  *
  * 返回 { stroke, fill }：stroke＝杆＋长/短划（描线子路径），fill＝三角旗（闭合填充
- * 子路径，风速 <20 m/s 时为空串）。杆恒画（静风杆已由内核 calmThreshold 过滤，到场
+ * 子路径，无旗时为空串）。杆恒画（静风杆已由内核 calmThreshold 过滤，到场
  * 的每根杆至少有方向语义）；羽从杆梢向站心侧排布（旗先、划后，气象读图惯例）。
  * 取舍（简化箭头弃用）：箭头只表方向、不表风速——方向色斑已有流向冗余的零增量；
  * 风羽的速度编码（旗/划计数）给色弱用户方向＋速度双通道冗余，且是纯几何 path
- * （无字体/位图），实现成本可控。
+ * （无字体/位图），实现成本可控。**只表方向的场景由 `windArrowPath` 承担**（v0.3.2 T3）。
  */
-export function windBarbPath(speed: number): { readonly stroke: string; readonly fill: string } {
+export interface WindBarbPathOptions {
+  /**
+   * 填图口径（缺省 m/s＝中国气象业务惯例；kt 为国际航空惯例；接受 `"mps"` 别名）。
+   *
+   * **它是量纲声明，不是换算开关**：`speed` 这个数字必须已经是该单位下的数值。手上是
+   * m/s、要出 kt 填图 → 先用 `toKnots(mps)` 换算再传（或直接 `windBarbOf` + 自己的几何）；
+   * 把 20（m/s）配 `{ unit: "kt" }` 会照 20 kt 画，风被画小近一半且画面完全合法。
+   */
+  readonly unit?: WindSpeedUnitInput;
+}
+
+export function windBarbPath(
+  speed: number,
+  options: WindBarbPathOptions = {},
+): { readonly stroke: string; readonly fill: string } {
+  for (const key of Object.keys(options)) {
+    if (key !== "unit") {
+      throw new Error(`windBarbPath 收到未知选项 "${key}"（可用项：unit）——拼错的选项不会生效`);
+    }
+  }
+  // 负数/非有限**钳到 0**（＝有杆无羽）：这是 v0.3.1 已发版的 `Math.max(0, speed)` 行为，
+  // 本版刻意不改（几何函数对已发布调用方保持宽松）；严格抛错只在新原语 windBarbOf 一侧。
+  const safe = Number.isFinite(speed) ? Math.max(0, speed) : 0;
+  // calmThreshold: 0 —— 几何函数保持 v0.3.1 的宽松语义（0 m/s 照出光杆），
+  // 静风过滤是层（addWindBarbLayer）与调用方的责任，不在几何函数里做
+  const enc = windBarbOf(0, safe, { unit: options.unit ?? "m/s", calmThreshold: 0 });
   const x = BARB_CX;
   const strokeSegs: string[] = [`M${x} ${BARB_CX} L${x} ${BARB_TIP_Y}`]; // 杆：站心 → 梢（向上＝北）
   const fillSegs: string[] = [];
+  if (enc === null) return { stroke: strokeSegs.join(" "), fill: "" }; // 不可达（阈值缺省 0），类型收窄用
   let y = BARB_TIP_Y;
-  let rest = Math.max(0, speed);
-  const pennants = Math.floor(rest / 20);
-  rest -= pennants * 20;
-  const longs = Math.floor(rest / 4);
-  rest -= longs * 4;
-  const hasShort = rest >= 2 - 1e-6; // float32 派生值的舍入容差
-  for (let i = 0; i < pennants; i++, y += PENNANT_H) {
+  for (let i = 0; i < enc.pennants; i++, y += PENNANT_H) {
     fillSegs.push(`M${x} ${y} L${x} ${y + PENNANT_H} L${x - PENNANT_W} ${y + PENNANT_H / 2} Z`);
   }
-  for (let i = 0; i < longs; i++, y += STROKE_GAP) {
+  for (let i = 0; i < enc.longs; i++, y += STROKE_GAP) {
     strokeSegs.push(`M${x} ${y} L${x + LONG_DX} ${y + LONG_DY}`);
   }
-  if (hasShort) strokeSegs.push(`M${x} ${y} L${x + SHORT_DX} ${y + SHORT_DY}`);
+  if (enc.shorts > 0) strokeSegs.push(`M${x} ${y} L${x + SHORT_DX} ${y + SHORT_DY}`);
   return { stroke: strokeSegs.join(" "), fill: fillSegs.join(" ") };
+}
+
+/** 箭头 glyph 的可选项。 */
+export interface WindArrowPathOptions {
+  /**
+   * 箭头全长（SVG 像素；缺省 11）。
+   *
+   * 取值受 **glyph 盒**约束：风羽盒是 32×32、站心在 (16,16)，斜向可容上限 ≈11.3——
+   * 超过就会画出 viewBox 外被裁掉。缺省 11 在任意角度都不出界；要更长的箭头请同步
+   * 放大宿主盒（或改用非 32 盒的布局）。
+   */
+  readonly length?: number;
+  /**
+   * 箭头指向（**同一面图上两种约定不能混用**）：
+   * - `"from"`（缺省）＝指向风**来的方向**，与风羽杆同向（气象读图的默认姿势：杆/箭头
+   *   一起转到来向）；
+   * - `"to"` ＝指向风**去的方向**（来向 +180°，流体/工程图常见）。
+   *
+   * 本仓既有页面（`examples` 的低空剖面）画的是「去向」，与本函数缺省相反——宿主若与
+   * 那种图并列展示，请显式写 `pointing: "to"`，不要指望读者自己分辨。
+   */
+  readonly pointing?: "from" | "to";
+}
+
+/** path 坐标保留三位小数（SVG 像素下 0.001 已远低于可辨阈值，长串少一半字符）。 */
+const coord = (value: number): string => String(Math.round(value * 1000) / 1000);
+
+/**
+ * 箭头 glyph 的 SVG path 数据（纯函数，**纯方向件**）。
+ *
+ * 与风羽的分工（档案原文的取舍在这里落成 API 边界）：风羽编码「速度＋方向」，箭头只表
+ * 「方向」——本函数因此**不接受速度参数**，长度是视觉参数而非速度编码。什么时候它比风羽好：
+ * 图面已经很密、或读者只关心流向（风羽的划数在小尺寸下会糊成噪点）。
+ *
+ * 方向口径与风羽逐字一致：**气象来向**（0°＝北、90°＝东）。差别在几何自带朝向——风羽是
+ * 「杆恒向上＋层 rotate(direction)」，箭头直接算到方向，返回值可塞进不旋转的 `<g>`（也
+ * 可以再旋转，两法等价，宿主自选）。
+ *
+ * 返回 { stroke, fill }（与 windBarbPath 同构，便于同一 divIcon 复用）：stroke＝杆身，
+ * fill＝箭镞三角。校验：direction 须为 0–360 有限数、length 须为正有限数，未知选项键与
+ * 非法值显式抛错（本函数是 v0.3.2 新增面，一开始就守不静默纪律）。
+ */
+export function windArrowPath(
+  direction: number,
+  options: WindArrowPathOptions = {},
+): { readonly stroke: string; readonly fill: string } {
+  for (const key of Object.keys(options)) {
+    if (key !== "length" && key !== "pointing") {
+      throw new Error(
+        `windArrowPath 收到未知选项 "${key}"（可用项：length、pointing）——拼错的选项不会生效`,
+      );
+    }
+  }
+  if (!Number.isFinite(direction) || direction < 0 || direction > 360) {
+    throw new Error(
+      `windArrowPath 的方向非法（${String(direction)}）——须为 0–360 的有限数（气象来向：北 0／东 90）`,
+    );
+  }
+  const length = options.length ?? 11;
+  if (!Number.isFinite(length) || length <= 0) {
+    throw new Error(`windArrowPath 的 length 非法（${String(length)}）——须为正有限数`);
+  }
+  const pointing = options.pointing ?? "from";
+  if (pointing !== "from" && pointing !== "to") {
+    throw new Error(
+      `windArrowPath 的 pointing 取值 "${String(pointing)}" 不受支持（可用："from" | "to"）`,
+    );
+  }
+  // 指向去向＝来向 +180°（几何原地反向，不改站心与长度）
+  const heading = pointing === "to" ? direction + 180 : direction;
+  const rad = (heading * Math.PI) / 180;
+  // 屏幕坐标 y 向下：北（0°）＝−y，东（90°）＝＋x
+  const dx = Math.sin(rad);
+  const dy = -Math.cos(rad);
+  const x0 = BARB_CX;
+  const y0 = BARB_CX;
+  const x1 = x0 + dx * length;
+  const y1 = y0 + dy * length;
+  const head = length * 0.35; // 箭镞长（与全长同比例，缩放时形态不变形）
+  const baseX = x1 - dx * head;
+  const baseY = y1 - dy * head;
+  const halfWidth = head * 0.5;
+  // 法向（顺时针 90° 转）：(−dy, dx)
+  const nx = -dy * halfWidth;
+  const ny = dx * halfWidth;
+  return {
+    stroke: `M${coord(x0)} ${coord(y0)} L${coord(baseX)} ${coord(baseY)}`,
+    fill:
+      `M${coord(x1)} ${coord(y1)} L${coord(baseX + nx)} ${coord(baseY + ny)} ` +
+      `L${coord(baseX - nx)} ${coord(baseY - ny)} Z`,
+  };
+}
+
+/**
+ * 单根风羽的 divIcon HTML（内联 SVG）。风羽盒恒定 32×32、站心 (16,16)、杆恒向上——
+ * 方向靠 `<g transform="rotate(dir 16 16)">` 施加（SVG rotate 正角＝屏幕顺时针＝罗盘向）。
+ *
+ * 杆海是视觉密度件：`aria-hidden`（数百枚逐杆播报是读屏反可用性——速度已在色斑档有冗余
+ * 通道，方向随杆形/色斑流向可读，不逐杆立可读名称）。
+ */
+function barbIconHtml(
+  direction: number,
+  displaySpeed: number,
+  unit: WindSpeedUnit,
+  color: string,
+): string {
+  const paths = windBarbPath(displaySpeed, { unit });
+  const paint = escapeAttrValue(color);
+  return (
+    `<svg width="${BARB_BOX}" height="${BARB_BOX}" viewBox="0 0 ${BARB_BOX} ${BARB_BOX}" aria-hidden="true">` +
+    `<g transform="rotate(${direction} ${BARB_CX} ${BARB_CX})">` +
+    `<path d="${paths.stroke}" fill="none" stroke="${paint}" stroke-width="1.4" stroke-linecap="round"/>` +
+    (paths.fill === ""
+      ? ""
+      : `<path d="${paths.fill}" fill="${paint}" stroke="${paint}" stroke-width="1"/>`) +
+    `</g></svg>`
+  );
+}
+
+/** 把一批杆位序列按当前填图口径逐杆贴到 group 上（`displaySpeedOf` 负责单位折算）。 */
+function paintBarbMarkers(
+  L: typeof import("leaflet"),
+  group: Leaflet.LayerGroup,
+  barbs: readonly WindBarb[],
+  color: string,
+  unit: WindSpeedUnit,
+  displaySpeedOf: (speed: number) => number,
+): void {
+  for (const barb of barbs) {
+    L.marker([barb.lat, barb.lon], {
+      icon: L.divIcon({
+        className: "mw-barb-icon",
+        html: barbIconHtml(barb.direction, displaySpeedOf(barb.speed), unit, color),
+        iconSize: [BARB_BOX, BARB_BOX],
+        iconAnchor: [BARB_CX, BARB_CX],
+      }),
+      interactive: false,
+      keyboard: false,
+      pane: BARB_PANE,
+    }).addTo(group);
+  }
+}
+
+/**
+ * Single-station barbs: put an **already-computed** barb sequence onto a Leaflet map.
+ * 把**现成的杆位序列**贴上地图（单站/少量杆的入口，v0.3.2 增补）。
+ *
+ * 与 `addWindBarbLayer`（吃一对 u/v 格点场）互补：手上只有 METAR 的「240°、5 m/s」、
+ * 或数据不是 `.mwgrid` 时，用 `windBarbOf` / `windBarbsOf` 先算出 `WindBarb[]`，再由本
+ * 函数上图——不必为了画一根杆伪造一个 1×1 的格点场（产品审查 1.4）。
+ *
+ * 语义：`barbs[].speed` 的**单位由 `options.unit` 声明**（缺省 m/s），本函数不做数值换算
+ * （没有源单位可推）——手上是 kt 就传 `unit: "kt"` 并给 kt 数值。同 `addWindBarbLayer`：
+ * 独立 pane `mw-grid-barb`（z 365）、恒定像素 divIcon。无 LOD（杆位序列已定，密度是调用方
+ * 的事）。
+ */
+export async function addWindBarbGlyphs(
+  map: Leaflet.Map,
+  barbs: readonly WindBarb[],
+  options: AddWindBarbGlyphsOptions = {},
+): Promise<Leaflet.LayerGroup> {
+  for (const key of Object.keys(options)) {
+    if (key !== "color" && key !== "unit") {
+      throw new Error(
+        `addWindBarbGlyphs 收到未知选项 "${key}"（可用项：color、unit）——拼错的选项不会生效`,
+      );
+    }
+  }
+  const color = options.color ?? "#2c3e50";
+  // 口径只影响「怎么读这个数字」，不做换算：声明 kt 就是把 speed 当 kt 画
+  const unit: WindSpeedUnit = options.unit === "mps" ? "m/s" : (options.unit ?? "m/s");
+  const L = await loadLeaflet();
+  if (map.getPane(BARB_PANE) === undefined) {
+    map.createPane(BARB_PANE).style.zIndex = String(BARB_PANE_Z);
+  }
+  const group = L.layerGroup();
+  paintBarbMarkers(L, group, barbs, color, unit, (speed) => speed);
+  group.addTo(map);
+  return group;
 }
 
 /**
  * Put wind barbs of a paired u/v field onto a Leaflet map (constant-size SVG glyphs).
  * 把一对 u/v 分量场的风向杆（风羽）贴上 Leaflet 地图：内核 `windBarbsOf` 按档案
- * `barbs` 口径（step 抽稀／calmThreshold 静风阈）出杆位序列 → 每杆一枚 divIcon
- * marker，内联 SVG 风羽（m/s 中国口径：旗 20／长划 4／短划 2，恒定像素尺寸——缩放
- * 不失真不变形）按 `direction` 旋转（罗盘口径，SVG rotate 正角＝顺时针）。
+ * `barbs` 口径（step 抽稀／calmThreshold 静风阈／v0.3.2 起的 lod 阶梯）出杆位序列 →
+ * 每杆一枚 divIcon marker，内联 SVG 风羽（填图口径缺省跟随场单位：m/s 中国口径
+ * 旗 20／长划 4／短划 2，`unit: "kt"` 时国际航空口径 旗 50／长划 10／短划 5；恒定
+ * 像素尺寸——缩放不失真不变形）按 `direction` 旋转（罗盘口径，SVG rotate 正角＝顺时针）。
  *
  * 与 `addGridLayer`（色斑栅格层）正交组合：风速合成色斑在下（pane mw-grid，z 350）、
- * 风羽在上（pane mw-grid-barb，z 365——等值线 360 之上、宿主矢量 ≥400 之下）——
- * 双分量形态（`renderForm: "filled+barbs"`）由调用方两函数先后装配（色斑吃
- * `windSpeedGrid` 合成场，本层直接吃 u/v 原场——方向 atan2 同源派生）。档案缺
- * `barbs` 口径显式抛错（不静默空层）。杆是恒定像素视觉件：zoom 下 marker 原地
- * 重定位、glyph 尺寸不变（divIcon 语义，无 canvas 重绘）；v1 无 LOD——密度只由
- * 档案 step 声明，不随缩放变。异步：leaflet 惰性装载（同 addGridLayer）。
+ * 等值线 360、风羽在上（pane mw-grid-barb，z 365——宿主矢量 ≥400 之下）——双分量形态
+ * （`renderForm` 含 `barbs`）由调用方两函数先后装配（色斑吃 `windSpeedGrid` 合成场，
+ * 本层直接吃 u/v 原场——方向 atan2 同源派生）。档案缺 `barbs` 口径显式抛错（不静默空层）。
+ *
+ * LOD（v0.3.2 T5）：档案声明 `barbs.lod` 时按 `map.getZoom()` 选抽稀步长，并在 `zoomend`
+ * 重绘本层；层从地图移除时解绑监听、重挂时重新绑定（add/remove 成对）。
+ *
+ * **视口裁剪与出杆上限（v0.3.2 产品审查 3.1）**：只画当前视口（padding 15%）内的杆——
+ * 档案最密档（zoom 8、step 2）在中国域会算出 1.4 万根，全量建 marker 会把浏览器卡住；
+ * 裁剪后若视口内仍超 `BARB_MARKER_LIMIT`，步长自动翻倍降密（宁可疏，不可卡死）。档案无
+ * `lod` 时行为与 v0.3.1 逐字相同（缩放无关），但同样受视口裁剪——这是**有意的行为改进**：
+ * 没有人需要看屏幕外的杆。异步：leaflet 惰性装载（同 addGridLayer）。
  */
 export async function addWindBarbLayer(
   map: Leaflet.Map,
@@ -1611,46 +1863,76 @@ export async function addWindBarbLayer(
 ): Promise<Leaflet.LayerGroup> {
   for (const key of Object.keys(options)) {
     if (!ADD_WIND_BARB_LAYER_OPTION_KEYS.has(key)) {
-      throw new Error(`addWindBarbLayer 收到未知选项 "${key}"（可用项见 AddWindBarbLayerOptions）`);
+      throw new Error(
+        `addWindBarbLayer 收到未知选项 "${key}"（可用项：color、unit）——拼错的选项不会生效`,
+      );
     }
   }
-  const spec = profile.barbs;
-  if (spec === undefined) {
+  const declared = profile.barbs;
+  if (declared === undefined) {
     throw new Error(
-      `要素 ${profile.shortName} 档案缺风向杆口径（barbs）——filled+barbs 形态要素须声明，无法出杆`,
+      `要素 ${profile.shortName} 档案缺风向杆口径（barbs）——renderForm 含 barbs 的要素须声明，无法出杆`,
     );
   }
   const color = options.color ?? "#2c3e50";
-  const barbs = windBarbsOf(u, v, spec);
+  // 填图口径：缺省跟随场单位（m/s 场出 m/s、kt 场出 kt），显式传则换算
+  const fieldIsKt = /kt/i.test(u.header.unit);
+  const targetUnit: WindSpeedUnit =
+    options.unit === "mps" ? "m/s" : (options.unit ?? (fieldIsKt ? "kt" : "m/s"));
+  // 档案静风阈是按 m/s 声明的；场本身是 kt 时它会被当成 kt 值（≈0.51 m/s）→ 静风区多画杆。
+  // 只在这一未达分支折算（当前所有产物都是 m s-1，属防未来踩坑）。
+  const spec: BarbSpec = fieldIsKt
+    ? { ...declared, calmThreshold: declared.calmThreshold * KT_PER_MPS }
+    : declared;
+  const displaySpeedOf = (speed: number): number => {
+    if (fieldIsKt === (targetUnit === "kt")) return speed; // 同口径，不折
+    return targetUnit === "kt" ? speed * KT_PER_MPS : speed * MPS_PER_KT;
+  };
   const L = await loadLeaflet();
   if (map.getPane(BARB_PANE) === undefined) {
     map.createPane(BARB_PANE).style.zIndex = String(BARB_PANE_Z);
   }
   const group = L.layerGroup();
-  for (const barb of barbs) {
-    const paths = windBarbPath(barb.speed);
-    // 杆海是视觉密度件：aria-hidden（数百枚逐杆播报是读屏反可用性——速度已在色斑档
-    // 有冗余通道，方向随杆形/色斑流向可读，不逐杆立可读名称）
-    const html =
-      `<svg width="${BARB_BOX}" height="${BARB_BOX}" viewBox="0 0 ${BARB_BOX} ${BARB_BOX}" aria-hidden="true">` +
-      `<g transform="rotate(${barb.direction} ${BARB_CX} ${BARB_CX})">` +
-      `<path d="${paths.stroke}" fill="none" stroke="${escapeAttrValue(color)}" stroke-width="1.4" stroke-linecap="round"/>` +
-      (paths.fill === ""
-        ? ""
-        : `<path d="${paths.fill}" fill="${escapeAttrValue(color)}" stroke="${escapeAttrValue(color)}" stroke-width="1"/>`) +
-      `</g></svg>`;
-    L.marker([barb.lat, barb.lon], {
-      icon: L.divIcon({
-        className: "mw-barb-icon",
-        html,
-        iconSize: [BARB_BOX, BARB_BOX],
-        iconAnchor: [BARB_CX, BARB_CX],
-      }),
-      interactive: false,
-      keyboard: false,
-      pane: BARB_PANE,
-    }).addTo(group);
+  /** 上一次绘制的「步长@缩放档」：同档同缩放重复调用不重建整层 */
+  let paintedKey: string | undefined;
+  const paint = (zoom: number | undefined): void => {
+    const step0 = windBarbStepAt(spec, zoom);
+    const key = `${step0}@${zoom ?? "none"}`;
+    if (paintedKey === key) return;
+    paintedKey = key;
+    group.clearLayers();
+    // 视口未知（容器未布局：测试环境/隐藏容器 size 0×0）时不做裁剪——裁剪是为了性能，
+    // 不是为了在拿不到视口时把图清空
+    const size = map.getSize();
+    const bounds = size.x > 0 && size.y > 0 ? map.getBounds().pad(0.15) : undefined;
+    let step = step0;
+    let inView: readonly WindBarb[] = [];
+    for (let guard = 0; guard < 4; guard++) {
+      const all = windBarbsOf(u, v, { ...spec, step, lod: undefined });
+      inView =
+        bounds === undefined ? all : all.filter((barb) => bounds.contains([barb.lat, barb.lon]));
+      if (inView.length <= BARB_MARKER_LIMIT) break;
+      step *= 2; // 视口内仍过密：宁可疏一档，不可卡死
+    }
+    paintBarbMarkers(L, group, inView, color, targetUnit, displaySpeedOf);
+  };
+  const hasLod = spec.lod !== undefined;
+  if (hasLod) {
+    // add/remove 成对绑定：**不能只绑一次**——图层被摘掉再挂回（显隐开关、面板重建）是
+    // 最常见路径，once 会让第二段生命周期的 LOD 静默失效（独立审查 P1-2）
+    const onZoom = (): void => paint(map.getZoom());
+    const unbind = (): void => {
+      map.off("zoomend", onZoom);
+    };
+    const bind = (): void => {
+      unbind();
+      map.on("zoomend", onZoom);
+      paint(map.getZoom()); // 重挂时按当前档重绘（摘除期间 zoom 可能已变）
+    };
+    group.on("add", bind);
+    group.on("remove", unbind);
   }
   group.addTo(map);
+  if (!hasLod) paint(undefined); // 无 LOD 时没有 add 时机可挂，直接绘一次
   return group;
 }

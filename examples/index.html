@@ -144,6 +144,16 @@
             aria-label="色斑不透明度"
           />
           <span id="grid-opacity-value">60%</span>
+          <!-- 等值线叠加开关（v0.3.2 T7）：只对声明 contours 的要素显示；「可选叠加」的
+               要素（如 10m 风，档案 defaultOn:false）缺省不勾，等值线主导形态（气压/温度）
+               缺省勾上＝既有观感不变 -->
+          <label for="grid-contours" id="grid-contours-label" hidden>等值线</label>
+          <input
+            id="grid-contours"
+            type="checkbox"
+            hidden
+            aria-label="叠加等值线（要素声明等值线口径时才可用）"
+          />
         </div>
         <p id="grid-meta" role="status" aria-live="polite"></p>
       </div>

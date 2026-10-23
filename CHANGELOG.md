@@ -2,6 +2,33 @@
 
 本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，六个包锁步同版本发布。
 
+## [0.3.2] - 2026-10-23
+
+补全风羽这一层：一根杆怎么读、两套口径怎么切、卡片里怎么给数、缩放下画多密。六包同版本发布，公共 API 只增不改删。
+
+### 升级前必读
+
+1. **`windProfile.renderForm` 变成 `"filled+barbs+contours"`。** 按整串相等判断装配图层的代码会静默少画风羽，改成按 `+` 分段判断（`renderForm.split("+").includes("barbs")`）。TypeScript 用户：联合类型多一个成员，穷尽 `switch` 会编译报错。
+2. **`windBarbOf` 的静风阈缺省从 0 变成 1 m/s。** `windBarbOf(0, 0)` 现在返回 `null`（静风不出杆）；要旧行为显式传 `calmThreshold: 0`。
+
+### 新增
+
+- **风羽编码原语** `windBarbOf(direction, speed, { unit })`：方向＋风速 → 一面旗／一根长划／一根短划的编码，支持 m/s（中国地面图）与 kt（国际航空）两套口径。
+- **风羽与箭头几何**：`windBarbPath` 支持 kt 口径（默认 m/s 输出与 0.3.1 逐字节相同）；新增 `windArrowPath`（纯方向箭头，可选指向来向或去向）。
+- **单站上图** `addWindBarbGlyphs`：把算好的杆位序列直接贴到地图上，不必伪造格点场。
+- **风数值牌** `renderWindChip`：有风 / 静风 / 缺测三态，单位跟随报文。
+- **风羽图例** `renderWindLegend`：两套刻度可切，刻度数字由调用方传入。
+- **口径与换算单源**：`WIND_BARB_SCALES`、`WIND_LEGEND_UNITS`、`MPS_PER_KT`、`toKnots` / `toMps` 都在 `@metweave/grid`；`WindSpeedUnit` 接受 `"mps"`，报文里的单位可直接传。
+- **杆密度 LOD**：`windBarbsOf` 可按缩放抽稀（放大更密）；风羽层只画视口内，超量自动降密。
+- **风等值线**：10m 风可叠等值线（8 m/s 间隔，缺省不叠）。
+
+### 修改
+
+- `ElementProfile.renderForm` 枚举扩为四态；`ContourSpec` 新增 `defaultOn`；`BarbSpec` 新增 `lod`。
+- `windArrowPath` 缺省长度 20 → 11：32×32 图标盒斜向容不下 20，箭尖会被裁掉。
+- `windProfile.contours` 新增 `centers` / `defaultOn` 两个字段：对档案做深度比较的测试会红。
+- 示例新增两页：`wind.html`（一根杆怎么读）、`verify.html`（本批七项自检）。
+
 ## [0.3.1] - 2026-10-19
 
 IWXXM 转换规则补全 + 一批解析健壮性修复。六包锁步 patch，公共 API 只增不改删。
@@ -150,3 +177,4 @@ TAF（FM 51）预报侧工具链全量落地：解析 → 时间线展开 → �
 [0.2.1]: https://github.com/yaojaro/metweave/releases/tag/v0.2.1
 [0.3.0]: https://github.com/yaojaro/metweave/releases/tag/v0.3.0
 [0.3.1]: https://github.com/yaojaro/metweave/releases/tag/v0.3.1
+[0.3.2]: https://github.com/yaojaro/metweave/releases/tag/v0.3.2

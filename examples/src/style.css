@@ -1296,3 +1296,358 @@ body:has(#iwxxm-compare) #map {
   box-shadow: 0 1px 4px rgba(28, 39, 51, 0.4);
   cursor: grab;
 }
+
+/* —— 风的画法演示页（wind.html，v0.3.2 风批次）—— */
+.wd-page {
+  margin: 0;
+  padding: 0 0 40px;
+  background: #f5f7fa;
+  color: #1f2a37;
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif;
+}
+#wd-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding: 14px 20px;
+  background: #33506b;
+  color: #fff;
+}
+#wd-topbar strong {
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+.wd-sub {
+  flex: 1 1 520px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #d7e2ee;
+}
+.wd-sub code,
+#wd-footer code {
+  background: rgba(255, 255, 255, 0.14);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+#wd-main {
+  display: grid;
+  gap: 16px;
+  max-width: 880px;
+  margin: 20px auto 0;
+  padding: 0 20px;
+}
+.wd-block {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.wd-block h2 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #33506b;
+}
+.wd-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #5a6675;
+}
+.wd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.wd-chip-cell {
+  display: grid;
+  gap: 4px;
+}
+.wd-chip-cell small {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #8a94a3;
+}
+.wd-glyphs {
+  display: grid;
+  gap: 6px;
+}
+.wd-glyph-row {
+  display: grid;
+  grid-template-columns: 96px 80px 92px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed #e6ebf1;
+}
+.wd-glyph-row:last-child {
+  border-bottom: none;
+}
+.wd-glyph-row b {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.wd-glyph-row small {
+  font-size: 11px;
+  color: #6b7785;
+}
+.wd-glyph-cell {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+#wd-footer {
+  max-width: 880px;
+  margin: 18px auto 0;
+  padding: 0 20px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #8a94a3;
+}
+#wd-footer code {
+  background: #e9eef4;
+  color: #33506b;
+}
+
+/* 演示页的迷你地图（无底图，纯示意：四站风羽） */
+#wd-mini-map {
+  height: 230px;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  background: #eef2f6;
+}
+#wd-mini-map .leaflet-container {
+  background: #eef2f6;
+  font: inherit;
+}
+
+/* 单站标签（leaflet tooltip 换肤） */
+.wd-station-label {
+  background: rgba(255, 255, 255, 0.86);
+  border: none;
+  box-shadow: none;
+  padding: 1px 5px;
+  font-size: 11px;
+  color: #33506b;
+  border-radius: 4px;
+}
+.wd-station-label::before {
+  display: none;
+}
+.wd-station-pin {
+  background: none;
+  border: none;
+}
+/* 代码示例块 */
+.wd-code {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  background: #f2f5f8;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #26313d;
+}
+
+/* ③ 的表头行（列名只在表头出现，行内不再重复） */
+.wd-glyphs-head {
+  display: grid;
+  grid-template-columns: 96px 80px 92px 1fr;
+  gap: 8px;
+  padding: 0 0 4px;
+  border-bottom: 1px solid #e6ebf1;
+  font-size: 11px;
+  color: #8a94a3;
+}
+
+/* 箭头 glyph 比风羽短（几何契约 11 vs 14），演示页放大一点才看得清方向 */
+.wd-glyph-cell svg {
+  overflow: visible;
+}
+.wd-glyph-cell:nth-child(3) svg {
+  transform: scale(1.4);
+}
+
+/* —— 0.3.2 七项验收台（verify.html）—— */
+.vf-page {
+  margin: 0;
+  padding: 0 0 40px;
+  background: #f5f7fa;
+  color: #1f2a37;
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif;
+}
+#vf-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: #2f4a63;
+  color: #fff;
+}
+#vf-topbar strong {
+  font-size: 16px;
+}
+.vf-score {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #f0b429;
+  color: #2f2a1a;
+  font-size: 12px;
+  font-weight: 700;
+}
+.vf-score[data-ok="true"] {
+  background: #4caf7d;
+  color: #0f2a1c;
+}
+.vf-sub {
+  flex: 1 1 520px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #cfdae5;
+}
+#vf-main {
+  display: grid;
+  gap: 14px;
+  max-width: 940px;
+  margin: 18px auto 0;
+  padding: 0 20px;
+}
+.vf-item {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.vf-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.vf-head h2 {
+  margin: 0;
+  font-size: 14px;
+  color: #2f4a63;
+}
+.vf-head h2 b {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #e8eef5;
+  font-size: 12px;
+}
+.vf-head code {
+  margin-left: 6px;
+  font-size: 12px;
+  color: #6b7785;
+}
+.vf-verdict {
+  font-size: 11px;
+  color: #8a94a3;
+}
+.vf-verdict[data-ok="true"] {
+  color: #2f7a52;
+}
+.vf-verdict[data-ok="false"] {
+  color: #b3392b;
+}
+.vf-desc {
+  margin: 6px 0 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #5a6675;
+}
+.vf-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.vf-pair {
+  gap: 28px;
+}
+.vf-pair figure {
+  margin: 0;
+  text-align: center;
+}
+.vf-pair figcaption,
+.vf-row figcaption {
+  font-size: 11px;
+  color: #6b7785;
+}
+.vf-ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #3d4a58;
+}
+.vf-ctrl input[type="range"] {
+  width: 120px;
+}
+.vf-glyph {
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+}
+.vf-glyph svg {
+  overflow: visible;
+}
+.vf-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.vf-row figure {
+  margin: 0;
+  text-align: center;
+}
+.vf-read {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #4a5560;
+}
+.vf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.vf-toolbar button {
+  padding: 3px 10px;
+  border: 1px solid #c9d3dd;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.vf-toolbar button:hover {
+  background: #eef3f8;
+}
+.vf-map {
+  width: 100%;
+  height: 190px;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  background: #eef2f6;
+}
+.vf-map .leaflet-container {
+  background: #eef2f6;
+  font: inherit;
+}
+#vf-footer {
+  max-width: 940px;
+  margin: 18px auto 0;
+  padding: 0 20px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #8a94a3;
+}

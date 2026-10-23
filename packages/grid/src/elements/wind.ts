@@ -28,13 +28,20 @@
  *   得七停靠：弱风浅黄→强风深橙棕——「风大＝警示色深」的直觉带；与 cape 的 YlOrRd
  *   同暖调不同族（棕主导 vs 红主导），面板要素族里的新一族色相，切换区分度好；
  * - 风向杆口径（进档案）：step 10（0.25° 网格即 2.5° 一根，地面分析图惯例密度，
- *   缩放无关固定步长）、calmThreshold 1 m/s（中国气象业务惯例静风阈，静风无方向
+ *   不传缩放档时的固定密度）、calmThreshold 1 m/s（中国气象业务惯例静风阈，静风无方向
  *   可读不画杆）、形态＝**风羽**（m/s 中国口径：三角旗 20 m/s＋长划 4 m/s＋短划
  *   2 m/s——中文气象圈地面图认知最强形态；简化箭头的取舍弃用：箭头只表方向不表
  *   风速大小，色斑之外的冗余信息零增量，而风羽的速度编码是色斑色弱视用户的方向
  *   ＋速度双通道冗余；实现成本可控——纯几何 path，无字体无位图）；
- * - 等值线 4 m/s 留位（表 B 等值线列「无」：10m 风速等值线非业务惯例；若日后接线，
- *   4 m/s 恰与填色档界重合）；renderForm "filled+barbs"。
+ * - 等值线 4 m/s **接线（v0.3.2 T7）**：档案原文判「10m 风速等值线非业务惯例」，故口径
+ *   声明为 `interval: 4`（与填色档界重合，接上去读图自洽）＋ `centers: false`（风速场
+ *   无低压/高压中心语义，照 t850 先例只描线不出 L/H）＋ `defaultOn: false`（属**可选
+ *   叠加**：宿主缺省不压在色斑与风羽之上，用户显式开启才画）——「非惯例」的判断没被
+ *   推翻，只是从「不接线」变成「接上但不默认」。renderForm 随之升三叠
+ *   `"filled+barbs+contours"`（v0.3.2 新增的第四种形态）。
+ * - 杆密度 LOD（v0.3.2 T5）：阶梯按「缩放越深越密」给四级，且**首个视口档（zoom 4）
+ *   与 v0.3.1 的固定 step 10 逐格相同**——默认观感不变，只有缩小（0–3 档 5° 一根）
+ *   与放大（6/8 档）时才变。这不是「改默认」，是「把原来缩放无关的密度变成有档位的」。
  * 与其他要素档案零 import（垂直切片架构约束，见 element.ts 文件头）。
  */
 import type { ElementProfile } from "../element";
@@ -50,7 +57,22 @@ export const windProfile: ElementProfile = {
   colorStops: ["#ffffe5", "#fff7bc", "#fee391", "#fec44f", "#fe9929", "#ec7014", "#cc4c02"],
   equal: { min: 0, max: 32, bins: 8 },
   defaultMode: "equal",
-  renderForm: "filled+barbs",
-  barbs: { step: 10, calmThreshold: 1 },
-  contours: { interval: 4, highlighted: [] },
+  renderForm: "filled+barbs+contours",
+  barbs: {
+    step: 10,
+    calmThreshold: 1,
+    // 四级阶梯：zoom 4（默认全国视口）命中 step 10＝v0.3.1 既有密度，故默认观感不变；
+    // 缩到 0–3 档 5° 一根（形势视角），放到 6/8 档 1.25°/0.75° 一根（局地视角）。
+    // 最密档取 3 而非 1–2：divIcon 是 DOM marker，中国域 step 2 会算出 1.4 万枚（产品审查
+    // 3.1）；层侧另有视口裁剪与 2500 枚上限兜底，档案这一层先把绝对量压在可读区间。
+    lod: [
+      { zoom: 0, step: 20 },
+      { zoom: 4, step: 10 },
+      { zoom: 6, step: 5 },
+      { zoom: 8, step: 3 },
+    ],
+  },
+  // 间隔 8（而非 4）：两者都落在填色档界（0/4/8/…/32）上，8 的线少一半——4 m/s 在风速梯度区
+  // 会产生过密细线，与风羽杆争视觉（UI 审查实测：4 时叠加图几乎不可读）
+  contours: { interval: 8, highlighted: [], centers: false, defaultOn: false },
 };

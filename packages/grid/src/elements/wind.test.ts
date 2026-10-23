@@ -129,11 +129,27 @@ describe("wind（10m 风）档案", () => {
     expect(windProfile.defaultMode).toBe("equal");
   });
 
-  it("渲染形态＝filled+barbs；杆口径 step 10（2.5° 一根）＋静风阈 1 m/s；等值线 4 m/s 留位", () => {
-    expect(windProfile.renderForm).toBe("filled+barbs");
-    expect(windProfile.barbs).toEqual({ step: 10, calmThreshold: 1 });
-    // 等值线留位（表 B 等值线列「无」；若接线 4 m/s 恰与填色档界重合）
-    expect(windProfile.contours).toEqual({ interval: 4, highlighted: [] });
+  it("渲染形态＝三叠 filled+barbs+contours（0.3.2 T7）；杆口径 step 10＋静风阈 1 m/s＋四级 LOD；等值线 4 m/s 可选叠加", () => {
+    expect(windProfile.renderForm).toBe("filled+barbs+contours");
+    expect(windProfile.barbs).toEqual({
+      step: 10,
+      calmThreshold: 1,
+      lod: [
+        { zoom: 0, step: 20 },
+        { zoom: 4, step: 10 },
+        { zoom: 6, step: 5 },
+        { zoom: 8, step: 3 },
+      ],
+    });
+    // 默认视口档（zoom 4）命中 step 10＝v0.3.1 既有密度（默认观感不变）
+    expect(windProfile.barbs?.lod?.find((l) => l.zoom === 4)?.step).toBe(10);
+    // 等值线接线（原「留位」）：4 m/s 与填色档界重合；风速场无 L/H 语义、且属可选叠加
+    expect(windProfile.contours).toEqual({
+      interval: 8,
+      highlighted: [],
+      centers: false,
+      defaultOn: false,
+    });
   });
 
   it("渲染集成：合成场沿档暖色渐进（低=浅亮、高=深暗），全域着色（静风照画浅色）", () => {

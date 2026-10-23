@@ -5,7 +5,18 @@
  * 南风 180、速度同源、静风阈与缺测不出杆、口径非法抛错）。纯函数零 DOM，Node 直测。
  */
 import { describe, expect, it } from "vitest";
-import { windSpeedGrid, windBarbsOf, computeStats, GridError, type Grid } from "./index";
+import {
+  windSpeedGrid,
+  windBarbsOf,
+  windBarbOf,
+  toKnots,
+  toMps,
+  WIND_BARB_SCALES,
+  computeStats,
+  GridError,
+  type Grid,
+  type BarbSpec,
+} from "./index";
 
 /** 最小网格工厂：u/v 同几何（2×2 起步），值按行序西→东。 */
 const gridOf = (
@@ -181,5 +192,182 @@ describe("windBarbsOf（风向杆位序列）", () => {
       grid: { nx: 4, ny: 1, la0: 40, lo0: 100, di: 1, dj: 1, order: "N2S,W2E,row-major" },
     });
     expect(() => windBarbsOf(u, vWrong, { step: 1, calmThreshold: 1 })).toThrow(/不匹配/);
+  });
+});
+
+/** 编码三元组投影（只比计数——encodedSpeed 的浮点另测）。 */
+const codeOf = (speed: number, unit: "m/s" | "kt", calmThreshold = 0): number[] | null => {
+  // 编码断言一律显式 calmThreshold: 0（本组测的是编码，不是静风判定；缺省 1 另测）
+  const enc = windBarbOf(0, speed, { unit, calmThreshold });
+  return enc === null ? null : [enc.pennants, enc.longs, enc.shorts];
+};
+
+describe("windBarbOf（单点风羽原语，0.3.2 T1）", () => {
+  it("m/s 口径：旗 20／长划 4／短划 2（0/2/4/5/20/33 六锚点）", () => {
+    expect(codeOf(0, "m/s")).toEqual([0, 0, 0]);
+    expect(codeOf(2, "m/s")).toEqual([0, 0, 1]);
+    expect(codeOf(4, "m/s")).toEqual([0, 1, 0]);
+    expect(codeOf(5, "m/s")).toEqual([0, 1, 0]); // 向下取整到刻度：5 → 4
+    expect(codeOf(20, "m/s")).toEqual([1, 0, 0]);
+    expect(codeOf(33, "m/s")).toEqual([1, 3, 0]); // 33 → 32＝20＋4×3
+  });
+
+  it("kt 口径：旗 50／长划 10／短划 5（0/5/10/50/65 五锚点）", () => {
+    expect(codeOf(0, "kt")).toEqual([0, 0, 0]);
+    expect(codeOf(5, "kt")).toEqual([0, 0, 1]);
+    expect(codeOf(10, "kt")).toEqual([0, 1, 0]);
+    expect(codeOf(50, "kt")).toEqual([1, 0, 0]);
+    expect(codeOf(65, "kt")).toEqual([1, 1, 1]); // 50＋10＋5
+  });
+
+  it("同一根杆两套口径形态不同（20 m/s＝1 旗；≈39 kt＝3 长划＋1 短划、无旗）", () => {
+    expect(codeOf(20, "m/s")).toEqual([1, 0, 0]);
+    expect(codeOf(39, "kt")).toEqual([0, 3, 1]);
+  });
+
+  it("encodedSpeed ≤ 入参，且差值 < 最小刻度（两口径同断言）", () => {
+    for (const unit of ["m/s", "kt"] as const) {
+      const min = WIND_BARB_SCALES[unit].short;
+      for (const speed of [0, 1.9, 3.99, 20, 33.7, 64.4]) {
+        const enc = windBarbOf(0, speed, { unit, calmThreshold: 0 });
+        expect(enc).not.toBeNull();
+        if (enc === null) continue;
+        expect(enc.encodedSpeed).toBeLessThanOrEqual(speed + 1e-6);
+        expect(speed - enc.encodedSpeed).toBeLessThan(min + 1e-6);
+      }
+    }
+  });
+
+  it("浮点边界与 v0.3.1 几何实现同算法（19.999999 m/s 不出旗，出 4 长划＋1 短划）", () => {
+    expect(codeOf(19.999999, "m/s")).toEqual([0, 4, 1]);
+    expect(codeOf(49.999999, "kt")).toEqual([0, 4, 1]);
+  });
+
+  it("静风：缺省阈 1（业务惯例，与档案同值）；speed < 阈值 → null，= 阈值照出编码", () => {
+    // 缺省即判静风（产品审查 2.6：自绘层与地图层不该一个画一个不画）
+    expect(windBarbOf(0, 0)).toBeNull();
+    expect(windBarbOf(0, 0.9)).toBeNull();
+    expect(windBarbOf(0, 1)).not.toBeNull();
+    // 显式传 0＝不判静风：0 风速给零羽编码（有杆无羽，v0.3.1 几何语义）
+    expect(windBarbOf(0, 0, { calmThreshold: 0 })).toEqual({
+      unit: "m/s",
+      pennants: 0,
+      longs: 0,
+      shorts: 0,
+      encodedSpeed: 0,
+    });
+    // kt 口径阈值同量纲：缺省 1 kt ≈ 0.51 m/s
+    expect(windBarbOf(0, 0.4, { unit: "kt" })).toBeNull();
+    expect(windBarbOf(0, 1.2, { unit: "kt" })).not.toBeNull();
+  });
+
+  it('单位别名："mps" 等价 "m/s"（IR 的 SpeedUnit 写法直接可用）', () => {
+    expect(windBarbOf(0, 20, { unit: "mps" })).toEqual(windBarbOf(0, 20, { unit: "m/s" }));
+    expect(codeOf(20, "mps" as never)).toEqual([1, 0, 0]);
+    expect(windBarbOf(0, 20, { unit: "mps" })?.unit).toBe("m/s"); // 归一化后的规范名
+  });
+
+  it("校验：方向越界/非有限、风速负数/非有限、unit 非法、阈值负数、未知选项键", () => {
+    expect(() => windBarbOf(-1, 5)).toThrow(/方向非法/);
+    expect(() => windBarbOf(361, 5)).toThrow(/方向非法/);
+    expect(() => windBarbOf(Number.NaN, 5)).toThrow(/方向非法/);
+    expect(() => windBarbOf(0, -0.1)).toThrow(/风速非法/);
+    expect(() => windBarbOf(0, Number.POSITIVE_INFINITY)).toThrow(/风速非法/);
+    expect(() => windBarbOf(0, 5, { unit: "kmh" as never })).toThrow(/不受支持/);
+    expect(() => windBarbOf(0, 5, { calmThreshold: -1 })).toThrow(/静风阈值非法/);
+    expect(() => windBarbOf(0, 5, { unit: "kt", signed: true } as never)).toThrow(/未知选项/);
+  });
+
+  it("换算工具往返：toKnots / toMps 互为逆运算（口径切换不用自己记常数）", () => {
+    for (const mps of [0, 5, 20, 33.5, 75]) {
+      expect(toMps(toKnots(mps))).toBeCloseTo(mps, 9);
+    }
+    expect(toKnots(20)).toBeCloseTo(38.877, 3); // 20 m/s ≈ 38.9 kt（kt 填图的最小刻度 5）
+  });
+
+  it("360° 与 0° 同义（正北两种编法都收）", () => {
+    expect(windBarbOf(0, 10)).toEqual(windBarbOf(360, 10));
+  });
+});
+
+/** LOD 测试的杆口径工厂（模块级——不捕获 describe 作用域）。 */
+const specOf = (lod?: BarbSpec["lod"]): BarbSpec =>
+  lod === undefined ? { step: 2, calmThreshold: 0 } : { step: 2, calmThreshold: 0, lod };
+
+describe("windBarbsOf LOD（按放大档抽稀，0.3.2 T5）", () => {
+  it("三档 zoom 杆数递增（放大更密）且格位无重复", () => {
+    const [u, v] = uniform(5, 4, 3, 4);
+    const lod = [
+      { zoom: 0, step: 4 },
+      { zoom: 5, step: 2 },
+      { zoom: 7, step: 1 },
+    ];
+    const counts = [0, 5, 7].map((zoom) => windBarbsOf(u, v, specOf(lod), { zoom }).length);
+    expect(counts).toEqual([2, 6, 20]);
+    for (const zoom of [0, 5, 7]) {
+      const barbs = windBarbsOf(u, v, specOf(lod), { zoom });
+      const keys = new Set(barbs.map((b) => `${b.lat},${b.lon}`));
+      expect(keys.size).toBe(barbs.length);
+    }
+  });
+
+  it("不传 zoom / 档案无 lod → 与 0.3.1 同结果（回落 spec.step）", () => {
+    const [u, v] = uniform(5, 4, 3, 4);
+    const base = windBarbsOf(u, v, specOf());
+    expect(
+      windBarbsOf(
+        u,
+        v,
+        specOf([
+          { zoom: 0, step: 4 },
+          { zoom: 5, step: 2 },
+        ]),
+      ),
+    ).toEqual(base);
+    expect(windBarbsOf(u, v, specOf(), { zoom: 0 })).toEqual(base);
+  });
+
+  it("zoom 低于首级 → 用首级（不落到 spec.step）", () => {
+    const [u, v] = uniform(5, 4, 3, 4);
+    const lod = [
+      { zoom: 3, step: 4 },
+      { zoom: 6, step: 2 },
+    ];
+    expect(windBarbsOf(u, v, specOf(lod), { zoom: 0 }).length).toBe(
+      windBarbsOf(u, v, specOf(lod), { zoom: 3 }).length,
+    );
+  });
+
+  it("阶梯校验：空数组／zoom 不递增／step 不递减／step 非整数／zoom 非有限", () => {
+    const [u, v] = uniform(2, 2, 3, 4);
+    expect(() => windBarbsOf(u, v, specOf([]))).toThrow(/LOD 阶梯为空/);
+    expect(() =>
+      windBarbsOf(
+        u,
+        v,
+        specOf([
+          { zoom: 5, step: 2 },
+          { zoom: 5, step: 1 },
+        ]),
+      ),
+    ).toThrow(/zoom 须严格递增/);
+    expect(() =>
+      windBarbsOf(
+        u,
+        v,
+        specOf([
+          { zoom: 0, step: 2 },
+          { zoom: 5, step: 4 },
+        ]),
+      ),
+    ).toThrow(/step 须严格递减/);
+    expect(() => windBarbsOf(u, v, specOf([{ zoom: 0, step: 1.5 }]))).toThrow(/step 非法/);
+    expect(() => windBarbsOf(u, v, specOf([{ zoom: Number.NaN, step: 1 }]))).toThrow(/zoom 非法/);
+  });
+
+  it("zoom 非有限数与未知选项键显式抛错", () => {
+    const [u, v] = uniform(2, 2, 3, 4);
+    expect(() => windBarbsOf(u, v, specOf(), { zoom: Number.NaN })).toThrow(/zoom 非有限数/);
+    expect(() => windBarbsOf(u, v, specOf(), { zoom: 3, step: 1 } as never)).toThrow(/未知选项/);
   });
 });

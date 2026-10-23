@@ -40,6 +40,21 @@ dev server 起后访问 `/iwxxm.html`（与主 demo 同一服务）：NOAA AWC �
 - **数据面**：`examples/iwxxm-data.json`（入库产物，`pnpm gen:iwxxm` 可再生，站单可用 `--ids=` 或环境变量 `GEN_IWXXM_IDS` 覆盖，缺省全球代表 30 站）——首选 NOAA AWC 实时流（`aviationweather.gov/api/data/metar?ids=<站单>&format=iwxxm`，免鉴权、单请求批量、重试 ×3、超时 60s，成功逐站标注 `fetchSource=awc-live`；`ids=all` 不支持 iwxxm 格式，必须站单列表；端点无 CORS 头，Node 侧取数）；AWC 不可用时降级仓内官方等价对副本（`fetchSource=corpus-local`）；ECCC 真实流探测结果仍记录在产物 `ecccProbe` 字段（现仅 TAF 无 METAR）；页面侧三层兜底：gen 产物＞源码内嵌样例＞状态条报错。
 - **验收**：`examples/src/iwxxm-demo.test.ts` 锁数据面（产物站数与 fetchSource 口径、逐站双通道可解析、对照区内嵌等价对两通道 IR deep-equal、卡片 DOM 渲染）。
 
+## 七项验收台（v0.3.2 T1–T7）
+
+dev server 起后访问 `/verify.html`：把本批七项落成一页**可点、可切、可判定**的验收面。每项右上角的徽标由断言决定（不是写死的 ✅），顶栏汇总 `n / 7 通过`。
+
+- **T1** `windBarbOf`（滑块调方向/风速→编码随动）· **T2** `windBarbPath` 两套口径并排 · **T3** `windArrowPath` 三方向 × 来向/去向 · **T4** `renderWindChip` 三态 · **T5** `windBarbsOf` 的 LOD（缩放按钮＋实绘杆数）· **T6** `renderWindLegend` 两套刻度可切 · **T7** `addContourLayer` 可选叠加（勾/取消即建/摘）。
+- **自带数据**：页内合成一对 u/v 场（30×24、1° 网格、48N→25N／95E→124E，西侧三列静风），不 fetch、不依赖 `examples/data`——静态部署也能把七项全跑出来；合成场本身有 node 侧测试（`src/verify-sample.test.ts`），防止「页面假绿」。
+- **判定口径**：T5 比的是**密度**（步长递减）而不是杆总数——视口随缩放变小，总数本就会降，拿总数当判据会得出错误结论。
+
+## 风的画法演示页（v0.3.2 风批次）
+
+dev server 起后访问 `/wind.html`：一页看全「风怎么画」的三件事——① 一条报文的风组在三种状态下的数值牌（有风/静风/缺测，`renderWindChip`）；② 风羽图例的两套刻度与切换（`renderWindLegend`，刻度数字取自 `@metweave/grid` 的 `WIND_BARB_SCALES`）；③ 四档风速的两种画法并排（风羽 `windBarbPath` 与纯方向箭头 `windArrowPath`，每枚下方是 `windBarbOf` 现算的读数）。
+
+- **口径**：风向统一取 240°＝风**从**西南偏西吹来（气象惯例：杆与箭头都指向**来向**，不是去向）；切换 kt 只换刻度、不替你换算数值——所以行标同时写 `m/s` 与折合 `kt`，读数的取整差也标出来。
+- **用途**：内容线《风不是一个数》的取图源；也是 `windBarbOf` / `windBarbPath` / `windArrowPath` / `renderWindChip` / `renderWindLegend` 五个公开件的可点可切验收面（knip 的消费方也在这页）。
+
 ## 低空航路天气面板（2026-10 场景演示件）
 
 dev server 起后访问 `/lowalt.html`：低空航路天气覆盖演示——**支持用户自设航路**（地图点击取点 ≤8、拖拽微调、右键删除；折线按约 2km 等弧长采样至多 12 点），示例航线「兴隆湖→龙泉山」（≈23km、真高 120m）预置可一键载回。产出＝沿程-高度剖面（x＝里程、y＝真高、风速色带、**红色巡航轨迹线**随真高滑杆 30–180m 联动）＋逐采样点参考风险徽标（悬停看因子；阈值风 7/10 m/s · CAPE 400/1000 J/kg · 降水 0.1/2 mm/h——**演示参考口径，非机型适飞判据，本页不得用于飞行或任何运行决策**）＋机场实况双站夹持（双流 ZUUU/天府 ZUTF）＋晨昏窗口＋采样点明细表。示意航线非获批航线。

@@ -102,27 +102,117 @@ function assertBarbSpec(spec: BarbSpec): void {
       `风向杆静风阈值非法（calmThreshold=${String(spec.calmThreshold)}，须 ≥0 的有限数）`,
     );
   }
+  const lod = spec.lod;
+  if (lod === undefined) return;
+  if (lod.length === 0) {
+    throw new GridError("invalid-scale", "风向杆 LOD 阶梯为空数组（要么给 ≥1 级，要么整字段缺席）");
+  }
+  // 不校验「首级 step ≤ spec.step」：本仓 wind 档案刻意让首级（zoom 0）比缺省 step 更疏
+  // （全国视角 5° 一根），而缺省 step 必须保持 v0.3.1 的 10（不传 zoom 的既有行为）。
+  // 两条缺省各自成立，语义差异见 windBarbStepAt 文档——不当作错误拦。
+  let prevZoom = Number.NEGATIVE_INFINITY;
+  let prevStep = Number.POSITIVE_INFINITY;
+  for (const [index, entry] of lod.entries()) {
+    if (!Number.isFinite(entry.zoom)) {
+      throw new GridError(
+        "invalid-scale",
+        `风向杆 LOD 第 ${index + 1} 级 zoom 非法（${String(entry.zoom)}，须为有限数）`,
+      );
+    }
+    if (!Number.isInteger(entry.step) || entry.step < 1) {
+      throw new GridError(
+        "invalid-scale",
+        `风向杆 LOD 第 ${index + 1} 级 step 非法（${String(entry.step)}，须 ≥1 的整数）`,
+      );
+    }
+    if (entry.zoom <= prevZoom) {
+      throw new GridError(
+        "invalid-scale",
+        `风向杆 LOD 阶梯 zoom 须严格递增（第 ${index + 1} 级 ${entry.zoom} ≤ 前一级 ${prevZoom}）——` +
+          "乱序阶梯会让命中规则不可预测",
+      );
+    }
+    if (entry.step >= prevStep) {
+      throw new GridError(
+        "invalid-scale",
+        `风向杆 LOD 阶梯 step 须严格递减（第 ${index + 1} 级 ${entry.step} ≥ 前一级 ${prevStep}）——` +
+          "放大更密是 LOD 的定义，反着写等于放大更疏",
+      );
+    }
+    prevZoom = entry.zoom;
+    prevStep = entry.step;
+  }
+}
+
+/**
+ * 当前放大档 → 抽稀步长：取「zoom ≤ 当前档」的最后一级（放大越深步长越小）；
+ * 当前档低于首级时用首级（阶梯即全档定义——首级之下没有更疏的档）。
+ * **无 lod 或不传 zoom 一律回落 spec.step**——不传当前档时不推断密度（推断＝静默改图，
+ * 且宿主与内核两处各算一遍必分歧）。
+ *
+ * 导出给宿主用（v0.3.2）：`@metweave/leaflet` 的杆层靠它判断「这一档的密度变没变」，
+ * 档位没变就不重建整层 marker（560 枚全删全建的代价不该花在 zoom 4→5 这种同档跳动上）。
+ */
+export function windBarbStepAt(spec: BarbSpec, zoom: number | undefined): number {
+  const lod = spec.lod;
+  if (lod === undefined || zoom === undefined) return spec.step;
+  let step = lod[0]?.step ?? spec.step;
+  for (const entry of lod) {
+    if (zoom >= entry.zoom) step = entry.step;
+    else break;
+  }
+  return step;
+}
+
+/** 杆位序列的附加输入（v0.3.2 加 LOD）：当前放大档，仅 `lod` 阶梯存在时生效。 */
+export interface WindBarbsOptions {
+  /** 当前地图放大级（leaflet zoom 语义）；缺省＝不用 LOD、按档案 step 出杆 */
+  readonly zoom?: number;
 }
 
 /**
  * u/v 双场 × 杆口径 → 杆位序列（抽稀格点上的风向/风速，纯函数）。
  *
  * 抽稀＝两向同 step 的格点子采样，起点对网格中心对齐（`floor(((n−1) % step) / 2)`——
- * 中国域 280×208、step 10 时列首 4／行首 3，约 560 个格位）；**缩放无关固定步长**
- * （v1 无 LOD：密度只由档案 step 声明，不随 zoom 变）。方向读格点原值（不插值——
+ * 中国域 280×208、step 10 时列首 4／行首 3，约 560 个格位）；密度由「步长」决定——
+ * 不传 zoom 时用档案 `step`（**缩放无关的固定密度，v0.3.1 行为**），传 zoom 且档案声明
+ * `lod` 时按阶梯命中当级步长（v0.3.2 起；放大更密）。方向读格点原值（不插值——
  * 杆是点观测语义，格点值即代表值）。静风阈（calmThreshold）以下与任一分量 NaN 的
  * 格点不出杆（静风无方向可读、缺测无值可画）。风向＝气象来向口径：
  * `dir = (270° − atan2(v, u)·180/π) mod 360`（u>0,v=0 西风 270、v>0,u=0 南风 180）。
+ *
+ * v0.3.2 起支持 LOD（`options.zoom` + 档案 `barbs.lod`）：命中阶梯当级 step，其余
+ * 抽稀/静风/方向语义逐字不变；不传 options 或档案无 lod 时与 v0.3.1 逐字节同结果。
  */
-export function windBarbsOf(u: Grid, v: Grid, spec: BarbSpec): WindBarb[] {
+export function windBarbsOf(
+  u: Grid,
+  v: Grid,
+  spec: BarbSpec,
+  options: WindBarbsOptions = {},
+): WindBarb[] {
   assertPairedFields(u, v);
   assertBarbSpec(spec);
+  for (const key of Object.keys(options)) {
+    if (key !== "zoom") {
+      throw new GridError(
+        "invalid-scale",
+        `windBarbsOf 收到未知选项 "${key}"（可用项：zoom）——拼错的选项不会生效`,
+      );
+    }
+  }
+  if (options.zoom !== undefined && !Number.isFinite(options.zoom)) {
+    throw new GridError(
+      "invalid-scale",
+      `windBarbsOf 的 zoom 非有限数（${String(options.zoom)}）——须为地图放大级`,
+    );
+  }
+  const step = windBarbStepAt(spec, options.zoom);
   const { nx, ny, la0, lo0, di, dj } = u.header.grid;
-  const x0 = Math.floor(((nx - 1) % spec.step) / 2);
-  const y0 = Math.floor(((ny - 1) % spec.step) / 2);
+  const x0 = Math.floor(((nx - 1) % step) / 2);
+  const y0 = Math.floor(((ny - 1) % step) / 2);
   const barbs: WindBarb[] = [];
-  for (let y = y0; y < ny; y += spec.step) {
-    for (let x = x0; x < nx; x += spec.step) {
+  for (let y = y0; y < ny; y += step) {
+    for (let x = x0; x < nx; x += step) {
       const uu = u.values[y * nx + x] ?? Number.NaN;
       const vv = v.values[y * nx + x] ?? Number.NaN;
       if (Number.isNaN(uu) || Number.isNaN(vv)) continue; // 缺测：矢量未知不画杆
@@ -133,4 +223,199 @@ export function windBarbsOf(u: Grid, v: Grid, spec: BarbSpec): WindBarb[] {
     }
   }
   return barbs;
+}
+
+/**
+ * 风羽填图单位口径（两套业务惯例）：`m/s`＝中国气象业务地面图（旗 20／长划 4／短划 2），
+ * `kt`＝国际航空惯例（旗 50／长划 10／短划 5）。两套的**刻度比同构**（旗＝10 个短划、
+ * 长划＝2 个短划），但阈值数值不同——编码只认单位，几何只认计数。
+ *
+ * 规范名只有两个；`"mps"`（IR 的 `SpeedUnit` 写法）作为 `"m/s"` 的**别名**收下并在入口
+ * 归一化——用户手里最自然的是 `report.wind.speed.unit`，那串就是 `"mps"`，不能让他为了
+ * 一个斜杠去查文档（产品审查 2.3）。
+ */
+export type WindSpeedUnit = "m/s" | "kt";
+
+/** 入参可接受的单位写法（`"mps"` 是 `"m/s"` 的别名；`"kmh"` 不收——先 ÷3.6 换算）。 */
+export type WindSpeedUnitInput = WindSpeedUnit | "mps";
+
+/**
+ * 单位入参归一化 + 校验：只映射别名，不猜量纲（数值必须**已经是**该单位下的数值——
+ * 库里不做 m/s↔kt 的数值判断，那属于调用方的数据责任）。
+ */
+function normalizeUnit(unit: WindSpeedUnitInput | undefined): WindSpeedUnit {
+  if (unit === undefined) return "m/s"; // 缺省 m/s＝中国气象业务惯例（v0.3.1 行为）
+  if (unit === "mps") return "m/s";
+  if (unit === "m/s" || unit === "kt") return unit;
+  // 运行时兜底（JS 调用方）：给出可用项与 kmh 的处置办法，不只说「不支持」
+  throw new GridError(
+    "invalid-scale",
+    `风速口径 ${String(unit)} 不受支持（可用："m/s"（别名 "mps"）| "kt"；` +
+      `"kmh" 请先 ÷3.6 换算成 "m/s"）`,
+  );
+}
+
+/** 一套填图口径的三级刻度：三角旗/长划/短划各代表的风速（单位同所属口径）。 */
+export interface WindBarbScale {
+  readonly pennant: number;
+  readonly long: number;
+  readonly short: number;
+}
+
+/**
+ * 口径常量表——**单一事实来源**：内核编码（`windBarbOf`）、填图几何
+ * （`@metweave/leaflet` 的 `windBarbPath`）、图例刻度（`@metweave/render` 的
+ * `renderWindLegend`，经宿主导入）全部取这一份。任何一处另写数字＝两套口径从此分裂
+ * （第三次加单位时必错，这是本批刻意收成单源的原因）。
+ */
+export const WIND_BARB_SCALES: Readonly<Record<WindSpeedUnit, WindBarbScale>> = Object.freeze({
+  "m/s": Object.freeze({ pennant: 20, long: 4, short: 2 }),
+  kt: Object.freeze({ pennant: 50, long: 10, short: 5 }),
+});
+
+/**
+ * 图例组件（`@metweave/render` 的 `renderWindLegend`）的 `units` 入参就绪版：
+ * 结构与 `WindLegendUnit` 相同（id/label/刻度），数字仍从 `WIND_BARB_SCALES` 派生。
+ *
+ * 存在的理由：图例口径数字必须单源，而 render 不依赖 grid——于是「搬数字」这件事
+ * 不能让每个用户自己写一遍（产品审查 1.5：那要手搓 6 行）。宿主一行即可：
+ * `renderWindLegend({ units: WIND_LEGEND_UNITS })`。
+ */
+export const WIND_LEGEND_UNITS: readonly {
+  readonly id: string;
+  readonly label: string;
+  readonly pennant: number;
+  readonly long: number;
+  readonly short: number;
+}[] = Object.freeze(
+  (["m/s", "kt"] as const).map((id) =>
+    Object.freeze({
+      id,
+      label: id,
+      pennant: WIND_BARB_SCALES[id].pennant,
+      long: WIND_BARB_SCALES[id].long,
+      short: WIND_BARB_SCALES[id].short,
+    }),
+  ),
+);
+
+/**
+ * 风速换算常数：1 kt = 0.514444 m/s（NIST SP 811 定义值，与 WMO 编报换算口径一致）。
+ * 放在 grid（口径的单一事实来源所在处）而不是地图适配层——一个纯单位常数不该逼用户
+ * `import` 整个 leaflet（产品审查 6.2）。
+ */
+export const MPS_PER_KT = 0.514444;
+
+/** m/s → kt（供填图口径切换与内容示例复用；只做显示侧换算，不改存储语义）。 */
+export const toKnots = (mps: number): number => mps / MPS_PER_KT;
+
+/** kt → m/s。 */
+export const toMps = (kt: number): number => kt * MPS_PER_KT;
+
+/**
+ * 一根杆的**速度编码**：三角旗/长划/短划各几根（不含几何——几何是渲染层的事，
+ * 编码是「这根杆表示多少风」的领域结论，两件事分开才测得住）。
+ */
+export interface WindBarbEncoding {
+  readonly unit: WindSpeedUnit;
+  readonly pennants: number;
+  readonly longs: number;
+  readonly shorts: number;
+  /** 编码取整后的风速（＝各级计数 × 该级刻度之和）；与入参 speed 之差 < 最小刻度 */
+  readonly encodedSpeed: number;
+}
+
+/** 单点风羽原语的可选项。 */
+export interface WindBarbOfOptions {
+  /**
+   * 填图口径（缺省 m/s＝中国气象业务惯例，与既有 `windBarbPath` 默认一致）。
+   * 接受 `"mps"` 别名（IR 的写法）；`"kmh"` 不收（先 ÷3.6）。
+   *
+   * **它是量纲声明，不是换算开关**：传 `"kt"` 意味「speed 这个数字的单位是 kt」，
+   * 库不会把 m/s 数值自动折成 kt。手上有 m/s、要出 kt 填图时，先用 `toKnots()` 换算
+   * 再传——把 20（m/s）配 `{ unit: "kt" }` 会画成 20 kt（≈10.3 m/s）的一半风，而画面
+   * 完全合法、不会有任何告警（产品审查 2.2 记档的误用陷阱）。
+   */
+  readonly unit?: WindSpeedUnitInput;
+  /**
+   * 静风阈值（**同 unit 量纲**）：speed 低于此值判静风、返回 null（不出杆——静风无
+   * 方向可读）。**缺省 1**＝中国气象业务惯例（与档案 `barbs.calmThreshold: 1` 对齐，
+   * 免得自绘层与地图层一个画一个不画）；要「0 风速也出光杆」显式传 0。
+   *
+   * 注意量纲：本阈值与 `unit` 一致。档案 `barbs.calmThreshold` 恒为 m/s 口径，
+   * 出 kt 填图时 `addWindBarbLayer` 内部会折算（本函数不猜调用方的显示单位）。
+   */
+  readonly calmThreshold?: number;
+}
+
+/**
+ * 单点风羽原语：风向 + 风速 → 这根杆的速度编码（纯函数，零 DOM）。
+ *
+ * 编码规则（两套口径同一算法，仅刻度不同）：先把风速**向下取整到最小刻度**，再按
+ * 「旗 → 长划 → 短划」贪心分解。这与中国气象业务填图规范（m/s 旗 20/长划 4/短划 2）
+ * 和航空惯例（kt 旗 50/长划 10/短划 5）逐条一致；两套口径同构的事实是「10/2/1 短划」
+ * 位权，故几何层能复用同一套 path 生成器。
+ *
+ * 返回值：`WindBarbEncoding`；判静风时 `null`（调用方据此不画杆——`null` 而非零编码，
+ * 是为了让「静风」与「0 风速但有杆」两件事在类型上不可混）。
+ *
+ * 校验（不静默纪律）：direction 须为 [0, 360] 的有限数（360＝正北，与 0 同义）；
+ * speed 须为 ≥0 的有限数；未知选项键、非法 calmThreshold 显式抛 GridError。
+ *
+ * @param direction - 风向（气象口径**来向**，0–360°，北 0／东 90／南 180／西 270）
+ * @param speed - 风速（单位由 options.unit 决定，缺省 m/s）
+ */
+export function windBarbOf(
+  direction: number,
+  speed: number,
+  options: WindBarbOfOptions = {},
+): WindBarbEncoding | null {
+  for (const key of Object.keys(options)) {
+    if (key !== "unit" && key !== "calmThreshold") {
+      throw new GridError(
+        "invalid-scale",
+        `windBarbOf 收到未知选项 "${key}"（可用项：unit、calmThreshold）——拼错的选项不会生效`,
+      );
+    }
+  }
+  const unit = normalizeUnit(options.unit);
+  const scale = WIND_BARB_SCALES[unit];
+  if (!Number.isFinite(direction) || direction < 0 || direction > 360) {
+    throw new GridError(
+      "invalid-scale",
+      `风向杆方向非法（${String(direction)}，须为 0–360 的有限数：北 0／东 90／南 180／西 270）`,
+    );
+  }
+  if (!Number.isFinite(speed) || speed < 0) {
+    throw new GridError(
+      "invalid-scale",
+      `风向杆风速非法（${String(speed)}，须为 ≥0 的有限数，单位 ${unit}）`,
+    );
+  }
+  // 缺省 1（业务惯例）：与档案 barbs.calmThreshold 同值，避免自绘层与地图层不一致
+  const calmThreshold = options.calmThreshold ?? 1;
+  if (!Number.isFinite(calmThreshold) || calmThreshold < 0) {
+    throw new GridError(
+      "invalid-scale",
+      `风向杆静风阈值非法（calmThreshold=${String(calmThreshold)}，须 ≥0 的有限数，单位 ${unit}）`,
+    );
+  }
+  if (speed < calmThreshold) return null; // 静风：无方向可读，不出杆
+  // 贪心分解（旗 → 长划 → 短划），**与 @metweave/leaflet 既有几何实现逐字同算法**：
+  // 这是「默认 m/s 行为零变化」的落点——任何「先整体取整到最小刻度」的写法都会在
+  // 19.999999 一类浮点边界上与 v0.3.1 分叉（一个出 1 旗、一个出 4 长划＋1 短划）。
+  // 短划容差 1e-6 沿既有实现（float32 派生值舍入）。
+  let rest = speed;
+  const pennants = Math.floor(rest / scale.pennant);
+  rest -= pennants * scale.pennant;
+  const longs = Math.floor(rest / scale.long);
+  rest -= longs * scale.long;
+  const shorts = rest >= scale.short - 1e-6 ? 1 : 0;
+  return {
+    unit,
+    pennants,
+    longs,
+    shorts,
+    encodedSpeed: pennants * scale.pennant + longs * scale.long + shorts * scale.short,
+  };
 }

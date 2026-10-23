@@ -1485,6 +1485,13 @@ const BARB_PANE =  | product | packages/leaflet/src/index.ts | PRODUCT · 产品
 /** BARB_PANE 的 z-index：等值线 360 与 overlayPane 400 之间的空隙位 */
 const BARB_PANE_Z = 365;
 
+/**
+ * 单层出杆上限（视口内）：超过就自动把步长翻倍降密。
+ * 依据：档案最密档在中国域全量约 1.46 万根（zoom 8 / step 2），divIcon marker 全量建
+ * 会把浏览器卡住数秒；视口裁剪后仍超此数说明这一屏根本读不了，疏一档更有用。
+ */
+const BARB_MARKER_LIMIT = 2500;
+
 /** addWindBarbLayer 的合法选项键（运行时校验用——拼错的选项键静默忽略违反本库不静默纪律） */
 const ADD_WIND_BARB_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([ | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
@@ -1494,6 +1501,19 @@ const ADD_WIND_BARB_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([ | product
 |---|---|---|---|---|
 | leaflet.msg20 | ]);
 
+// 换算常数真源在 @metweave/grid（口径所在处），本包只转出以保持既有 import 路径可用
+//（1 kt = 0.514444 m/s，NIST SP 811；只在显示侧用，不动存储语义）
+// 注意：用「先 import 再 export 本地绑定」而不是 `export { … } from  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg21（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg21 | `——后者会让
+// api-surface 快照把 grid 的整包导出都算进本包（实测 +63 个假导出）。
+export { MPS_PER_KT };
+const KT_PER_MPS = 1 / MPS_PER_KT;
+
 /**
  * Options for addWindBarbLayer: barb color.
  * addWindBarbLayer 的选项：风羽基色。
@@ -1501,63 +1521,394 @@ const ADD_WIND_BARB_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([ | product
 export interface AddWindBarbLayerOptions {
   /** 风羽基色（缺省深灰蓝 #2c3e50——浅色斑上可辨、与站点站码标签同族深色） */
   color?: string;
+  /**
+   * 填图口径（缺省跟随格点场存储单位：m/s 场出 m/s 填图、kt 场出 kt 填图）。
+   *
+   * 传 `kt` 而场是 m/s 时，层内做**一次**换算（1 kt = 0.514444 m/s，NIST 定义；
+   * 换算只发生在显示侧，`barb.speed` 与内核、色斑一律保持存储单位不动）。
+   * 传 `m/s` 而场是 kt 时反向换算。两个口径的形态差异见 `windBarbPath`。
+   */
+  unit?: WindSpeedUnitInput;
 }
 
-/**
- * 风羽 glyph 几何常量（SVG 像素）：盒 32×32、站心＝旋转中心 (16,16)、杆恒向上（＝风向
- * 0°北）长 14 至 y=2、羽在杆左侧（北半球地面图惯例）。风向由层按 direction 施加
- * `<g transform= | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
-
-## leaflet.msg21（1 条）
-
-| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
-|---|---|---|---|---|
-| leaflet.msg21 | ) };
-}
-
-/**
- * Put wind barbs of a paired u/v field onto a Leaflet map (constant-size SVG glyphs).
- * 把一对 u/v 分量场的风向杆（风羽）贴上 Leaflet 地图：内核 `windBarbsOf` 按档案
- * `barbs` 口径（step 抽稀／calmThreshold 静风阈）出杆位序列 → 每杆一枚 divIcon
- * marker，内联 SVG 风羽（m/s 中国口径：旗 20／长划 4／短划 2，恒定像素尺寸——缩放
- * 不失真不变形）按 `direction` 旋转（罗盘口径，SVG rotate 正角＝顺时针）。
- *
- * 与 `addGridLayer`（色斑栅格层）正交组合：风速合成色斑在下（pane mw-grid，z 350）、
- * 风羽在上（pane mw-grid-barb，z 365——等值线 360 之上、宿主矢量 ≥400 之下）——
- * 双分量形态（`renderForm:  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+/** `addWindBarbGlyphs` 的选项：基色 + 杆位序列里速度的单位声明（不做换算）。 */
+export interface AddWindBarbGlyphsOptions {
+  /** 风羽基色（缺省深灰蓝 #2c3e50） */
+  readonly color?: string;
+  /** `barbs[].speed` 的单位（缺省 m/s，接受  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg22（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg22 | （可用项见 AddWindBarbLayerOptions）`);
-    }
-  }
-  const spec = profile.barbs;
-  if (spec === undefined) {
-    throw new Error(
-      `要素 ${profile.shortName} 档案缺风向杆口径（barbs）——filled+barbs 形态要素须声明，无法出杆`,
-    );
-  }
-  const color = options.color ??  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+| leaflet.msg22 | ) {
+      throw new Error(`windBarbPath 收到未知选项  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## leaflet.msg23（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg23 | ;
-  const barbs = windBarbsOf(u, v, spec);
+| leaflet.msg23 | （可用项：unit）——拼错的选项不会生效`);
+    }
+  }
+  // 负数/非有限**钳到 0**（＝有杆无羽）：这是 v0.3.1 已发版的 `Math.max(0, speed)` 行为，
+  // 本版刻意不改（几何函数对已发布调用方保持宽松）；严格抛错只在新原语 windBarbOf 一侧。
+  const safe = Number.isFinite(speed) ? Math.max(0, speed) : 0;
+  // calmThreshold: 0 —— 几何函数保持 v0.3.1 的宽松语义（0 m/s 照出光杆），
+  // 静风过滤是层（addWindBarbLayer）与调用方的责任，不在几何函数里做
+  const enc = windBarbOf(0, safe, { unit: options.unit ??  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg24（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg24 | , calmThreshold: 0 });
+  const x = BARB_CX;
+  const strokeSegs: string[] = [`M${x} ${BARB_CX} L${x} ${BARB_TIP_Y}`]; // 杆：站心 → 梢（向上＝北）
+  const fillSegs: string[] = [];
+  if (enc === null) return { stroke: strokeSegs.join( | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg25（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg25 |  }; // 不可达（阈值缺省 0），类型收窄用
+  let y = BARB_TIP_Y;
+  for (let i = 0; i < enc.pennants; i++, y += PENNANT_H) {
+    fillSegs.push(`M${x} ${y} L${x} ${y + PENNANT_H} L${x - PENNANT_W} ${y + PENNANT_H / 2} Z`);
+  }
+  for (let i = 0; i < enc.longs; i++, y += STROKE_GAP) {
+    strokeSegs.push(`M${x} ${y} L${x + LONG_DX} ${y + LONG_DY}`);
+  }
+  if (enc.shorts > 0) strokeSegs.push(`M${x} ${y} L${x + SHORT_DX} ${y + SHORT_DY}`);
+  return { stroke: strokeSegs.join( | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg26（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg26 | ) };
+}
+
+/** 箭头 glyph 的可选项。 */
+export interface WindArrowPathOptions {
+  /**
+   * 箭头全长（SVG 像素；缺省 11）。
+   *
+   * 取值受 **glyph 盒**约束：风羽盒是 32×32、站心在 (16,16)，斜向可容上限 ≈11.3——
+   * 超过就会画出 viewBox 外被裁掉。缺省 11 在任意角度都不出界；要更长的箭头请同步
+   * 放大宿主盒（或改用非 32 盒的布局）。
+   */
+  readonly length?: number;
+  /**
+   * 箭头指向（**同一面图上两种约定不能混用**）：
+   * - ` | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg27（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg27 | ;
+}
+
+/** path 坐标保留三位小数（SVG 像素下 0.001 已远低于可辨阈值，长串少一半字符）。 */
+const coord = (value: number): string => String(Math.round(value * 1000) / 1000);
+
+/**
+ * 箭头 glyph 的 SVG path 数据（纯函数，**纯方向件**）。
+ *
+ * 与风羽的分工（档案原文的取舍在这里落成 API 边界）：风羽编码「速度＋方向」，箭头只表
+ * 「方向」——本函数因此**不接受速度参数**，长度是视觉参数而非速度编码。什么时候它比风羽好：
+ * 图面已经很密、或读者只关心流向（风羽的划数在小尺寸下会糊成噪点）。
+ *
+ * 方向口径与风羽逐字一致：**气象来向**（0°＝北、90°＝东）。差别在几何自带朝向——风羽是
+ * 「杆恒向上＋层 rotate(direction)」，箭头直接算到方向，返回值可塞进不旋转的 `<g>`（也
+ * 可以再旋转，两法等价，宿主自选）。
+ *
+ * 返回 { stroke, fill }（与 windBarbPath 同构，便于同一 divIcon 复用）：stroke＝杆身，
+ * fill＝箭镞三角。校验：direction 须为 0–360 有限数、length 须为正有限数，未知选项键与
+ * 非法值显式抛错（本函数是 v0.3.2 新增面，一开始就守不静默纪律）。
+ */
+export function windArrowPath(
+  direction: number,
+  options: WindArrowPathOptions = {},
+): { readonly stroke: string; readonly fill: string } {
+  for (const key of Object.keys(options)) {
+    if (key !==  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg28（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg28 | ) {
+      throw new Error(
+        `windArrowPath 收到未知选项  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg29（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg29 | （可用项：length、pointing）——拼错的选项不会生效`,
+      );
+    }
+  }
+  if (!Number.isFinite(direction) \|\| direction < 0 \|\| direction > 360) {
+    throw new Error(
+      `windArrowPath 的方向非法（${String(direction)}）——须为 0–360 的有限数（气象来向：北 0／东 90）`,
+    );
+  }
+  const length = options.length ?? 11;
+  if (!Number.isFinite(length) \|\| length <= 0) {
+    throw new Error(`windArrowPath 的 length 非法（${String(length)}）——须为正有限数`);
+  }
+  const pointing = options.pointing ??  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg30（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg30 | ) {
+    throw new Error(
+      `windArrowPath 的 pointing 取值  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg31（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg31 |  不受支持（可用： | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg32（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg32 | ）`,
+    );
+  }
+  // 指向去向＝来向 +180°（几何原地反向，不改站心与长度）
+  const heading = pointing ===  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg33（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg33 |  ? direction + 180 : direction;
+  const rad = (heading * Math.PI) / 180;
+  // 屏幕坐标 y 向下：北（0°）＝−y，东（90°）＝＋x
+  const dx = Math.sin(rad);
+  const dy = -Math.cos(rad);
+  const x0 = BARB_CX;
+  const y0 = BARB_CX;
+  const x1 = x0 + dx * length;
+  const y1 = y0 + dy * length;
+  const head = length * 0.35; // 箭镞长（与全长同比例，缩放时形态不变形）
+  const baseX = x1 - dx * head;
+  const baseY = y1 - dy * head;
+  const halfWidth = head * 0.5;
+  // 法向（顺时针 90° 转）：(−dy, dx)
+  const nx = -dy * halfWidth;
+  const ny = dx * halfWidth;
+  return {
+    stroke: `M${coord(x0)} ${coord(y0)} L${coord(baseX)} ${coord(baseY)}`,
+    fill:
+      `M${coord(x1)} ${coord(y1)} L${coord(baseX + nx)} ${coord(baseY + ny)} ` +
+      `L${coord(baseX - nx)} ${coord(baseY - ny)} Z`,
+  };
+}
+
+/**
+ * 单根风羽的 divIcon HTML（内联 SVG）。风羽盒恒定 32×32、站心 (16,16)、杆恒向上——
+ * 方向靠 `<g transform= | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg34（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg34 | />`) +
+    `</g></svg>`
+  );
+}
+
+/** 把一批杆位序列按当前填图口径逐杆贴到 group 上（`displaySpeedOf` 负责单位折算）。 */
+function paintBarbMarkers(
+  L: typeof import( | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg35（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg35 | ,
+        html: barbIconHtml(barb.direction, displaySpeedOf(barb.speed), unit, color),
+        iconSize: [BARB_BOX, BARB_BOX],
+        iconAnchor: [BARB_CX, BARB_CX],
+      }),
+      interactive: false,
+      keyboard: false,
+      pane: BARB_PANE,
+    }).addTo(group);
+  }
+}
+
+/**
+ * Single-station barbs: put an **already-computed** barb sequence onto a Leaflet map.
+ * 把**现成的杆位序列**贴上地图（单站/少量杆的入口，v0.3.2 增补）。
+ *
+ * 与 `addWindBarbLayer`（吃一对 u/v 格点场）互补：手上只有 METAR 的「240°、5 m/s」、
+ * 或数据不是 `.mwgrid` 时，用 `windBarbOf` / `windBarbsOf` 先算出 `WindBarb[]`，再由本
+ * 函数上图——不必为了画一根杆伪造一个 1×1 的格点场（产品审查 1.4）。
+ *
+ * 语义：`barbs[].speed` 的**单位由 `options.unit` 声明**（缺省 m/s），本函数不做数值换算
+ * （没有源单位可推）——手上是 kt 就传 `unit:  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg36（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg36 | ) {
+      throw new Error(
+        `addWindBarbGlyphs 收到未知选项  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg37（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg37 | （可用项：color、unit）——拼错的选项不会生效`,
+      );
+    }
+  }
+  const color = options.color ??  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg38（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg38 | ;
+  // 口径只影响「怎么读这个数字」，不做换算：声明 kt 就是把 speed 当 kt 画
+  const unit: WindSpeedUnit = options.unit ===  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg39（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg39 | );
   const L = await loadLeaflet();
   if (map.getPane(BARB_PANE) === undefined) {
     map.createPane(BARB_PANE).style.zIndex = String(BARB_PANE_Z);
   }
   const group = L.layerGroup();
-  for (const barb of barbs) {
-    const paths = windBarbPath(barb.speed);
-    // 杆海是视觉密度件：aria-hidden（数百枚逐杆播报是读屏反可用性——速度已在色斑档
-    // 有冗余通道，方向随杆形/色斑流向可读，不逐杆立可读名称）
-    const html =
-      `<svg width= | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+  paintBarbMarkers(L, group, barbs, color, unit, (speed) => speed);
+  group.addTo(map);
+  return group;
+}
+
+/**
+ * Put wind barbs of a paired u/v field onto a Leaflet map (constant-size SVG glyphs).
+ * 把一对 u/v 分量场的风向杆（风羽）贴上 Leaflet 地图：内核 `windBarbsOf` 按档案
+ * `barbs` 口径（step 抽稀／calmThreshold 静风阈／v0.3.2 起的 lod 阶梯）出杆位序列 →
+ * 每杆一枚 divIcon marker，内联 SVG 风羽（填图口径缺省跟随场单位：m/s 中国口径
+ * 旗 20／长划 4／短划 2，`unit:  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg40（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg40 | （可用项：color、unit）——拼错的选项不会生效`,
+      );
+    }
+  }
+  const declared = profile.barbs;
+  if (declared === undefined) {
+    throw new Error(
+      `要素 ${profile.shortName} 档案缺风向杆口径（barbs）——renderForm 含 barbs 的要素须声明，无法出杆`,
+    );
+  }
+  const color = options.color ??  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg41（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg41 | ;
+  // 填图口径：缺省跟随场单位（m/s 场出 m/s、kt 场出 kt），显式传则换算
+  const fieldIsKt = /kt/i.test(u.header.unit);
+  const targetUnit: WindSpeedUnit =
+    options.unit ===  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg42（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg42 | ));
+  // 档案静风阈是按 m/s 声明的；场本身是 kt 时它会被当成 kt 值（≈0.51 m/s）→ 静风区多画杆。
+  // 只在这一未达分支折算（当前所有产物都是 m s-1，属防未来踩坑）。
+  const spec: BarbSpec = fieldIsKt
+    ? { ...declared, calmThreshold: declared.calmThreshold * KT_PER_MPS }
+    : declared;
+  const displaySpeedOf = (speed: number): number => {
+    if (fieldIsKt === (targetUnit ===  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg43（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg43 | )) return speed; // 同口径，不折
+    return targetUnit ===  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg44（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg44 |  ? speed * KT_PER_MPS : speed * MPS_PER_KT;
+  };
+  const L = await loadLeaflet();
+  if (map.getPane(BARB_PANE) === undefined) {
+    map.createPane(BARB_PANE).style.zIndex = String(BARB_PANE_Z);
+  }
+  const group = L.layerGroup();
+  /** 上一次绘制的「步长@缩放档」：同档同缩放重复调用不重建整层 */
+  let paintedKey: string \| undefined;
+  const paint = (zoom: number \| undefined): void => {
+    const step0 = windBarbStepAt(spec, zoom);
+    const key = `${step0}@${zoom ??  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg45（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg45 | }`;
+    if (paintedKey === key) return;
+    paintedKey = key;
+    group.clearLayers();
+    // 视口未知（容器未布局：测试环境/隐藏容器 size 0×0）时不做裁剪——裁剪是为了性能，
+    // 不是为了在拿不到视口时把图清空
+    const size = map.getSize();
+    const bounds = size.x > 0 && size.y > 0 ? map.getBounds().pad(0.15) : undefined;
+    let step = step0;
+    let inView: readonly WindBarb[] = [];
+    for (let guard = 0; guard < 4; guard++) {
+      const all = windBarbsOf(u, v, { ...spec, step, lod: undefined });
+      inView =
+        bounds === undefined ? all : all.filter((barb) => bounds.contains([barb.lat, barb.lon]));
+      if (inView.length <= BARB_MARKER_LIMIT) break;
+      step *= 2; // 视口内仍过密：宁可疏一档，不可卡死
+    }
+    paintBarbMarkers(L, group, inView, color, targetUnit, displaySpeedOf);
+  };
+  const hasLod = spec.lod !== undefined;
+  if (hasLod) {
+    // add/remove 成对绑定：**不能只绑一次**——图层被摘掉再挂回（显隐开关、面板重建）是
+    // 最常见路径，once 会让第二段生命周期的 LOD 静默失效（独立审查 P1-2）
+    const onZoom = (): void => paint(map.getZoom());
+    const unbind = (): void => {
+      map.off( | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg46（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg46 | , onZoom);
+      paint(map.getZoom()); // 重挂时按当前档重绘（摘除期间 zoom 可能已变）
+    };
+    group.on( | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
 ## sources.msg01（1 条）
 

@@ -34,11 +34,22 @@ export interface ContourSpec {
    * owner 2026-10-07 定案「只描等值线，不标注中心」，t850 首例）。
    */
   readonly centers?: boolean;
+  /**
+   * 等值线默认开（可选，缺省 true；v0.3.2 引入）。声明 false 的要素＝等值线属**可选叠加**
+   * （本要素的主形态不是等值线）。首个用途＝10m 风速（档案原文判「风速等值线非业务惯例」，
+   * 接线后不默认压在色斑与风羽之上，但保留可开）。缺席＝true（prmsl/t850 等既有形态不变）。
+   *
+   * **本字段是给「装配层」的建议位，库函数不读它**：`addContourLayer` 只看
+   * `profile.contours` 有没有口径，照画；要不要叠由宿主决定（示例面板读本字段，所以
+   * 风要素缺省不叠）。自己调 `addContourLayer` 的宿主请自行判断，别指望这个字段生效。
+   */
+  readonly defaultOn?: boolean;
 }
 
 /**
  * 风向杆口径（绘制能力随风切片引入——内核 windBarbsOf 消费，@metweave/leaflet 的
- * addWindBarbLayer 装配）。杆密度＝固定步长抽稀（缩放无关，v1 无 LOD）。
+ * addWindBarbLayer 装配）。杆密度＝固定步长抽稀（`step`）；声明 `lod` 后改按缩放档位
+ * 抽稀（v0.3.2 起，见 BarbLodStep）。
  */
 export interface BarbSpec {
   /**
@@ -51,6 +62,24 @@ export interface BarbSpec {
    * 即噪音）。中国气象业务惯例 1 m/s 起画。
    */
   readonly calmThreshold: number;
+  /**
+   * LOD 阶梯（可选，v0.3.2 引入）：按**放大档→步长**的阶梯表，缩放时抽稀密度随之变
+   * （放大看细节、缩小看形势）。缺席＝缩放无关的固定 step（v0.3.1 及以前行为）。
+   *
+   * 约束（assertBarbSpec 校验）：zoom 严格递增、step 严格递减（放大更密）、step 正整数；
+   * 命中规则＝取「zoom ≤ 当前档」的最后一项，当前档小于首项时用首项；调用方不传 zoom
+   * 时一律回落 `step`（无当前档＝不推断，避免静默换密度）。
+   */
+  readonly lod?: readonly BarbLodStep[];
+}
+
+/**
+ * LOD 阶梯的一级：`zoom` 为进入该档的最小放大级，`step` 为该档抽稀步长（格点数）。
+ * 例：`[{ zoom: 0, step: 20 }, { zoom: 5, step: 10 }, { zoom: 7, step: 5 }]`。
+ */
+export interface BarbLodStep {
+  readonly zoom: number;
+  readonly step: number;
 }
 
 /**
@@ -87,10 +116,13 @@ export interface ElementProfile {
   readonly thresholds?: readonly number[];
   /** 缺省档位模式（demo/组件不传档时的口径）：等距／分位数／阈值三模式 */
   readonly defaultMode: "equal" | "quantile" | "threshold";
-  /** 渲染形态口径：filled＝色斑图（既有形态）；filled+contours＝色斑底＋等值线主导
-   *  （等值线＋数值标注＋L/H 中心标注，随气压切片引入——宿主按此装配叠层）；filled+barbs
-   *  ＝色斑底＋风向杆叠加（合成风速色斑＋风羽杆，随风切片引入——双分量要素的形态） */
-  readonly renderForm: "filled" | "filled+contours" | "filled+barbs";
+  /** 渲染形态口径（加法生长，v0.3.2 由三态扩为四态）：filled＝色斑图（既有形态）；
+   *  filled+contours＝色斑底＋等值线主导（等值线＋数值标注＋L/H 中心标注，随气压切片
+   *  引入——宿主按此装配叠层）；filled+barbs＝色斑底＋风向杆叠加（合成风速色斑＋风羽杆，
+   *  随风切片引入——双分量要素的形态）；filled+barbs+contours＝三叠（色斑＋风羽＋等值线，
+   *  v0.3.2 风要素等值线接线引入）。宿主按 `+` 分段识别各特征位，不作整串相等判断
+   *  （新增组合不牵动既有分支）。 */
+  readonly renderForm: "filled" | "filled+contours" | "filled+barbs" | "filled+barbs+contours";
   /** 等值线口径（留位：档案先立口径，绘制能力后续引入，本切片不实现） */
   readonly contours?: ContourSpec;
   /**

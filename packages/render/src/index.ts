@@ -11,3 +11,5 @@
  */
 export * from "./card";
 export * from "./taf-card";
+export * from "./wind-chip";
+export * from "./wind-legend";

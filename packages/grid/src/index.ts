@@ -19,6 +19,10 @@
  * 风切片（第十三切片）新增：双分量合成 windSpeedGrid（u/v 双场→风速 √(u²+v²)——
  * 显示侧派生量，存储不动）与风向杆位序列 windBarbsOf（抽稀步长×静风阈→
  * [{lat,lon,direction,speed}]）。既有色斑渲染路径零改动（快照锁死）。
+ *
+ * 0.3.2（风批次 T1/T5）新增：单点风羽原语 windBarbOf（方向＋风速→旗/长划/短划编码，
+ * m/s 与 kt 两套口径取同一份 WIND_BARB_SCALES）与 windBarbsOf 的 LOD 阶梯（按当前
+ * zoom 抽稀）；两者均为加成——不传新参数时与 0.3.1 逐字节同结果。
  */
 export { GridError } from "./errors";
 export type { GridErrorCode } from "./errors";
@@ -35,10 +39,28 @@ export {
 export type { ColorScale, RenderOptions, RenderedImage, RgbaColor } from "./core";
 export { contoursOf, centersOf } from "./contours";
 export type { ContourLine, FieldCenter, CentersOptions } from "./contours";
-export { windSpeedGrid, windBarbsOf } from "./wind";
-export type { WindBarb } from "./wind";
+export {
+  windSpeedGrid,
+  windBarbsOf,
+  windBarbOf,
+  windBarbStepAt,
+  WIND_BARB_SCALES,
+  WIND_LEGEND_UNITS,
+  MPS_PER_KT,
+  toKnots,
+  toMps,
+} from "./wind";
+export type {
+  WindBarb,
+  WindBarbEncoding,
+  WindBarbOfOptions,
+  WindBarbsOptions,
+  WindBarbScale,
+  WindSpeedUnit,
+  WindSpeedUnitInput,
+} from "./wind";
 export { buildColorScale } from "./element";
-export type { ElementProfile, EqualScaleSpec, ContourSpec, BarbSpec } from "./element";
+export type { ElementProfile, EqualScaleSpec, ContourSpec, BarbSpec, BarbLodStep } from "./element";
 export { tmpProfile } from "./elements/tmp";
 export { dptProfile } from "./elements/dpt";
 export { rhProfile } from "./elements/rh";

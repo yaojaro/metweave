@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>metweave · 0.3.2 七项验收台</title>
+    <!-- favicon：空 data URI 显式声明（消除浏览器默认 /favicon.ico 404；无二进制资产、无痕） -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body class="vf-page">
+    <header id="vf-topbar">
+      <strong>0.3.2 七项验收台</strong>
+      <span id="vf-score" class="vf-score" role="status" aria-live="polite">判定中…</span>
+      <span class="vf-sub"
+        >每一项都在这一页上真跑一遍：控件能点、图形现算、右上角徽标由断言决定（不是写死的
+        ✅）。所有数据是页内合成的 30×24 格点场，不依赖外部取数——静态部署也能开。</span
+      >
+    </header>
+
+    <main id="vf-main">
+      <section class="vf-item" data-item="T1" aria-labelledby="vf-t1">
+        <div class="vf-head">
+          <h2 id="vf-t1"><b>T1</b> 单点风羽编码 <code>windBarbOf</code></h2>
+          <output class="vf-verdict" data-verdict="T1">判定中</output>
+        </div>
+        <p class="vf-desc">
+          方向＋风速 → 这根杆的编码（旗／长划／短划各几根）。静风（缺省阈 1 m/s）返回
+          <code>null</code>＝不出杆。
+        </p>
+        <div class="vf-body">
+          <label class="vf-ctrl"
+            >方向
+            <input id="vf-t1-dir" type="range" min="0" max="360" step="5" value="240" /><output
+              id="vf-t1-dir-out"
+              >240°</output
+            ></label
+          >
+          <label class="vf-ctrl"
+            >风速
+            <input id="vf-t1-spd" type="range" min="0" max="40" step="0.5" value="20" /><output
+              id="vf-t1-spd-out"
+              >20 m/s</output
+            ></label
+          >
+          <div class="vf-glyph" id="vf-t1-glyph"></div>
+          <output class="vf-read" id="vf-t1-read">—</output>
+        </div>
+      </section>
+
+      <section class="vf-item" data-item="T2" aria-labelledby="vf-t2">
+        <div class="vf-head">
+          <h2 id="vf-t2"><b>T2</b> 两套填图口径 <code>windBarbPath(speed, { unit })</code></h2>
+          <output class="vf-verdict" data-verdict="T2">判定中</output>
+        </div>
+        <p class="vf-desc">
+          同一阵风两种画法：中国地面图 m/s（旗 20／长划 4／短划 2），国际航空 kt（旗 50／长划
+          10／短划 5）。默认仍是 m/s，逐字节不变。
+        </p>
+        <div class="vf-body vf-pair">
+          <figure>
+            <div class="vf-glyph" id="vf-t2-mps"></div>
+            <figcaption>20 m/s（m/s 口径）</figcaption>
+          </figure>
+          <figure>
+            <div class="vf-glyph" id="vf-t2-kt"></div>
+            <figcaption>39 kt（kt 口径）＝同一阵风</figcaption>
+          </figure>
+          <output class="vf-read" id="vf-t2-read">—</output>
+        </div>
+      </section>
+
+      <section class="vf-item" data-item="T3" aria-labelledby="vf-t3">
+        <div class="vf-head">
+          <h2 id="vf-t3"><b>T3</b> 纯方向箭头 <code>windArrowPath</code></h2>
+          <output class="vf-verdict" data-verdict="T3">判定中</output>
+        </div>
+        <p class="vf-desc">
+          只表方向、不带速度。缺省指向<strong>来向</strong>（与风羽杆同向）；<code
+            >pointing: "to"</code
+          >
+          指向去向——同一面图不要混用。
+        </p>
+        <div class="vf-body">
+          <div class="vf-row" id="vf-t3-row"></div>
+          <output class="vf-read" id="vf-t3-read">—</output>
+        </div>
+      </section>
+
+      <section class="vf-item" data-item="T4" aria-labelledby="vf-t4">
+        <div class="vf-head">
+          <h2 id="vf-t4"><b>T4</b> 风数值牌三态 <code>renderWindChip</code></h2>
+          <output class="vf-verdict" data-verdict="T4">判定中</output>
+        </div>
+        <p class="vf-desc">
+          同一份风组 IR
+          的三种状态：有风（风向／风速／阵风）、静风（00000）、风组缺测。单位跟随报文，不换算。
+        </p>
+        <div class="vf-body" id="vf-t4-chips"></div>
+      </section>
+
+      <section class="vf-item" data-item="T5" aria-labelledby="vf-t5">
+        <div class="vf-head">
+          <h2 id="vf-t5"><b>T5</b> 杆密度 LOD <code>windBarbsOf(u, v, { zoom })</code></h2>
+          <output class="vf-verdict" data-verdict="T5">判定中</output>
+        </div>
+        <p class="vf-desc">
+          同一份场，缩放档变、抽稀步长变（放大更密）。层侧另有视口裁剪与 2500
+          根上限——宁可疏一档，不可卡死浏览器。
+        </p>
+        <div class="vf-body">
+          <div class="vf-toolbar">
+            <button id="vf-t5-out" type="button">缩小 −</button>
+            <button id="vf-t5-in" type="button">放大 +</button>
+            <output id="vf-t5-status" class="vf-read">zoom — · step — · — 根</output>
+          </div>
+          <div
+            id="vf-t5-map"
+            class="vf-map"
+            role="img"
+            aria-label="杆密度示意（合成场，无底图）"
+          ></div>
+        </div>
+      </section>
+
+      <section class="vf-item" data-item="T6" aria-labelledby="vf-t6">
+        <div class="vf-head">
+          <h2 id="vf-t6"><b>T6</b> 风羽图例 <code>renderWindLegend</code></h2>
+          <output class="vf-verdict" data-verdict="T6">判定中</output>
+        </div>
+        <p class="vf-desc">
+          三档刻度＋口径切换。刻度数字由宿主从 <code>WIND_LEGEND_UNITS</code> 传入（组件不依赖
+          grid），切换会回调宿主。
+        </p>
+        <div class="vf-body">
+          <div id="vf-t6-legend"></div>
+          <output class="vf-read" id="vf-t6-read">—</output>
+        </div>
+      </section>
+
+      <section class="vf-item" data-item="T7" aria-labelledby="vf-t7">
+        <div class="vf-head">
+          <h2 id="vf-t7"><b>T7</b> 风等值线接线 <code>addContourLayer</code></h2>
+          <output class="vf-verdict" data-verdict="T7">判定中</output>
+        </div>
+        <p class="vf-desc">
+          风档案升级为三叠形态（色斑＋风羽＋等值线），等值线属<strong>可选叠加</strong>：<code
+            >defaultOn: false</code
+          >，缺省不压色斑与杆。
+        </p>
+        <div class="vf-body">
+          <div class="vf-toolbar">
+            <label class="vf-ctrl"
+              ><input id="vf-t7-on" type="checkbox" /> 叠加等值线（档案缺省关）</label
+            >
+            <output id="vf-t7-status" class="vf-read">等值线：未叠</output>
+          </div>
+          <div
+            id="vf-t7-map"
+            class="vf-map"
+            role="img"
+            aria-label="色斑＋等值线示意（合成场，无底图）"
+          ></div>
+        </div>
+      </section>
+    </main>
+
+    <footer id="vf-footer">
+      判定用的是库自身返回物（编码、path 字符串、DOM 状态、层内 path
+      数），不是页面上另写一份期望值。合成场只为不依赖外部数据； 真实数据路径见主 demo
+      的「格点图层」抽屉。<strong>本页不构成任何气象研判</strong>。
+    </footer>
+
+    <script type="module" src="/src/verify-main.ts"></script>
+  </body>
+</html>

@@ -5,14 +5,26 @@ metweave 的 Leaflet 适配器：报文卡片上图——marker、tooltip 与卡
 ### 安装
 
 ```bash
+# 只画报文卡片/站点：两个包足够
 npm install @metweave/leaflet leaflet
+# 还要画格点场（色斑/等值线/风羽）：再装格点内核，u/v 场与档案都在它里面
+npm install @metweave/grid
 # TypeScript 用户另装类型：npm install -D @types/leaflet
 ```
 
-### 最小示例
+### 最小示例（复制即用）
 
 ```ts
+import * as L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { parse } from "metweave";
 import { addMetarLayer } from "@metweave/leaflet";
+
+const map = L.map("map").setView([30.6, 104.0], 6); // #map 是一个有尺寸的 div
+L.tileLayer("你的底图瓦片 URL", { maxZoom: 12 }).addTo(map);
+
+const report = parse("METAR ZUUU 211200Z 24005MPS 3000 BR SCT020 18/16 Q1013");
+await addMetarLayer(map, [{ report, position: [30.58, 103.95] }]);
 ```
 
 `addMetarLayer` 是异步函数（返回 `Promise<LayerGroup>`）：leaflet 由首次调用时动态装载，import 本包不会在 Node/SSR 模块图里触发 `window` 求值错误，上图动作需 `await`。
@@ -73,7 +85,41 @@ await addGridLayer(map, windSpeedGrid(uGrid, vGrid), windProfile); // 风速合�
 await addWindBarbLayer(map, uGrid, vGrid, windProfile); // 风羽杆压顶（pane mw-grid-barb，z 365）
 ```
 
-`addWindBarbLayer(map, u, v, profile, options?)` 把一对 u/v 分量场的**风向杆**贴上地图：内核 `windBarbsOf` 按档案 `barbs` 口径（`step` 抽稀步长〔格点数，缩放无关固定步长——v1 无 LOD〕／`calmThreshold` 静风阈，低于阈值的格点不画杆）出杆位序列 → 每杆一枚恒定像素 divIcon 风羽——**m/s 中国口径**（三角旗 20 m/s＋长划 4 m/s＋短划 2 m/s，中文气象圈地面图填图规范；简化箭头弃用：只表方向不表速度、零信息增量），杆恒向上＝风向 0° 北、按 `direction`（气象**来向**口径，atan2 同源派生）施加 SVG rotate，羽在杆左侧（北半球惯例）；缩放下 marker 原地重定位、glyph 尺寸不变。与 `addGridLayer` 正交组合：**色斑吃 `windSpeedGrid` 合成场、杆层吃分量原场**（两层零交涉，宿主可独立取舍）；色斑（350）/等值线（360）之下、宿主矢量（≥400）之下——杆层 z 365。选项有 `color`（风羽基色，缺省深灰蓝）。档案缺 `barbs` 口径显式抛错（filled 要素不背杆，不静默空层）；`windBarbPath(speed)`（导出的纯函数）产出单杆的 SVG path 数据，供宿主自定义渲染复用。
+`addWindBarbLayer(map, u, v, profile, options?)` 把一对 u/v 分量场的**风向杆**贴上地图：内核 `windBarbsOf` 按档案 `barbs` 口径（`step` 抽稀步长〔格点数；不传缩放档时的固定密度〕／`calmThreshold` 静风阈，低于阈值的格点不画杆／`lod` 阶梯〔v0.3.2：按 zoom 抽稀，放大更密，`zoomend` 重绘且同档不重建〕）出杆位序列 → 每杆一枚恒定像素 divIcon 风羽，口径由 `options.unit` 选——**m/s 中国口径**（三角旗 20＋长划 4＋短划 2，中文气象圈地面图填图规范）或 **kt 航空口径**（旗 50＋长划 10＋短划 5，同一风速两套形态不同是惯例差异不是 bug）；只表方向的场景用 `windArrowPath(direction, { length })`（纯方向件，不带速度编码），杆恒向上＝风向 0° 北、按 `direction`（气象**来向**口径，atan2 同源派生）施加 SVG rotate，羽在杆左侧（北半球惯例）；缩放下 marker 原地重定位、glyph 尺寸不变。与 `addGridLayer` 正交组合：**色斑吃 `windSpeedGrid` 合成场、杆层吃分量原场**（两层零交涉，宿主可独立取舍）；色斑（350）/等值线（360）之下、宿主矢量（≥400）之下——杆层 z 365。选项有 `color`（风羽基色，缺省深灰蓝）与 `unit`（填图口径，缺省跟随场单位；跨口径时层内做一次换算，存储与内核单位不动）。档案缺 `barbs` 口径显式抛错（filled 要素不背杆，不静默空层）；`windBarbPath(speed)`（导出的纯函数）产出单杆的 SVG path 数据，供宿主自定义渲染复用。
+
+#### 单点：把一根杆画上去
+
+手上有 METAR 的「240°、5 m/s」、或数据不是 `.mwgrid` 时，**不必伪造格点场**——把算好的杆位序列直接交给 `addWindBarbGlyphs`：
+
+```ts
+import { toKnots, windBarbOf } from "@metweave/grid";
+import { addWindBarbGlyphs, windBarbPath, windArrowPath } from "@metweave/leaflet";
+
+// 一根杆：风向 240°（来向）、5 m/s（m/s 填图，缺省）
+await addWindBarbGlyphs(map, [{ lat: 30.58, lon: 103.95, direction: 240, speed: 5 }]);
+
+// 要 kt 填图：先换算、再声明口径（`unit` 是量纲声明，不会替你换算）
+await addWindBarbGlyphs(map, [{ lat: 30.58, lon: 103.95, direction: 240, speed: toKnots(5) }], {
+  unit: "kt",
+});
+
+// 只要几何、自己画 SVG：
+const { stroke, fill } = windBarbPath(5); // 5 m/s
+const arrow = windArrowPath(240); // 指向来向；pointing: "to" 则指向去向
+```
+
+**自绘 SVG 的三条几何契约**（`windBarbPath` / `windArrowPath` 通用）：① 盒 32×32、站心 (16,16)；
+② `windBarbPath` 出来的杆恒指北，要自己套 `<g transform="rotate(风向来向 16 16)">`（`windArrowPath`
+自带朝向，不要再转）；③ 返回 `{ stroke, fill }` 两条 path，同色描边/填充即可。
+
+**箭头指向**：`windArrowPath` 缺省指**来向**（与风羽杆同向）；低空剖面那类「指向去向」的图用
+`{ pointing: "to" }`。同一面图上不要混用两种约定。
+
+#### 杆密度：LOD 与视口裁剪
+
+档案声明 `barbs.lod` 时按缩放档抽稀（放大更密，见 `windProfile` 四级阶梯）；**只画当前视口内的杆**，
+视口内超过 2500 根会自动把步长翻倍降密——密度不是「画漏了」，是「这一屏读不了那么多杆」。截图对比
+杆数不同时，先看两边缩放档。不传缩放档的场景（自绘单点）密度完全由你给的序列决定。
 
 ### 自定义色卡（业务定制位）
 
