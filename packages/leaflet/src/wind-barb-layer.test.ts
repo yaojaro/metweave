@@ -67,7 +67,7 @@ describe("windBarbPath（风羽 glyph，m/s 中国口径）", () => {
   it("短划 2 m/s：1.5–6 m/s 落 1 长划＋（≥6 再加）1 短划", () => {
     expect(windBarbPath(2).stroke).toBe("M16 16 L16 2 M16 2 L20 6"); // 杆＋1 短划
     expect(windBarbPath(5).stroke).toBe("M16 16 L16 2 M16 2 L23.5 9"); // 4＋余 1：1 长划
-    expect(windBarbPath(6).stroke).toBe("M16 16 L16 2 M16 2 L23.5 9 M16 7 L20 11"); // 4＋2：长＋短
+    expect(windBarbPath(6).stroke).toBe("M16 16 L16 2 M16 2 L23.5 9 M16 6 L20 10"); // 4＋2：长＋短
   });
 
   it("三角旗 20 m/s：闭合填充子路径（Z 收尾），旗后余量继续长/短划", () => {
@@ -77,7 +77,7 @@ describe("windBarbPath（风羽 glyph，m/s 中国口径）", () => {
     const p26 = windBarbPath(26); // 20＋4＋2：旗＋长划＋短划
     expect(p26.fill).not.toBe("");
     expect(p26.stroke).toContain("M16 10 L23.5 17"); // 旗后 4 m/s 长划（旗底 y=10 起）
-    expect(p26.stroke).toContain("M16 15 L20 19"); // 再 2 m/s 短划
+    expect(p26.stroke).toContain("M16 14 L20 18"); // 再 2 m/s 短划
   });
 });
 
@@ -86,7 +86,7 @@ describe("windBarbPath（kt 国际航空口径，0.3.2 T2）", () => {
     const p39 = windBarbPath(39, { unit: "kt" });
     expect(p39.fill).toBe(""); // 39 < 50：无旗
     expect(p39.stroke).toBe(
-      "M16 16 L16 2 M16 2 L23.5 9 M16 7 L23.5 14 M16 12 L23.5 19 M16 17 L20 21",
+      "M16 16 L16 2 M16 2 L23.5 9 M16 6 L23.5 13 M16 10 L23.5 17 M16 14 L20 18",
     );
     // 同一根杆在 m/s 口径下是 1 旗 + 4 长划 + 1 短划（39 m/s）
     const p39mps = windBarbPath(39);
@@ -110,18 +110,18 @@ describe("windBarbPath（kt 国际航空口径，0.3.2 T2）", () => {
       [2, "M16 16 L16 2 M16 2 L20 6", ""],
       [3.999999, "M16 16 L16 2 M16 2 L20 6", ""],
       [5, "M16 16 L16 2 M16 2 L23.5 9", ""],
-      [6, "M16 16 L16 2 M16 2 L23.5 9 M16 7 L20 11", ""],
+      [6, "M16 16 L16 2 M16 2 L23.5 9 M16 6 L20 10", ""],
       [
         19.999999,
-        "M16 16 L16 2 M16 2 L23.5 9 M16 7 L23.5 14 M16 12 L23.5 19 M16 17 L23.5 24 M16 22 L20 26",
+        "M16 16 L16 2 M16 2 L23.5 9 M16 6 L23.5 13 M16 10 L23.5 17 M16 14 L23.5 21 M16 18 L20 22",
         "",
       ],
       [20, "M16 16 L16 2", "M16 2 L16 10 L24 6 Z"],
-      [26, "M16 16 L16 2 M16 10 L23.5 17 M16 15 L20 19", "M16 2 L16 10 L24 6 Z"],
-      [33, "M16 16 L16 2 M16 10 L23.5 17 M16 15 L23.5 22 M16 20 L23.5 27", "M16 2 L16 10 L24 6 Z"],
+      [26, "M16 16 L16 2 M16 10 L23.5 17 M16 14 L20 18", "M16 2 L16 10 L24 6 Z"],
+      [33, "M16 16 L16 2 M16 10 L23.5 17 M16 14 L23.5 21 M16 18 L23.5 25", "M16 2 L16 10 L24 6 Z"],
       [
         39,
-        "M16 16 L16 2 M16 10 L23.5 17 M16 15 L23.5 22 M16 20 L23.5 27 M16 25 L23.5 32 M16 30 L20 34",
+        "M16 16 L16 2 M16 10 L23.5 17 M16 14 L23.5 21 M16 18 L23.5 25 M16 22 L23.5 29 M16 26 L20 30",
         "M16 2 L16 10 L24 6 Z",
       ],
       [

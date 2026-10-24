@@ -1595,7 +1595,7 @@ const LONG_DX = 7.5; // 长划（4 m/s）梢偏移（向右）
 const LONG_DY = 7;
 const SHORT_DX = 4; // 短划（2 m/s）梢偏移（向右）
 const SHORT_DY = 4;
-const STROKE_GAP = 5; // 划沿杆排列间距
+const STROKE_GAP = 4; // 划沿杆排列间距（v0.3.3 起 5→4：编码 38〔1 旗 4 长 1 短〕短划梢 y 34→30 入盒——盒仍是旋转安全边界，不扩）
 
 /**
  * 风羽 glyph 的 SVG path 数据（纯函数）。口径由 `@metweave/grid` 的 `windBarbOf` 出编码
