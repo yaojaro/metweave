@@ -70,7 +70,7 @@ const fld = /** @type {OmFieldBatch} */ (
 
 const pts = fld.map((r, i) => ({
   la: lats[Math.floor(i / lons.length)], // 存请求坐标（不是 API 返回的吸附坐标），
-  lo: lons[i % lons.length], // 正文 §五 的 indexOf 靠它精确命中
+  lo: lons[i % lons.length], // 正文第五节的 indexOf 靠它精确命中
   sp: r.hourly.wind_speed_850hPa[0], // 风速标量（speed），与 profile.json 同名
   d: r.hourly.wind_direction_850hPa[0],
 }));
