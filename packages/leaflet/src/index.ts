@@ -1581,17 +1581,19 @@ export interface AddWindBarbGlyphsOptions {
 
 /**
  * 风羽 glyph 几何常量（SVG 像素）：盒 32×32、站心＝旋转中心 (16,16)、杆恒向上（＝风向
- * 0°北）长 14 至 y=2、羽在杆左侧（北半球地面图惯例）。风向由层按 direction 施加
+ * 0°北）长 14 至 y=2、羽在杆右侧（北半球业务惯例：顺来向看的右手边、羽指向低压——
+ * matplotlib barbs/NWS 官方图同口径；南半球才翻到左侧。v0.3.3 修正：0.3.2 及以前
+ * 误画在左侧＝南半球侧）。风向由层按 direction 施加
  * `<g transform="rotate(deg 16 16)">`（SVG rotate 正角＝屏幕顺时针，恰为罗盘向）。
  */
 const BARB_BOX = 32;
 const BARB_CX = 16;
 const BARB_TIP_Y = 2;
 const PENNANT_H = 8; // 三角旗（20 m/s）沿杆高
-const PENNANT_W = 8; // 三角旗向左宽
-const LONG_DX = -7.5; // 长划（4 m/s）梢偏移
+const PENNANT_W = 8; // 三角旗向右宽
+const LONG_DX = 7.5; // 长划（4 m/s）梢偏移（向右）
 const LONG_DY = 7;
-const SHORT_DX = -4; // 短划（2 m/s）梢偏移
+const SHORT_DX = 4; // 短划（2 m/s）梢偏移（向右）
 const SHORT_DY = 4;
 const STROKE_GAP = 5; // 划沿杆排列间距
 
@@ -1644,7 +1646,7 @@ export function windBarbPath(
   if (enc === null) return { stroke: strokeSegs.join(" "), fill: "" }; // 不可达（阈值缺省 0），类型收窄用
   let y = BARB_TIP_Y;
   for (let i = 0; i < enc.pennants; i++, y += PENNANT_H) {
-    fillSegs.push(`M${x} ${y} L${x} ${y + PENNANT_H} L${x - PENNANT_W} ${y + PENNANT_H / 2} Z`);
+    fillSegs.push(`M${x} ${y} L${x} ${y + PENNANT_H} L${x + PENNANT_W} ${y + PENNANT_H / 2} Z`);
   }
   for (let i = 0; i < enc.longs; i++, y += STROKE_GAP) {
     strokeSegs.push(`M${x} ${y} L${x + LONG_DX} ${y + LONG_DY}`);

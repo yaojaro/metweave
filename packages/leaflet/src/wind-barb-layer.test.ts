@@ -65,19 +65,19 @@ describe("windBarbPath（风羽 glyph，m/s 中国口径）", () => {
   });
 
   it("短划 2 m/s：1.5–6 m/s 落 1 长划＋（≥6 再加）1 短划", () => {
-    expect(windBarbPath(2).stroke).toBe("M16 16 L16 2 M16 2 L12 6"); // 杆＋1 短划
-    expect(windBarbPath(5).stroke).toBe("M16 16 L16 2 M16 2 L8.5 9"); // 4＋余 1：1 长划
-    expect(windBarbPath(6).stroke).toBe("M16 16 L16 2 M16 2 L8.5 9 M16 7 L12 11"); // 4＋2：长＋短
+    expect(windBarbPath(2).stroke).toBe("M16 16 L16 2 M16 2 L20 6"); // 杆＋1 短划
+    expect(windBarbPath(5).stroke).toBe("M16 16 L16 2 M16 2 L23.5 9"); // 4＋余 1：1 长划
+    expect(windBarbPath(6).stroke).toBe("M16 16 L16 2 M16 2 L23.5 9 M16 7 L20 11"); // 4＋2：长＋短
   });
 
   it("三角旗 20 m/s：闭合填充子路径（Z 收尾），旗后余量继续长/短划", () => {
     const p20 = windBarbPath(20);
-    expect(p20.fill).toMatch(/ L16 10 L8 6 Z$/); // 旗：杆点 (16,2)→(16,10)→左 apex (8,6) 闭合
+    expect(p20.fill).toMatch(/ L16 10 L24 6 Z$/); // 旗：杆点 (16,2)→(16,10)→右 apex (8,6) 闭合
     expect(p20.stroke).toBe("M16 16 L16 2"); // 恰 20：旗吃满、无划
     const p26 = windBarbPath(26); // 20＋4＋2：旗＋长划＋短划
     expect(p26.fill).not.toBe("");
-    expect(p26.stroke).toContain("M16 10 L8.5 17"); // 旗后 4 m/s 长划（旗底 y=10 起）
-    expect(p26.stroke).toContain("M16 15 L12 19"); // 再 2 m/s 短划
+    expect(p26.stroke).toContain("M16 10 L23.5 17"); // 旗后 4 m/s 长划（旗底 y=10 起）
+    expect(p26.stroke).toContain("M16 15 L20 19"); // 再 2 m/s 短划
   });
 });
 
@@ -85,7 +85,9 @@ describe("windBarbPath（kt 国际航空口径，0.3.2 T2）", () => {
   it("kt 刻度：旗 50／长划 10／短划 5——39 kt 无旗、3 长划＋1 短划（与 20 m/s 的 1 旗形成对照）", () => {
     const p39 = windBarbPath(39, { unit: "kt" });
     expect(p39.fill).toBe(""); // 39 < 50：无旗
-    expect(p39.stroke).toBe("M16 16 L16 2 M16 2 L8.5 9 M16 7 L8.5 14 M16 12 L8.5 19 M16 17 L12 21");
+    expect(p39.stroke).toBe(
+      "M16 16 L16 2 M16 2 L23.5 9 M16 7 L23.5 14 M16 12 L23.5 19 M16 17 L20 21",
+    );
     // 同一根杆在 m/s 口径下是 1 旗 + 4 长划 + 1 短划（39 m/s）
     const p39mps = windBarbPath(39);
     expect(p39mps.fill).not.toBe("");
@@ -93,7 +95,7 @@ describe("windBarbPath（kt 国际航空口径，0.3.2 T2）", () => {
 
   it("kt 三角旗 50：闭合填充子路径，恰 50 无划", () => {
     const p50 = windBarbPath(50, { unit: "kt" });
-    expect(p50.fill).toMatch(/ L16 10 L8 6 Z$/);
+    expect(p50.fill).toMatch(/ L16 10 L24 6 Z$/);
     expect(p50.stroke).toBe("M16 16 L16 2");
   });
 
@@ -104,28 +106,28 @@ describe("windBarbPath（kt 国际航空口径，0.3.2 T2）", () => {
     const FROZEN: ReadonlyArray<readonly [number, string, string]> = [
       [0, "M16 16 L16 2", ""],
       [1.5, "M16 16 L16 2", ""],
-      [1.9999999, "M16 16 L16 2 M16 2 L12 6", ""],
-      [2, "M16 16 L16 2 M16 2 L12 6", ""],
-      [3.999999, "M16 16 L16 2 M16 2 L12 6", ""],
-      [5, "M16 16 L16 2 M16 2 L8.5 9", ""],
-      [6, "M16 16 L16 2 M16 2 L8.5 9 M16 7 L12 11", ""],
+      [1.9999999, "M16 16 L16 2 M16 2 L20 6", ""],
+      [2, "M16 16 L16 2 M16 2 L20 6", ""],
+      [3.999999, "M16 16 L16 2 M16 2 L20 6", ""],
+      [5, "M16 16 L16 2 M16 2 L23.5 9", ""],
+      [6, "M16 16 L16 2 M16 2 L23.5 9 M16 7 L20 11", ""],
       [
         19.999999,
-        "M16 16 L16 2 M16 2 L8.5 9 M16 7 L8.5 14 M16 12 L8.5 19 M16 17 L8.5 24 M16 22 L12 26",
+        "M16 16 L16 2 M16 2 L23.5 9 M16 7 L23.5 14 M16 12 L23.5 19 M16 17 L23.5 24 M16 22 L20 26",
         "",
       ],
-      [20, "M16 16 L16 2", "M16 2 L16 10 L8 6 Z"],
-      [26, "M16 16 L16 2 M16 10 L8.5 17 M16 15 L12 19", "M16 2 L16 10 L8 6 Z"],
-      [33, "M16 16 L16 2 M16 10 L8.5 17 M16 15 L8.5 22 M16 20 L8.5 27", "M16 2 L16 10 L8 6 Z"],
+      [20, "M16 16 L16 2", "M16 2 L16 10 L24 6 Z"],
+      [26, "M16 16 L16 2 M16 10 L23.5 17 M16 15 L20 19", "M16 2 L16 10 L24 6 Z"],
+      [33, "M16 16 L16 2 M16 10 L23.5 17 M16 15 L23.5 22 M16 20 L23.5 27", "M16 2 L16 10 L24 6 Z"],
       [
         39,
-        "M16 16 L16 2 M16 10 L8.5 17 M16 15 L8.5 22 M16 20 L8.5 27 M16 25 L8.5 32 M16 30 L12 34",
-        "M16 2 L16 10 L8 6 Z",
+        "M16 16 L16 2 M16 10 L23.5 17 M16 15 L23.5 22 M16 20 L23.5 27 M16 25 L23.5 32 M16 30 L20 34",
+        "M16 2 L16 10 L24 6 Z",
       ],
       [
         65,
-        "M16 16 L16 2 M16 26 L8.5 33",
-        "M16 2 L16 10 L8 6 Z M16 10 L16 18 L8 14 Z M16 18 L16 26 L8 22 Z",
+        "M16 16 L16 2 M16 26 L23.5 33",
+        "M16 2 L16 10 L24 6 Z M16 10 L16 18 L24 14 Z M16 18 L16 26 L24 22 Z",
       ],
       [-5, "M16 16 L16 2", ""],
       [Number.NaN, "M16 16 L16 2", ""],

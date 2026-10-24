@@ -1575,7 +1575,7 @@ export interface AddWindBarbGlyphsOptions {
 | leaflet.msg25 |  }; // 不可达（阈值缺省 0），类型收窄用
   let y = BARB_TIP_Y;
   for (let i = 0; i < enc.pennants; i++, y += PENNANT_H) {
-    fillSegs.push(`M${x} ${y} L${x} ${y + PENNANT_H} L${x - PENNANT_W} ${y + PENNANT_H / 2} Z`);
+    fillSegs.push(`M${x} ${y} L${x} ${y + PENNANT_H} L${x + PENNANT_W} ${y + PENNANT_H / 2} Z`);
   }
   for (let i = 0; i < enc.longs; i++, y += STROKE_GAP) {
     strokeSegs.push(`M${x} ${y} L${x + LONG_DX} ${y + LONG_DY}`);
