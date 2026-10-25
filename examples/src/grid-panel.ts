@@ -25,6 +25,8 @@
  * （"filled+barbs"）叠风向杆层——显隐随选中/切换同进退，面板零要素名特判。
  */
 import { addContourLayer, addGridLayer, addWindBarbLayer } from "@metweave/leaflet";
+import { WIND_LEGEND_UNITS } from "@metweave/grid";
+import { renderWindLegend } from "metweave";
 import { WIND_BARB_SCALES, buildColorScale, windProfile } from "@metweave/grid";
 import type { ElementProfile } from "@metweave/grid";
 import type * as LeafletNS from "leaflet";
@@ -279,6 +281,11 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
   let overlay: LeafletNS.ImageOverlay | undefined;
   /** 等值线叠层（档案 renderForm "filled+contours" 的要素才有；随色斑层同建同摘） */
   let contourLayer: LeafletNS.LayerGroup | undefined;
+  /**
+   * 风羽填图口径（面板级记忆，默认 m/s）：风羽图例的切换按钮改它，杆层按它重建
+   * （remove 再 add——库尚无 setUnit 就地切换；跨要素/等值线开关重建时保持所选口径）。
+   */
+  let windBarbUnit: "m/s" | "kt" = "m/s";
   /** 风向杆叠层（档案 renderForm 含 barbs 的要素才有；随色斑层同建同摘） */
   let barbLayer: LeafletNS.LayerGroup | undefined;
   /** 最近一次成功装配的要素与数据（等值线开关切换时就地重建，不重新取数） */
@@ -379,7 +386,18 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
         const src = document.createElement("p");
         src.className = "gd-src";
         src.textContent = gridMetaLine(spec, loaded);
-        const children: HTMLElement[] = [buildGridLegend(spec, loaded), src];
+        const children: HTMLElement[] = [buildGridLegend(spec, loaded)];
+        // 含杆要素追加风羽图例：刻度与编码同源（WIND_LEGEND_UNITS），切换钮联动杆层重建
+        if (formParts(spec.profile).has("barbs")) {
+          children.push(
+            renderWindLegend({
+              units: WIND_LEGEND_UNITS,
+              unit: windBarbUnit,
+              onUnitChange: rebuildBarbsWithUnit,
+            }),
+          );
+        }
+        children.push(src);
         const desc = ELEMENT_DESCRIPTIONS[spec.profile.shortName];
         if (desc !== undefined) {
           const p = document.createElement("p");
@@ -394,6 +412,32 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
         row.body.hidden = true;
       }
     }
+  };
+
+  /**
+   * 切风羽填图口径：图例回调触发——杆层按新口径整层重建（remove 再 add；色斑档位
+   * 是档案固定域不随口径切，风羽图例刻度与杆形同步换，刻度数字与编码同源一份常量）。
+   */
+  const rebuildBarbsWithUnit = (id: string): void => {
+    windBarbUnit = id === "kt" ? "kt" : "m/s";
+    const built = lastBuilt;
+    if (built === undefined) return;
+    if (!formParts(built.spec.profile).has("barbs") || built.loaded.components === undefined)
+      return;
+    void addWindBarbLayer(
+      map,
+      built.loaded.components.u,
+      built.loaded.components.v,
+      built.spec.profile,
+      {
+        unit: windBarbUnit,
+      },
+    ).then((builtBarbs) => {
+      // 竞态守卫：等待期间要素被切走/重建时，lastBuilt 已变——丢弃本次重建
+      if (lastBuilt !== built) return;
+      if (barbLayer !== undefined) map.removeLayer(barbLayer);
+      barbLayer = builtBarbs;
+    });
   };
 
   const removeLayers = (): void => {
@@ -492,6 +536,7 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
         loaded.components.u,
         loaded.components.v,
         spec.profile,
+        { unit: windBarbUnit },
       );
       if (barbLayer !== undefined) map.removeLayer(barbLayer);
       barbLayer = builtBarbs;
