@@ -330,32 +330,51 @@ const ltDateOf = (
   offset: number,
   anchor?: TafCalendarAnchor,
   minDay?: number,
+  kind: CalendarKind = "window",
+  crosses = false,
 ): { z: Date; utcY: number; utcMo: number; utcD: number } | null => {
   if (anchor === undefined || day < 1) return null;
-  const cal = anchoredCalendarOf(day, anchor, minDay);
+  const cal = anchoredCalendarOf(day, anchor, minDay, kind, crosses);
   const z = new Date(Date.UTC(cal.y, cal.m - 1, cal.day, hour, minute) + offset * 60_000);
   return { z, utcY: cal.y, utcMo: cal.m, utcD: cal.day };
 };
 
 /**
- * 锚月日号 → 真月历 { y, m, day }（ltClock/ltDateOf 共用一份月判读）：
- * - **连续日序超出锚月长度**（止时 24 折出的「次日」、day 32 一类）→ 次月、日号减锚月天数
- *   （Date.UTC 本可自动进位，但前月分支须先让位——连续序与「前月尾日号」在同日号段重叠）；
- * - **跨月窗头日号**（day < minDay，如 9 月锚报 3006/0106 的止日 01）→ 次月（此前只识别
- *   前月尾日号，次月头日号被读成锚月同号——10 月 1 日错显成 9 月 1 日）；
- * - **前月尾日号**（day ≥ minDay+16，如锚 10 月报的发布日 30＝9 月 30）→ 前月；
- * - 其余＝锚月原样。
+ * 锚月日号 → 真月历 { y, m, day }（ltClock/ltDateOf 共用一份月判读）——**判读按日号来源
+ * 分三支**（独立复核 P1/P2 实锤：来源不同的日号压进同一分支会把发布日错判次月/连续序）：
+ * - `"window"`（缺省，有效期端点与分段/气温时刻）：
+ *   - **连续日序超出锚月长度**（止时 24 折出的「次日」、day 32 一类）→ 次月、日号减锚月天数
+ *     （Date.UTC 本可自动进位，但前月分支须先让位——连续序与「前月尾日号」在同日号段重叠）；
+ *   - **跨月窗头日号**（day < minDay，如 9 月锚报 3000/0106 的止日 01）→ 次月（此前只识别
+ *     前月尾日号，次月头日号被读成锚月同号——10 月 1 日错显成 9 月 1 日）；
+ *   - **前月尾日号**（day ≥ minDay+16，防御位——窗内日号正常到不了）→ 前月；
+ * - `"issue"`（发布时刻）：发布日恒在生效窗起点**前 0–2 天**（TAF 电报节奏）——窗前的正常
+ *   小日号（minDay=10 的 09）是**锚月内**日子，绝无「次月」形态；只有前月尾大日号
+ *   （≥minDay+16，如 8 月 31 日发布 9 月窗）与超锚月天数的 31 号（30 天锚月）才是前月，
+ *   **前月判据先行、连续序分支不参与**（发布日无连续序形态——day<minDay 曾被次月分支
+ *   误吞，发布行错整月）；
+ * - `"at"`（查看时刻，宿主给的绝对时刻）：窗前小日号＝锚月、跨月窗的窗内小日号＝次月——
+ *   两种小日号以「窗是否跨月」（crosses）区分。
  */
+type CalendarKind = "window" | "issue" | "at";
+
 const anchoredCalendarOf = (
   day: number,
   anchor: TafCalendarAnchor,
   minDay: number | undefined,
+  kind: CalendarKind = "window",
+  crosses = false,
 ): { y: number; m: number; day: number } => {
   const daysIn = new Date(Date.UTC(anchor.year, anchor.month, 0)).getUTCDate(); // 锚月天数
   let y = anchor.year;
   let m = anchor.month;
   let d = day;
-  if (day > daysIn) {
+  if (kind === "issue") {
+    if (minDay !== undefined && day >= minDay + 16) m -= 1;
+    else if (day > daysIn) m -= 1; // 30 天锚月的 31 号发布＝前月尾（发布日无连续序形态）
+  } else if (kind === "at") {
+    if (minDay !== undefined && day < minDay && crosses) m += 1;
+  } else if (day > daysIn) {
     m += 1;
     d = day - daysIn;
   } else if (minDay !== undefined && day < minDay) {
@@ -380,10 +399,12 @@ const ltClock = (
   offset: number,
   anchor?: TafCalendarAnchor,
   minDay?: number,
+  kind: CalendarKind = "window",
+  crosses = false,
 ): string => {
   if (anchor !== undefined && day >= 1) {
     // 守卫只剩 day ≥ 1：日号判读（跨次月/前月/锚月）收口在 anchoredCalendarOf 一处
-    const cal = anchoredCalendarOf(day, anchor, minDay);
+    const cal = anchoredCalendarOf(day, anchor, minDay, kind, crosses);
     const z = new Date(Date.UTC(cal.y, cal.m - 1, cal.day, hour, minute) + offset * 60_000);
     return `${z.getUTCMonth() + 1}月${z.getUTCDate()}日 ${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
   }
@@ -758,6 +779,9 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
   const calAnchor = options.monthAnchor ?? undefined; // 真月历锚（缺省 %31 折回近似，见 ltClock 注释）
   /** 生效起点日号（发布等前月尾日号的跨月判据；无有效期报无此语境） */
   const minDay = report.validity?.startDay;
+  /** 查看时刻（at）的跨月窗判据：止日号 < 起日号＝窗跨入次月（at 判读区分窗前/窗内小日号） */
+  const atCrosses =
+    report.validity !== undefined && report.validity.endDay < report.validity.startDay;
   const tag = t.localTag;
   /** 主显钟点：UTC＝dd日HH:MMZ；京＝北京时M月D日 HH:MM（真月历，月界批） */
   /** 双日界引用（）：BJ 制下与 UTC 日期不同日时括注 UTC 日号（发布/查看/有效期端点用；
@@ -767,10 +791,31 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     const d = ltDateOf(day, hour, minute, zone, calAnchor, minDay);
     return d === null ? "" : utcDayRefText(d.z, d.utcY, d.utcMo, d.utcD, locale);
   };
+  /** 发布时刻专用（issue 判读）：发布日在生效窗前 0–2 天，窗前小日号是锚月而非次月 */
+  const refIssue = (day: number, hour: number, minute: number): string => {
+    if (zone === null) return "";
+    const d = ltDateOf(day, hour, minute, zone, calAnchor, minDay, "issue");
+    return d === null ? "" : utcDayRefText(d.z, d.utcY, d.utcMo, d.utcD, locale);
+  };
   const clockAt = (day: number, hour: number, minute: number): string =>
     zone === null
       ? `${String(day).padStart(2, "0")}日${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}Z`
       : `${tag}${ltClock(day, hour, minute, zone, calAnchor, minDay)}`;
+  /** 发布时刻钟（issue 判读，与 refIssue 同源） */
+  const clockIssue = (day: number, hour: number, minute: number): string =>
+    zone === null
+      ? `${String(day).padStart(2, "0")}日${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}Z`
+      : `${tag}${ltClock(day, hour, minute, zone, calAnchor, minDay, "issue")}`;
+  /** 查看时刻钟/引用（at 判读）：窗前小日号＝锚月、跨月窗的窗内小日号＝次月 */
+  const clockAtTime = (day: number, hour: number, minute: number): string =>
+    zone === null
+      ? `${String(day).padStart(2, "0")}日${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}Z`
+      : `${tag}${ltClock(day, hour, minute, zone, calAnchor, minDay, "at", atCrosses)}`;
+  const refAtTime = (day: number, hour: number, minute: number): string => {
+    if (zone === null) return "";
+    const d = ltDateOf(day, hour, minute, zone, calAnchor, minDay, "at", atCrosses);
+    return d === null ? "" : utcDayRefText(d.z, d.utcY, d.utcMo, d.utcD, locale);
+  };
   /** 段界时刻（整点）：UTC＝dd日HHZ；京＝北京时M月D日 HH:00（段头/风险行/气温时刻） */
   const segClock = (day: number, hour: number, minute: number): string =>
     zone === null
@@ -816,8 +861,13 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     return card;
   }
 
-  // 元信息：有效期 + 时长（差值口径——parser 的 tafDurationHours 单源，不再手抄 31 天回绕式）
-  const hours = tafDurationHours(v);
+  // 元信息：有效期 + 时长（差值口径——parser 的 tafDurationHours 单源，不再手抄 31 天回绕式；
+  // 跨月回绕天数传锚月真天数——30 天锚月的跨月窗不再按 31 天多算 24h，独立复核 P3）
+  const anchorDaysIn =
+    calAnchor === undefined
+      ? undefined
+      : new Date(Date.UTC(calAnchor.year, calAnchor.month, 0)).getUTCDate();
+  const hours = tafDurationHours(v, anchorDaysIn);
   // —— 联动注册表（三轮：着色细化到组级——条目/行头/原文片/元信息行双向点亮）
   const HL = "mw-taf-hl";
   /** 解码气泡依据键（FM 51 条款族——见 TAF_DECODE_CITES） */
@@ -964,7 +1014,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         el(
           "span",
           undefined,
-          `${t.issued} ${clockAt(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)}${refAt(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)}`,
+          `${t.issued} ${clockIssue(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)}${refIssue(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)}`,
         ),
       );
     }
@@ -973,7 +1023,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
         el(
           "span",
           undefined,
-          `${t.atLabel} ${clockAt(options.at.day, options.at.hour, options.at.minute)}${refAt(options.at.day, options.at.hour, options.at.minute)}`.trim(),
+          `${t.atLabel} ${clockAtTime(options.at.day, options.at.hour, options.at.minute)}${refAtTime(options.at.day, options.at.hour, options.at.minute)}`.trim(),
         ),
       );
     }
@@ -1011,7 +1061,7 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
       if (report.issueTime !== undefined) {
         note.append(
           document.createTextNode(
-            `（所示为 ${clockAt(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)} 发布的报文）`,
+            `（所示为 ${clockIssue(report.issueTime.day, report.issueTime.hour, report.issueTime.minute)} 发布的报文）`,
           ),
         );
       }

@@ -2166,6 +2166,39 @@ describe("TAF 卡月锚（2026-09-24 评测 P1 月界批：monthAnchor 在位时
     expect(card.textContent).toContain("北京时8月1日 08:00"); // 31 日 24Z＝8 月 1 日 00Z＋8h
     expect(card.textContent).not.toContain("7月1日 08:00"); // 旧口径的错显形态
   });
+
+  it("发布行按发布日语境判月（独立复核 P1）：生效前一日发布（09 日发布 10 日窗）是锚月 9 月，不再被 day<minDay 判成次月", () => {
+    const card = renderTafCard(parseTaf("TAF ZBAA 091720Z 1006/1012 32004MPS 9999 FEW030="), {
+      utcOffsetMinutes: 480,
+      monthAnchor: { year: 2026, month: 9 },
+    });
+    expect(card.textContent).toContain("北京时9月10日 01:20"); // 发布 09 17:20Z＋8h
+    expect(card.textContent).not.toContain("北京时10月10日"); // 修复前发布行错整月
+  });
+
+  it("发布行前月尾大日号不被连续序遮蔽（独立复核 P2）：30 天锚月的 31 号发布＝前月 31 日，不错显次月 2 日", () => {
+    const card = renderTafCard(parseTaf("TAF ZBAA 312020Z 0106/0212 32004MPS 9999 FEW030="), {
+      utcOffsetMinutes: 480,
+      monthAnchor: { year: 2026, month: 9 },
+    });
+    expect(card.textContent).toContain("北京时9月1日 04:20"); // 8 月 31 日 20:20Z＋8h
+    expect(card.textContent).not.toContain("北京时10月2日");
+  });
+
+  it("查看时刻（at）按窗语境判月：窗前小日号＝锚月、跨月窗的窗内小日号＝次月", () => {
+    const pre = renderTafCard(parseTaf("TAF ZBAA 091720Z 1006/1012 32004MPS 9999 FEW030="), {
+      utcOffsetMinutes: 480,
+      monthAnchor: { year: 2026, month: 9 },
+      at: { day: 8, hour: 12, minute: 0 },
+    });
+    expect(pre.textContent).toContain("北京时9月8日 20:00"); // 窗前（10 日窗查 08 日）＝锚月
+    const inWin = renderTafCard(parseTaf("TAF ZPPP 292250Z 3000/0106 04009MPS 9999 SCT023="), {
+      utcOffsetMinutes: 480,
+      monthAnchor: { year: 2026, month: 9 },
+      at: { day: 5, hour: 6, minute: 0 },
+    });
+    expect(inWin.textContent).toContain("北京时10月5日 14:00"); // 跨月窗（30→01）内查 05 日＝次月
+  });
 });
 
 describe("METAR 卡限高契约（评测批3#10：对齐 TAF 卡——多跑道状态组长卡不超视口）", () => {
