@@ -482,9 +482,11 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
       return;
     }
     // 就地重建前换代（E5）：在途的 showElement 渲染（buildOverlay 内部逐段核对换代）
-    // 感知过期即自清，不与本次重建交错
+    // 感知过期即自清，不与本次重建交错；重建失败写状态行（fire-and-forget 不留 unhandled）
     generation++;
-    void buildOverlay(built.spec, built.loaded);
+    void buildOverlay(built.spec, built.loaded).catch((err: unknown) => {
+      setMeta(`图层重建失败：${err instanceof Error ? err.message : String(err)}`, "error");
+    });
   });
 
   /** 取消选中（不选＝不展示）：摘层＋收行＋在途装载作废；缓存保留（再选零 fetch）。 */

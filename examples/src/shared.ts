@@ -21,14 +21,20 @@ export type StatusTone = "loading" | "ok" | "error";
 export const statusLineOf = (dismissMs = 8000): ((text: string, tone: StatusTone) => void) => {
   const status = document.getElementById("status");
   const statusText = document.getElementById("status-text");
+  let dismissTimer: number | undefined; // ok 收起定时器：新状态进来先清（旧定时器到点会把常驻 loading/error 提前藏掉）
   return (text, tone) => {
     if (status === null || statusText === null) return;
+    if (dismissTimer !== undefined) {
+      window.clearTimeout(dismissTimer);
+      dismissTimer = undefined;
+    }
     status.dataset.tone = tone;
     statusText.textContent = text;
     status.hidden = false;
     if (tone === "ok") {
-      window.setTimeout(() => {
+      dismissTimer = window.setTimeout(() => {
         status.hidden = true;
+        dismissTimer = undefined;
       }, dismissMs);
     }
   };

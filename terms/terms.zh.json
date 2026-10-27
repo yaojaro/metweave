@@ -3212,7 +3212,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1223
+   "line": 1225
   },
   "leaflet.msg10": {
    "kind": "product",
@@ -3228,7 +3228,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1244
+   "line": 1250
   },
   "leaflet.msg11": {
    "kind": "product",
@@ -3244,7 +3244,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1348
+   "line": 1354
   },
   "leaflet.msg12": {
    "kind": "product",
@@ -3260,7 +3260,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1376
+   "line": 1382
   },
   "leaflet.msg13": {
    "kind": "product",
@@ -3276,7 +3276,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1386
+   "line": 1392
   },
   "leaflet.msg14": {
    "kind": "product",
@@ -3292,7 +3292,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1414
+   "line": 1420
   },
   "leaflet.msg15": {
    "kind": "product",
@@ -3308,7 +3308,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1417
+   "line": 1423
   },
   "leaflet.msg16": {
    "kind": "product",
@@ -3324,7 +3324,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1442
+   "line": 1448
   },
   "leaflet.msg17": {
    "kind": "product",
@@ -3340,7 +3340,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1459
+   "line": 1465
   },
   "leaflet.msg18": {
    "kind": "product",
@@ -3356,7 +3356,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1483
+   "line": 1489
   },
   "leaflet.msg19": {
    "kind": "product",
@@ -3372,7 +3372,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1540
+   "line": 1546
   },
   "leaflet.msg20": {
    "kind": "product",
@@ -3388,7 +3388,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1552
+   "line": 1558
   },
   "leaflet.msg21": {
    "kind": "product",
@@ -3404,7 +3404,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1556
+   "line": 1562
   },
   "leaflet.msg22": {
    "kind": "product",
@@ -3420,7 +3420,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1637
+   "line": 1643
   },
   "leaflet.msg23": {
    "kind": "product",
@@ -3436,7 +3436,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1638
+   "line": 1644
   },
   "leaflet.msg24": {
    "kind": "product",
@@ -3452,7 +3452,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1646
+   "line": 1652
   },
   "leaflet.msg25": {
    "kind": "product",
@@ -3468,7 +3468,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1650
+   "line": 1656
   },
   "leaflet.msg26": {
    "kind": "product",
@@ -3484,7 +3484,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1659
+   "line": 1665
   },
   "leaflet.msg27": {
    "kind": "product",
@@ -3500,7 +3500,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1681
+   "line": 1687
   },
   "leaflet.msg28": {
    "kind": "product",
@@ -3516,7 +3516,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1707
+   "line": 1713
   },
   "leaflet.msg29": {
    "kind": "product",
@@ -3532,7 +3532,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1709
+   "line": 1715
   },
   "leaflet.msg30": {
    "kind": "product",
@@ -3548,7 +3548,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1723
+   "line": 1729
   },
   "leaflet.msg31": {
    "kind": "product",
@@ -3564,7 +3564,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1725
+   "line": 1731
   },
   "leaflet.msg32": {
    "kind": "product",
@@ -3580,7 +3580,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1725
+   "line": 1731
   },
   "leaflet.msg33": {
    "kind": "product",
@@ -3596,7 +3596,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1729
+   "line": 1735
   },
   "leaflet.msg34": {
    "kind": "product",
@@ -3612,7 +3612,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1774
+   "line": 1780
   },
   "leaflet.msg35": {
    "kind": "product",
@@ -3628,7 +3628,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1791
+   "line": 1797
   },
   "leaflet.msg36": {
    "kind": "product",
@@ -3644,7 +3644,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1822
+   "line": 1828
   },
   "leaflet.msg37": {
    "kind": "product",
@@ -3660,7 +3660,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1824
+   "line": 1830
   },
   "leaflet.msg38": {
    "kind": "product",
@@ -3676,7 +3676,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1828
+   "line": 1834
   },
   "leaflet.msg39": {
    "kind": "product",
@@ -3692,7 +3692,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1830
+   "line": 1836
   },
   "leaflet.msg40": {
    "kind": "product",
@@ -3708,7 +3708,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1873
+   "line": 1879
   },
   "leaflet.msg41": {
    "kind": "product",
@@ -3724,7 +3724,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1883
+   "line": 1889
   },
   "leaflet.msg42": {
    "kind": "product",
@@ -3740,7 +3740,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1887
+   "line": 1893
   },
   "leaflet.msg43": {
    "kind": "product",
@@ -3756,7 +3756,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1894
+   "line": 1900
   },
   "leaflet.msg44": {
    "kind": "product",
@@ -3772,7 +3772,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1895
+   "line": 1901
   },
   "leaflet.msg45": {
    "kind": "product",
@@ -3788,7 +3788,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1906
+   "line": 1912
   },
   "leaflet.msg46": {
    "kind": "product",
@@ -3804,7 +3804,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1935
+   "line": 1941
   },
   "leaflet.msg47": {
    "kind": "product",
@@ -3820,7 +3820,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1939
+   "line": 1945
   },
   "leaflet.msg48": {
    "kind": "product",
@@ -3836,7 +3836,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1949
+   "line": 1955
   },
   "leaflet.msg49": {
    "kind": "product",
@@ -3852,7 +3852,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1967
+   "line": 1973
   },
   "leaflet.msg50": {
    "kind": "product",
@@ -3868,7 +3868,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1991
+   "line": 1997
   },
   "leaflet.msg51": {
    "kind": "product",
@@ -3884,7 +3884,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2000
+   "line": 2006
   },
   "leaflet.msg52": {
    "kind": "product",
@@ -3900,7 +3900,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2023
+   "line": 2029
   },
   "leaflet.msg53": {
    "kind": "product",
@@ -3916,7 +3916,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2034
+   "line": 2040
   },
   "leaflet.msg54": {
    "kind": "product",
@@ -3932,7 +3932,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2092
+   "line": 2098
   },
   "leaflet.msg55": {
    "kind": "product",
@@ -3948,7 +3948,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2118
+   "line": 2124
   },
   "leaflet.msg56": {
    "kind": "product",
@@ -3964,7 +3964,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2153
+   "line": 2159
   },
   "leaflet.msg57": {
    "kind": "product",
@@ -3980,7 +3980,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2173
+   "line": 2179
   },
   "leaflet.msg58": {
    "kind": "product",
@@ -3991,12 +3991,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": ");\n  }\n\n  const resize = (): void => {\n    const size = map.getSize();\n    canvas.width = size.x;\n    canvas.height = size.y;\n  };\n  /** 画布左上角对齐容器左上角（画布随 pane 平移，绘制一律用容器坐标） */\n  const reposition = (): void => {\n    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));\n  };\n  const clear = (): void => ctx.clearRect(0, 0, canvas.width, canvas.height);\n  resize();\n  reposition();\n\n  const rad = Math.PI / 180;\n  // (m/s)·s → 度：speedFactor 小时/秒 × 3600 s/时 ÷ 111000 m/度\n  const degPerUnit = (speedFactor * 3600) / 111000;\n  const MAX_AGE_S = 5; // 寿限：到期重生（防尾迹无限堆积在同一圈轨道上）\n\n  interface Particle {\n    lat: number;\n    lon: number;\n    age: number;\n  }\n  // 视口感知重生（可选）：重生域＝当前视口∩场域（moveend 重算；取不到视口或交集为空\n  // 回落全场撒点——缺省关＝恒全场，既有行为逐字节不变）\n  let viewBox: { south: number; north: number; west: number; east: number } | undefined;\n  const respawnInViewport = options.respawnInViewport === true;\n  const recomputeViewBox = (): void => {\n    if (!respawnInViewport) return;\n    const size = map.getSize();\n    if (size.x <= 0 || size.y <= 0) {\n      viewBox = undefined;\n      return;\n    }\n    const b = map.getBounds();\n    const south2 = Math.max(b.getSouth(), south);\n    const north2 = Math.min(b.getNorth(), north);\n    const west2 = Math.max(b.getWest(), west);\n    const east2 = Math.min(b.getEast(), east);\n    viewBox =\n      south2 < north2 && west2 < east2\n        ? { south: south2, north: north2, west: west2, east: east2 }\n        : undefined;\n  };\n  const respawn = (p: Particle): void => {\n    const box = viewBox;\n    p.lat = (box?.south ?? south) + Math.random() * ((box?.north ?? north) - (box?.south ?? south));\n    p.lon = (box?.west ?? west) + Math.random() * ((box?.east ?? east) - (box?.west ?? west));\n    p.age = 0;\n  };\n  const particles: Particle[] = Array.from({ length: count }, () => {\n    const p = { lat: 0, lon: 0, age: 0 };\n    respawn(p);\n    return p;\n  });\n\n  let running = true;\n  let suspended = false; // 地图拖动/缩放中：清画布暂停，moveend 复位续跑\n  let rafId = 0;\n  let lastTs: number | undefined;\n\n  const frame = (ts: number): void => {\n    if (!running) return;\n    rafId = requestAnimationFrame(frame);\n    if (document.hidden || suspended) {\n      lastTs = ts;\n      return;\n    }\n    const dt = lastTs === undefined ? 0 : Math.min((ts - lastTs) / 1000, 0.1);\n    lastTs = ts;\n    // 尾迹渐隐：destination-in 半透明擦除（画布保持透明，不糊底图）\n    ctx.globalCompositeOperation = ",
+   "text": ");\n  }\n\n  const resize = (): void => {\n    const size = map.getSize();\n    canvas.width = size.x;\n    canvas.height = size.y;\n  };\n  /** 画布左上角对齐容器左上角（画布随 pane 平移，绘制一律用容器坐标） */\n  const reposition = (): void => {\n    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));\n  };\n  const clear = (): void => ctx.clearRect(0, 0, canvas.width, canvas.height);\n  resize();\n  reposition();\n\n  const rad = Math.PI / 180;\n  // (m/s)·s → 度：speedFactor 小时/秒 × 3600 s/时 ÷ 111000 m/度\n  const degPerUnit = (speedFactor * 3600) / 111000;\n  const MAX_AGE_S = 5; // 寿限：到期重生（防尾迹无限堆积在同一圈轨道上）\n\n  interface Particle {\n    lat: number;\n    lon: number;\n    age: number;\n  }\n  // 视口感知重生（可选）：重生域＝当前视口∩场域（moveend 重算；取不到视口或交集为空\n  // 回落全场撒点——缺省关＝恒全场，既有行为逐字节不变）\n  let viewBox: { south: number; north: number; west: number; east: number } | undefined;\n  const respawnInViewport = options.respawnInViewport === true;\n  const recomputeViewBox = (): void => {\n    if (!respawnInViewport) return;\n    const size = map.getSize();\n    if (size.x <= 0 || size.y <= 0) {\n      viewBox = undefined;\n      return;\n    }\n    const b = map.getBounds();\n    const south2 = Math.max(b.getSouth(), south);\n    const north2 = Math.min(b.getNorth(), north);\n    const west2 = Math.max(b.getWest(), west);\n    const east2 = Math.min(b.getEast(), east);\n    // 交集判空即回落全场：视口完全在场外属正常（拖出场再回来自愈）；跨 180° 经线的视口\n    // （getWest > getEast 或越 ±180 的回绕形态）west2≥east2 同样判空回落——大域深放大时\n    // 密度短暂回归全场，跨缝视口求交留后续\n    viewBox =\n      south2 < north2 && west2 < east2\n        ? { south: south2, north: north2, west: west2, east: east2 }\n        : undefined;\n  };\n  const respawn = (p: Particle): void => {\n    const box = viewBox;\n    p.lat = (box?.south ?? south) + Math.random() * ((box?.north ?? north) - (box?.south ?? south));\n    p.lon = (box?.west ?? west) + Math.random() * ((box?.east ?? east) - (box?.west ?? west));\n    p.age = 0;\n  };\n  const particles: Particle[] = Array.from({ length: count }, () => {\n    const p = { lat: 0, lon: 0, age: 0 };\n    respawn(p);\n    return p;\n  });\n\n  let running = true;\n  let suspended = false; // 地图拖动/缩放中：清画布暂停，moveend 复位续跑\n  let rafId = 0;\n  let lastTs: number | undefined;\n\n  const frame = (ts: number): void => {\n    if (!running) return;\n    rafId = requestAnimationFrame(frame);\n    if (document.hidden || suspended) {\n      lastTs = ts;\n      return;\n    }\n    const dt = lastTs === undefined ? 0 : Math.min((ts - lastTs) / 1000, 0.1);\n    lastTs = ts;\n    // 尾迹渐隐：destination-in 半透明擦除（画布保持透明，不糊底图）\n    ctx.globalCompositeOperation = ",
    "usage": [
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2180
+   "line": 2186
   },
   "leaflet.msg59": {
    "kind": "product",
@@ -4012,7 +4012,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2260
+   "line": 2269
   },
   "leaflet.msg60": {
    "kind": "product",
@@ -4028,7 +4028,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2317
+   "line": 2326
   },
   "leaflet.msg61": {
    "kind": "product",
@@ -4044,7 +4044,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2334
+   "line": 2343
   },
   "leaflet.msg62": {
    "kind": "product",
@@ -4060,7 +4060,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2350
+   "line": 2359
   },
   "leaflet.msg63": {
    "kind": "product",
@@ -4076,7 +4076,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2366
+   "line": 2375
   },
   "leaflet.msg64": {
    "kind": "product",
@@ -4092,7 +4092,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2386
+   "line": 2395
   },
   "leaflet.msg65": {
    "kind": "product",
@@ -4108,7 +4108,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2410
+   "line": 2419
   },
   "leaflet.msg66": {
    "kind": "product",
@@ -4124,7 +4124,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2417
+   "line": 2426
   },
   "leaflet.msg67": {
    "kind": "product",
@@ -4140,7 +4140,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2438
+   "line": 2447
   },
   "leaflet.msg68": {
    "kind": "product",
@@ -4156,7 +4156,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2441
+   "line": 2450
   },
   "sources.msg01": {
    "kind": "product",

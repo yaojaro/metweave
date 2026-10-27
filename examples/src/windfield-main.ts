@@ -44,21 +44,33 @@ const loadGrid = async (file: string): Promise<Grid> => {
 const status = document.getElementById("wf-status");
 
 /**
- * 复选框→图层开关联线（模块级——不捕获页面局部）：apply 是异步的（add*Layer 内有
- * await），快速连点勾选框会交错——「关」先发、「开」的落地在后，终态与复选框相反。
- * 序列化排队＋换代令牌（过期请求不落地），终态恒等于最后一次勾选。
+ * 复选框→图层开关联线（模块级——不捕获页面局部），返回「重建请求」函数：apply 是异步的
+ * （add*Layer 内有 await），快速连点勾选框会交错——「关」先发、「开」的落地在后，终态与
+ * 复选框相反。序列化排队＋换代令牌（过期请求不落地），终态恒等于最后一次勾选；apply 失败
+ * 写状态行且不噬链（否则队列僵死，后续勾选全部失联）。速度滑杆/单位切换等侧信道重建一律
+ * 经返回的请求函数入同一队列——与开关线并发时两个 awaited add 交错会留无句柄僵尸层。
  */
-const wire = (id: string, apply: (on: boolean) => Promise<void>): void => {
+/** 元素缺席时的空请求件（模块级——不捕获作用域）。 */
+const idleRequest: (on: boolean) => void = () => undefined;
+
+const wire = (id: string, apply: (on: boolean) => Promise<void>): ((on: boolean) => void) => {
   const box = inputById(id);
-  if (box === null) return;
+  if (box === null) return idleRequest;
   let gen = 0;
   let tail: Promise<void> = Promise.resolve();
   const request = (on: boolean): void => {
     const mine = ++gen;
-    tail = tail.then(() => (mine === gen ? apply(on) : undefined));
+    tail = tail
+      .then(() => (mine === gen ? apply(on) : undefined))
+      .catch((err: unknown) => {
+        if (status !== null) {
+          status.textContent = `图层操作失败：${err instanceof Error ? err.message : String(err)}`;
+        }
+      });
   };
   box.addEventListener("change", () => request(box.checked));
   request(box.checked);
+  return request;
 };
 
 void (async () => {
@@ -90,7 +102,8 @@ void (async () => {
       w === null
         ? `${lat.toFixed(2)}°N ${lng.toFixed(2)}°E<br>场外（无数据）`
         : `${lat.toFixed(2)}°N ${lng.toFixed(2)}°E<br><b>${fmtValue(w.speed)} ${unit}</b>` +
-          `（u ${fmtValue(w.u)} / v ${fmtValue(w.v)}）<br>风向（来向）${Math.round(w.direction)}°`;
+          `（u ${fmtValue(w.u)} / v ${fmtValue(w.v)}）<br>` +
+          (w.speed < 0.05 ? "静风" : `风向（来向）${Math.round(w.direction)}°`);
     L.popup().setLatLng(e.latlng).setContent(content).openOn(map);
   });
 
@@ -172,12 +185,12 @@ void (async () => {
     }
   };
 
-  // 五层开关（wire 的竞态纪律见模块层定义）
+  // 五层开关（wire 的竞态纪律见模块层定义）；粒子/风羽的重建请求函数留给侧信道共用队列
   wire("wf-on-grid", applyGrid);
-  wire("wf-on-barbs", applyBarbs);
+  const requestBarbs = wire("wf-on-barbs", applyBarbs);
   wire("wf-on-stream", applyStream);
   wire("wf-on-arrows", applyArrows);
-  wire("wf-on-particle", applyParticle);
+  const requestParticle = wire("wf-on-particle", applyParticle);
 
   const speedBox = inputById("wf-speed");
   const speedOut = document.getElementById("wf-speed-out");
@@ -185,8 +198,7 @@ void (async () => {
     speedBox.addEventListener("input", () => {
       speedFactor = Number(speedBox.value);
       speedOut.textContent = `×${String(speedFactor)}`;
-      const box = inputById("wf-on-particle");
-      if (box?.checked) void applyParticle(true); // remove+add 换速（v0.3.4：原地调速留后续）
+      if (inputById("wf-on-particle")?.checked) requestParticle(true); // remove+add 换速（v0.3.4：原地调速留后续）——与开关线同队列防交错
     });
   }
 
@@ -197,8 +209,7 @@ void (async () => {
     unitSel.addEventListener("change", () => {
       unit = unitSel.value === "kt" ? "kt" : "m/s";
       mountLegend();
-      const box = inputById("wf-on-barbs");
-      if (box?.checked) void applyBarbs(true);
+      if (inputById("wf-on-barbs")?.checked) requestBarbs(true); // 同队列重建（防与开关线交错留僵尸层）
     });
   }
 

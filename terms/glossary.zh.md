@@ -2248,6 +2248,9 @@ export async function addParticleLayer(
     const north2 = Math.min(b.getNorth(), north);
     const west2 = Math.max(b.getWest(), west);
     const east2 = Math.min(b.getEast(), east);
+    // 交集判空即回落全场：视口完全在场外属正常（拖出场再回来自愈）；跨 180° 经线的视口
+    // （getWest > getEast 或越 ±180 的回绕形态）west2≥east2 同样判空回落——大域深放大时
+    // 密度短暂回归全场，跨缝视口求交留后续
     viewBox =
       south2 < north2 && west2 < east2
         ? { south: south2, north: north2, west: west2, east: east2 }

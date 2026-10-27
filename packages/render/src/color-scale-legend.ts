@@ -91,6 +91,13 @@ export function renderColorScaleLegend(
   if (scale.colors.length === 0) {
     throw new Error("renderColorScaleLegend 收到空色带（colors 至少一色）");
   }
+  // 分格形态的隐含前置显式化（不静默）：第几格＝第几档，停靠色数必须＝档数——档案色标
+  // 里停靠≠档的（渐变意图，如 cape 9 停靠 4 档）按格画会格档错位，应走 linear 形态
+  if (options.mode !== "linear" && scale.colors.length !== bins) {
+    throw new Error(
+      `renderColorScaleLegend 分格形态（categorical）要求停靠色数＝档数（colors ${String(scale.colors.length)} ≠ breaks＋1 ${String(bins)}）——渐变意图的色标请用 mode:"linear"`,
+    );
+  }
   for (const key of Object.keys(options)) {
     const known = new Set([
       "mode",

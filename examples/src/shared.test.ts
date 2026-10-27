@@ -57,6 +57,17 @@ describe("statusLineOf（状态行工厂）", () => {
     expect(status.hidden).toBe(true);
   });
 
+  it("ok 的收起定时器被后续状态清除：ok 后 1s 转 loading，loading 常驻不被旧定时器藏掉", () => {
+    vi.useFakeTimers();
+    const { status } = mount();
+    const setStatus = statusLineOf(6000);
+    setStatus("已上图", "ok");
+    vi.advanceTimersByTime(1000);
+    setStatus("刷新中…", "loading");
+    vi.advanceTimersByTime(60_000);
+    expect(status.hidden).toBe(false); // 旧 ok 定时器已清，loading 常驻
+  });
+
   it("元素缺席为空操作不抛错（裁剪页可无状态行调用）", () => {
     const setStatus = statusLineOf();
     expect(() => setStatus("x", "ok")).not.toThrow();

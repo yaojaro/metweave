@@ -96,6 +96,16 @@ describe("renderColorScaleLegend（分级色标图例）", () => {
     expect(() => renderColorScaleLegend(windScale, { bad: 1 } as never)).toThrow(/未知选项 "bad"/);
   });
 
+  it("分格前置：停靠色数≠档数的渐变色标显式报错（格与档会错位——应走 linear）", () => {
+    const gradient = {
+      breaks: [1, 2, 3],
+      colors: ["#0000ff", "#00ff00", "#ff0000", "#ffff00", "#ff00ff"],
+    };
+    expect(() => renderColorScaleLegend(gradient, {})).toThrow(/colors 5 ≠ breaks＋1 4/);
+    // linear 形态不受此限（渐变本就允许多停靠）
+    expect(() => renderColorScaleLegend(gradient, { mode: "linear" })).not.toThrow();
+  });
+
   it("自足样式只注入一次（多次渲染 head 里仅一份 style#…）", () => {
     renderColorScaleLegend(windScale);
     renderColorScaleLegend(windScale);

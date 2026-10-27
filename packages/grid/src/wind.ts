@@ -190,7 +190,11 @@ export interface WindSample {
   readonly v: number;
   /** 合成风速 √(u²+v²)——与 `windSpeedGrid` 同源同值 */
   readonly speed: number;
-  /** 风向（气象口径来向；与 `windBarbsOf`／`arrowFieldOf` 同公式——`windDirectionOf`） */
+  /**
+   * 风向（气象口径来向；与 `windBarbsOf`／`arrowFieldOf` 同公式——`windDirectionOf`）。
+   * **静风边界**：u=v=0 时 atan2(0,0)=0、公式得 270°——数值无意义（矢量未知）；杆/箭头
+   * 对静风是「无方向不出形」，宿主读数展示请在 speed≈0 时按静风口径处理、不显此值。
+   */
   readonly direction: number;
 }
 
