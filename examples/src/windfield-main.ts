@@ -11,6 +11,7 @@ import {
   parseGrid,
   streamlinesOf,
   arrowFieldOf,
+  interpolateBilinear,
   windProfile,
   windSpeedGrid,
   type Grid,
@@ -53,6 +54,20 @@ void (async () => {
     attribution: "底图 © OpenStreetMap 贡献者",
     maxZoom: 18,
   }).addTo(map);
+
+  // 点查询：点击读当地风（双线性采样，与粒子同源）——对比锚点：在 windy 点同一点
+  // 读数对照，即可分辨「色卡映射差」与「数据差」（色可以不同档，数值该一致）
+  map.on("click", (e: L.LeafletMouseEvent) => {
+    const { lat, lng } = e.latlng;
+    const uu = interpolateBilinear(u, lat, lng);
+    const vv = interpolateBilinear(v, lat, lng);
+    const content =
+      Number.isNaN(uu) || Number.isNaN(vv)
+        ? `${lat.toFixed(2)}°N ${lng.toFixed(2)}°E<br>场外（无数据）`
+        : `${lat.toFixed(2)}°N ${lng.toFixed(2)}°E<br><b>${Math.hypot(uu, vv).toFixed(1)} m/s</b>` +
+          `（u ${uu.toFixed(1)} / v ${vv.toFixed(1)}）<br>风向（来向）${Math.round((((270 - (Math.atan2(vv, uu) * 180) / Math.PI) % 360) + 360) % 360)}°`;
+    L.popup().setLatLng(e.latlng).setContent(content).openOn(map);
+  });
 
   let gridLayer: L.ImageOverlay | undefined;
   let barbLayer: L.LayerGroup | undefined;
