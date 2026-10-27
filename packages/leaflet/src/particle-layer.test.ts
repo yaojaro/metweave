@@ -124,4 +124,16 @@ describe("addParticleLayer（粒子动画层装配与生命周期）", () => {
     expect(() => layer.remove()).not.toThrow(); // 幂等
     await new Promise((resolve) => setTimeout(resolve, 30)); // remove 后无残留帧
   });
+
+  it("scale 风速定档着色：色标选项被接受，帧循环照跑不炸", async () => {
+    const map = freshMap();
+    const [u, v] = uniformPair();
+    const layer = await addParticleLayer(map, u, v, {
+      count: 16,
+      scale: { breaks: [1, 5, 10], colors: ["#0000ff", "#00ff00", "#ffff00", "#ff0000"] },
+    });
+    layers.push(layer);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    layer.remove();
+  });
 });

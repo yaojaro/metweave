@@ -2061,6 +2061,12 @@ export interface AddParticleLayerOptions {
   readonly width?: number;
   /** 静风阈（场单位，缺省 1——低于此速的粒子滞留到期重生；与杆/流线同惯例） */
   readonly calmThreshold?: number;
+  /**
+   * 风速色标（可选，缺省缺席＝单色 `color`）：提供后**尾迹按当地风速定档着色**——
+   * 传 `buildColorScale(profile, stats)`（与色斑/图例同一份档案色标，单一事实来源），
+   * 即得「颜色＝风速档」的满屏流场观感（速度→色彩的视觉连续由粒子密度与尾迹长度补足）。
+   */
+  readonly scale?: ColorScale;
 }
 
 /**
@@ -2162,6 +2168,7 @@ export async function addParticleLayer(
   const fade = options.fade ?? 0.96;
   const width = options.width ?? 1.4;
   const calmThreshold = options.calmThreshold ?? 1;
+  const speedScale = options.scale; // 风速定档色标（缺省缺席＝单色 color）
 
   // 粒子活动域＝格点中心范围（重生撒点不越场界；缺测/静风由采样与重生条件自然处理）
   const { la0, lo0, nx, ny, di, dj } = u.header.grid;
@@ -2251,14 +2258,14 @@ export async function addParticleLayer(
       const uu = interpolateBilinear(u, p.lat, p.lon);
       const vv = interpolateBilinear(v, p.lat, p.lon);
       p.age += dt;
-      if (
-        Number.isNaN(uu) \|\|
-        Number.isNaN(vv) \|\|
-        p.age > MAX_AGE_S \|\|
-        Math.hypot(uu, vv) < calmThreshold
-      ) {
+      const speed = Math.hypot(uu, vv);
+      if (Number.isNaN(uu) \|\| Number.isNaN(vv) \|\| p.age > MAX_AGE_S \|\| speed < calmThreshold) {
         respawn(p);
         continue;
+      }
+      if (speedScale !== undefined) {
+        // 风速定档着色：档数＝breaks+1，越界档（−1/超长）回退单色（防御，正常不到达）
+        ctx.strokeStyle = speedScale.colors[binIndexAt(speed, speedScale.breaks)] ?? color;
       }
       const cosLat = Math.max(Math.cos(p.lat * rad), 1e-6);
       const dLat = vv * degPerUnit * dt;

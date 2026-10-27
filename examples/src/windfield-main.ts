@@ -8,6 +8,7 @@
  * 边界：演示的是「该时次的定常近似」——粒子是示踪物不是气块追踪，动画不构成预报。
  */
 import {
+  buildColorScale,
   parseGrid,
   streamlinesOf,
   arrowFieldOf,
@@ -95,7 +96,17 @@ void (async () => {
   const applyParticle = async (on: boolean): Promise<void> => {
     particle?.remove();
     particle = undefined;
-    if (on) particle = await addParticleLayer(map, u, v, { count: 1200, speedFactor });
+    if (on) {
+      // windy 式观感：尾迹按风速定档着色（色标与色斑/图例同一份档案，单一事实来源）、
+      // 密粒子＋长尾迹——「颜色＝多大、流动＝去哪」一个层说完
+      particle = await addParticleLayer(map, u, v, {
+        count: 3000,
+        speedFactor,
+        fade: 0.97,
+        width: 1.1,
+        scale: buildColorScale(windProfile, speed.header.stats),
+      });
+    }
   };
 
   const wire = (id: string, apply: (on: boolean) => Promise<void>): void => {
@@ -130,7 +141,7 @@ void (async () => {
     const now = performance.now();
     if (now - t0 >= 500 && status !== null) {
       const fps = Math.round((frames * 1000) / (now - t0));
-      status.textContent = `${String(fps)} fps · 1200 粒子 · 数据时次 ${cycle}`;
+      status.textContent = `${String(fps)} fps · 3000 粒子（风速着色） · 数据时次 ${cycle}`;
       frames = 0;
       t0 = now;
     }
