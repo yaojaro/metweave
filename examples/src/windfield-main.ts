@@ -97,13 +97,15 @@ void (async () => {
     particle?.remove();
     particle = undefined;
     if (on) {
-      // windy 式观感：尾迹按风速定档着色（色标与色斑/图例同一份档案，单一事实来源）、
-      // 密粒子＋长尾迹——「颜色＝多大、流动＝去哪」一个层说完
+      // windy 式观感：尾迹按风速定档着色（色标与色斑/图例同一份档案，单一事实来源）。
+      // 高密度＋短尾——尾迹带的是「出发地」的颜色，尾越长越容易拖进隔壁色档
+      // （看着像粒子和色斑对不上）；密度补流动感、短尾提颜色匹配度。5000 粒子
+      // 同时是批次止损线的核验数（达标线：本机 ≥60fps）
       particle = await addParticleLayer(map, u, v, {
-        count: 3000,
+        count: 5000,
         speedFactor,
-        fade: 0.97,
-        width: 1.1,
+        fade: 0.945,
+        width: 1.0,
         scale: buildColorScale(windProfile, speed.header.stats),
       });
     }
@@ -141,7 +143,7 @@ void (async () => {
     const now = performance.now();
     if (now - t0 >= 500 && status !== null) {
       const fps = Math.round((frames * 1000) / (now - t0));
-      status.textContent = `${String(fps)} fps · 3000 粒子（风速着色） · 数据时次 ${cycle}`;
+      status.textContent = `${String(fps)} fps · 5000 粒子（风速着色） · 数据时次 ${cycle}`;
       frames = 0;
       t0 = now;
     }
