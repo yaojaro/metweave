@@ -530,6 +530,33 @@ describe("TAC 源 IR 出口（有损面按 notes §十记档——单位折算�
     expect(reParsed.cancelled).toBe(true);
     expect(comparable(reParsed)).toEqual(comparable(ir));
   });
+
+  it("不可辨时段词兜底：单枚 nil phenomenonTime、不产重复兄弟（XSD maxOccurs=1 的直接锁）", () => {
+    const ir = parse("METAR ZBAA 121253Z 30015KT 9999 FEW010 21/12 Q1013 TEMPO AT0550 4000 -SHRA");
+    // 篡改趋势时段词为不识别形态，直击 emit 兜底（该路径经公开面理论不可达——TAC 侧
+    // 保证 AT/TL/FM/窗四形态，故以浅拷贝改写 IR 触发；此前实现先 open 再 close+void 会
+    // 产出「空元素对＋自闭合 nil」两枚 phenomenonTime 兄弟，违 XSD maxOccurs=1）
+    const tampered = {
+      ...ir,
+      // oxlint-disable-next-line oxc/no-map-spread -- IR 为 readonly，拷贝改写不动原件（copy-on-write 有意）
+      trends: ir.trends.map((t) =>
+        t.kind === "tempo" && t.period !== undefined
+          ? { ...t, period: { ...t.period, text: "XX9999" } }
+          : t,
+      ),
+    };
+    const generated = serializeIwxxm(tampered, { calendar: { year: 2026, month: 10 } });
+    const hits = generated.match(/<iwxxm:phenomenonTime[\s/>]/g) ?? [];
+    expect(hits).toHaveLength(1);
+    expect(generated).toContain(
+      '<iwxxm:phenomenonTime nilReason="http://codes.wmo.int/common/nil/missing"/>',
+    );
+    // 回读：TEMPO 趋势存活、按无时窗语义落位（period 不再回填）
+    const reParsed = parseIwxxm(generated);
+    if (reParsed.kind === "taf") throw new Error("预期观测侧 IR");
+    expect(reParsed.trends[0]?.kind).toBe("tempo");
+    expect(reParsed.trends[0]?.period).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------- ④ 紧凑模式与 SUBPATH 一致性

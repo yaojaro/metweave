@@ -61,6 +61,26 @@ describe("renderColorScaleLegend（分级色标图例）", () => {
     expect(mids[1] ?? -1).toBeGreaterThanOrEqual((mids[0] ?? 0) + 6);
   });
 
+  it("linear 停配色与刻度同轴对齐：停靠＝档数时各色停在档界的值轴位置（非等距断点换色点不失真）；多停靠维持等分", () => {
+    // breaks [1,2,3]、4 色（缺省值轴 1..3）：换色点 0%/0%/50%/100%——刻度 2 的 50% 处恰为
+    // [2,3) 档色的起点（此前等分停配色在 33.3%，与刻度系统性错位）
+    const aligned = renderColorScaleLegend(
+      { breaks: [1, 2, 3], colors: ["#0000ff", "#00ff00", "#ffff00", "#ff0000"] },
+      { mode: "linear" },
+    );
+    const bg = aligned.querySelector<HTMLElement>(".mw-csl-bar")?.style.background ?? "";
+    expect(bg).toContain("#00ff00 0.000%"); // 首界 1＝lo（<lo 档在值轴上无宽度）
+    expect(bg).toContain("#ffff00 50.000%"); // 界 2 居值轴正中
+    expect(bg).toContain("#ff0000 100.000%"); // 末界 3＝hi
+    // 多停靠（5 色 3 档，渐变意图）：等分、无位置后缀
+    const ramp = renderColorScaleLegend(
+      { breaks: [1, 2, 3], colors: ["#0000ff", "#00ff00", "#ff0000", "#ffff00", "#ff00ff"] },
+      { mode: "linear" },
+    );
+    const rampBg = ramp.querySelector<HTMLElement>(".mw-csl-bar")?.style.background ?? "";
+    expect(rampBg).not.toContain("%");
+  });
+
   it("可选件：title/firstEdgeLabel 外的注记（unit/topBinNote）与自定义格式化", () => {
     const root = renderColorScaleLegend(windScale, {
       title: "10m 风（m/s）",

@@ -422,6 +422,9 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
     if (built === undefined) return;
     if (!formParts(built.spec.profile).has("barbs") || built.loaded.components === undefined)
       return;
+    // 入口定格换代（与 buildOverlay 同纪律）：过期判定不依赖「换代路径必改 lastBuilt 身份」
+    // 的隐含不变量——只换代不动 lastBuilt 的入口（今后新增）也能正确丢弃本次重建
+    const gen = generation;
     void addWindBarbLayer(
       map,
       built.loaded.components.u,
@@ -431,9 +434,9 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
         unit: windBarbUnit,
       },
     ).then((builtBarbs) => {
-      // 竞态守卫：等待期间要素被切走/重建时，lastBuilt 已变——摘掉已上图的新杆层再丢弃
+      // 竞态守卫：等待期间要素被切走/重建——摘掉已上图的新杆层再丢弃
       //（addWindBarbLayer 创建即上图，直接 return 会漏一张僵尸层——E5 同族）
-      if (lastBuilt !== built) {
+      if (lastBuilt !== built || gen !== generation) {
         map.removeLayer(builtBarbs);
         return;
       }

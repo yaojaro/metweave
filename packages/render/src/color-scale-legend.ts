@@ -10,7 +10,8 @@
  *   「第几格」即「第几档」），界值标注在格界上。适合阈值档业务色卡（如 10m 风的
  *   3/5/10/15/20/30 m/s），也是 windy 式读法；
  * - `"linear"` ＝**渐变图例**：停靠色连续渐变，刻度按值域线性定位（近值碰撞右让）。
- *   适合等距档的连续量直觉读法。
+ *   停靠色数＝档数时，渐变各色停在其档界的值轴位置——**换色点与刻度严格对齐**
+ *   （非等距断点不失真）；多停靠的连续渐变意图（停靠≠档界）维持等分分布。
  *
  * 自足样式（`mw-csl-*` 类名，head 一次注入）；**不占布局**——组件只画内容框，定位
  * （如「地图左下角悬浮」）由宿主容器或自加类名安排。
@@ -125,10 +126,30 @@ export function renderColorScaleLegend(
     root.append(title);
   }
 
+  // linear 形态的值域轴（先算——刻度定位与渐变停配色共用一份）
+  const linearValues = options.mode === "linear" ? (options.tickValues ?? scale.breaks) : [];
+  const lo = linearValues[0] ?? 0;
+  const hi = linearValues[linearValues.length - 1] ?? 0;
+  const span = hi - lo;
+
   const bar = document.createElement("div");
   bar.className = "mw-csl-bar";
   if (options.mode === "linear") {
-    bar.style.background = `linear-gradient(90deg, ${scale.colors.join(", ")})`;
+    if (scale.colors.length === bins) {
+      // 停靠色数＝档数：每色停在其档界（左界 break k−1）在值轴上的真实位置——换色点与
+      // 刻度严格对齐（等分停配色在非等距断点下会系统性错位：刻度 10 落在值轴 25.9%
+      // 而其停配色在等分 33.3%）；同位置双停＝硬换色边，CSS 合法
+      const stops = scale.colors.map((c, k) => {
+        if (k === 0) return `${c} 0%`;
+        const b = scale.breaks[k - 1] ?? hi;
+        const pct = span <= 0 ? (k / bins) * 100 : ((b - lo) / span) * 100;
+        return `${c} ${pct.toFixed(3)}%`;
+      });
+      bar.style.background = `linear-gradient(90deg, ${stops.join(", ")})`;
+    } else {
+      // 多停靠的连续渐变意图（停靠≠档界）：等分渐变（各停靠本就不对应档界）
+      bar.style.background = `linear-gradient(90deg, ${scale.colors.join(", ")})`;
+    }
     bar.style.borderRadius = "2px";
   } else {
     for (const color of scale.colors) {
@@ -150,10 +171,7 @@ export function renderColorScaleLegend(
     ticks.append(t);
   };
   if (options.mode === "linear") {
-    const values = options.tickValues ?? scale.breaks;
-    const lo = values[0] ?? 0;
-    const hi = values[values.length - 1] ?? 0;
-    const span = hi - lo;
+    const values = linearValues;
     const MIN_GAP = 6;
     let prev = Number.NaN;
     values.forEach((value, i) => {
