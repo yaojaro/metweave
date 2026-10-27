@@ -17,6 +17,7 @@ import {
   type Grid,
   type BarbSpec,
 } from "./index";
+import { streamlinesOf } from "./wind"; // 内核先行（canvas 图层消费方落地后再转公开导出）
 
 /** 最小网格工厂：u/v 同几何（2×2 起步），值按行序西→东。 */
 const gridOf = (
@@ -369,5 +370,135 @@ describe("windBarbsOf LOD（按放大档抽稀，0.3.2 T5）", () => {
     const [u, v] = uniform(2, 2, 3, 4);
     expect(() => windBarbsOf(u, v, specOf(), { zoom: Number.NaN })).toThrow(/zoom 非有限数/);
     expect(() => windBarbsOf(u, v, specOf(), { zoom: 3, step: 1 } as never)).toThrow(/未知选项/);
+  });
+});
+
+/** 流线场工厂：带真几何（nx/ny/la0 可调、lo0=100、格距 1°），值按 (x,y) 现填。 */
+const flowFieldOf = (
+  nx: number,
+  ny: number,
+  la0: number,
+  fill: (x: number, y: number) => number,
+): Grid =>
+  gridOf(
+    "UGRD",
+    Array.from({ length: nx * ny }, (_, i) => fill(i % nx, Math.floor(i / nx))),
+    { grid: { nx, ny, la0, lo0: 100, di: 1, dj: 1, order: "N2S,W2E,row-major" } },
+  );
+
+describe("streamlinesOf（流线积分，v0.3.4 矢量批次首件）", () => {
+  it("均匀东风场 → 沿流向东行的平直线族：纬度严格不动、经度严格递增", () => {
+    const u = flowFieldOf(9, 5, 4, () => 4);
+    const v = flowFieldOf(9, 5, 4, () => 0);
+    const lines = streamlinesOf(u, v, { seedSpacing: 4, maxSteps: 50, step: 1, calmThreshold: 1 });
+    expect(lines).toHaveLength(6); // x∈{0,4,8} × y∈{0,4}（中心对齐同杆抽稀公式）
+    for (const line of lines) {
+      expect(line.steps).toBe(line.points.length - 1);
+      const lat0 = line.points[0]?.lat;
+      expect(lat0).toBeDefined();
+      for (const p of line.points) expect(p.lat).toBeCloseTo(lat0 as number, 12); // v≡0 → dy≡0
+      for (let i = 1; i < line.points.length; i++) {
+        expect(line.points[i]?.lon).toBeGreaterThan(line.points[i - 1]?.lon as number);
+      }
+    }
+  });
+
+  it("出界即止：西缘种子后向零点，全线不越西缘（la0=5 避开 cosφ=1 的整步巧落）", () => {
+    const u = flowFieldOf(9, 5, 5, () => 4);
+    const v = flowFieldOf(9, 5, 5, () => 0);
+    const lines = streamlinesOf(u, v, { seedSpacing: 4, maxSteps: 50, step: 1, calmThreshold: 1 });
+    expect(lines).toHaveLength(6);
+    for (const line of lines) {
+      for (const p of line.points) expect(p.lon).toBeGreaterThanOrEqual(100); // 永不越西缘
+    }
+    const west = lines.filter((l) => l.points[0]?.lon === 100); // 西缘 x=0 两颗种子（y∈{0,4}）
+    expect(west).toHaveLength(2);
+  });
+
+  it("maxSteps 单向截断（旋转场不自然收敛）：前+后各 3 步、点数 7", () => {
+    const u = flowFieldOf(8, 8, 4, (_x, y) => 3 * (y - 3.5));
+    const v = flowFieldOf(8, 8, 4, (x) => 3 * (x - 3.5));
+    const lines = streamlinesOf(u, v, {
+      seedSpacing: 5,
+      maxSteps: 3,
+      step: 0.25,
+      calmThreshold: 1,
+    });
+    expect(lines).toHaveLength(4); // x0=floor((7%5)/2)=1 → {1,6}²，四颗全内部种子
+    for (const line of lines) {
+      expect(line.steps).toBe(6);
+      expect(line.points).toHaveLength(7);
+    }
+  });
+
+  it("刚体旋转场轨迹有界（RK2 保半径），步长减半偏差更小", () => {
+    // u=+3(y−6)、v=+3(x−6)（u 沿 lat 轴、v 沿 lon 轴）＝物理旋转场；u 符号填反会
+    // 退化成鞍点（双曲流），轨迹理应发散——此测试同时钉住这一坑
+    const u = flowFieldOf(13, 13, 6, (_x, y) => 3 * (y - 6));
+    const v = flowFieldOf(13, 13, 6, (x) => 3 * (x - 6));
+    const drift = (step: number): number => {
+      const lines = streamlinesOf(u, v, { seedSpacing: 5, maxSteps: 600, step, calmThreshold: 1 });
+      let max = 0;
+      for (const line of lines) {
+        // 旋转中心＝(106°E, 0°)（lo0=100、xc=6 格；la0=6、yc=6 格 → 纬 0°）
+        const rs = line.points.map((p) => Math.hypot(p.lon - 106, p.lat));
+        max = Math.max(max, Math.max(...rs) - Math.min(...rs));
+      }
+      return max;
+    };
+    const coarse = drift(0.25);
+    const fine = drift(0.0625);
+    expect(coarse).toBeLessThan(0.1); // 同步长欧拉会外旋（O(h) 漂移），RK2 两档都远小
+    expect(fine).toBeLessThan(coarse); // O(h²)：步长减半 → 偏差约缩 4 倍
+  });
+
+  it("静风区不出线；阈下调至 0 后出线（阈语义与杆同源）", () => {
+    const u = flowFieldOf(6, 6, 4, () => 0.5);
+    const v = flowFieldOf(6, 6, 4, () => 0.5);
+    expect(streamlinesOf(u, v, { seedSpacing: 2, maxSteps: 10, step: 1 })).toHaveLength(0);
+    expect(
+      streamlinesOf(u, v, { seedSpacing: 2, maxSteps: 10, step: 1, calmThreshold: 0 }),
+    ).not.toHaveLength(0);
+  });
+
+  it("缺测区即止（双线性四角任一 NaN 即缺测，不外推）：止步于缺测带之前", () => {
+    const u = flowFieldOf(6, 5, 4, (x) => (x <= 2 ? 4 : Number.NaN));
+    const v = flowFieldOf(6, 5, 4, () => 0);
+    const lines = streamlinesOf(u, v, { seedSpacing: 2, maxSteps: 20, step: 1, calmThreshold: 1 });
+    // x∈{0,2,4}：x=4 列自身缺测、x=2 列四角含 x=3 的 NaN → 仅 x=0 列出线（3 条）
+    expect(lines).toHaveLength(3);
+    for (const line of lines) {
+      for (const p of line.points) expect(p.lon).toBeLessThan(102.5);
+    }
+  });
+
+  it("缺省参数：种子间隔 10（21×21 → 3×3=9 线），步长/步数上限/静风阈各有缺省", () => {
+    const u = flowFieldOf(21, 21, 4, () => 6);
+    const v = flowFieldOf(21, 21, 4, () => 0);
+    expect(streamlinesOf(u, v)).toHaveLength(9);
+  });
+
+  it("同场对拍：杆读来向 270（西风），流线沿去向东行——两套口径相反不混", () => {
+    const u = flowFieldOf(5, 5, 4, () => 4);
+    const v = flowFieldOf(5, 5, 4, () => 0);
+    const barbs = windBarbsOf(u, v, { step: 2, calmThreshold: 1 });
+    const lines = streamlinesOf(u, v, { seedSpacing: 2, maxSteps: 10, step: 1, calmThreshold: 1 });
+    expect(barbs[0]?.direction).toBe(270);
+    for (const line of lines) {
+      const first = line.points[0]?.lon as number;
+      const last = line.points[line.points.length - 1]?.lon as number;
+      expect(last).toBeGreaterThan(first);
+    }
+  });
+
+  it("口径非法与未知选项键显式抛错", () => {
+    const u = flowFieldOf(4, 4, 4, () => 4);
+    const v = flowFieldOf(4, 4, 4, () => 0);
+    expect(() => streamlinesOf(u, v, { step: 0 })).toThrow(/步长非法/);
+    expect(() => streamlinesOf(u, v, { seedSpacing: 0 })).toThrow(/种子间隔非法/);
+    expect(() => streamlinesOf(u, v, { seedSpacing: 1.5 })).toThrow(/种子间隔非法/);
+    expect(() => streamlinesOf(u, v, { maxSteps: 0 })).toThrow(/步数上限非法/);
+    expect(() => streamlinesOf(u, v, { calmThreshold: -1 })).toThrow(/静风阈值非法/);
+    expect(() => streamlinesOf(u, v, { spacing: 2 } as never)).toThrow(/未知选项/);
   });
 });

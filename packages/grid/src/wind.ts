@@ -419,3 +419,177 @@ export function windBarbOf(
     encodedSpeed: pennants * scale.pennant + longs * scale.long + shorts * scale.short,
   };
 }
+
+/**
+ * 一条流线：种子点＋两向积分折线（经纬点列，**沿去向**行进——注意与杆/箭头的
+ * 「来向」编码相反：流线画的是气流的路径本身，折线无方向语义，渲染只画线）。
+ * `steps`＝前向＋后向累计积分步数（maxSteps 语义对账与测试用）。
+ */
+export interface Streamline {
+  readonly points: ReadonlyArray<{ readonly lat: number; readonly lon: number }>;
+  readonly steps: number;
+}
+
+/** 流线积分参数（全部可选、各有缺省；非法值显式抛 GridError，不静默修正）。 */
+export interface StreamlinesOptions {
+  /**
+   * 种子间隔（格点数，两向同距，网格中心对齐——与 `windBarbsOf` 抽稀同一公式）。
+   * **种子是人为的：流线密度不承载信息**（等值线密度＝梯度，流线密度＝你撒的种子），
+   * 密度只是可读性选择。缺省 10（0.25° 网格上 2.5° 一线，与杆缺省密度同量级）。
+   */
+  readonly seedSpacing?: number;
+  /** 单向最大积分步数（前向/后向各计一份；环绕场不收敛靠它截断）。缺省 100。 */
+  readonly maxSteps?: number;
+  /**
+   * 积分步长（**度**，等效弧长口径：lon 位移按 1/cos(lat) 放大——保持物理轨迹
+   * 形状，墨卡托等保角投影下渲染不变形）。缺省 0.25（0.25° 网格上一步约一格）。
+   */
+  readonly step?: number;
+  /** 静风阈（场单位，低于此速即止——静风无路可追）。缺省 1，沿杆口径惯例。 */
+  readonly calmThreshold?: number;
+}
+
+/**
+ * 流线口径校验（与 assertBarbSpec 同一道关口纪律：未知选项键也拦——拼错的
+ * 选项不会生效，更不该被静默忽略）。
+ */
+function assertStreamlinesOptions(options: StreamlinesOptions): void {
+  for (const key of Object.keys(options)) {
+    if (key !== "seedSpacing" && key !== "maxSteps" && key !== "step" && key !== "calmThreshold") {
+      throw new GridError(
+        "invalid-scale",
+        `streamlinesOf 收到未知选项 "${key}"（可用项：seedSpacing、maxSteps、step、calmThreshold）——拼错的选项不会生效`,
+      );
+    }
+  }
+  const { seedSpacing, maxSteps, step, calmThreshold } = options;
+  if (seedSpacing !== undefined && (!Number.isInteger(seedSpacing) || seedSpacing < 1)) {
+    throw new GridError(
+      "invalid-scale",
+      `流线种子间隔非法（seedSpacing=${String(seedSpacing)}，须 ≥1 的整数〔格点数〕）`,
+    );
+  }
+  if (maxSteps !== undefined && (!Number.isInteger(maxSteps) || maxSteps < 1)) {
+    throw new GridError(
+      "invalid-scale",
+      `流线积分步数上限非法（maxSteps=${String(maxSteps)}，须 ≥1 的整数）`,
+    );
+  }
+  if (step !== undefined && (!Number.isFinite(step) || step <= 0)) {
+    throw new GridError(
+      "invalid-scale",
+      `流线积分步长非法（step=${String(step)}，须 >0 的有限数〔度〕）`,
+    );
+  }
+  if (calmThreshold !== undefined && (!Number.isFinite(calmThreshold) || calmThreshold < 0)) {
+    throw new GridError(
+      "invalid-scale",
+      `流线静风阈值非法（calmThreshold=${String(calmThreshold)}，须 ≥0 的有限数）`,
+    );
+  }
+}
+
+/**
+ * u/v 双场 → 流线族（W-06 内核，纯函数零 DOM；v0.3.4 矢量批次首件）。
+ *
+ * 算法：种子按 `seedSpacing` 网格撒点（中心对齐同杆抽稀）→ 从每颗种子沿风矢量
+ * **双向** RK2（中点法）积分：k1＝当前位置方向、半步处取 k2、按 k2 走整步——对
+ * 曲率场的偏差 O(h²)，明显优于同步长欧拉。位移按等效弧长归一（dLat＝v·f、
+ * dLon·cosφ＝u·f，f＝step/|V|）——每步弧长恒为 `step` 度，物理轨迹形状在保角
+ * 投影下不变形。
+ *
+ * 终止四条件（任一即止，不出半步）：出网格边界／双线性采样遇缺测（任一分量
+ * NaN）／风速低于 `calmThreshold`（静风无路可追）／`maxSteps` 截断。种子本身
+ * 落在静风或缺测区则该种子不出线；两向都寸步难行的种子同样不出（单点线是噪音）。
+ *
+ * 口径提醒（图例与文档同源写明）：**流线密度＝种子撒法，不是风速信息**；
+ * 流线沿去向行进，与杆/箭头的来向编码相反。
+ */
+export function streamlinesOf(u: Grid, v: Grid, options: StreamlinesOptions = {}): Streamline[] {
+  assertPairedFields(u, v);
+  assertStreamlinesOptions(options);
+  const seedSpacing = options.seedSpacing ?? 10;
+  const maxSteps = options.maxSteps ?? 100;
+  const stepDeg = options.step ?? 0.25;
+  const calmThreshold = options.calmThreshold ?? 1;
+  const { nx, ny, la0, lo0, di, dj } = u.header.grid;
+  const rad = Math.PI / 180;
+
+  /** 双线性采样（格点坐标系，x 东向／y 南向；越界与缺测返回 NaN 由调用侧判 null）。 */
+  const sample = (field: Grid, x: number, y: number): number => {
+    const xi = Math.floor(x);
+    const yi = Math.floor(y);
+    const xj = Math.min(xi + 1, nx - 1);
+    const yj = Math.min(yi + 1, ny - 1);
+    const fx = x - xi;
+    const fy = y - yi;
+    const v00 = field.values[yi * nx + xi] ?? Number.NaN;
+    const v10 = field.values[yi * nx + xj] ?? Number.NaN;
+    const v01 = field.values[yj * nx + xi] ?? Number.NaN;
+    const v11 = field.values[yj * nx + xj] ?? Number.NaN;
+    return v00 * (1 - fx) * (1 - fy) + v10 * fx * (1 - fy) + v01 * (1 - fx) * fy + v11 * fx * fy;
+  };
+
+  /**
+   * 当前位置的单位步位移（格点坐标增量，沿风矢量去向）。返回 null＝此处不可积分
+   * （越界／缺测／静风）——即终止信号。
+   */
+  const heading = (x: number, y: number): { readonly dx: number; readonly dy: number } | null => {
+    if (x < 0 || x > nx - 1 || y < 0 || y > ny - 1) return null; // 出界即止
+    const uu = sample(u, x, y);
+    const vv = sample(v, x, y);
+    if (Number.isNaN(uu) || Number.isNaN(vv)) return null; // 缺测：矢量未知
+    const speed = Math.hypot(uu, vv);
+    if (speed < calmThreshold) return null; // 静风：无路可追
+    const cosLat = Math.max(Math.cos((la0 - y * dj) * rad), 1e-6); // 极地防护，不真出现
+    const f = stepDeg / speed;
+    return { dx: (uu * f) / (cosLat * di), dy: -(vv * f) / dj };
+  };
+
+  /** 从种子沿 sign 方向（+1 前向／−1 后向）积分，返回途经点（不含种子）。 */
+  const trace = (sx: number, sy: number, sign: 1 | -1): Array<{ x: number; y: number }> => {
+    const pts: Array<{ x: number; y: number }> = [];
+    let x = sx;
+    let y = sy;
+    for (let i = 0; i < maxSteps; i++) {
+      const k1 = heading(x, y);
+      if (!k1) break;
+      const k2 = heading(x + (sign * k1.dx) / 2, y + (sign * k1.dy) / 2); // RK2：半步处定向
+      if (!k2) break;
+      const nxp = x + sign * k2.dx;
+      const nyp = y + sign * k2.dy;
+      if (nxp < 0 || nxp > nx - 1 || nyp < 0 || nyp > ny - 1) break; // 出界即止（不出半步）
+      x = nxp;
+      y = nyp;
+      pts.push({ x, y });
+    }
+    return pts;
+  };
+
+  const toLatLon = (p: { x: number; y: number }): { lat: number; lon: number } => ({
+    lat: la0 - p.y * dj,
+    lon: lo0 + p.x * di,
+  });
+
+  const x0 = Math.floor(((nx - 1) % seedSpacing) / 2);
+  const y0 = Math.floor(((ny - 1) % seedSpacing) / 2);
+  const lines: Streamline[] = [];
+  for (let sy = y0; sy < ny; sy += seedSpacing) {
+    for (let sx = x0; sx < nx; sx += seedSpacing) {
+      if (!heading(sx, sy)) continue; // 种子在静风/缺测区：不出线
+      const forward = trace(sx, sy, 1);
+      const backward = trace(sx, sy, -1);
+      if (forward.length + backward.length === 0) continue; // 两向寸步难行：单点线是噪音
+      // 后向点序倒排拼在前（显式倒序循环：避开 reverse/toReversed 的 lint 与 lib 两头卡）
+      const points: Array<{ lat: number; lon: number }> = [];
+      for (let i = backward.length - 1; i >= 0; i--) {
+        const p = backward[i];
+        if (p) points.push(toLatLon(p));
+      }
+      points.push({ lat: la0 - sy * dj, lon: lo0 + sx * di });
+      for (const p of forward) points.push(toLatLon(p));
+      lines.push({ points, steps: forward.length + backward.length });
+    }
+  }
+  return lines;
+}
