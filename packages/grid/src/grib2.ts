@@ -95,6 +95,12 @@ const beInt16 = (b: Uint8Array, o: number): number => {
   const v = beUint(b, o, 2);
   return v >= 0x8000 ? v - 0x10000 : v;
 };
+/** 有符号 32 位（两补码）：GRIB2 通用整数字段（如 Sec4 层值——地下深度层为负，无符号读
+ *  会静默变成 ~4.29e9）。经纬度定标值是另一编码（符号-幅值，见 signedLatLon32）。 */
+const beInt32 = (b: Uint8Array, o: number): number => {
+  const v = beUint(b, o, 4);
+  return v >= 0x8000_0000 ? v - 0x1_0000_0000 : v;
+};
 const beFloat32 = (b: Uint8Array, o: number): number =>
   new DataView(b.buffer, b.byteOffset + o, 4).getFloat32(0);
 /** 符号-幅度编码（NCEP spd 最小值描述符实测口径，见文件头注）。 */
@@ -116,6 +122,13 @@ const parseMessage = (b: Uint8Array, pos: number): Message => {
     const len = beUint(b, q, 4);
     const num = b[q + 4];
     if (num === undefined || len < 5) throw new GridError("truncated", "section 头损坏");
+    // 数据段重复（统计/集合产品的多 Sec4 形态）：Map 后者覆盖前者＝静默读错口径——显式不支持
+    if ((num === 3 || num === 4 || num === 5 || num === 7) && secs.has(num)) {
+      throw new GridError(
+        "unsupported-section",
+        `section ${String(num)} 重复出现（统计/集合产品的多段形态未支持）——静默取后者会读错口径`,
+      );
+    }
     secs.set(num, b.subarray(q, q + len));
     q += len;
   }
@@ -291,18 +304,55 @@ export function decodeGrib2(
       );
     }
     const npts = beUint(s3, 6, 4);
+    // —— 网格定义守卫（不静默纪律在此前只把守了 DRT/位图，几何语义三项是补网）：非 3.0
+    // 模板 / 非惯例扫描模式 / 非缺省 basicAngle 的文件按基线偏移读会**静默整场错解**
+    // （行/列翻转、经纬定标全错），一律显式报错。基线语料全为 GFS 惯例（模板 3.0、扫描 0
+    // ＝列西→东行北→南、basicAngle 0/缺席＝10⁻⁶ 度定标）
+    const gdtA = beUint(s3, 12, 2);
+    const gdtB = beUint(s3, 17, 2);
+    if (gdtA !== 0 || gdtB !== 0) {
+      throw new GridError(
+        "unsupported-gdt",
+        `网格定义模板非 3.0（模板字段读得 ${gdtA}/${gdtB}）——其余模板的几何字段布局不同，按 3.0 读会静默错解`,
+      );
+    }
+    const scan = byteAt(s3, 71);
+    if (scan !== 0) {
+      throw new GridError(
+        "unsupported-scan",
+        `扫描模式 ${scan} 未支持（基线为 0：列西→东、行北→南——j 正向或行内反向的文件按基线读会整场翻转）`,
+      );
+    }
+    if (s3.length >= 76) {
+      const basicAngle = beUint(s3, 72, 4);
+      if (basicAngle !== 0 && basicAngle !== 0xffff_ffff) {
+        throw new GridError(
+          "unsupported-basic-angle",
+          `basicAngle=${basicAngle} 未支持（0/缺省＝10⁻⁶ 度定标的 GFS 惯例；非缺省角度定标需按 basicAngle/细分值换算）`,
+        );
+      }
+    }
     const values = decodeComplex(s5, s7, npts);
     const la1Raw = beUint(s3, 46, 4);
     const lo1Raw = beUint(s3, 50, 4);
     const diRaw = beUint(s3, 63, 4);
     const djRaw = beUint(s3, 67, 4);
     const scale = 1e6; // basicAngle=0/missing 的 GFS 定标（基线语料实证）
+    // —— 预报时效单位守卫：只认单位码 1（小时）——分/日/3 小时等单位的文件直接读数值
+    // 会把非小时数错写进 forecastHour（fieldToGrid 也会带进容器头）
+    const timeUnit = byteAt(s4, 17);
+    if (timeUnit !== 1) {
+      throw new GridError(
+        "unsupported-time-unit",
+        `预报时效单位代码 ${timeUnit} 未支持（基线为 1＝小时；分/日/月等单位的 forecastHour 语义不同）`,
+      );
+    }
     fields.push({
       discipline,
       category: byteAt(s4, 9),
       number: byteAt(s4, 10),
       levelType: byteAt(s4, 22),
-      levelValue: beUint(s4, 24, 4),
+      levelValue: beInt32(s4, 24),
       referenceTime: {
         year: beUint(s1, 12, 2),
         month: byteAt(s1, 14),

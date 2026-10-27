@@ -12,6 +12,11 @@ export type GridErrorCode =
   | "unsupported-drt" /** GRIB2 数据表示模板不在支持集（本包：5.2/5.3 complex packing） */
   | "unsupported-bitmap" /** GRIB2 位图路径（Sec6 ≠ 255）——基线语料未覆盖，遇之显式报错不静默 */
   | "unsupported-missing-mgmt" /** GRIB2 复杂打包缺测替代管理（missMgmt ≠ 0）——同上，显式报错 */
+  | "unsupported-gdt" /** GRIB2 网格定义模板非 3.0（经纬度）——其余模板字段布局不同，显式不支持 */
+  | "unsupported-scan" /** GRIB2 扫描模式非基线惯例（0：列西→东、行北→南）——行/列反向或 j 正向的翻转形态显式不支持 */
+  | "unsupported-basic-angle" /** GRIB2 basicAngle 非缺省（0/全 1）——非 10⁻⁶ 度定标显式不支持 */
+  | "unsupported-time-unit" /** GRIB2 预报时效单位码非 1（小时）——非小时单位的 forecastHour 显式不支持 */
+  | "unsupported-section" /** GRIB2 数据段重复（统计/集合产品的多 Sec4 形态）——显式不支持 */
   | "group-sum-mismatch" /** 5.2/5.3 组长和 ≠ 网格点数（结构损坏或布局不识别） */
   | "empty-input" /** 输入为空或非 GRIB/mwgrid 数据 */
   | "grid-mismatch" /** 双分量合成时两场网格几何/量纲不匹配（风切片引入） */

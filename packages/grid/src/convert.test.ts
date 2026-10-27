@@ -107,6 +107,53 @@ describe("GRIB2 5.3 解码（仓内 fixture：GFS tmp 2m 全球场）", () => {
     expect(() => decodeGrib2(buf)).toThrowError(/位宽 33 超 32 位上限/);
   });
 
+  it("网格定义守卫：非 3.0 模板／非惯例扫描模式／非缺省 basicAngle → 显式 unsupported 报错（此前按基线偏移静默错解）", () => {
+    const base = readFixtureGrib();
+    const sec3At = 37; // Sec1@16（len 21）→ Sec3@37（len 72）——fixture 结构固定（上方位宽测试同走位）
+    // ① 模板字段（Sec3 偏移 12–13/17–18 两处任一非零即拦）
+    const gdt = base.slice();
+    gdt.set([0x00, 0x01], sec3At + 12); // 模板号 1（rotated lat/lon 一类）
+    expect(() => decodeGrib2(gdt)).toThrowError(/模板非 3\.0/);
+    const gdtSpec = base.slice();
+    gdtSpec.set([0x00, 0x01], sec3At + 17); // 规范位模板号非零同拦
+    expect(() => decodeGrib2(gdtSpec)).toThrowError(/模板非 3\.0/);
+    // ② 扫描模式（Sec3 偏移 71，基线 0）：j 正向（0x40）→ 整场纬向翻转形态，显式不支持
+    const scan = base.slice();
+    scan[sec3At + 71] = 0x40;
+    expect(() => decodeGrib2(scan)).toThrowError(/扫描模式 64/);
+    // ③ basicAngle 非缺省：Sec3 末尾插 4 字节（0x00000001）并改 Sec3 长度 72→76、消息总长 +4
+    const angle = new Uint8Array(base.length + 4);
+    angle.set(base.subarray(0, sec3At + 72));
+    angle.set([0x00, 0x00, 0x00, 0x01], sec3At + 72);
+    angle.set(base.subarray(sec3At + 72), sec3At + 76);
+    angle[sec3At + 3] = 76; // Sec3 长度低字节（72→76，高位为 0）
+    new DataView(angle.buffer).setUint32(12, base.length + 4); // 消息总长（高 4 字节恒 0，写低 4 字节）
+    expect(() => decodeGrib2(angle)).toThrowError(/basicAngle=1/);
+  });
+
+  it("预报时效单位守卫与层值符号：非小时单位显式报错；负层值按两补码读（地下深度层）", () => {
+    const base = readFixtureGrib();
+    const sec4At = 109; // Sec3@37（len 72）→ Sec4@109（len 34）
+    const minute = base.slice();
+    minute[sec4At + 17] = 0; // 单位码 0＝分钟
+    expect(() => decodeGrib2(minute)).toThrowError(/时效单位代码 0/);
+    const underground = base.slice();
+    underground.set([0xff, 0xff, 0xff, 0x9c], sec4At + 24); // 两补码 −100（曾无符号读成 4294967196）
+    expect(decodeGrib2(underground)[0]!.levelValue).toBe(-100);
+  });
+
+  it("重复数据段（统计/集合产品的多 Sec4 形态）→ 显式 unsupported-section，不静默后者覆盖前者", () => {
+    const base = readFixtureGrib();
+    const sec4At = 109;
+    const sec4Len = 34;
+    const dup = new Uint8Array(base.length + sec4Len);
+    dup.set(base.subarray(0, sec4At + sec4Len));
+    dup.set(base.subarray(sec4At, sec4At + sec4Len), sec4At + sec4Len); // 原 Sec4 复制一份紧随
+    dup.set(base.subarray(sec4At + sec4Len), sec4At + 2 * sec4Len);
+    new DataView(dup.buffer).setUint32(12, base.length + sec4Len); // 消息总长 +34（高 4 字节恒 0）
+    expect(() => decodeGrib2(dup)).toThrowError(/section 4 重复出现/);
+  });
+
   it("中国域裁剪后与 eccodes 基准逐点相等（208×280 窗）", () => {
     const f = decodeGrib2(readFixtureGrib())[0]!;
     const grid = fieldToGrid(f, { variable: "TMP", level: "2m", unit: "K" });
