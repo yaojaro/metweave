@@ -9,6 +9,7 @@ import {
   windSpeedGrid,
   windBarbsOf,
   windBarbOf,
+  streamlinesOf,
   toKnots,
   toMps,
   WIND_BARB_SCALES,
@@ -17,7 +18,6 @@ import {
   type Grid,
   type BarbSpec,
 } from "./index";
-import { streamlinesOf } from "./wind"; // 内核先行（canvas 图层消费方落地后再转公开导出）
 
 /** 最小网格工厂：u/v 同几何（2×2 起步），值按行序西→东。 */
 const gridOf = (

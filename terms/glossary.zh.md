@@ -1910,6 +1910,114 @@ function paintBarbMarkers(
     };
     group.on( | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
+## leaflet.msg47（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg47 | , unbind);
+  }
+  group.addTo(map);
+  if (!hasLod) paint(undefined); // 无 LOD 时没有 add 时机可挂，直接绘一次
+  return group;
+}
+
+// ---------------------------------------------------------------- 流线层（0.3.4 矢量批次）
+
+/** 流线层专用 pane 名：色斑（mw-grid，z 350）之上、等值线（z 360）与风羽（z 365）之下 */
+const STREAMLINE_PANE =  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg48（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg48 | ;
+/** STREAMLINE_PANE 的 z-index：色斑 350 与等值线 360 之间的空隙位（线压色斑、不压标注与杆） */
+const STREAMLINE_PANE_Z = 355;
+
+/** `addStreamlineLayer` 的选项。 */
+export interface AddStreamlineLayerOptions {
+  /** 流线基色（缺省 #0e7490 深青——浅色斑与浅底图上均可辨，与风羽深灰蓝 #2c3e50 区分） */
+  readonly color?: string;
+  /** 线宽（像素，缺省 1.5；须 >0 的有限数） */
+  readonly width?: number;
+  /** 不透明度（0–1，缺省 0.85；传入值收敛到 [0, 1]，与 addGridLayer 的 opacity 同口径） */
+  readonly opacity?: number;
+}
+
+/** addStreamlineLayer 的合法选项键（运行时校验用——拼错的选项键静默忽略违反不静默纪律） */
+const ADD_STREAMLINE_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
+   | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg49（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg49 | ,
+]);
+
+/**
+ * 流线族 → canvas 折线层（W-06 的渲染适配，v0.3.4）。
+ *
+ * 把 `streamlinesOf`（@metweave/grid，纯函数内核）的折线族以**canvas 渲染器**画上地图——
+ * 一条流线一条 polyline、共享同一 `L.canvas` renderer：数百条线是一张画布而非数百个
+ * DOM/SVG 节点（矢量批次的既定口径：流线与粒子一律走 canvas，不重复 divIcon 的
+ * 性能坑）。层挂独立 pane（`mw-grid-streamline`，z 355）——压色斑、让等值线与风羽；
+ * 宿主 remove+add 换密度（重跑 `streamlinesOf` 再传新数组即可，本层不做 LOD——流线
+ * 密度是种子撒法的选择，不是随缩放自动变的物理量）。
+ *
+ * 折线本身无方向语义（流线沿去向行进，渲染只画线）；线上的「来向/去向」读法与
+ * 动画演示（粒子）由调用方与后续件承担。
+ */
+export async function addStreamlineLayer(
+  map: Leaflet.Map,
+  lines: readonly Streamline[],
+  options: AddStreamlineLayerOptions = {},
+): Promise<Leaflet.LayerGroup> {
+  for (const key of Object.keys(options)) {
+    if (!ADD_STREAMLINE_LAYER_OPTION_KEYS.has(key)) {
+      throw new Error(
+        `addStreamlineLayer 收到未知选项  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg50（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg50 | （可用项：color、width、opacity）——拼错的选项不会生效`,
+      );
+    }
+  }
+  if (options.width !== undefined && (!Number.isFinite(options.width) \|\| options.width <= 0)) {
+    throw new Error(
+      `addStreamlineLayer 的 width 非法（${String(options.width)}，须 >0 的有限数〔像素〕）`,
+    );
+  }
+  const color = options.color ??  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg51（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg51 | ;
+  const width = options.width ?? 1.5;
+  const opacity = Math.min(Math.max(options.opacity ?? 0.85, 0), 1);
+  const L = await loadLeaflet();
+  // 幂等建 pane（换密度 remove+add 多次调用安全）
+  if (map.getPane(STREAMLINE_PANE) === undefined) {
+    map.createPane(STREAMLINE_PANE).style.zIndex = String(STREAMLINE_PANE_Z);
+  }
+  const renderer = L.canvas({ pane: STREAMLINE_PANE, padding: 0.8 });
+  const group = L.layerGroup();
+  for (const line of lines) {
+    if (line.points.length < 2) continue; // 单点线不该出现（内核已滤），防御性跳过
+    const latlngs = line.points.map((p) => L.latLng(p.lat, p.lon));
+    L.polyline(latlngs, {
+      color,
+      weight: width,
+      opacity,
+      renderer,
+      interactive: false,
+      lineCap:  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
 ## sources.msg01（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |

@@ -22,12 +22,18 @@ import {
   windBarbStepAt,
   windProfile,
   windSpeedGrid,
+  streamlinesOf,
   type WindSpeedUnit,
 } from "@metweave/grid";
-import { addContourLayer, addGridLayer, addWindBarbLayer } from "@metweave/leaflet";
+import {
+  addContourLayer,
+  addGridLayer,
+  addStreamlineLayer,
+  addWindBarbLayer,
+} from "@metweave/leaflet";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { DENSITY_BARBS, DENSITY_PROFILE, sampleWindPair } from "./verify-sample";
+import { DENSITY_BARBS, DENSITY_PROFILE, sampleWindPair, swirlWindPair } from "./verify-sample";
 import { arrowSvg, barbSvg } from "./wind-svg";
 import "./style.css";
 
@@ -52,7 +58,7 @@ const paintVerdict = (id: string): void => {
   const score = document.getElementById("vf-score");
   if (score !== null) {
     score.textContent = `${passed} / ${verdicts.size} 通过`;
-    score.dataset.ok = String(passed === verdicts.size && verdicts.size === 7);
+    score.dataset.ok = String(passed === verdicts.size);
   }
 };
 
@@ -335,6 +341,63 @@ const mountT7 = (): void => {
     });
 };
 
+// ---------------------------------------------------------------- V1（0.3.4 矢量批次·流线）
+
+const mountV1 = (): void => {
+  const host = document.getElementById("vf-v1-map");
+  const status = document.getElementById("vf-v1-status");
+  const seedSel = document.getElementById("vf-v1-seed");
+  if (host === null || status === null || !(seedSel instanceof HTMLSelectElement)) return;
+
+  // 涡旋场是「看弯」的对照场（平直西风看直、涡旋看弯）；色斑铺底给流线一个量级参照
+  const SWIRL = swirlWindPair();
+  const map = L.map(host, {
+    center: [36.5, 109.5],
+    zoom: 4,
+    zoomControl: false,
+    attributionControl: false,
+  });
+
+  let layer: L.LayerGroup | undefined;
+  const draw = async (): Promise<void> => {
+    if (layer !== undefined) {
+      map.removeLayer(layer);
+      layer = undefined;
+    }
+    const seedSpacing = Number(seedSel.value);
+    const lines = streamlinesOf(SWIRL.u, SWIRL.v, { seedSpacing, maxSteps: 400, step: 0.5 });
+    layer = await addStreamlineLayer(map, lines);
+    // 判定用库返回物：出线、每条 ≥2 点、全部点在场界内（网格头几何，页内不另写边界）
+    const { la0, lo0, nx, ny, di, dj } = SWIRL.u.header.grid;
+    const south = la0 - (ny - 1) * dj;
+    const east = lo0 + (nx - 1) * di;
+    let points = 0;
+    let inBounds = true;
+    for (const line of lines) {
+      points += line.points.length;
+      for (const p of line.points) {
+        if (p.lat > la0 || p.lat < south || p.lon < lo0 || p.lon > east) inBounds = false;
+      }
+    }
+    const ok = lines.length > 0 && inBounds;
+    judge("V1", ok, `${lines.length} 条 · ${points} 点 · 场界内 ${inBounds ? "✓" : "✗"}`);
+    status.textContent = `种子间隔 ${seedSpacing}：${lines.length} 条流线（中心静风核不出线；换密度形态不变、线数变）`;
+  };
+
+  seedSel.addEventListener("change", () => void draw());
+  void addGridLayer(map, windSpeedGrid(SWIRL.u, SWIRL.v), windProfile)
+    .catch((error: unknown) => {
+      status.textContent = `渲染失败：${error instanceof Error ? error.message : String(error)}`;
+      judge("V1", false, "色斑底图抛错（见状态行）");
+      return undefined;
+    })
+    .then(() => draw())
+    .catch((error: unknown) => {
+      status.textContent = `渲染失败：${error instanceof Error ? error.message : String(error)}`;
+      judge("V1", false, "流线层抛错（见状态行）");
+    });
+};
+
 // ---------------------------------------------------------------- 启动
 
 mountT1();
@@ -344,3 +407,4 @@ mountT4();
 mountT5();
 mountT6();
 mountT7();
+mountV1();

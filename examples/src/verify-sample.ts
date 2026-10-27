@@ -50,6 +50,32 @@ export const sampleWindPair = (): { u: Grid; v: Grid } => {
   };
 };
 
+/**
+ * 涡旋合成场（0.3.4 矢量批次流线验收用）：绕场中心（109.5°E／36.5°N）的刚体式旋转
+ * u = −ω·Δlat、v = +ω·Δlon（ω=1.2，物理旋转口径）——流线是一族绕心的弧/闭环；
+ * 中心 |V| = 1.2·r < 1 m/s 的静风核（r < 0.83°）自然形成，用来看「静风不出线」。
+ * 与 sampleWindPair（平直西风）互补：那对看「直」，这对看「弯」。
+ */
+export const swirlWindPair = (): { u: Grid; v: Grid } => {
+  const cx = 95 + (NX - 1) / 2; // 109.5°E
+  const cy = 48 - (NY - 1) / 2; // 36.5°N
+  const omega = 1.2;
+  const uValues: number[] = [];
+  const vValues: number[] = [];
+  for (let row = 0; row < NY; row++) {
+    for (let col = 0; col < NX; col++) {
+      const dLat = 48 - row - cy;
+      const dLon = 95 + col - cx;
+      uValues.push(Math.round(-omega * dLat * 100) / 100);
+      vValues.push(Math.round(omega * dLon * 100) / 100);
+    }
+  }
+  return {
+    u: parseGrid(serializeGrid(windHeaderOf("UGRD"), uValues)),
+    v: parseGrid(serializeGrid(windHeaderOf("VGRD"), vValues)),
+  };
+};
+
 /** 杆密度口径（把缺省 step 与 LOD 阶梯压到小场能看出差别的量级）。 */
 export const DENSITY_BARBS: BarbSpec = {
   ...(windProfile.barbs ?? { step: 10, calmThreshold: 1 }),

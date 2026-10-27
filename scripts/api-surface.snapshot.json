@@ -160,6 +160,8 @@
     "AddGridLayerOptions",
     "addMetarLayer",
     "AddMetarLayerOptions",
+    "addStreamlineLayer",
+    "AddStreamlineLayerOptions",
     "addTafLayer",
     "AddTafLayerOptions",
     "addWindBarbGlyphs",

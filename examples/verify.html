@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>metweave · 0.3.2 七项验收台</title>
+    <title>metweave · 验收台（0.3.2 七项 ＋ 0.3.4 矢量扩展）</title>
     <!-- favicon：空 data URI 显式声明（消除浏览器默认 /favicon.ico 404；无二进制资产、无痕） -->
     <link rel="icon" href="data:," />
   </head>
   <body class="vf-page">
     <header id="vf-topbar">
-      <strong>0.3.2 七项验收台</strong>
+      <strong>验收台（0.3.2 七项 ＋ 0.3.4 矢量扩展）</strong>
       <span id="vf-score" class="vf-score" role="status" aria-live="polite">判定中…</span>
       <span class="vf-sub"
         >每一项都在这一页上真跑一遍：控件能点、图形现算、右上角徽标由断言决定（不是写死的
@@ -159,6 +159,39 @@
             class="vf-map"
             role="img"
             aria-label="色斑＋等值线示意（合成场，无底图）"
+          ></div>
+        </div>
+      </section>
+
+      <section class="vf-item" data-item="V1" aria-labelledby="vf-v1">
+        <div class="vf-head">
+          <h2 id="vf-v1">
+            <b>V1</b> 流线 <code>streamlinesOf ＋ addStreamlineLayer</code>（0.3.4 矢量批次）
+          </h2>
+          <output class="vf-verdict" data-verdict="V1">判定中</output>
+        </div>
+        <p class="vf-desc">
+          涡旋合成场（绕 109.5°E／36.5°N 刚体旋转）的流线族：canvas 折线层（pane z 355，
+          压色斑、让等值线与风羽）；中心 &lt;1 m/s 静风核不出线。种子间隔＝流线密度——密度由
+          撒的种子决定、不承载风速信息（切换密度对照：形态不变、线数变）。
+        </p>
+        <div class="vf-body">
+          <div class="vf-toolbar">
+            <label class="vf-ctrl"
+              >种子间隔
+              <select id="vf-v1-seed">
+                <option value="10" selected>10（疏）</option>
+                <option value="5">5（中）</option>
+                <option value="3">3（密）</option>
+              </select>
+            </label>
+            <output id="vf-v1-status" class="vf-read">流线：绘制中</output>
+          </div>
+          <div
+            id="vf-v1-map"
+            class="vf-map"
+            role="img"
+            aria-label="涡旋合成场流线＋色斑（合成场，无底图）"
           ></div>
         </div>
       </section>

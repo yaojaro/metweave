@@ -3084,7 +3084,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 141
+   "line": 142
   },
   "leaflet.msg02": {
    "kind": "product",
@@ -3100,7 +3100,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1006
+   "line": 1007
   },
   "leaflet.msg03": {
    "kind": "product",
@@ -3116,7 +3116,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1017
+   "line": 1018
   },
   "leaflet.msg04": {
    "kind": "product",
@@ -3132,7 +3132,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1105
+   "line": 1106
   },
   "leaflet.msg05": {
    "kind": "product",
@@ -3148,7 +3148,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1106
+   "line": 1107
   },
   "leaflet.msg06": {
    "kind": "product",
@@ -3164,7 +3164,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1111
+   "line": 1112
   },
   "leaflet.msg07": {
    "kind": "product",
@@ -3180,7 +3180,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1112
+   "line": 1113
   },
   "leaflet.msg08": {
    "kind": "product",
@@ -3196,7 +3196,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1115
+   "line": 1116
   },
   "leaflet.msg09": {
    "kind": "product",
@@ -3212,7 +3212,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1219
+   "line": 1220
   },
   "leaflet.msg10": {
    "kind": "product",
@@ -3228,7 +3228,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1240
+   "line": 1241
   },
   "leaflet.msg11": {
    "kind": "product",
@@ -3244,7 +3244,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1344
+   "line": 1345
   },
   "leaflet.msg12": {
    "kind": "product",
@@ -3260,7 +3260,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1372
+   "line": 1373
   },
   "leaflet.msg13": {
    "kind": "product",
@@ -3276,7 +3276,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1382
+   "line": 1383
   },
   "leaflet.msg14": {
    "kind": "product",
@@ -3292,7 +3292,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1410
+   "line": 1411
   },
   "leaflet.msg15": {
    "kind": "product",
@@ -3308,7 +3308,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1413
+   "line": 1414
   },
   "leaflet.msg16": {
    "kind": "product",
@@ -3324,7 +3324,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1438
+   "line": 1439
   },
   "leaflet.msg17": {
    "kind": "product",
@@ -3340,7 +3340,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1455
+   "line": 1456
   },
   "leaflet.msg18": {
    "kind": "product",
@@ -3356,7 +3356,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1479
+   "line": 1480
   },
   "leaflet.msg19": {
    "kind": "product",
@@ -3372,7 +3372,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1536
+   "line": 1537
   },
   "leaflet.msg20": {
    "kind": "product",
@@ -3388,7 +3388,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1548
+   "line": 1549
   },
   "leaflet.msg21": {
    "kind": "product",
@@ -3404,7 +3404,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1552
+   "line": 1553
   },
   "leaflet.msg22": {
    "kind": "product",
@@ -3420,7 +3420,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1633
+   "line": 1634
   },
   "leaflet.msg23": {
    "kind": "product",
@@ -3436,7 +3436,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1634
+   "line": 1635
   },
   "leaflet.msg24": {
    "kind": "product",
@@ -3452,7 +3452,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1642
+   "line": 1643
   },
   "leaflet.msg25": {
    "kind": "product",
@@ -3468,7 +3468,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1646
+   "line": 1647
   },
   "leaflet.msg26": {
    "kind": "product",
@@ -3484,7 +3484,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1655
+   "line": 1656
   },
   "leaflet.msg27": {
    "kind": "product",
@@ -3500,7 +3500,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1677
+   "line": 1678
   },
   "leaflet.msg28": {
    "kind": "product",
@@ -3516,7 +3516,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1703
+   "line": 1704
   },
   "leaflet.msg29": {
    "kind": "product",
@@ -3532,7 +3532,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1705
+   "line": 1706
   },
   "leaflet.msg30": {
    "kind": "product",
@@ -3548,7 +3548,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1719
+   "line": 1720
   },
   "leaflet.msg31": {
    "kind": "product",
@@ -3564,7 +3564,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1721
+   "line": 1722
   },
   "leaflet.msg32": {
    "kind": "product",
@@ -3580,7 +3580,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1721
+   "line": 1722
   },
   "leaflet.msg33": {
    "kind": "product",
@@ -3596,7 +3596,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1725
+   "line": 1726
   },
   "leaflet.msg34": {
    "kind": "product",
@@ -3612,7 +3612,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1770
+   "line": 1771
   },
   "leaflet.msg35": {
    "kind": "product",
@@ -3628,7 +3628,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1787
+   "line": 1788
   },
   "leaflet.msg36": {
    "kind": "product",
@@ -3644,7 +3644,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1818
+   "line": 1819
   },
   "leaflet.msg37": {
    "kind": "product",
@@ -3660,7 +3660,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1820
+   "line": 1821
   },
   "leaflet.msg38": {
    "kind": "product",
@@ -3676,7 +3676,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1824
+   "line": 1825
   },
   "leaflet.msg39": {
    "kind": "product",
@@ -3692,7 +3692,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1826
+   "line": 1827
   },
   "leaflet.msg40": {
    "kind": "product",
@@ -3708,7 +3708,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1869
+   "line": 1870
   },
   "leaflet.msg41": {
    "kind": "product",
@@ -3724,7 +3724,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1879
+   "line": 1880
   },
   "leaflet.msg42": {
    "kind": "product",
@@ -3740,7 +3740,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1883
+   "line": 1884
   },
   "leaflet.msg43": {
    "kind": "product",
@@ -3756,7 +3756,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1890
+   "line": 1891
   },
   "leaflet.msg44": {
    "kind": "product",
@@ -3772,7 +3772,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1891
+   "line": 1892
   },
   "leaflet.msg45": {
    "kind": "product",
@@ -3788,7 +3788,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1902
+   "line": 1903
   },
   "leaflet.msg46": {
    "kind": "product",
@@ -3804,7 +3804,87 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1931
+   "line": 1932
+  },
+  "leaflet.msg47": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": ", unbind);\n  }\n  group.addTo(map);\n  if (!hasLod) paint(undefined); // 无 LOD 时没有 add 时机可挂，直接绘一次\n  return group;\n}\n\n// ---------------------------------------------------------------- 流线层（0.3.4 矢量批次）\n\n/** 流线层专用 pane 名：色斑（mw-grid，z 350）之上、等值线（z 360）与风羽（z 365）之下 */\nconst STREAMLINE_PANE = ",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 1936
+  },
+  "leaflet.msg48": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": ";\n/** STREAMLINE_PANE 的 z-index：色斑 350 与等值线 360 之间的空隙位（线压色斑、不压标注与杆） */\nconst STREAMLINE_PANE_Z = 355;\n\n/** `addStreamlineLayer` 的选项。 */\nexport interface AddStreamlineLayerOptions {\n  /** 流线基色（缺省 #0e7490 深青——浅色斑与浅底图上均可辨，与风羽深灰蓝 #2c3e50 区分） */\n  readonly color?: string;\n  /** 线宽（像素，缺省 1.5；须 >0 的有限数） */\n  readonly width?: number;\n  /** 不透明度（0–1，缺省 0.85；传入值收敛到 [0, 1]，与 addGridLayer 的 opacity 同口径） */\n  readonly opacity?: number;\n}\n\n/** addStreamlineLayer 的合法选项键（运行时校验用——拼错的选项键静默忽略违反不静默纪律） */\nconst ADD_STREAMLINE_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([\n  ",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 1946
+  },
+  "leaflet.msg49": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": ",\n]);\n\n/**\n * 流线族 → canvas 折线层（W-06 的渲染适配，v0.3.4）。\n *\n * 把 `streamlinesOf`（@metweave/grid，纯函数内核）的折线族以**canvas 渲染器**画上地图——\n * 一条流线一条 polyline、共享同一 `L.canvas` renderer：数百条线是一张画布而非数百个\n * DOM/SVG 节点（矢量批次的既定口径：流线与粒子一律走 canvas，不重复 divIcon 的\n * 性能坑）。层挂独立 pane（`mw-grid-streamline`，z 355）——压色斑、让等值线与风羽；\n * 宿主 remove+add 换密度（重跑 `streamlinesOf` 再传新数组即可，本层不做 LOD——流线\n * 密度是种子撒法的选择，不是随缩放自动变的物理量）。\n *\n * 折线本身无方向语义（流线沿去向行进，渲染只画线）；线上的「来向/去向」读法与\n * 动画演示（粒子）由调用方与后续件承担。\n */\nexport async function addStreamlineLayer(\n  map: Leaflet.Map,\n  lines: readonly Streamline[],\n  options: AddStreamlineLayerOptions = {},\n): Promise<Leaflet.LayerGroup> {\n  for (const key of Object.keys(options)) {\n    if (!ADD_STREAMLINE_LAYER_OPTION_KEYS.has(key)) {\n      throw new Error(\n        `addStreamlineLayer 收到未知选项 ",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 1964
+  },
+  "leaflet.msg50": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "（可用项：color、width、opacity）——拼错的选项不会生效`,\n      );\n    }\n  }\n  if (options.width !== undefined && (!Number.isFinite(options.width) || options.width <= 0)) {\n    throw new Error(\n      `addStreamlineLayer 的 width 非法（${String(options.width)}，须 >0 的有限数〔像素〕）`,\n    );\n  }\n  const color = options.color ?? ",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 1988
+  },
+  "leaflet.msg51": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": ";\n  const width = options.width ?? 1.5;\n  const opacity = Math.min(Math.max(options.opacity ?? 0.85, 0), 1);\n  const L = await loadLeaflet();\n  // 幂等建 pane（换密度 remove+add 多次调用安全）\n  if (map.getPane(STREAMLINE_PANE) === undefined) {\n    map.createPane(STREAMLINE_PANE).style.zIndex = String(STREAMLINE_PANE_Z);\n  }\n  const renderer = L.canvas({ pane: STREAMLINE_PANE, padding: 0.8 });\n  const group = L.layerGroup();\n  for (const line of lines) {\n    if (line.points.length < 2) continue; // 单点线不该出现（内核已滤），防御性跳过\n    const latlngs = line.points.map((p) => L.latLng(p.lat, p.lon));\n    L.polyline(latlngs, {\n      color,\n      weight: width,\n      opacity,\n      renderer,\n      interactive: false,\n      lineCap: ",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 1997
   },
   "sources.msg01": {
    "kind": "product",

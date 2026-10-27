@@ -23,6 +23,10 @@
  * 0.3.2（风批次 T1/T5）新增：单点风羽原语 windBarbOf（方向＋风速→旗/长划/短划编码，
  * m/s 与 kt 两套口径取同一份 WIND_BARB_SCALES）与 windBarbsOf 的 LOD 阶梯（按当前
  * zoom 抽稀）；两者均为加成——不传新参数时与 0.3.1 逐字节同结果。
+ *
+ * 0.3.4（矢量批次首件）新增：流线内核 streamlinesOf（u/v 双场格点撒种、双向 RK2
+ * 积分出折线族——纯函数零 DOM，canvas 图层装配在 @metweave/leaflet 的
+ * addStreamlineLayer）。加法生长，既有导出零改动。
  */
 export { GridError } from "./errors";
 export type { GridErrorCode } from "./errors";
@@ -44,6 +48,7 @@ export {
   windBarbsOf,
   windBarbOf,
   windBarbStepAt,
+  streamlinesOf,
   WIND_BARB_SCALES,
   WIND_LEGEND_UNITS,
   MPS_PER_KT,
@@ -58,6 +63,8 @@ export type {
   WindBarbScale,
   WindSpeedUnit,
   WindSpeedUnitInput,
+  Streamline,
+  StreamlinesOptions,
 } from "./wind";
 export { buildColorScale } from "./element";
 export type { ElementProfile, EqualScaleSpec, ContourSpec, BarbSpec, BarbLodStep } from "./element";
