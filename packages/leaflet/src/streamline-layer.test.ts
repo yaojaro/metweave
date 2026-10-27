@@ -100,16 +100,19 @@ describe("addStreamlineLayer（流线 canvas 层装配）", () => {
     );
   });
 
-  it("装配：折线数＝内核出线数、逐条 polyline、坐标逐点对拍", async () => {
+  it("装配：渲染器首位入组＋折线数＝内核出线数、逐条 polyline、坐标逐点对拍", async () => {
     const map = freshMap();
     const lines = sampleLines();
     expect(lines.length).toBeGreaterThan(0);
     const group = await addStreamlineLayer(map, lines);
     const layers = group.getLayers();
-    expect(layers).toHaveLength(lines.length);
-    for (const layer of layers) expect(layer).toBeInstanceOf(L.Polyline);
+    // 首位＝共享 canvas 渲染器（随组回收契约，见下一条测试），其余＝逐条折线
+    expect(layers[0]).toBeInstanceOf(L.Canvas);
+    const polylines = layers.slice(1);
+    expect(polylines).toHaveLength(lines.length);
+    for (const layer of polylines) expect(layer).toBeInstanceOf(L.Polyline);
     // 坐标对拍：第 i 条折线的第 j 个 latlng 与内核第 i 条线的第 j 点一致（同序装配）
-    const first = layers[0] as L.Polyline;
+    const first = polylines[0] as L.Polyline;
     const ll = first.getLatLngs() as L.LatLng[];
     expect(ll.length).toBe(lines[0]?.points.length);
     for (let j = 0; j < ll.length; j++) {
@@ -126,6 +129,7 @@ describe("addStreamlineLayer（流线 canvas 层装配）", () => {
     expect(pane?.style.zIndex).toBe("355");
     const renderers = new Set<unknown>();
     for (const layer of group.getLayers()) {
+      if (layer instanceof L.Canvas) continue; // 组内首位渲染器本体，非折线
       const renderer = (layer as L.Polyline).options.renderer;
       expect(renderer).toBeInstanceOf(L.Canvas);
       renderers.add(renderer);
@@ -133,14 +137,31 @@ describe("addStreamlineLayer（流线 canvas 层装配）", () => {
     expect(renderers.size).toBe(1); // 全层共享一张画布，不是每线一个渲染器
   });
 
+  it("渲染器随组回收：removeLayer(group) 一并离图——换密度 remove+add 不在 pane 累积空画布", async () => {
+    const map = freshMap();
+    const first = await addStreamlineLayer(map, sampleLines());
+    const pane = map.getPane("mw-grid-streamline");
+    expect(pane).toBeDefined();
+    const baseline = pane?.childElementCount ?? 0; // 首组在位时的画布数（1）
+    const second = await addStreamlineLayer(map, sampleLines());
+    expect(pane?.childElementCount).toBe(baseline + 1); // 第二组的渲染器画布
+    const renderer = second.getLayers()[0];
+    expect(renderer).toBeInstanceOf(L.Canvas);
+    map.removeLayer(second);
+    expect(map.hasLayer(renderer as L.Canvas)).toBe(false); // 随组离图
+    expect(pane?.childElementCount).toBe(baseline); // 不残留（修复前渲染器不随组回收、恒 +1）
+    map.removeLayer(first);
+    expect(pane?.childElementCount).toBe(0);
+  });
+
   it("单点线防御跳过；重复挂载幂等（pane 不重建、不抛错）", async () => {
     const map = freshMap();
     const lines = sampleLines();
     const withStub = [{ points: [{ lat: 40, lon: 100 }], steps: 0 }, ...lines];
     const group = await addStreamlineLayer(map, withStub);
-    expect(group.getLayers()).toHaveLength(lines.length); // 单点桩被跳过
+    expect(group.getLayers()).toHaveLength(lines.length + 1); // 渲染器＋折线（单点桩被跳过）
     const again = await addStreamlineLayer(map, lines);
-    expect(again.getLayers()).toHaveLength(lines.length);
+    expect(again.getLayers()).toHaveLength(lines.length + 1);
     expect(map.getPane("mw-grid-streamline")).toBeDefined();
   });
 });

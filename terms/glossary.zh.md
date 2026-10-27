@@ -2005,8 +2005,12 @@ export async function addStreamlineLayer(
   if (map.getPane(STREAMLINE_PANE) === undefined) {
     map.createPane(STREAMLINE_PANE).style.zIndex = String(STREAMLINE_PANE_Z);
   }
+  // renderer 首位入组（与 addContourLayer 同款回收契约）：polylines 经 options.renderer
+  // 复用它渲染，renderer 随 polyline 首挂被地图隐式装载——不放进组的话，remove+add
+  // （本层文档写明的换密度方式）每次都会在 pane 累积一个空 canvas 渲染器直至地图销毁
   const renderer = L.canvas({ pane: STREAMLINE_PANE, padding: 0.8 });
   const group = L.layerGroup();
+  group.addLayer(renderer);
   for (const line of lines) {
     if (line.points.length < 2) continue; // 单点线不该出现（内核已滤），防御性跳过
     const latlngs = line.points.map((p) => L.latLng(p.lat, p.lon));
@@ -2121,7 +2125,7 @@ export async function addParticleLayer(
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
 |---|---|---|---|---|
-| leaflet.msg55 | （可用项：color、count、speedFactor、fade、width、calmThreshold）——拼错的选项不会生效`,
+| leaflet.msg55 | （可用项：color、count、speedFactor、fade、width、calmThreshold、scale）——拼错的选项不会生效`,
       );
     }
   }
