@@ -3084,7 +3084,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 142
+   "line": 143
   },
   "leaflet.msg02": {
    "kind": "product",
@@ -3100,7 +3100,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1007
+   "line": 1008
   },
   "leaflet.msg03": {
    "kind": "product",
@@ -3116,7 +3116,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1018
+   "line": 1019
   },
   "leaflet.msg04": {
    "kind": "product",
@@ -3132,7 +3132,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1106
+   "line": 1107
   },
   "leaflet.msg05": {
    "kind": "product",
@@ -3148,7 +3148,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1107
+   "line": 1108
   },
   "leaflet.msg06": {
    "kind": "product",
@@ -3164,7 +3164,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1112
+   "line": 1113
   },
   "leaflet.msg07": {
    "kind": "product",
@@ -3180,7 +3180,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1113
+   "line": 1114
   },
   "leaflet.msg08": {
    "kind": "product",
@@ -3196,7 +3196,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1116
+   "line": 1117
   },
   "leaflet.msg09": {
    "kind": "product",
@@ -3212,7 +3212,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1220
+   "line": 1221
   },
   "leaflet.msg10": {
    "kind": "product",
@@ -3228,7 +3228,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1241
+   "line": 1242
   },
   "leaflet.msg11": {
    "kind": "product",
@@ -3244,7 +3244,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1345
+   "line": 1346
   },
   "leaflet.msg12": {
    "kind": "product",
@@ -3260,7 +3260,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1373
+   "line": 1374
   },
   "leaflet.msg13": {
    "kind": "product",
@@ -3276,7 +3276,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1383
+   "line": 1384
   },
   "leaflet.msg14": {
    "kind": "product",
@@ -3292,7 +3292,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1411
+   "line": 1412
   },
   "leaflet.msg15": {
    "kind": "product",
@@ -3308,7 +3308,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1414
+   "line": 1415
   },
   "leaflet.msg16": {
    "kind": "product",
@@ -3324,7 +3324,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1439
+   "line": 1440
   },
   "leaflet.msg17": {
    "kind": "product",
@@ -3340,7 +3340,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1456
+   "line": 1457
   },
   "leaflet.msg18": {
    "kind": "product",
@@ -3356,7 +3356,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1480
+   "line": 1481
   },
   "leaflet.msg19": {
    "kind": "product",
@@ -3372,7 +3372,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1537
+   "line": 1538
   },
   "leaflet.msg20": {
    "kind": "product",
@@ -3388,7 +3388,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1549
+   "line": 1550
   },
   "leaflet.msg21": {
    "kind": "product",
@@ -3404,7 +3404,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1553
+   "line": 1554
   },
   "leaflet.msg22": {
    "kind": "product",
@@ -3420,7 +3420,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1634
+   "line": 1635
   },
   "leaflet.msg23": {
    "kind": "product",
@@ -3436,7 +3436,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1635
+   "line": 1636
   },
   "leaflet.msg24": {
    "kind": "product",
@@ -3452,7 +3452,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1643
+   "line": 1644
   },
   "leaflet.msg25": {
    "kind": "product",
@@ -3468,7 +3468,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1647
+   "line": 1648
   },
   "leaflet.msg26": {
    "kind": "product",
@@ -3484,7 +3484,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1656
+   "line": 1657
   },
   "leaflet.msg27": {
    "kind": "product",
@@ -3500,7 +3500,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1678
+   "line": 1679
   },
   "leaflet.msg28": {
    "kind": "product",
@@ -3516,7 +3516,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1704
+   "line": 1705
   },
   "leaflet.msg29": {
    "kind": "product",
@@ -3532,7 +3532,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1706
+   "line": 1707
   },
   "leaflet.msg30": {
    "kind": "product",
@@ -3548,7 +3548,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1720
+   "line": 1721
   },
   "leaflet.msg31": {
    "kind": "product",
@@ -3564,7 +3564,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1722
+   "line": 1723
   },
   "leaflet.msg32": {
    "kind": "product",
@@ -3580,7 +3580,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1722
+   "line": 1723
   },
   "leaflet.msg33": {
    "kind": "product",
@@ -3596,7 +3596,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1726
+   "line": 1727
   },
   "leaflet.msg34": {
    "kind": "product",
@@ -3612,7 +3612,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1771
+   "line": 1772
   },
   "leaflet.msg35": {
    "kind": "product",
@@ -3628,7 +3628,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1788
+   "line": 1789
   },
   "leaflet.msg36": {
    "kind": "product",
@@ -3644,7 +3644,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1819
+   "line": 1820
   },
   "leaflet.msg37": {
    "kind": "product",
@@ -3660,7 +3660,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1821
+   "line": 1822
   },
   "leaflet.msg38": {
    "kind": "product",
@@ -3676,7 +3676,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1825
+   "line": 1826
   },
   "leaflet.msg39": {
    "kind": "product",
@@ -3692,7 +3692,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1827
+   "line": 1828
   },
   "leaflet.msg40": {
    "kind": "product",
@@ -3708,7 +3708,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1870
+   "line": 1871
   },
   "leaflet.msg41": {
    "kind": "product",
@@ -3724,7 +3724,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1880
+   "line": 1881
   },
   "leaflet.msg42": {
    "kind": "product",
@@ -3740,7 +3740,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1884
+   "line": 1885
   },
   "leaflet.msg43": {
    "kind": "product",
@@ -3756,7 +3756,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1891
+   "line": 1892
   },
   "leaflet.msg44": {
    "kind": "product",
@@ -3772,7 +3772,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1892
+   "line": 1893
   },
   "leaflet.msg45": {
    "kind": "product",
@@ -3788,7 +3788,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1903
+   "line": 1904
   },
   "leaflet.msg46": {
    "kind": "product",
@@ -3804,7 +3804,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1932
+   "line": 1933
   },
   "leaflet.msg47": {
    "kind": "product",
@@ -3820,7 +3820,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1936
+   "line": 1937
   },
   "leaflet.msg48": {
    "kind": "product",
@@ -3836,7 +3836,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1946
+   "line": 1947
   },
   "leaflet.msg49": {
    "kind": "product",
@@ -3852,7 +3852,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1964
+   "line": 1965
   },
   "leaflet.msg50": {
    "kind": "product",
@@ -3868,7 +3868,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1988
+   "line": 1989
   },
   "leaflet.msg51": {
    "kind": "product",
@@ -3884,7 +3884,135 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 1997
+   "line": 1998
+  },
+  "leaflet.msg52": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": ",\n      smoothFactor: 0.5,\n    }).addTo(group);\n  }\n  group.addTo(map);\n  return group;\n}\n\n// ---------------------------------------------------------------- 粒子层（0.3.4 矢量批次）\n\n/** 粒子层专用 pane 名：流线（z 355）之上、等值线（z 360）与风羽（z 365）之下 */\nconst PARTICLE_PANE = ",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 2017
+  },
+  "leaflet.msg53": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": ";\n/** PARTICLE_PANE 的 z-index：粒子线细，压色斑与流线、让等值线与杆 */\nconst PARTICLE_PANE_Z = 358;\n\n/** `addParticleLayer` 的选项。 */\nexport interface AddParticleLayerOptions {\n  /** 粒子基色（缺省 #0e7490 深青——与流线同族；速度→色彩映射留后续增强） */\n  readonly color?: string;\n  /** 粒子数（缺省 800；须 ≥1 的整数） */\n  readonly count?: number;\n  /**\n   * 时间加速（每真实秒平流的「小时数」，缺省 2）。10 m/s 的风真实速率约 0.32°/时——\n   * 实时看不动，必须加速：×2 下每秒约 0.65°，中国域 zoom 4 恰好目视舒适。\n   * **这是演示口径不是物理口径**（粒子是示踪物，不是气块追踪）。\n   */\n  readonly speedFactor?: number;\n  /** 尾迹留存（0–1 开区间，缺省 0.96——越大尾越长；0.8 短尾、0.99 长流线尾） */\n  readonly fade?: number;\n  /** 线宽（像素，缺省 1.4；须 >0 的有限数） */\n  readonly width?: number;\n  /** 静风阈（场单位，缺省 1——低于此速的粒子滞留到期重生；与杆/流线同惯例） */\n  readonly calmThreshold?: number;\n}\n\n/**\n * 粒子层控制柄：粒子层有自己的 rAF 生命周期，`remove()` 停帧并整层移除（幂等）——\n * 比裸 LayerGroup 多一个自清理位；canvas 层不走 `map.removeLayer` 的 Layer 协议。\n */\nexport interface ParticleLayer {\n  /** 画布本体（挂 `mw-particle` pane；宿主可读不可改） */\n  readonly canvas: HTMLCanvasElement;\n  readonly pane: string;\n  /** 停帧并整层移除（幂等） */\n  remove(): void;\n}\n\n/** addParticleLayer 的合法选项键（运行时校验用——不静默纪律）。 */\nconst ADD_PARTICLE_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([\n  ",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 2028
+  },
+  "leaflet.msg54": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": ",\n]);\n\n/**\n * u/v 双场 → 粒子动画层（W-07 的渲染适配，v0.3.4）。\n *\n * 撒一把**示踪粒子**进风场，每帧按当地 u/v（`interpolateBilinear` 双线性采样）平流一小步、\n * 拖出渐隐尾迹——把「风在走」演示出来。与流线层的分工：**流线是静态的路（该时刻路径\n * 全家福），粒子是动态的走（平流过程）**；定常场里粒子尾迹≈流线，时变场里不重合（本层\n * 吃单时次场，演示的是「该时次的定常近似」——不是预报演化，口径与图例文档同源）。\n *\n * 实现口径：单张 canvas 挂独立 pane（z 358），`requestAnimationFrame` 驱动、页面不可见\n * 即暂停；尾迹用 `destination-in` 半透明擦除（画布保持透明，不糊底图与色斑）。地图拖动\n * 中清画布暂停（v0.3.4 简化：拖动中的重投影留后续版本），`moveend` 复位续跑。重生四条件：\n * 出场界／入缺测／入静风／寿限到（内部常数 5 s）。粒子存活于经纬度空间，每帧投影到\n * 容器像素画段——位移按物理度量（lon 含 1/cosφ），与 streamlinesOf 轨迹形状同口径。\n */\nexport async function addParticleLayer(\n  map: Leaflet.Map,\n  u: Grid,\n  v: Grid,\n  options: AddParticleLayerOptions = {},\n): Promise<ParticleLayer> {\n  for (const key of Object.keys(options)) {\n    if (!ADD_PARTICLE_LAYER_OPTION_KEYS.has(key)) {\n      throw new Error(\n        `addParticleLayer 收到未知选项 ",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 2071
+  },
+  "leaflet.msg55": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "（可用项：color、count、speedFactor、fade、width、calmThreshold）——拼错的选项不会生效`,\n      );\n    }\n  }\n  if (options.count !== undefined && (!Number.isInteger(options.count) || options.count < 1)) {\n    throw new Error(`addParticleLayer 的 count 非法（${String(options.count)}，须 ≥1 的整数）`);\n  }\n  if (\n    options.speedFactor !== undefined &&\n    (!Number.isFinite(options.speedFactor) || options.speedFactor <= 0)\n  ) {\n    throw new Error(\n      `addParticleLayer 的 speedFactor 非法（${String(options.speedFactor)}，须 >0 的有限数）`,\n    );\n  }\n  if (\n    options.fade !== undefined &&\n    (!Number.isFinite(options.fade) || options.fade <= 0 || options.fade >= 1)\n  ) {\n    throw new Error(`addParticleLayer 的 fade 非法（${String(options.fade)}，须 0–1 开区间）`);\n  }\n  if (options.width !== undefined && (!Number.isFinite(options.width) || options.width <= 0)) {\n    throw new Error(\n      `addParticleLayer 的 width 非法（${String(options.width)}，须 >0 的有限数〔像素〕）`,\n    );\n  }\n  if (\n    options.calmThreshold !== undefined &&\n    (!Number.isFinite(options.calmThreshold) || options.calmThreshold < 0)\n  ) {\n    throw new Error(\n      `addParticleLayer 的 calmThreshold 非法（${String(options.calmThreshold)}，须 ≥0 的有限数）`,\n    );\n  }\n  const L = await loadLeaflet();\n  const color = options.color ?? ",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 2097
+  },
+  "leaflet.msg56": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": ";\n  const count = options.count ?? 800;\n  const speedFactor = options.speedFactor ?? 2;\n  const fade = options.fade ?? 0.96;\n  const width = options.width ?? 1.4;\n  const calmThreshold = options.calmThreshold ?? 1;\n\n  // 粒子活动域＝格点中心范围（重生撒点不越场界；缺测/静风由采样与重生条件自然处理）\n  const { la0, lo0, nx, ny, di, dj } = u.header.grid;\n  const north = la0;\n  const south = la0 - (ny - 1) * dj;\n  const west = lo0;\n  const east = lo0 + (nx - 1) * di;\n\n  // 幂等建 pane（remove+add 多次调用安全）\n  if (map.getPane(PARTICLE_PANE) === undefined) {\n    map.createPane(PARTICLE_PANE).style.zIndex = String(PARTICLE_PANE_Z);\n  }\n  const pane = map.getPane(PARTICLE_PANE);\n  if (pane === undefined) throw new Error(",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 2132
+  },
+  "leaflet.msg57": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": "); // 类型收窄（不可达防御）\n  const canvas = document.createElement(",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 2151
+  },
+  "leaflet.msg58": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": ");\n  }\n\n  const resize = (): void => {\n    const size = map.getSize();\n    canvas.width = size.x;\n    canvas.height = size.y;\n  };\n  /** 画布左上角对齐容器左上角（画布随 pane 平移，绘制一律用容器坐标） */\n  const reposition = (): void => {\n    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));\n  };\n  const clear = (): void => ctx.clearRect(0, 0, canvas.width, canvas.height);\n  resize();\n  reposition();\n\n  const rad = Math.PI / 180;\n  // (m/s)·s → 度：speedFactor 小时/秒 × 3600 s/时 ÷ 111000 m/度\n  const degPerUnit = (speedFactor * 3600) / 111000;\n  const MAX_AGE_S = 5; // 寿限：到期重生（防尾迹无限堆积在同一圈轨道上）\n\n  interface Particle {\n    lat: number;\n    lon: number;\n    age: number;\n  }\n  const respawn = (p: Particle): void => {\n    p.lat = south + Math.random() * (north - south);\n    p.lon = west + Math.random() * (east - west);\n    p.age = 0;\n  };\n  const particles: Particle[] = Array.from({ length: count }, () => {\n    const p = { lat: 0, lon: 0, age: 0 };\n    respawn(p);\n    return p;\n  });\n\n  let running = true;\n  let suspended = false; // 地图拖动/缩放中：清画布暂停，moveend 复位续跑\n  let rafId = 0;\n  let lastTs: number | undefined;\n\n  const frame = (ts: number): void => {\n    if (!running) return;\n    rafId = requestAnimationFrame(frame);\n    if (document.hidden || suspended) {\n      lastTs = ts;\n      return;\n    }\n    const dt = lastTs === undefined ? 0 : Math.min((ts - lastTs) / 1000, 0.1);\n    lastTs = ts;\n    // 尾迹渐隐：destination-in 半透明擦除（画布保持透明，不糊底图）\n    ctx.globalCompositeOperation = ",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 2158
+  },
+  "leaflet.msg59": {
+   "kind": "product",
+   "refs": [
+    {
+     "standard": "PRODUCT",
+     "doc": "产品显示文案（无标准对应条款，措辞经维护者终审）",
+     "clause": "显示自拟（无标准对应条款）"
+    }
+   ],
+   "text": ";\n    for (const p of particles) {\n      const uu = interpolateBilinear(u, p.lat, p.lon);\n      const vv = interpolateBilinear(v, p.lat, p.lon);\n      p.age += dt;\n      if (\n        Number.isNaN(uu) ||\n        Number.isNaN(vv) ||\n        p.age > MAX_AGE_S ||\n        Math.hypot(uu, vv) < calmThreshold\n      ) {\n        respawn(p);\n        continue;\n      }\n      const cosLat = Math.max(Math.cos(p.lat * rad), 1e-6);\n      const dLat = vv * degPerUnit * dt;\n      const dLon = (uu * degPerUnit * dt) / cosLat;\n      const from = map.latLngToContainerPoint(L.latLng(p.lat, p.lon));\n      p.lat += dLat;\n      p.lon += dLon;\n      const to = map.latLngToContainerPoint(L.latLng(p.lat, p.lon));\n      ctx.beginPath();\n      ctx.moveTo(from.x, from.y);\n      ctx.lineTo(to.x, to.y);\n      ctx.stroke();\n    }\n  };\n\n  const onResize = (): void => {\n    resize();\n    reposition();\n    clear();\n  };\n  const onMoveStart = (): void => {\n    suspended = true;\n    clear();\n  };\n  const onMoveEnd = (): void => {\n    reposition();\n    clear();\n    suspended = false;\n    lastTs = undefined; // 拖动后不补 dt（暂停期间的时间不入平流）\n  };\n  /** map 销毁（unload）即停帧——层不拥有地图生命周期，但也不该比地图活得久 */\n  const onUnload = (): void => {\n    running = false;\n    cancelAnimationFrame(rafId);\n    map.off(",
+   "usage": [
+    "packages/leaflet/src/index.ts"
+   ],
+   "zhOnly": true,
+   "line": 2216
   },
   "sources.msg01": {
    "kind": "product",

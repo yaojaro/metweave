@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>metweave · 风怎么流动（矢量批次演示）</title>
+    <!-- favicon：空 data URI 显式声明（消除浏览器默认 /favicon.ico 404；无二进制资产、无痕） -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body class="wf-page">
+    <header id="wf-topbar">
+      <strong>风怎么流动</strong>
+      <span class="wf-sub"
+        >色斑＝多大 · 风羽＝点位多强 · 流线＝静态的路 · <b>粒子＝动态的走</b></span
+      >
+      <label class="wf-ctrl"><input id="wf-on-grid" type="checkbox" checked />色斑</label>
+      <label class="wf-ctrl"><input id="wf-on-barbs" type="checkbox" checked />风羽</label>
+      <label class="wf-ctrl"><input id="wf-on-stream" type="checkbox" checked />流线</label>
+      <label class="wf-ctrl"><input id="wf-on-particle" type="checkbox" checked />粒子</label>
+      <label class="wf-ctrl"
+        >粒子速度
+        <input id="wf-speed" type="range" min="0.5" max="6" step="0.5" value="2" />
+        <output id="wf-speed-out">×2</output></label
+      >
+      <output id="wf-status">装载中…</output>
+    </header>
+    <main id="wf-map"></main>
+    <div id="basemap-hint" hidden></div>
+    <script type="module" src="/src/windfield-main.ts"></script>
+  </body>
+</html>

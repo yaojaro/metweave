@@ -1651,3 +1651,48 @@ body:has(#iwxxm-compare) #map {
   line-height: 1.7;
   color: #8a94a3;
 }
+
+/* ---------------------------------------------------------------- 风怎么流动（windfield.html，0.3.4 矢量批次） */
+.wf-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin: 0;
+}
+#wf-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  background: #10233a;
+  color: #e8eef5;
+  font:
+    13px/1.5 system-ui,
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+}
+#wf-topbar strong {
+  font-size: 15px;
+}
+.wf-sub {
+  opacity: 0.78;
+}
+.wf-ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+#wf-status {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+#wf-map {
+  flex: 1;
+  min-height: 0;
+}

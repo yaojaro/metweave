@@ -2018,6 +2018,283 @@ export async function addStreamlineLayer(
       interactive: false,
       lineCap:  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
 
+## leaflet.msg52（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg52 | ,
+      smoothFactor: 0.5,
+    }).addTo(group);
+  }
+  group.addTo(map);
+  return group;
+}
+
+// ---------------------------------------------------------------- 粒子层（0.3.4 矢量批次）
+
+/** 粒子层专用 pane 名：流线（z 355）之上、等值线（z 360）与风羽（z 365）之下 */
+const PARTICLE_PANE =  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg53（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg53 | ;
+/** PARTICLE_PANE 的 z-index：粒子线细，压色斑与流线、让等值线与杆 */
+const PARTICLE_PANE_Z = 358;
+
+/** `addParticleLayer` 的选项。 */
+export interface AddParticleLayerOptions {
+  /** 粒子基色（缺省 #0e7490 深青——与流线同族；速度→色彩映射留后续增强） */
+  readonly color?: string;
+  /** 粒子数（缺省 800；须 ≥1 的整数） */
+  readonly count?: number;
+  /**
+   * 时间加速（每真实秒平流的「小时数」，缺省 2）。10 m/s 的风真实速率约 0.32°/时——
+   * 实时看不动，必须加速：×2 下每秒约 0.65°，中国域 zoom 4 恰好目视舒适。
+   * **这是演示口径不是物理口径**（粒子是示踪物，不是气块追踪）。
+   */
+  readonly speedFactor?: number;
+  /** 尾迹留存（0–1 开区间，缺省 0.96——越大尾越长；0.8 短尾、0.99 长流线尾） */
+  readonly fade?: number;
+  /** 线宽（像素，缺省 1.4；须 >0 的有限数） */
+  readonly width?: number;
+  /** 静风阈（场单位，缺省 1——低于此速的粒子滞留到期重生；与杆/流线同惯例） */
+  readonly calmThreshold?: number;
+}
+
+/**
+ * 粒子层控制柄：粒子层有自己的 rAF 生命周期，`remove()` 停帧并整层移除（幂等）——
+ * 比裸 LayerGroup 多一个自清理位；canvas 层不走 `map.removeLayer` 的 Layer 协议。
+ */
+export interface ParticleLayer {
+  /** 画布本体（挂 `mw-particle` pane；宿主可读不可改） */
+  readonly canvas: HTMLCanvasElement;
+  readonly pane: string;
+  /** 停帧并整层移除（幂等） */
+  remove(): void;
+}
+
+/** addParticleLayer 的合法选项键（运行时校验用——不静默纪律）。 */
+const ADD_PARTICLE_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
+   | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg54（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg54 | ,
+]);
+
+/**
+ * u/v 双场 → 粒子动画层（W-07 的渲染适配，v0.3.4）。
+ *
+ * 撒一把**示踪粒子**进风场，每帧按当地 u/v（`interpolateBilinear` 双线性采样）平流一小步、
+ * 拖出渐隐尾迹——把「风在走」演示出来。与流线层的分工：**流线是静态的路（该时刻路径
+ * 全家福），粒子是动态的走（平流过程）**；定常场里粒子尾迹≈流线，时变场里不重合（本层
+ * 吃单时次场，演示的是「该时次的定常近似」——不是预报演化，口径与图例文档同源）。
+ *
+ * 实现口径：单张 canvas 挂独立 pane（z 358），`requestAnimationFrame` 驱动、页面不可见
+ * 即暂停；尾迹用 `destination-in` 半透明擦除（画布保持透明，不糊底图与色斑）。地图拖动
+ * 中清画布暂停（v0.3.4 简化：拖动中的重投影留后续版本），`moveend` 复位续跑。重生四条件：
+ * 出场界／入缺测／入静风／寿限到（内部常数 5 s）。粒子存活于经纬度空间，每帧投影到
+ * 容器像素画段——位移按物理度量（lon 含 1/cosφ），与 streamlinesOf 轨迹形状同口径。
+ */
+export async function addParticleLayer(
+  map: Leaflet.Map,
+  u: Grid,
+  v: Grid,
+  options: AddParticleLayerOptions = {},
+): Promise<ParticleLayer> {
+  for (const key of Object.keys(options)) {
+    if (!ADD_PARTICLE_LAYER_OPTION_KEYS.has(key)) {
+      throw new Error(
+        `addParticleLayer 收到未知选项  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg55（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg55 | （可用项：color、count、speedFactor、fade、width、calmThreshold）——拼错的选项不会生效`,
+      );
+    }
+  }
+  if (options.count !== undefined && (!Number.isInteger(options.count) \|\| options.count < 1)) {
+    throw new Error(`addParticleLayer 的 count 非法（${String(options.count)}，须 ≥1 的整数）`);
+  }
+  if (
+    options.speedFactor !== undefined &&
+    (!Number.isFinite(options.speedFactor) \|\| options.speedFactor <= 0)
+  ) {
+    throw new Error(
+      `addParticleLayer 的 speedFactor 非法（${String(options.speedFactor)}，须 >0 的有限数）`,
+    );
+  }
+  if (
+    options.fade !== undefined &&
+    (!Number.isFinite(options.fade) \|\| options.fade <= 0 \|\| options.fade >= 1)
+  ) {
+    throw new Error(`addParticleLayer 的 fade 非法（${String(options.fade)}，须 0–1 开区间）`);
+  }
+  if (options.width !== undefined && (!Number.isFinite(options.width) \|\| options.width <= 0)) {
+    throw new Error(
+      `addParticleLayer 的 width 非法（${String(options.width)}，须 >0 的有限数〔像素〕）`,
+    );
+  }
+  if (
+    options.calmThreshold !== undefined &&
+    (!Number.isFinite(options.calmThreshold) \|\| options.calmThreshold < 0)
+  ) {
+    throw new Error(
+      `addParticleLayer 的 calmThreshold 非法（${String(options.calmThreshold)}，须 ≥0 的有限数）`,
+    );
+  }
+  const L = await loadLeaflet();
+  const color = options.color ??  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg56（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg56 | ;
+  const count = options.count ?? 800;
+  const speedFactor = options.speedFactor ?? 2;
+  const fade = options.fade ?? 0.96;
+  const width = options.width ?? 1.4;
+  const calmThreshold = options.calmThreshold ?? 1;
+
+  // 粒子活动域＝格点中心范围（重生撒点不越场界；缺测/静风由采样与重生条件自然处理）
+  const { la0, lo0, nx, ny, di, dj } = u.header.grid;
+  const north = la0;
+  const south = la0 - (ny - 1) * dj;
+  const west = lo0;
+  const east = lo0 + (nx - 1) * di;
+
+  // 幂等建 pane（remove+add 多次调用安全）
+  if (map.getPane(PARTICLE_PANE) === undefined) {
+    map.createPane(PARTICLE_PANE).style.zIndex = String(PARTICLE_PANE_Z);
+  }
+  const pane = map.getPane(PARTICLE_PANE);
+  if (pane === undefined) throw new Error( | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg57（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg57 | ); // 类型收窄（不可达防御）
+  const canvas = document.createElement( | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg58（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg58 | );
+  }
+
+  const resize = (): void => {
+    const size = map.getSize();
+    canvas.width = size.x;
+    canvas.height = size.y;
+  };
+  /** 画布左上角对齐容器左上角（画布随 pane 平移，绘制一律用容器坐标） */
+  const reposition = (): void => {
+    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));
+  };
+  const clear = (): void => ctx.clearRect(0, 0, canvas.width, canvas.height);
+  resize();
+  reposition();
+
+  const rad = Math.PI / 180;
+  // (m/s)·s → 度：speedFactor 小时/秒 × 3600 s/时 ÷ 111000 m/度
+  const degPerUnit = (speedFactor * 3600) / 111000;
+  const MAX_AGE_S = 5; // 寿限：到期重生（防尾迹无限堆积在同一圈轨道上）
+
+  interface Particle {
+    lat: number;
+    lon: number;
+    age: number;
+  }
+  const respawn = (p: Particle): void => {
+    p.lat = south + Math.random() * (north - south);
+    p.lon = west + Math.random() * (east - west);
+    p.age = 0;
+  };
+  const particles: Particle[] = Array.from({ length: count }, () => {
+    const p = { lat: 0, lon: 0, age: 0 };
+    respawn(p);
+    return p;
+  });
+
+  let running = true;
+  let suspended = false; // 地图拖动/缩放中：清画布暂停，moveend 复位续跑
+  let rafId = 0;
+  let lastTs: number \| undefined;
+
+  const frame = (ts: number): void => {
+    if (!running) return;
+    rafId = requestAnimationFrame(frame);
+    if (document.hidden \|\| suspended) {
+      lastTs = ts;
+      return;
+    }
+    const dt = lastTs === undefined ? 0 : Math.min((ts - lastTs) / 1000, 0.1);
+    lastTs = ts;
+    // 尾迹渐隐：destination-in 半透明擦除（画布保持透明，不糊底图）
+    ctx.globalCompositeOperation =  | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
+## leaflet.msg59（1 条）
+
+| key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
+|---|---|---|---|---|
+| leaflet.msg59 | ;
+    for (const p of particles) {
+      const uu = interpolateBilinear(u, p.lat, p.lon);
+      const vv = interpolateBilinear(v, p.lat, p.lon);
+      p.age += dt;
+      if (
+        Number.isNaN(uu) \|\|
+        Number.isNaN(vv) \|\|
+        p.age > MAX_AGE_S \|\|
+        Math.hypot(uu, vv) < calmThreshold
+      ) {
+        respawn(p);
+        continue;
+      }
+      const cosLat = Math.max(Math.cos(p.lat * rad), 1e-6);
+      const dLat = vv * degPerUnit * dt;
+      const dLon = (uu * degPerUnit * dt) / cosLat;
+      const from = map.latLngToContainerPoint(L.latLng(p.lat, p.lon));
+      p.lat += dLat;
+      p.lon += dLon;
+      const to = map.latLngToContainerPoint(L.latLng(p.lat, p.lon));
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
+  };
+
+  const onResize = (): void => {
+    resize();
+    reposition();
+    clear();
+  };
+  const onMoveStart = (): void => {
+    suspended = true;
+    clear();
+  };
+  const onMoveEnd = (): void => {
+    reposition();
+    clear();
+    suspended = false;
+    lastTs = undefined; // 拖动后不补 dt（暂停期间的时间不入平流）
+  };
+  /** map 销毁（unload）即停帧——层不拥有地图生命周期，但也不该比地图活得久 */
+  const onUnload = (): void => {
+    running = false;
+    cancelAnimationFrame(rafId);
+    map.off( | product | packages/leaflet/src/index.ts | PRODUCT · 产品显示文案（无标准对应条款，措辞经维护者终审） · 显示自拟（无标准对应条款） |
+
 ## sources.msg01（1 条）
 
 | key | 文案 | kind | 出处 | 规范 · 文档 · 条款 |
