@@ -110,25 +110,28 @@ describe("GRIB2 5.3 解码（仓内 fixture：GFS tmp 2m 全球场）", () => {
   it("网格定义守卫：非 3.0 模板／非惯例扫描模式／非缺省 basicAngle → 显式 unsupported 报错（此前按基线偏移静默错解）", () => {
     const base = readFixtureGrib();
     const sec3At = 37; // Sec1@16（len 21）→ Sec3@37（len 72）——fixture 结构固定（上方位宽测试同走位）
-    // ① 模板字段（Sec3 偏移 12–13/17–18 两处任一非零即拦）
+    // ① 模板号（Sec3 偏移 12–13＝octet 13–14）：非 3.0 显式拦
     const gdt = base.slice();
     gdt.set([0x00, 0x01], sec3At + 12); // 模板号 1（rotated lat/lon 一类）
     expect(() => decodeGrib2(gdt)).toThrowError(/模板非 3\.0/);
-    const gdtSpec = base.slice();
-    gdtSpec.set([0x00, 0x01], sec3At + 17); // 规范位模板号非零同拦
-    expect(() => decodeGrib2(gdtSpec)).toThrowError(/模板非 3\.0/);
+    // ①′ 半径定标字段（octet 17–20）写合法地球半径**不得误拦**（独立复核 P2：该字段曾被
+    //    当第二模板号，shape=1/3 显式半径的合法 3.0 文件被误拒且报错误的原因）
+    const radius = base.slice();
+    new DataView(radius.buffer).setUint32(sec3At + 17, 6_371_229);
+    expect(decodeGrib2(radius)[0]).toBeDefined(); // 照常解码
     // ② 扫描模式（Sec3 偏移 71，基线 0）：j 正向（0x40）→ 整场纬向翻转形态，显式不支持
     const scan = base.slice();
     scan[sec3At + 71] = 0x40;
     expect(() => decodeGrib2(scan)).toThrowError(/扫描模式 64/);
-    // ③ basicAngle 非缺省：Sec3 末尾插 4 字节（0x00000001）并改 Sec3 长度 72→76、消息总长 +4
-    const angle = new Uint8Array(base.length + 4);
-    angle.set(base.subarray(0, sec3At + 72));
-    angle.set([0x00, 0x00, 0x00, 0x01], sec3At + 72);
-    angle.set(base.subarray(sec3At + 72), sec3At + 76);
-    angle[sec3At + 3] = 76; // Sec3 长度低字节（72→76，高位为 0）
-    new DataView(angle.buffer).setUint32(12, base.length + 4); // 消息总长（高 4 字节恒 0，写低 4 字节）
+    // ③ basicAngle 非缺省（真实字段位 octet 39–42＝0-based 38–41；独立复核 P1：守卫曾挂
+    //    72–75 保留区，真实非缺省文件静默通过、变异测试测的是不存在的布局）
+    const angle = base.slice();
+    angle.set([0x00, 0x00, 0x00, 0x01], sec3At + 38);
     expect(() => decodeGrib2(angle)).toThrowError(/basicAngle=1/);
+    // ③′ 缺省形态（0xFFFFFFFF）照常解码（0 与缺省同为 10⁻⁶ 度定标惯例）
+    const missing = base.slice();
+    missing.set([0xff, 0xff, 0xff, 0xff], sec3At + 38);
+    expect(decodeGrib2(missing)[0]).toBeDefined();
   });
 
   it("预报时效单位守卫与层值符号：非小时单位显式报错；负层值按两补码读（地下深度层）", () => {
@@ -176,6 +179,15 @@ describe("GRIB2 5.3 解码（仓内 fixture：GFS tmp 2m 全球场）", () => {
     const grid = fieldToGrid(f, { variable: "TMP", level: "2m", unit: "K" });
     expect(() => cropGrid(grid, { la0: 20, la1: -20, lo0: 170, lo1: -170 })).toThrowError(
       /跨 180° 经线/,
+    );
+  });
+
+  it("cropGrid 场值长度与网格不符显式报错（此前按错位行切片静默产出坏场）", () => {
+    const f = decodeGrib2(readFixtureGrib())[0]!;
+    const grid = fieldToGrid(f, { variable: "TMP", level: "2m", unit: "K" });
+    const broken = { ...grid, values: grid.values.subarray(0, grid.values.length - 8) };
+    expect(() => cropGrid(broken, { la0: 55, la1: 3, lo0: 70, lo1: 140 })).toThrowError(
+      /场值长度与网格不符/,
     );
   });
 });

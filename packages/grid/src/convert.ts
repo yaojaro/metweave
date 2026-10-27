@@ -64,6 +64,14 @@ export function cropGrid(
   win: { la0: number; la1: number; lo0: number; lo1: number },
 ): Grid {
   const { nx, ny, la0, lo0, di, dj } = grid.header.grid;
+  // 场值长度与网格不符 → 显式报错（与渲染/等值线/中心三入口同口径——否则按错位行切片
+  // 静默产出坏场；错误码沿用 invalid-scale 的「输入非法」宽口径，见 errors.ts 注释）
+  if (grid.values.length !== nx * ny) {
+    throw new GridError(
+      "invalid-scale",
+      `场值长度与网格不符（values ${String(grid.values.length)} ≠ nx×ny ${nx}×${ny}）——裁剪会按错位行切片`,
+    );
+  }
   // 跨 180° 经窗（lo0 > lo1，如 [170, −170]）与网格明明相交却被判无交集——先显式报
   // 「不支持跨缝」而非误导性的「无交集」（两段拼合裁剪留后续）
   if (win.lo0 > win.lo1) {

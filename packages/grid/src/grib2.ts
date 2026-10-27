@@ -308,12 +308,11 @@ export function decodeGrib2(
     // 模板 / 非惯例扫描模式 / 非缺省 basicAngle 的文件按基线偏移读会**静默整场错解**
     // （行/列翻转、经纬定标全错），一律显式报错。基线语料全为 GFS 惯例（模板 3.0、扫描 0
     // ＝列西→东行北→南、basicAngle 0/缺席＝10⁻⁶ 度定标）
-    const gdtA = beUint(s3, 12, 2);
-    const gdtB = beUint(s3, 17, 2);
-    if (gdtA !== 0 || gdtB !== 0) {
+    const gdt = beUint(s3, 12, 2);
+    if (gdt !== 0) {
       throw new GridError(
         "unsupported-gdt",
-        `网格定义模板非 3.0（模板字段读得 ${gdtA}/${gdtB}）——其余模板的几何字段布局不同，按 3.0 读会静默错解`,
+        `网格定义模板非 3.0（模板号读得 ${gdt}）——其余模板的几何字段布局不同，按 3.0 读会静默错解`,
       );
     }
     const scan = byteAt(s3, 71);
@@ -323,14 +322,15 @@ export function decodeGrib2(
         `扫描模式 ${scan} 未支持（基线为 0：列西→东、行北→南——j 正向或行内反向的文件按基线读会整场翻转）`,
       );
     }
-    if (s3.length >= 76) {
-      const basicAngle = beUint(s3, 72, 4);
-      if (basicAngle !== 0 && basicAngle !== 0xffff_ffff) {
-        throw new GridError(
-          "unsupported-basic-angle",
-          `basicAngle=${basicAngle} 未支持（0/缺省＝10⁻⁶ 度定标的 GFS 惯例；非缺省角度定标需按 basicAngle/细分值换算）`,
-        );
-      }
+    // basicAngle（模板 3.0 octet 39–42＝0-based 38–41；独立复核 P1：守卫曾挂在扫描模式后
+    // 保留区 72–75，真实非缺省文件静默通过）：0 或缺省（0xFFFFFFFF）＝10⁻⁶ 度定标的
+    // GFS 惯例；非缺省角度定标需按 basicAngle/细分值（octet 43–46）换算
+    const basicAngle = beUint(s3, 38, 4);
+    if (basicAngle !== 0 && basicAngle !== 0xffff_ffff) {
+      throw new GridError(
+        "unsupported-basic-angle",
+        `basicAngle=${basicAngle} 未支持（0/缺省＝10⁻⁶ 度定标的 GFS 惯例；非缺省角度定标需按 basicAngle/细分值换算）`,
+      );
     }
     const values = decodeComplex(s5, s7, npts);
     const la1Raw = beUint(s3, 46, 4);
