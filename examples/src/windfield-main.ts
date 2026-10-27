@@ -7,13 +7,22 @@
  * 数据的完整视觉体验（底图＋真场）。图层口径全部走库公开件，页内不写第二份数学。
  * 边界：演示的是「该时次的定常近似」——粒子是示踪物不是气块追踪，动画不构成预报。
  */
-import { parseGrid, streamlinesOf, windProfile, windSpeedGrid, type Grid } from "@metweave/grid";
 import {
+  parseGrid,
+  streamlinesOf,
+  arrowFieldOf,
+  windProfile,
+  windSpeedGrid,
+  type Grid,
+} from "@metweave/grid";
+import {
+  addArrowFieldLayer,
   addGridLayer,
   addParticleLayer,
   addStreamlineLayer,
   addWindBarbLayer,
   gridOverlayBounds,
+  type ArrowFieldLayer,
   type ParticleLayer,
 } from "@metweave/leaflet";
 import * as L from "leaflet";
@@ -44,6 +53,7 @@ void (async () => {
   let gridLayer: L.ImageOverlay | undefined;
   let barbLayer: L.LayerGroup | undefined;
   let streamLayer: L.LayerGroup | undefined;
+  let arrowLayer: ArrowFieldLayer | undefined;
   let particle: ParticleLayer | undefined;
   let speedFactor = 2;
 
@@ -72,6 +82,16 @@ void (async () => {
       streamLayer = await addStreamlineLayer(map, lines, { width: 1.2, opacity: 0.8 });
     }
   };
+  const applyArrows = async (on: boolean): Promise<void> => {
+    arrowLayer?.remove();
+    arrowLayer = undefined;
+    if (on) {
+      // 演示页箭头指**去向**（与粒子流向一致，免得同屏方向打架）；库缺省指来向
+      // （业务惯例、与 windArrowPath 同契约）——同一面图不要混用两种指向
+      const arrows = arrowFieldOf(u, v, { step: 12 });
+      arrowLayer = await addArrowFieldLayer(map, arrows, { pointing: "to", length: 13 });
+    }
+  };
   const applyParticle = async (on: boolean): Promise<void> => {
     particle?.remove();
     particle = undefined;
@@ -87,6 +107,7 @@ void (async () => {
   wire("wf-on-grid", applyGrid);
   wire("wf-on-barbs", applyBarbs);
   wire("wf-on-stream", applyStream);
+  wire("wf-on-arrows", applyArrows);
   wire("wf-on-particle", applyParticle);
 
   const speedBox = inputById("wf-speed");

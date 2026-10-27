@@ -10,6 +10,7 @@ import {
   windBarbsOf,
   windBarbOf,
   streamlinesOf,
+  arrowFieldOf,
   toKnots,
   toMps,
   WIND_BARB_SCALES,
@@ -500,5 +501,52 @@ describe("streamlinesOf（流线积分，v0.3.4 矢量批次首件）", () => {
     expect(() => streamlinesOf(u, v, { maxSteps: 0 })).toThrow(/步数上限非法/);
     expect(() => streamlinesOf(u, v, { calmThreshold: -1 })).toThrow(/静风阈值非法/);
     expect(() => streamlinesOf(u, v, { spacing: 2 } as never)).toThrow(/未知选项/);
+  });
+});
+
+describe("arrowFieldOf（等长箭头阵，v0.3.4 矢量批次）", () => {
+  it("与 windBarbsOf 同 step 同格位、方向逐点同值（对拍契约）", () => {
+    const u = flowFieldOf(6, 5, 4, (_x, y) => 3 + y);
+    const v = flowFieldOf(6, 5, 4, () => 2);
+    const spec = { step: 2, calmThreshold: 1 };
+    const arrows = arrowFieldOf(u, v, spec);
+    const barbs = windBarbsOf(u, v, spec);
+    expect(arrows).toHaveLength(barbs.length);
+    for (let i = 0; i < arrows.length; i++) {
+      expect(arrows[i]?.lat).toBe(barbs[i]?.lat);
+      expect(arrows[i]?.lon).toBe(barbs[i]?.lon);
+      expect(arrows[i]?.direction).toBeCloseTo(barbs[i]?.direction as number, 10);
+    }
+  });
+
+  it("静风与缺测点不出箭", () => {
+    const u = flowFieldOf(6, 5, 4, (x) => (x <= 1 ? 0.5 : x <= 3 ? 4 : Number.NaN));
+    const v = flowFieldOf(6, 5, 4, () => 0);
+    const arrows = arrowFieldOf(u, v, { step: 1, calmThreshold: 1 });
+    // 6 列：x≤1 静风（0.5 m/s < 1）不出、x=4/5 缺测不出 → 只有 x=2/3 两列出箭（2×5=10）
+    expect(arrows).toHaveLength(10);
+    for (const a of arrows) {
+      expect(a.lon).toBeGreaterThanOrEqual(102);
+      expect(a.lon).toBeLessThanOrEqual(103);
+      expect(a.direction).toBeCloseTo(270, 6); // 纯西风：来向 270
+    }
+  });
+
+  it("step 抽稀中心对齐（5×5 step 2 → 3×3=9）与缺省 step 10（21×21 → 9）", () => {
+    const u5 = flowFieldOf(5, 5, 4, () => 6);
+    const v5 = flowFieldOf(5, 5, 4, () => 0);
+    expect(arrowFieldOf(u5, v5, { step: 2, calmThreshold: 1 })).toHaveLength(9);
+    const u21 = flowFieldOf(21, 21, 4, () => 6);
+    const v21 = flowFieldOf(21, 21, 4, () => 0);
+    expect(arrowFieldOf(u21, v21)).toHaveLength(9);
+  });
+
+  it("口径非法与未知选项键显式抛错", () => {
+    const u = flowFieldOf(4, 4, 4, () => 4);
+    const v = flowFieldOf(4, 4, 4, () => 0);
+    expect(() => arrowFieldOf(u, v, { step: 0 })).toThrow(/步长非法/);
+    expect(() => arrowFieldOf(u, v, { step: 1.5 })).toThrow(/步长非法/);
+    expect(() => arrowFieldOf(u, v, { calmThreshold: -1 })).toThrow(/静风阈值非法/);
+    expect(() => arrowFieldOf(u, v, { stride: 2 } as never)).toThrow(/未知选项/);
   });
 });

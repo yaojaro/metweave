@@ -49,6 +49,7 @@ export {
   windBarbOf,
   windBarbStepAt,
   streamlinesOf,
+  arrowFieldOf,
   WIND_BARB_SCALES,
   WIND_LEGEND_UNITS,
   MPS_PER_KT,
@@ -65,6 +66,8 @@ export type {
   WindSpeedUnitInput,
   Streamline,
   StreamlinesOptions,
+  WindArrow,
+  ArrowFieldOptions,
 } from "./wind";
 export { buildColorScale } from "./element";
 export type { ElementProfile, EqualScaleSpec, ContourSpec, BarbSpec, BarbLodStep } from "./element";

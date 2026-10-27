@@ -35,6 +35,7 @@ import type {
   ElementProfile,
   Grid,
   WindBarb,
+  WindArrow,
   WindSpeedUnit,
   WindSpeedUnitInput,
   Streamline,
@@ -2279,5 +2280,174 @@ export async function addParticleLayer(
       if (!running) return;
       onUnload(); // 同一套清理（幂等：running 置 false 后再入直接返回）
     },
+  };
+}
+
+// ---------------------------------------------------------------- 箭头场层（0.3.4 矢量批次）
+
+/** 箭头场层专用 pane 名：流线（z 355）与粒子（z 358）之间 */
+const ARROW_FIELD_PANE = "mw-grid-arrow";
+/** ARROW_FIELD_PANE 的 z-index：356 位（三层矢量件按 355/356/358 递进，均在等值线与杆之下） */
+const ARROW_FIELD_PANE_Z = 356;
+
+/** `addArrowFieldLayer` 的选项。 */
+export interface AddArrowFieldLayerOptions {
+  /** 箭头基色（缺省 #37474f 深蓝灰——与风羽深灰蓝同族、与流线/粒子深青区分） */
+  readonly color?: string;
+  /** 全杆长（像素，缺省 14；须 >0 的有限数）——**等长**是 W-08 的渲染契约 */
+  readonly length?: number;
+  /** 线宽（像素，缺省 1.4；须 >0 的有限数） */
+  readonly width?: number;
+  /**
+   * 指向（缺省 `"from"`＝指**来向**，与 `windArrowPath` 的缺省同契约；`"to"`＝指去向，
+   * 与粒子流向一致）。同一面图不要混用两种指向——读图红线。
+   */
+  readonly pointing?: "from" | "to";
+}
+
+/** 箭头场层控制柄（静态 canvas：无 rAF，moveend 重绘；与 ParticleLayer 同形）。 */
+export interface ArrowFieldLayer {
+  readonly canvas: HTMLCanvasElement;
+  readonly pane: string;
+  /** 整层移除（幂等） */
+  remove(): void;
+}
+
+/** addArrowFieldLayer 的合法选项键（运行时校验用——不静默纪律）。 */
+const ADD_ARROW_FIELD_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
+  "color",
+  "length",
+  "width",
+  "pointing",
+]);
+
+/**
+ * 箭头阵 → 等长箭头 canvas 层（W-08 的渲染适配，v0.3.4）。
+ *
+ * `arrowFieldOf`（内核）出的箭头阵画成**等长**箭头网格——每支全杆长恒为 `length` 像素、
+ * 格点居中、按气象来向定向（`pointing` 可翻成去向）。**长度不随风速**：等长＝只表方向
+ * 不表大小，这是 W-08 的定义（大域形势一眼看环流形态；读数值回风羽/色斑）。静态层无
+ * 动画：`moveend`/`resize` 重绘，拖动中清画布（与粒子层同法）。canvas 单画布口径
+ * （矢量批次既定决策），挂独立 pane（z 356）。
+ */
+export async function addArrowFieldLayer(
+  map: Leaflet.Map,
+  arrows: readonly WindArrow[],
+  options: AddArrowFieldLayerOptions = {},
+): Promise<ArrowFieldLayer> {
+  for (const key of Object.keys(options)) {
+    if (!ADD_ARROW_FIELD_LAYER_OPTION_KEYS.has(key)) {
+      throw new Error(
+        `addArrowFieldLayer 收到未知选项 "${key}"（可用项：color、length、width、pointing）——拼错的选项不会生效`,
+      );
+    }
+  }
+  if (options.length !== undefined && (!Number.isFinite(options.length) || options.length <= 0)) {
+    throw new Error(
+      `addArrowFieldLayer 的 length 非法（${String(options.length)}，须 >0 的有限数〔像素〕）`,
+    );
+  }
+  if (options.width !== undefined && (!Number.isFinite(options.width) || options.width <= 0)) {
+    throw new Error(
+      `addArrowFieldLayer 的 width 非法（${String(options.width)}，须 >0 的有限数〔像素〕）`,
+    );
+  }
+  const L = await loadLeaflet();
+  const color = options.color ?? "#37474f";
+  const length = options.length ?? 14;
+  const width = options.width ?? 1.4;
+  const pointing = options.pointing ?? "from";
+
+  if (map.getPane(ARROW_FIELD_PANE) === undefined) {
+    map.createPane(ARROW_FIELD_PANE).style.zIndex = String(ARROW_FIELD_PANE_Z);
+  }
+  const pane = map.getPane(ARROW_FIELD_PANE);
+  if (pane === undefined) throw new Error("箭头场层 pane 创建失败"); // 类型收窄（不可达防御）
+  const canvas = document.createElement("canvas");
+  canvas.className = "mw-arrow-canvas";
+  pane.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  if (ctx === null) {
+    canvas.remove();
+    throw new Error("箭头场层画布取不到 2d context（环境不支持 canvas）");
+  }
+
+  const resize = (): void => {
+    const size = map.getSize();
+    canvas.width = size.x;
+    canvas.height = size.y;
+  };
+  const reposition = (): void => {
+    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));
+  };
+  const clear = (): void => ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const rad = Math.PI / 180;
+  const HEAD_WING = 4; // 箭头翼短划（像素）
+  const HEAD_ANGLE = 25 * rad;
+
+  const draw = (): void => {
+    clear();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = "round";
+    for (const a of arrows) {
+      // 气象来向 β → 屏幕单位向量（北＝上）：(sin β, −cos β)；指向去向则翻向
+      const sign = pointing === "from" ? 1 : -1;
+      const vx = sign * Math.sin(a.direction * rad);
+      const vy = sign * -Math.cos(a.direction * rad);
+      const p = map.latLngToContainerPoint(L.latLng(a.lat, a.lon));
+      const hx = p.x + (length / 2) * vx;
+      const hy = p.y + (length / 2) * vy;
+      const tx = p.x - (length / 2) * vx;
+      const ty = p.y - (length / 2) * vy;
+      // 箭头翼：自梢沿「回头向量 −v」旋转 ±HEAD_ANGLE 各收一小划
+      const wing = (phi: number): [number, number] => [
+        hx + HEAD_WING * (-vx * Math.cos(phi) + vy * Math.sin(phi)),
+        hy + HEAD_WING * (-vx * Math.sin(phi) - vy * Math.cos(phi)),
+      ];
+      const [w1x, w1y] = wing(-HEAD_ANGLE);
+      const [w2x, w2y] = wing(HEAD_ANGLE);
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(hx, hy);
+      ctx.moveTo(w1x, w1y);
+      ctx.lineTo(hx, hy);
+      ctx.moveTo(w2x, w2y);
+      ctx.lineTo(hx, hy);
+      ctx.stroke();
+    }
+  };
+
+  const onResize = (): void => {
+    resize();
+    reposition();
+    draw();
+  };
+  const onMoveStart = (): void => clear();
+  const onMoveEnd = (): void => {
+    reposition();
+    draw();
+  };
+  /** map 销毁即清理（层不比地图活得久） */
+  const onUnload = (): void => {
+    map.off("resize", onResize);
+    map.off("movestart", onMoveStart);
+    map.off("moveend", onMoveEnd);
+    map.off("unload", onUnload);
+    canvas.remove();
+  };
+  map.on("resize", onResize);
+  map.on("movestart", onMoveStart);
+  map.on("moveend", onMoveEnd);
+  map.on("unload", onUnload);
+  resize();
+  reposition();
+  draw();
+
+  return {
+    canvas,
+    pane: ARROW_FIELD_PANE,
+    remove: onUnload,
   };
 }

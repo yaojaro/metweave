@@ -593,3 +593,75 @@ export function streamlinesOf(u: Grid, v: Grid, options: StreamlinesOptions = {}
   }
   return lines;
 }
+
+/**
+ * 箭头场的一个箭头：位置＋气象口径**来向**（与 `WindBarb.direction` 同公式同口径）。
+ * **内核不掺长度语义**——「等长」是渲染契约（W-08 只表方向不表大小），速度信息
+ * 刻意不随箭头走：要读数值用风羽/色斑，箭头场的价值就是轻与疏。
+ */
+export interface WindArrow {
+  readonly lat: number;
+  readonly lon: number;
+  /** 风向（气象口径**来向**，0–360°；与 windBarbsOf 同点同值——宿主可对拍） */
+  readonly direction: number;
+}
+
+/** 箭头场口径（校验同族纪律：未知键与非法值显式抛 GridError）。 */
+export interface ArrowFieldOptions {
+  /**
+   * 抽稀步长（格点数，两向同距，网格中心对齐——与 `windBarbsOf` 抽稀同一公式，同 step
+   * 下两者格位逐一相同）。缺省 10（0.25° 网格上 2.5° 一支，大域形势密度）。
+   */
+  readonly step?: number;
+  /** 静风阈（场单位，缺省 1——静风无方向可指；与杆/流线同惯例）。 */
+  readonly calmThreshold?: number;
+}
+
+/**
+ * u/v 双场 → 等长箭头阵（W-08 内核，纯函数零 DOM；v0.3.4 矢量批次）。
+ *
+ * 格点按 `step` 抽稀（中心对齐同 `windBarbsOf`——**同 step 同格位**，方向逐点同值，
+ * 页面/测试可对拍），每点出气象来向度数；静风与缺测点不出箭。**等长＝只表方向不表
+ * 大小**：什么时候它比风羽好——大域形势一眼看环流形态、符号轻、密度可压得很低；
+ * 要读数值时回到风羽/色斑（两者正交组合，见 @metweave/leaflet 的装配层）。
+ */
+export function arrowFieldOf(u: Grid, v: Grid, options: ArrowFieldOptions = {}): WindArrow[] {
+  assertPairedFields(u, v);
+  for (const key of Object.keys(options)) {
+    if (key !== "step" && key !== "calmThreshold") {
+      throw new GridError(
+        "invalid-scale",
+        `arrowFieldOf 收到未知选项 "${key}"（可用项：step、calmThreshold）——拼错的选项不会生效`,
+      );
+    }
+  }
+  const step = options.step ?? 10;
+  const calmThreshold = options.calmThreshold ?? 1;
+  if (!Number.isInteger(step) || step < 1) {
+    throw new GridError(
+      "invalid-scale",
+      `箭头场抽稀步长非法（step=${String(step)}，须 ≥1 的整数）`,
+    );
+  }
+  if (!Number.isFinite(calmThreshold) || calmThreshold < 0) {
+    throw new GridError(
+      "invalid-scale",
+      `箭头场静风阈值非法（calmThreshold=${String(calmThreshold)}，须 ≥0 的有限数）`,
+    );
+  }
+  const { nx, ny, la0, lo0, di, dj } = u.header.grid;
+  const x0 = Math.floor(((nx - 1) % step) / 2);
+  const y0 = Math.floor(((ny - 1) % step) / 2);
+  const arrows: WindArrow[] = [];
+  for (let y = y0; y < ny; y += step) {
+    for (let x = x0; x < nx; x += step) {
+      const uu = u.values[y * nx + x] ?? Number.NaN;
+      const vv = v.values[y * nx + x] ?? Number.NaN;
+      if (Number.isNaN(uu) || Number.isNaN(vv)) continue; // 缺测：矢量未知不出箭
+      if (Math.hypot(uu, vv) < calmThreshold) continue; // 静风：无方向可指不出箭
+      const direction = (((270 - (Math.atan2(vv, uu) * 180) / Math.PI) % 360) + 360) % 360;
+      arrows.push({ lat: la0 - y * dj, lon: lo0 + x * di, direction });
+    }
+  }
+  return arrows;
+}

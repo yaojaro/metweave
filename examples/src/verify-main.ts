@@ -20,15 +20,19 @@ import {
   toKnots,
   windBarbOf,
   windBarbStepAt,
+  windBarbsOf,
   windProfile,
   windSpeedGrid,
   streamlinesOf,
+  arrowFieldOf,
   type WindSpeedUnit,
 } from "@metweave/grid";
 import {
+  addArrowFieldLayer,
   addContourLayer,
   addGridLayer,
   addStreamlineLayer,
+  addWindBarbGlyphs,
   addWindBarbLayer,
 } from "@metweave/leaflet";
 import * as L from "leaflet";
@@ -398,6 +402,63 @@ const mountV1 = (): void => {
     });
 };
 
+// ---------------------------------------------------------------- V2（0.3.4 矢量批次·箭头场）
+
+const mountV2 = (): void => {
+  const host = document.getElementById("vf-v2-map");
+  const status = document.getElementById("vf-v2-status");
+  if (host === null || status === null) return;
+
+  const map = L.map(host, {
+    center: [36.5, 109.5],
+    zoom: 4,
+    zoomControl: false,
+    attributionControl: false,
+  });
+  // 判定核心＝对拍契约：arrowFieldOf 与 windBarbsOf 同 step 同格位、方向逐点同值
+  const spec = { step: 8, calmThreshold: 1 };
+  const arrows = arrowFieldOf(PAIR.u, PAIR.v, spec);
+  const barbs = windBarbsOf(PAIR.u, PAIR.v, spec);
+  let aligned = arrows.length === barbs.length && arrows.length > 0;
+  if (aligned) {
+    for (let i = 0; i < arrows.length; i++) {
+      const a = arrows[i];
+      const b = barbs[i];
+      if (
+        a === undefined ||
+        b === undefined ||
+        a.lat !== b.lat ||
+        a.lon !== b.lon ||
+        Math.abs(a.direction - b.direction) > 1e-9
+      ) {
+        aligned = false;
+        break;
+      }
+    }
+  }
+  judge(
+    "V2",
+    aligned,
+    `${String(arrows.length)} 支 · 与杆同格同向 ${aligned ? "✓" : "✗"}（来向口径一致）`,
+  );
+  status.textContent = `等长箭头 ${String(arrows.length)} 支（蓝灰）＋对照风羽 ${String(barbs.length)} 根（深灰）——箭头只表方向，读数值看杆`;
+
+  void addGridLayer(map, windSpeedGrid(PAIR.u, PAIR.v), windProfile, { opacity: 0.5 })
+    .catch((error: unknown) => {
+      status.textContent = `渲染失败：${error instanceof Error ? error.message : String(error)}`;
+      judge("V2", false, "色斑底图抛错（见状态行）");
+      return undefined;
+    })
+    .then(async () => {
+      await addArrowFieldLayer(map, arrows);
+      await addWindBarbGlyphs(map, barbs);
+    })
+    .catch((error: unknown) => {
+      status.textContent = `渲染失败：${error instanceof Error ? error.message : String(error)}`;
+      judge("V2", false, "箭头/风羽层抛错（见状态行）");
+    });
+};
+
 // ---------------------------------------------------------------- 启动
 
 mountT1();
@@ -408,3 +469,4 @@ mountT5();
 mountT6();
 mountT7();
 mountV1();
+mountV2();

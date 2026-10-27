@@ -67,6 +67,8 @@
     "WindShearGroup"
   ],
   "@metweave/grid#.": [
+    "arrowFieldOf",
+    "ArrowFieldOptions",
     "BarbLodStep",
     "BarbSpec",
     "binIndexAt",
@@ -120,6 +122,7 @@
     "visProfile",
     "WIND_BARB_SCALES",
     "WIND_LEGEND_UNITS",
+    "WindArrow",
     "WindBarb",
     "WindBarbEncoding",
     "windBarbOf",
@@ -154,6 +157,8 @@
     "serializeGrid"
   ],
   "@metweave/leaflet#.": [
+    "addArrowFieldLayer",
+    "AddArrowFieldLayerOptions",
     "addContourLayer",
     "AddContourLayerOptions",
     "addGridLayer",
@@ -171,6 +176,7 @@
     "addWindBarbLayer",
     "AddWindBarbLayerOptions",
     "AltimeterReading",
+    "ArrowFieldLayer",
     "assertConditionTier",
     "CloudAmount",
     "CloudCondition",
