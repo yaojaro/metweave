@@ -2,7 +2,7 @@
 
 本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，六个包锁步同版本发布。
 
-## [未发布]
+## [0.3.4] - 2026-10-27
 
 矢量三件套（流线／粒子动画／箭头场）与 10m 风色卡改版。六包锁步发布，**含两处视觉行为变更（色斑配色整体更换、色斑贴图跨纬度位置修正——见「更改」「修复」；两处调用代码均无需改）**。
 
@@ -241,5 +241,6 @@ TAF（FM 51）预报侧工具链全量落地：解析 → 时间线展开 → �
 [0.3.0]: https://github.com/yaojaro/metweave/releases/tag/v0.3.0
 [0.3.1]: https://github.com/yaojaro/metweave/releases/tag/v0.3.1
 [0.3.3]: https://github.com/yaojaro/metweave/releases/tag/v0.3.3
+[0.3.4]: https://github.com/yaojaro/metweave/releases/tag/v0.3.4
 [0.3.2]: https://github.com/yaojaro/metweave/releases/tag/v0.3.2
-[未发布]: https://github.com/yaojaro/metweave/compare/v0.3.2...HEAD
+[未发布]: https://github.com/yaojaro/metweave/compare/v0.3.4...HEAD

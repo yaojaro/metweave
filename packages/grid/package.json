@@ -1,6 +1,6 @@
 {
   "name": "@metweave/grid",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Gridded scalar fields for weather maps: viz-ready container (grid header JSON + float32), GRIB2 decoding (complex packing 5.2/5.3) and crop-to-region — renderer-agnostic.",
   "keywords": [
     "grib2",
