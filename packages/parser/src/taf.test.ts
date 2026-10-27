@@ -477,6 +477,16 @@ describe("TAF 批 1.5：基况段四要素 + CAVOK", () => {
     expect(taf.wind).toEqual(metar.wind);
     expect(taf.visibility).toEqual(metar.visibility);
   });
+
+  it("// 缺测组与真实天气组并存：值优先（真实组胜出不丢）；纯 // 仍 missing——与 METAR 侧合并序同源", () => {
+    const mixed = parseTaf("TAF ZBAA 230301Z 2306/2412 18004MPS 3500 // -RA SCT020=");
+    expect(mixed.weather?.kind).toBe("value"); // 此前 //（非 nullish）压住实组 → -RA 静默丢失
+    if (mixed.weather?.kind === "value") {
+      expect(mixed.weather.value.some((g) => g.phenomena.includes("RA"))).toBe(true);
+    }
+    const pure = parseTaf("TAF ZBAA 230301Z 2306/2412 18004MPS 3500 // SCT020=");
+    expect(pure.weather?.kind).toBe("missing"); // 无实组时 // 缺测语义不变
+  });
 });
 
 // 三站解析捷径（只依赖模块层 fx，置模块层；教材版＝黄金表权威源，ogimet 变体留结构测试）
@@ -708,6 +718,31 @@ describe("TAF 分段视图 tafSegments（渲染层分段数据面：按拆分时
     expect(cb).toBeDefined(); // FEW020CB＝单层少云挂 CB
     expect(rows[1]?.conditions.wind?.direction).toBe(210);
     expect(rows[1]?.sourceIndex).toBe(0);
+  });
+
+  it("挂载行天气三态与 expandTaf 同一真相：未列＝省略（继承主导段）、NSW＝[]、cavok 未编＝省略", () => {
+    // 未列天气（只列风）→ overlay.weather 省略；此前分段视图把未列折成 []（消费方会把
+    // 基况 -RA 清空、发作窗档位被低估）、cavok 恒置 false——两视图自此同一构造
+    const r = parseTaf(
+      "TAF ZBAA 230301Z 2306/2412 18004MPS 6000 -RA BKN020 TEMPO 2312/2314 34015G25MPS=",
+    );
+    const rows = tafSegments(r);
+    const tempo = rows.find((x) => x.kind === "TEMPO");
+    expect(tempo).toBeDefined();
+    expect(tempo?.overlay?.conditions.weather).toBeUndefined(); // 未列＝省略键
+    expect(tempo?.overlay?.conditions.cavok).toBeUndefined(); // 未编 CAVOK＝省略键
+    expect(tempo?.overlay?.conditions.wind?.direction).toBe(340);
+    expect(tempo?.conditions.weather?.some((g) => g.phenomena.includes("RA"))).toBe(true); // 主导段 -RA 随行
+    // 同刻 expandTaf 对照：两视图同构
+    const exp = expandTaf(r, { day: 23, hour: 13, minute: 0 }, { daysIn: 31 });
+    expect(exp.tempo?.conditions.weather).toBeUndefined();
+    // NSW → []（显式无天气——显式清空与未列继承两语义分立）
+    const nsw = parseTaf(
+      "TAF ZBAA 230301Z 2306/2412 18004MPS 6000 -RA BKN020 TEMPO 2312/2314 34015G25MPS NSW=",
+    );
+    expect(tafSegments(nsw).find((x) => x.kind === "TEMPO")?.overlay?.conditions.weather).toEqual(
+      [],
+    );
   });
 
   it("FM 硬切分段（B4）：base 到 FM 时刻止、FM 段到有效期止；跨月回绕显示序折回小日号", () => {

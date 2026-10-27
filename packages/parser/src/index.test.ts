@@ -241,6 +241,26 @@ describe("雷点定点断言", () => {
     expect(r.remarks.some((m) => m.kind === "peak-wind")).toBe(true);
   });
 
+  it("WSHFT/PK WND 只吞像数据的后随组：SLP 组不被吞并各归其位；磨损短时间组（18）照收", () => {
+    // WSHFT 后随 SLP992（字母组）→ 不并进 wind-shift 的 raw，SLP 认组不丢
+    const swallow = parse(
+      "METAR K1NW 120906Z AUTO 02016KT 10SM BKN130 14/07 A2999 RMK AO2 WSHFT SLP992",
+    );
+    expect(swallow.remarks.find((m) => m.kind === "wind-shift")?.raw).toBe("WSHFT");
+    expect(swallow.remarks.find((m) => m.kind === "sea-level-pressure")?.raw).toBe("SLP992");
+    // 磨损短时间组（语料实弹 `WSHFT 18`）仍是时间形态 → 照收两 token
+    const worn = parse(
+      "METAR K1KW 120925Z AUTO 02012KT 10SM -RA SCT095 12/06 A3014 RMK AO2 WSHFT 18",
+    );
+    expect(worn.remarks.find((m) => m.kind === "wind-shift")?.raw).toBe("WSHFT 18");
+    // PK WND 第三组非 dddff[/HHMM] → 只收 PK WND 两词，后组归各自认组
+    const peak = parse(
+      "METAR KITR 120849Z AUTO 02014G25KT 10SM CLR 19/11 A2998 RMK AO2 PK WND SLP092",
+    );
+    expect(peak.remarks.find((m) => m.kind === "peak-wind")?.raw).toBe("PK WND");
+    expect(peak.remarks.find((m) => m.kind === "sea-level-pressure")?.raw).toBe("SLP092");
+  });
+
   it("天气组强度与描述符（-FZDZ → 强度- + 描述符 FZ + 现象 DZ）", () => {
     const r = parse(byTrap("wx-fzdz").raw);
     const wx = unwrap(r.weather);

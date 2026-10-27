@@ -871,6 +871,13 @@ function emitTrendPhenomenonTime(
     emit.void("iwxxm:phenomenonTime", [["nilReason", uriNil(NIL_MISSING)]]);
     return;
   }
+  // 不可辨时段词（理论不可达——TAC 侧已保证形态）：按无时窗的 nil 形落位。判别在
+  // open 之前——先前实现先 open 再 close＋void，兜底会产出「空元素对＋自闭合 nil」
+  // 两个 phenomenonTime 兄弟（XSD 侧 maxOccurs=1 违例）：兜底路径自身也不该产出病态文档
+  if (atMatch === null && windowMatch === null) {
+    emit.void("iwxxm:phenomenonTime", [["nilReason", uriNil(NIL_MISSING)]]);
+    return;
+  }
   emit.open("iwxxm:phenomenonTime", []);
   if (atMatch !== null) {
     const hour = Number(atMatch[2]);
@@ -921,11 +928,7 @@ function emitTrendPhenomenonTime(
       false,
     );
     emit.close("iwxxm:phenomenonTime");
-    return;
   }
-  // 不可辨时段词（理论不可达——TAC 侧已保证形态）：按无窗收
-  emit.close("iwxxm:phenomenonTime");
-  emit.void("iwxxm:phenomenonTime", [["nilReason", uriNil(NIL_MISSING)]]);
 }
 
 /** gml:TimePeriod 双端点拼装（indeterminate="after" 端仍带时刻文本——ZSPD/WSSS 官方形即此）。 */

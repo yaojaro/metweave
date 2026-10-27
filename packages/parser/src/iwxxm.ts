@@ -1940,17 +1940,30 @@ function observationBodyOf(observationProp: XNode | undefined): XNode | undefine
 // ---------------------------------------------------------------- 主入口
 
 /** collect:MeteorologicalBulletin（WMO collect 2014）包裹下按文档序找首个 METAR/SPECI/TAF
- *  （ECCC 真实流形态——TAF 公报一裹多报，METAR/SPECI 优先序在先以兼容混裹形态）。 */
-function unbundleCollect(bulletin: XNode): { root: XNode; kind: ReportKind | "taf" } | undefined {
+ *  （ECCC 真实流形态——TAF 公报一裹多报，METAR/SPECI 优先序在先以兼容混裹形态）。
+ *  返回附带公报内报文总数：>1 时主入口补一条 info 告警（只解析首份是既定口径，
+ *  但「其余报文被略过」不该无声——与模块头「未知元素跳过必出声」同一纪律）。 */
+function unbundleCollect(
+  bulletin: XNode,
+): { root: XNode; kind: ReportKind | "taf"; reports: number } | undefined {
   const infos = bulletin["meteorologicalInformation"];
   const list: unknown[] = Array.isArray(infos) ? infos : infos !== undefined ? [infos] : [];
+  let reports = 0;
+  let found: { root: XNode; kind: ReportKind | "taf" } | undefined;
   for (const item of list) {
     if (!isObj(item)) continue;
-    if (isObj(item.METAR)) return { root: item.METAR, kind: "metar" };
-    if (isObj(item.SPECI)) return { root: item.SPECI, kind: "speci" };
-    if (isObj(item.TAF)) return { root: item.TAF, kind: "taf" };
+    if (isObj(item.METAR)) {
+      reports += 1;
+      found ??= { root: item.METAR, kind: "metar" };
+    } else if (isObj(item.SPECI)) {
+      reports += 1;
+      found ??= { root: item.SPECI, kind: "speci" };
+    } else if (isObj(item.TAF)) {
+      reports += 1;
+      found ??= { root: item.TAF, kind: "taf" };
+    }
   }
-  return undefined;
+  return found === undefined ? undefined : { ...found, reports };
 }
 
 /**
@@ -2064,6 +2077,13 @@ function parseIwxxmBody(xml: string, options?: IwxxmParseOptions): IwxxmReport {
       );
     }
     ({ root, kind } = found);
+    if (found.reports > 1) {
+      warnings.push({
+        code: "invalid-format",
+        severity: "info",
+        message: `collect 公报含 ${found.reports} 份报文，仅解析首份（${kind === "taf" ? "TAF" : kind.toUpperCase()}）——其余报文未入 IR`,
+      });
+    }
   } else {
     throw new MetarParseError(
       "invalid-input",

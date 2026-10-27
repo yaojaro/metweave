@@ -1594,8 +1594,9 @@ export function applyRvrSlashToken(
 }
 
 /** 当前天气三态收口（原正文循环后内联块）：仅有实组时给值；RE-only 报文 weather 保持
- *  undefined（组省略 ≠ 缺测）；组级 span 首组至末组。 */
-export function observedWeatherOf(
+ *  undefined（组省略 ≠ 缺测）；组级 span 首组至末组。模块内私有——外部消费走
+ *  resolveObservedWeather（值优先收口，METAR/TAF 同源）。 */
+function observedWeatherOf(
   weatherList: readonly WeatherGroup[],
 ): Observed<readonly WeatherGroup[]> | undefined {
   if (weatherList.length === 0) return undefined;
@@ -1612,6 +1613,19 @@ export function observedWeatherOf(
     };
   }
   return undefined;
+}
+
+/**
+ * 天气组收口（METAR/TAF 两通道共用同一真相）：**值优先**——组列非空取组列；组列空再看
+ * `//` 缺测标记。`//` 与真实天气组**并存**时真实组胜出（缺测组多半是磨损的早位组，
+ * 把后面的实组静默吞掉与「不静默」纪律相反）。两侧各写一遍合并序时曾出现一处反转
+ * （TAF 侧 `weather ??` 缺测压值），本函数立为单源。
+ */
+export function resolveObservedWeather(
+  weather: Observed<readonly WeatherGroup[]> | undefined,
+  weatherList: readonly WeatherGroup[],
+): Observed<readonly WeatherGroup[]> | undefined {
+  return observedWeatherOf(weatherList) ?? weather;
 }
 
 /** CAVOK 交叉校验的正文状态快照（cavokCrossCheck 入参，批 0.1 显式化）。 */
@@ -1780,12 +1794,16 @@ export function parseRemarkSegment(
       push("temp-extrema-6h");
       continue;
     }
+    // PK WND / WSHFT 的后随组做形态校验：只吞**像数据**的 token，不像的留给各自认组——
+    // 此前「后随 token 存在即吞」，磨损形态 `RMK WSHFT SLP992` 会把海平面气压组并进
+    // wind-shift 的 raw、SLP 认组静默丢失（FMH-1：PK WND 为 dddff[/HHMM]；WSHFT 为
+    // HHMM，语料实弹含传输磨损的短组 `WSHFT 18`——纯数字短组照收，字母组不收）
     if (text === "PK" && tokens[i + 1]?.text === "WND") {
-      push("peak-wind", 3);
+      push("peak-wind", /^\d{5}(?:\/\d{4})?$/.test(tokens[i + 2]?.text ?? "") ? 3 : 2);
       continue;
     }
-    if (text === "WSHFT" && tokens[i + 1] !== undefined) {
-      push("wind-shift", 2);
+    if (text === "WSHFT") {
+      push("wind-shift", /^\d{1,4}(?:\/\d{1,4})?$/.test(tokens[i + 1]?.text ?? "") ? 2 : 1);
       continue;
     }
     if (text === "PRESRR" || text === "PRESFR") {

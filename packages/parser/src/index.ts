@@ -60,7 +60,7 @@ export type {
   WindGroup,
 } from "@metweave/core";
 // TAF 解析层（v0.2 批 1 起）：parseTaf / tryParseTaf 与其结果类型——与 parse 同入口供给
-export { parseTaf, tafDurationHours, tryParseTaf } from "./taf";
+export { parseTaf, tafDurationHours, tafHeadWalk, tryParseTaf } from "./taf";
 export type { TryParseTafResult } from "./taf";
 // TAF 时间线展开器（v0.2 批 2.3 起）：五步算法的派生层（B4–B7）
 export { expandTaf, tafSegments } from "./expand";
@@ -137,7 +137,7 @@ import {
   applyRvrNoBodyToken,
   warnRvrNoThenValues,
   applyRvrSlashToken,
-  observedWeatherOf,
+  resolveObservedWeather,
   cavokCrossCheck,
   parseRemarkSegment,
 } from "./groups";
@@ -842,8 +842,8 @@ export function parse(raw: string, options?: ParseOptions): MetarReport {
   }
 
   // 当前天气组：仅有实组时给值；RE-only 报文 weather 保持 undefined（组省略 ≠ 缺测）——
-  // 组级 span 首组至末组的收口规则迁至 observedWeatherOf
-  weather = observedWeatherOf(weatherList) ?? weather;
+  // 收口规则（值优先、`//` 缺测兜底）与 TAF 侧同源，见 groups.ts 的 resolveObservedWeather
+  weather = resolveObservedWeather(weather, weatherList);
   if (cloudSeen) {
     clouds = { elements: cloudElements, clear: clearCode };
   }

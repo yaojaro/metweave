@@ -63,6 +63,22 @@ export interface TafTempoOverlay {
   readonly withTempo: boolean;
 }
 
+/**
+ * TEMPO/PROB 挂载态四要素的**单一构造**（expandTaf 与 tafSegments 两视图共用一份——
+ * 此前两处各写一遍，分段视图那遍把「未列天气」折成 `[]`、把 cavok 恒置布尔，与
+ * `TafTempoOverlay.conditions` 声明的三态契约相反）：
+ * - NSW → `weather: []`（显式无天气）；列了 → 整列；**未列 → 省略键**（继承主导段值）；
+ * - cavok 只在组内编 CAVOK 时置 `true`，未编省略键。
+ */
+const overlayConditionsOf = (e: TrendElements): TafTempoOverlay["conditions"] => ({
+  ...(e.wind !== undefined ? { wind: e.wind } : {}),
+  ...(e.visibility !== undefined ? { visibility: e.visibility } : {}),
+  ...(e.nsw !== undefined ? { weather: [] } : {}),
+  ...(e.weather.length > 0 ? { weather: e.weather } : {}),
+  ...(e.clouds !== undefined ? { clouds: e.clouds } : {}),
+  ...(e.cavok !== undefined ? { cavok: true } : {}),
+});
+
 /** 一次展开的完整结果 */
 export interface TafExpansion {
   /** 间歇态/段值（B7：窗内非发作时刻的基线） */
@@ -71,8 +87,7 @@ export interface TafExpansion {
   readonly tempo?: TafTempoOverlay;
   /** B6 过渡带：t 在某 BECMG 窗内，变化时刻不可精确（保守按前段值返回） */
   readonly uncertain: boolean;
-  /** 绑定段：base 或变化组序号（changes 下标） */
-  readonly boundSegment:
+  /** 绑定段：base 或变化组序号（changes 下标） */ readonly boundSegment:
     | { readonly kind: "base" }
     | { readonly kind: string; readonly index: number };
 }
@@ -250,16 +265,7 @@ export function expandTaf(
     const e = change.elements;
     if (e === undefined) continue;
     tempo = {
-      conditions: {
-        ...(e.wind !== undefined ? { wind: e.wind } : {}),
-        ...(e.visibility !== undefined ? { visibility: e.visibility } : {}),
-        // 天气三态：NSW → []（显式无天气）；列了 → 整列；未列 → 省略（继承主导段值——
-        // 旧实现未列也归 []，叠加消费方会把基况降水清空、发作窗档位被低估）
-        ...(e.nsw !== undefined ? { weather: [] } : {}),
-        ...(e.weather.length > 0 ? { weather: e.weather } : {}),
-        ...(e.clouds !== undefined ? { clouds: e.clouds } : {}),
-        ...(e.cavok !== undefined ? { cavok: true } : {}),
-      },
+      conditions: overlayConditionsOf(e),
       ...(change.probability !== undefined ? { probability: change.probability } : {}),
       withTempo: change.withTempo === true,
     };
@@ -385,13 +391,7 @@ export function tafSegments(
         uncertain: false,
         conditions: exp.conditions,
         overlay: {
-          conditions: {
-            ...(e.wind !== undefined ? { wind: e.wind } : {}),
-            ...(e.visibility !== undefined ? { visibility: e.visibility } : {}),
-            weather: e.nsw !== undefined && e.weather.length === 0 ? [] : e.weather,
-            ...(e.clouds !== undefined ? { clouds: e.clouds } : {}),
-            cavok: e.cavok !== undefined,
-          },
+          conditions: overlayConditionsOf(e),
           ...(change.probability !== undefined ? { probability: change.probability } : {}),
           withTempo: change.withTempo === true,
         },

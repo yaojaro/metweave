@@ -13,7 +13,7 @@
 import type { MetarReport, TafReport } from "@metweave/core";
 import type { MetarParseErrorCode } from "@metweave/core";
 import { MetarParseError, MetarSourceError } from "@metweave/core";
-import { parse, parseTaf } from "@metweave/parser";
+import { parse, parseTaf, tafHeadWalk } from "@metweave/parser";
 
 // 错误类复出（API 完整性）：消费方从 sources 子路径 import 即可 catch 两类错误，
 // 不必再从伞包主入口双入口引入（类实体与 core 同一，instanceof 双向成立）。
@@ -370,13 +370,13 @@ export function awTafUrl(
   return `${options.baseUrl ?? AW_TAF_ENDPOINT}?${params.toString()}`;
 }
 
-/** 电头站码 best-effort 提取（TAF/AMD/COR 剥词；剥不出返回空串）——与 parseTaf 电头判式同源（TAF 词可省、AMD/COR 循环剥、四字符码形） */
+/** 电头站码 best-effort 提取（剥不出返回空串）——电头判式与 parseTaf 同一真相
+ *  （parser 的 tafHeadWalk：TAF 词可省、AMD/COR 循环剥；此前此处是复制件，规则一变即漂移） */
 const stationHeadOf = (raw: string): string => {
-  const toks = raw.split(/\s+/);
-  let k = toks[0] === "TAF" ? 1 : 0;
-  while (toks[k] === "AMD" || toks[k] === "COR") k += 1;
-  const head = toks[k] ?? "";
-  return /^[A-Z0-9]{4}$/.test(head) ? head : "";
+  const toks = raw.split(/\s+/).map((text) => ({ text }));
+  const head = tafHeadWalk(toks);
+  const code = toks[head.index]?.text ?? "";
+  return /^[A-Z0-9]{4}$/.test(code) ? code : "";
 };
 
 /** raw 文本 → 整份报文行（缩进续行并回上一份；与报池语义同源）+ best-effort 站码提取 */

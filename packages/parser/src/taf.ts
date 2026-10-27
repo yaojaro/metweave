@@ -33,7 +33,7 @@ import {
   cloudLayerElementOf,
   compactNode,
   isSkyClear,
-  observedWeatherOf,
+  resolveObservedWeather,
   parseVisibilityToken,
   parseWindToken,
   spanOf,
@@ -50,6 +50,38 @@ import {
 import { strictGate } from "./validate";
 
 const STATION_PATTERN = /^[A-Z0-9]{4}$/;
+
+/**
+ * TAF 电头 token 游走（A4，**电头判式的单一事实来源**）：TAF 类型词可省、AMD/COR 在
+ * 站名前不写死相对序地循环剥（≤4 护栏）。`parseTaf`（带重复枚告警）与仓外 best-effort
+ * 站码提取（`@metweave/metweave` sources 的报池预分流）共用本函数——此前两处各写
+ * 一遍，电头规则一变即静默漂移（2026-10-27 审查发现 sources 侧已是复制件）。
+ * @param onWord 每剥一枚 AMD/COR 回调一次（duplicate＝同词第二枚起，调用方决定是否出声）
+ * @returns 停位下标（首枚非电头 token）与修订/更正位
+ */
+export function tafHeadWalk<T extends { readonly text: string }>(
+  tokens: readonly T[],
+  onWord?: (word: "AMD" | "COR", token: T, duplicate: boolean) => void,
+): { index: number; amended: boolean; corrected: boolean } {
+  let i = 0;
+  if (tokens[0]?.text === "TAF") i = 1;
+  let amended = false;
+  let corrected = false;
+  for (let guard = 0; guard < 4; guard++) {
+    const t = tokens[i];
+    if (t === undefined) break;
+    if (t.text === "AMD") {
+      onWord?.("AMD", t, amended);
+      amended = true;
+      i += 1;
+    } else if (t.text === "COR") {
+      onWord?.("COR", t, corrected);
+      corrected = true;
+      i += 1;
+    } else break;
+  }
+  return { index: i, amended, corrected };
+}
 const ISSUE_TIME_PATTERN = /^(\d{2})(\d{2})(\d{2})Z$/;
 const VALIDITY_PATTERN = /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/;
 
@@ -116,38 +148,20 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
   let i = 0;
   const peek = (ahead = 0): Token | undefined => tokens[i + ahead];
 
-  let amended = false;
-  let corrected = false;
-
   // —— 电头（A4）：TAF 类型词可省；AMD/COR 在站名前不写死相对序（WMO/ICAO 与美式槽位并存）
-  if (peek()?.text === "TAF") i += 1;
-  for (let guard = 0; guard < 4; guard++) {
-    const t = peek();
-    if (t === undefined) break;
-    if (t.text === "AMD") {
-      if (amended) {
-        warnings.push({
-          code: "duplicate-group",
-          severity: "warning",
-          message: "电头 AMD 重复出现——首枚已置修订位，重复枚出声不静默",
-          span: spanOf(t),
-        });
-      }
-      amended = true;
-      i += 1;
-    } else if (t.text === "COR") {
-      if (corrected) {
-        warnings.push({
-          code: "duplicate-group",
-          severity: "warning",
-          message: "电头 COR 重复出现——首枚已置更正位，重复枚出声不静默",
-          span: spanOf(t),
-        });
-      }
-      corrected = true;
-      i += 1;
-    } else break;
-  }
+  // —— 判式收口在 tafHeadWalk（电头单一事实来源），此处只挂重复枚告警
+  const head = tafHeadWalk(tokens, (word, t, duplicate) => {
+    if (!duplicate) return;
+    warnings.push({
+      code: "duplicate-group",
+      severity: "warning",
+      message: `电头 ${word} 重复出现——首枚已置${word === "AMD" ? "修订" : "更正"}位，重复枚出声不静默`,
+      span: spanOf(t),
+    });
+  });
+  // AAA/CCA 族（A3★ 容错）在后文还会置位，须 let（电头 walk 初值来自 tafHeadWalk）
+  let { amended, corrected } = head;
+  i = head.index;
 
   const stTok = peek();
   if (stTok === undefined || !STATION_PATTERN.test(stTok.text)) {
@@ -722,7 +736,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
   // WMO 51.5）为基；中国扩展层（弱档 `-` 与 BR/HZ 等，ZBTJ/ZSSS 官方示例实证）容错收下 + 出声——
   // 完整白名单编码与拒收语义归 /validate（strict 侧），tolerant 层只标记不拒收
   const cnExtensionGroups: { group: WeatherGroup; where: string }[] = [];
-  const baseWeather = weather ?? observedWeatherOf(weatherList);
+  const baseWeather = resolveObservedWeather(weather, weatherList);
   if (baseWeather?.kind === "value") {
     for (const g of baseWeather.value) cnExtensionGroups.push({ group: g, where: "基况段" });
   }
@@ -752,7 +766,7 @@ export function parseTaf(raw: string, options?: TafParseOptions): TafReport {
     flags: { amended, corrected },
     wind,
     visibility,
-    weather: weather ?? observedWeatherOf(weatherList),
+    weather: resolveObservedWeather(weather, weatherList),
     clouds,
     cavok,
     cavokSpan,

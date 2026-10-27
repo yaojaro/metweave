@@ -508,6 +508,23 @@ describe("span 源定位（captureMetaData 主路径 + 坍缩兜底）", () => {
     );
   });
 
+  it("collect 一裹多报（ECCC 真实流形态）：仅解析首份＋info 告警点名其余被略过", () => {
+    const one = `<iwxxm:METAR reportStatus="NORMAL">
+      <iwxxm:issueTime><gml:TimeInstant gml:id="w1"><gml:timePosition>2026-10-05T06:00:00Z</gml:timePosition></gml:TimeInstant></iwxxm:issueTime>
+      <iwxxm:aerodrome><aixm:AirportHeliport xmlns:aixm="http://www.aixm.aero/schema/5.1.1"><aixm:timeSlice><aixm:AirportHeliportTimeSlice><aixm:locationIndicatorICAO>ZSPD</aixm:locationIndicatorICAO></aixm:AirportHeliportTimeSlice></aixm:timeSlice></aixm:AirportHeliport></iwxxm:aerodrome>
+      <iwxxm:observationTime xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#w1"/>
+      <iwxxm:observation><iwxxm:MeteorologicalAerodromeObservation cloudAndVisibilityOK="false"><iwxxm:airTemperature uom="Cel">23</iwxxm:airTemperature></iwxxm:MeteorologicalAerodromeObservation></iwxxm:observation>
+    </iwxxm:METAR>`;
+    const multi = `<?xml version="1.0"?>
+<collect:MeteorologicalBulletin xmlns:collect="http://def.wmo.int/metce/2014" xmlns:iwxxm="http://icao.int/iwxxm/2025-2" xmlns:gml="http://www.opengis.net/gml/3.2">
+  <collect:meteorologicalInformation>${one}</collect:meteorologicalInformation>
+  <collect:meteorologicalInformation>${one}</collect:meteorologicalInformation>
+</collect:MeteorologicalBulletin>`;
+    const r = parseMetar(multi);
+    expect(r.station).toBe("ZSPD"); // 首份照常解析
+    expect(r.warnings.some((w) => /collect 公报含 2 份报文/.test(w.message))).toBe(true);
+  });
+
   it("紧凑模式 spans:false → 产物零 span 键（与 TAC 侧 parse 同契约）", () => {
     const r = parseMetar(full, { spans: false });
     const text = JSON.stringify(r);
