@@ -1937,3 +1937,31 @@ export function renderCard(report: MetarReport, options: RenderCardOptions = {})
 
   return root;
 }
+
+/** 已挂原文折叠委托的根（幂等守卫——同根二次挂载会一次点击双翻转） */
+const rawToggleRoots = new WeakSet<EventTarget>();
+
+/**
+ * 原文区收起/展开交互——`renderCard`/`renderTafCard` 原文区（`.mw-raw-title` 标题行＋
+ * `.mw-raw`/`.mw-raw-group` 正文）的配套行为，随组件一并供给（此前是示例页各抄一份
+ * document 级委托）。在 root 上挂一次 click 委托：点标题行 → 切换紧随正文的
+ * `hidden` 并同步 `aria-expanded`；收起的是整个原文区（tab 切的是区内编码视图，
+ * 两层操作正交）。幂等：同一根重复挂载只生效一次。
+ * @param root 委托根（缺省 `document`——多卡片页一次挂载全局生效）
+ */
+export function mountRawToggle(root: EventTarget = document): void {
+  if (rawToggleRoots.has(root)) return;
+  rawToggleRoots.add(root);
+  root.addEventListener("click", (e: Event) => {
+    const title = e.target instanceof Element ? e.target.closest(".mw-raw-title") : null;
+    if (!(title instanceof HTMLElement)) return;
+    const body = title.nextElementSibling;
+    if (
+      !(body instanceof HTMLElement) ||
+      !(body.classList.contains("mw-raw") || body.classList.contains("mw-raw-group"))
+    )
+      return;
+    const collapsed = body.toggleAttribute("hidden");
+    title.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  });
+}

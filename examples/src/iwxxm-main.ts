@@ -20,7 +20,7 @@
  */
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { parse, parseIwxxm, renderCard } from "metweave";
+import { mountRawToggle, parse, parseIwxxm, renderCard } from "metweave";
 import { addMetarLayer, TIER_COLORS, type ConditionTier } from "@metweave/leaflet";
 import { setupBasemap } from "./basemaps";
 import { altRawsOfIwxxm } from "./iwxxm-alt-raw";
@@ -163,19 +163,6 @@ main().catch((err: unknown) => {
   setStatus(`IWXXM 演示装载失败：${err instanceof Error ? err.message : String(err)}`, "error");
 });
 
-// 报文原文区收起/展开：点卡片「报文原文」标题条切换（事件委托，地图弹窗卡与对照卡同享；
-// 组件层不掺交互——renderCard 产静态 DOM，宿主管视图切换）。原文区的下一节随形态二择：
-// 单视图 .mw-raw（对照卡/抽不出 altRaws 的弹窗卡）或 tab 组包裹 .mw-raw-group（双编码卡）——
-// 收起的都是整个原文区（tab 切的是区内编码视图，两层操作正交）
-document.addEventListener("click", (e: MouseEvent) => {
-  const title = e.target instanceof Element ? e.target.closest(".mw-raw-title") : null;
-  if (!(title instanceof HTMLElement)) return;
-  const body = title.nextElementSibling;
-  if (
-    !(body instanceof HTMLElement) ||
-    !(body.classList.contains("mw-raw") || body.classList.contains("mw-raw-group"))
-  )
-    return;
-  const collapsed = body.toggleAttribute("hidden");
-  title.setAttribute("aria-expanded", collapsed ? "false" : "true");
-});
+// 报文原文区收起/展开：组件包的配套交互件（mountRawToggle——document 级一次委托，
+// 地图弹窗卡与对照卡同享；此前是本页手写的委托，与 lowalt 页逐字重复）
+mountRawToggle();

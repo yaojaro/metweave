@@ -10,7 +10,7 @@
  */
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { parse, parseTaf, renderTafCard } from "metweave";
+import { mountRawToggle, parse, parseTaf, renderTafCard } from "metweave";
 import { getMetarReports, getTafs } from "metweave/sources";
 import { addMetarLayer } from "@metweave/leaflet";
 import { setupBasemap } from "./basemaps";
@@ -559,16 +559,5 @@ main().catch((err: unknown) => {
   setStatus(`面板装配失败：${err instanceof Error ? err.message : String(err)}`, "error");
 });
 
-// 弹窗原文区收起/展开（与 iwxxm 页同一交互约定，事件委托共享）
-document.addEventListener("click", (e: MouseEvent) => {
-  const title = e.target instanceof Element ? e.target.closest(".mw-raw-title") : null;
-  if (!(title instanceof HTMLElement)) return;
-  const body = title.nextElementSibling;
-  if (
-    !(body instanceof HTMLElement) ||
-    !(body.classList.contains("mw-raw") || body.classList.contains("mw-raw-group"))
-  )
-    return;
-  const collapsed = body.toggleAttribute("hidden");
-  title.setAttribute("aria-expanded", collapsed ? "false" : "true");
-});
+// 弹窗原文区收起/展开：组件包的配套交互件（mountRawToggle，与其他示例页同一交互约定）
+mountRawToggle();

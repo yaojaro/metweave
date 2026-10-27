@@ -23,7 +23,7 @@ import type {
   WeatherGroup,
   WindGroup,
 } from "@metweave/core";
-import { tafSegments } from "@metweave/parser";
+import { tafDurationHours, tafSegments } from "@metweave/parser";
 import { utcDayRefText } from "./gloss";
 import { ariaClose, ariaOpen, positionBubbleAt, positionChipNear } from "./linkage";
 import type { TafExpandAt, TafResolvedConditions, TafSegmentRow } from "@metweave/parser";
@@ -332,11 +332,45 @@ const ltDateOf = (
   minDay?: number,
 ): { z: Date; utcY: number; utcMo: number; utcD: number } | null => {
   if (anchor === undefined || day < 1) return null;
-  const prev = minDay !== undefined && day >= minDay + 16;
-  const y = prev && anchor.month === 1 ? anchor.year - 1 : anchor.year;
-  const m = prev ? (anchor.month === 1 ? 12 : anchor.month - 1) : anchor.month;
-  const z = new Date(Date.UTC(y, m - 1, day, hour, minute) + offset * 60_000);
-  return { z, utcY: y, utcMo: m, utcD: day };
+  const cal = anchoredCalendarOf(day, anchor, minDay);
+  const z = new Date(Date.UTC(cal.y, cal.m - 1, cal.day, hour, minute) + offset * 60_000);
+  return { z, utcY: cal.y, utcMo: cal.m, utcD: cal.day };
+};
+
+/**
+ * 锚月日号 → 真月历 { y, m, day }（ltClock/ltDateOf 共用一份月判读）：
+ * - **连续日序超出锚月长度**（止时 24 折出的「次日」、day 32 一类）→ 次月、日号减锚月天数
+ *   （Date.UTC 本可自动进位，但前月分支须先让位——连续序与「前月尾日号」在同日号段重叠）；
+ * - **跨月窗头日号**（day < minDay，如 9 月锚报 3006/0106 的止日 01）→ 次月（此前只识别
+ *   前月尾日号，次月头日号被读成锚月同号——10 月 1 日错显成 9 月 1 日）；
+ * - **前月尾日号**（day ≥ minDay+16，如锚 10 月报的发布日 30＝9 月 30）→ 前月；
+ * - 其余＝锚月原样。
+ */
+const anchoredCalendarOf = (
+  day: number,
+  anchor: TafCalendarAnchor,
+  minDay: number | undefined,
+): { y: number; m: number; day: number } => {
+  const daysIn = new Date(Date.UTC(anchor.year, anchor.month, 0)).getUTCDate(); // 锚月天数
+  let y = anchor.year;
+  let m = anchor.month;
+  let d = day;
+  if (day > daysIn) {
+    m += 1;
+    d = day - daysIn;
+  } else if (minDay !== undefined && day < minDay) {
+    m += 1;
+  } else if (minDay !== undefined && day >= minDay + 16) {
+    m -= 1;
+  }
+  if (m === 13) {
+    m = 1;
+    y += 1;
+  } else if (m === 0) {
+    m = 12;
+    y -= 1;
+  }
+  return { y, m, day: d };
 };
 
 const ltClock = (
@@ -348,13 +382,9 @@ const ltClock = (
   minDay?: number,
 ): string => {
   if (anchor !== undefined && day >= 1) {
-    // 守卫只剩 day ≥ 1：日号超锚月长度（如 9 月锚的 31）是连续序进位＝10 月 1 日，Date.UTC
-    // 自动进位、数学恒等（UI 月界实测曾把进位误判病态回退折回——2026-09-24 复验收口）；
-    // 报文原生电码日号不会超出当月（编报规范约束），无需月吻合守卫
-    const prev = minDay !== undefined && day >= minDay + 16; // 发布等前月尾日号 → 锚月前一月
-    const y = prev && anchor.month === 1 ? anchor.year - 1 : anchor.year;
-    const m = prev ? (anchor.month === 1 ? 12 : anchor.month - 1) : anchor.month;
-    const z = new Date(Date.UTC(y, m - 1, day, hour, minute) + offset * 60_000);
+    // 守卫只剩 day ≥ 1：日号判读（跨次月/前月/锚月）收口在 anchoredCalendarOf 一处
+    const cal = anchoredCalendarOf(day, anchor, minDay);
+    const z = new Date(Date.UTC(cal.y, cal.m - 1, cal.day, hour, minute) + offset * 60_000);
     return `${z.getUTCMonth() + 1}月${z.getUTCDate()}日 ${String(z.getUTCHours()).padStart(2, "0")}:${String(z.getUTCMinutes()).padStart(2, "0")}`;
   }
   const total = (day - 1) * 1440 + hour * 60 + minute + offset;
@@ -786,10 +816,8 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     return card;
   }
 
-  // 元信息：有效期 + 时长（差值口径）/ 发布时刻
-  const hours =
-    (v.endDay >= v.startDay ? v.endDay - v.startDay : v.endDay + 31 - v.startDay) * 24 +
-    (v.endHour - v.startHour);
+  // 元信息：有效期 + 时长（差值口径——parser 的 tafDurationHours 单源，不再手抄 31 天回绕式）
+  const hours = tafDurationHours(v);
   // —— 联动注册表（三轮：着色细化到组级——条目/行头/原文片/元信息行双向点亮）
   const HL = "mw-taf-hl";
   /** 解码气泡依据键（FM 51 条款族——见 TAF_DECODE_CITES） */
@@ -952,17 +980,22 @@ export function renderTafCard(report: TafReport, options: RenderTafCardOptions =
     card.append(row);
   }
   // 有效期直说具体日期时间（不用 ddHH/ddHH 短码）：止时 24＝次日 00:00（B2 午夜特例的显示位换算）；
-  // 两制各自模板——UTC 带日号前缀 + HH:MMZ；京时整段京钟（validityFrom 的「dd日」前缀不重复套日号）
-  const endClock =
+  // 两制各自模板——UTC 带日号前缀 + HH:MMZ（日号 31 天折回，显示位近似）；京时整段京钟
+  // （validityFrom 的「dd日」前缀不重复套日号）。京时制的止日用**连续日号**（endDay+1）：
+  // 真月历判读（anchoredCalendarOf）把超锚月长度的连续序进位到次月——「31 日 24Z 止」
+  // 此前折成日号 01，在锚月判定下会被读成锚月 1 日（7 月报 0701/0731 24 错显 7 月 1 日止）
+  const endUtc =
     v.endHour === 24 ? { day: (v.endDay % 31) + 1, hour: 0 } : { day: v.endDay, hour: v.endHour };
+  const endCal =
+    v.endHour === 24 ? { day: v.endDay + 1, hour: 0 } : { day: v.endDay, hour: v.endHour };
   const validityText =
     zone === null
       ? `${t.validity} ${t.validityFrom(dayOf(v.startDay), clockHmOf(v.startHour))} ${t.validityTo(
-          dayOf(endClock.day),
-          clockHmOf(endClock.hour),
+          dayOf(endUtc.day),
+          clockHmOf(endUtc.hour),
         )}（${zoneName}，${t.duration(hours)}）`
       : `${t.validity} ${t.validityFromZone(clockAt(v.startDay, v.startHour, 0) + refAt(v.startDay, v.startHour, 0))} ${t.validityToZone(
-          clockAt(endClock.day, endClock.hour, 0) + refAt(endClock.day, endClock.hour, 0),
+          clockAt(endCal.day, endCal.hour, 0) + refAt(endCal.day, endCal.hour, 0),
         )}（${zoneName}，${t.duration(hours)}）`;
   const validityEl = el("p", "mw-taf-meta", validityText);
   link.validityEl = validityEl;

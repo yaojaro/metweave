@@ -11,7 +11,7 @@ const asMetar = (r: IwxxmReport): MetarReport => {
 };
 const parseIwxxmMetar = (xml: string): MetarReport => asMetar(parseIwxxmRaw(xml));
 import type { RenderCardOptions } from "./card";
-import { DECODE_CITES, DECODE_CITE_KEYS, renderCard } from "./card";
+import { DECODE_CITES, DECODE_CITE_KEYS, mountRawToggle, renderCard } from "./card";
 
 const visRowOf = (card: ReturnType<typeof renderCard>): string =>
   [...card.querySelectorAll("dd")]
@@ -2148,6 +2148,24 @@ describe("TAF 卡月锚（2026-09-24 评测 P1 月界批：monthAnchor 在位时
     expect(feb.textContent).toContain("北京时2月26日 02:00"); // 合法日号（26 ≤ 28）走真月历
     expect(feb.textContent).not.toContain("3月"); // 越界日号守卫回退折回、不静默滑到下月
   });
+
+  it("跨月窗头日号：9 月锚报 3000/0106 的止日 01 显示「10月1日」（此前只识别前月尾日号，错显成 9 月 1 日）", () => {
+    const card = renderTafCard(parseTaf("TAF ZPPP 292250Z 3000/0106 04009MPS 9999 SCT023="), {
+      utcOffsetMinutes: 480,
+      monthAnchor: { year: 2026, month: 9 },
+    });
+    expect(card.textContent).toContain("北京时10月1日 14:00"); // 止日 01 日 06Z＋8h（次月头日号判读）
+    expect(card.textContent).not.toContain("北京时9月1日"); // 旧口径的错显形态
+  });
+
+  it("止时 24 的连续日号进位：7 月锚 1600/3124 的止刻显示「8月1日 08:00」（此前 %31 折出日号 01 被判锚月 1 日）", () => {
+    const card = renderTafCard(parseTaf("TAF ZPPP 152250Z 1600/3124 04009MPS 9999 SCT023="), {
+      utcOffsetMinutes: 480,
+      monthAnchor: { year: 2026, month: 7 },
+    });
+    expect(card.textContent).toContain("北京时8月1日 08:00"); // 31 日 24Z＝8 月 1 日 00Z＋8h
+    expect(card.textContent).not.toContain("7月1日 08:00"); // 旧口径的错显形态
+  });
 });
 
 describe("METAR 卡限高契约（评测批3#10：对齐 TAF 卡——多跑道状态组长卡不超视口）", () => {
@@ -2158,6 +2176,26 @@ describe("METAR 卡限高契约（评测批3#10：对齐 TAF 卡——多跑道�
     expect(cardRule).toContain("max-height: min(65vh, 680px)");
     expect(cardRule).toContain("overflow-y: auto");
     expect(cardRule).toContain("position: relative");
+  });
+});
+
+describe("mountRawToggle（原文区收起/展开交互件：renderCard 产静态 DOM，交互随组件供给）", () => {
+  it("点标题行切换正文 hidden 并同步 aria-expanded；非正文目标不动作；同根重复挂载幂等", () => {
+    const card = renderCard(parse("ZBAA 121253Z 30015KT 9999 FEW010 21/12 Q1013"), { raw: true });
+    document.body.replaceChildren(card);
+    mountRawToggle();
+    mountRawToggle(); // 幂等：二次挂载不得让一次点击双翻转
+    const title = card.querySelector(".mw-raw-title");
+    const body = card.querySelector(".mw-raw, .mw-raw-group");
+    expect(title).toBeInstanceOf(HTMLElement);
+    expect(body).toBeInstanceOf(HTMLElement);
+    expect((title as HTMLElement).getAttribute("aria-expanded")).toBeNull(); // 初始未点击无状态位（同旧页行为）
+    (title as HTMLElement).click();
+    expect((body as HTMLElement).hasAttribute("hidden")).toBe(true); // 收起
+    expect((title as HTMLElement).getAttribute("aria-expanded")).toBe("false");
+    (title as HTMLElement).click();
+    expect((body as HTMLElement).hasAttribute("hidden")).toBe(false); // 展开（幂等下净效果单次翻转）
+    expect((title as HTMLElement).getAttribute("aria-expanded")).toBe("true");
   });
 });
 
