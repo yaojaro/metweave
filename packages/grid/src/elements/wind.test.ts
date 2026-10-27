@@ -1,16 +1,17 @@
 /**
  * wind（10m 风）要素档案单测：双分量合成口径（variable WIND 对齐合成场、层/单位沿
- * 分量头）、暖色渐进色带形态（YlOrBr 七段低浅高深）、等距固定域 [0,32]×4 m/s×8 档
- * （断点全 4 倍数、0 物理下界、蒲福 12 级 32.7 落上外延档）、分位不立（单一推荐）、
- * renderForm "filled+barbs" 与风向杆口径（step 10／calmThreshold 1）＋等值线 4 m/s
- * 留位、渲染像素方向（合成风速低浅高深）＋杆位集成（windBarbsOf 按档案口径）——
- * 档案是色标与档位的单一事实来源，本测试锁其口径不被无意改动。
+ * 分量头）、windy 风格全谱色带形态（十二段：灰起步→蓝青冷段→绿黄→橙红→品红收，
+ * 2026-10-27 owner 定向替原 YlOrBr 暖色七段）、threshold 阈值档（断点 1/3/5/7/10/14/
+ * 17/21/24/28/32——低速加密大风收拢、蒲福 12 级 32.7 落上外延品红档、不看 stats 固定
+ * 可比）、等距/分位不立（单一推荐）、renderForm "filled+barbs" 与风向杆口径
+ * （step 10／calmThreshold 1）＋等值线 4 m/s 留位、渲染像素方向（合成风速低浅高深）
+ * ＋杆位集成（windBarbsOf 按档案口径）——档案是色标与档位的单一事实来源，本测试锁其
+ * 口径不被无意改动。
  */
 import { describe, expect, it } from "vitest";
 import {
   windProfile,
   buildColorScale,
-  equalStepBreaks,
   windBarbsOf,
   windSpeedGrid,
   renderToImageData,
@@ -92,41 +93,47 @@ describe("wind（10m 风）档案", () => {
     expect(windProfile.labelZh).toBe("10m 风");
   });
 
-  it("色带为 YlOrBr 内七段暖色渐进（低浅黄→高深橙棕、暖主导非发散、裁去最深两档）", () => {
+  it("色带为 windy 风格全谱十二段（灰起步→冷段蓝青→绿黄→橙红→品红收）", () => {
     const stops = windProfile.colorStops;
-    expect(stops).toHaveLength(7);
+    expect(stops).toHaveLength(12);
     for (const c of stops) expect(c).toMatch(/^#[0-9a-fA-F]{6}$/);
-    // 暖主导：每停靠红绿皆明显高于蓝（黄橙棕族——蓝是冷色低位）
-    for (const c of stops) {
-      const [r, g, b] = rgbOf(c);
+    // 首档近中性灰（0–1 m/s 静/微风不着彩——windy 低端惯例）
+    const [r0, g0, b0] = rgbOf(stops[0]!);
+    expect(Math.abs(r0 - g0)).toBeLessThanOrEqual(8);
+    expect(Math.abs(g0 - b0)).toBeLessThanOrEqual(8);
+    // 冷段（1–10 m/s，stops 2–5）：蓝高于红
+    for (const c of stops.slice(1, 5)) {
+      const [r, , b] = rgbOf(c);
+      expect(b).toBeGreaterThan(r);
+    }
+    // 暖段（21 m/s 起，末四档）：红高于蓝
+    for (const c of stops.slice(8)) {
+      const [r, , b] = rgbOf(c);
       expect(r).toBeGreaterThan(b);
-      expect(g).toBeGreaterThan(b);
     }
-    // 亮度单调下降（弱风浅、强风深）
-    for (let i = 1; i < stops.length; i++) {
-      expect(lumaOf(stops[i]!)).toBeLessThan(lumaOf(stops[i - 1]!));
-    }
-    expect(lumaOf(stops[6]!)).toBeGreaterThan(40); // 浅纪律：最深档 #cc4c02 深橙可读非墨色
-    expect(rgbOf(stops[6]!)[0]).toBeGreaterThan(rgbOf(stops[6]!)[2]); // 深端仍暖主导
+    // 浅纪律沿旧例：末档品红可读非墨、且深于首档灰
+    expect(lumaOf(stops[11]!)).toBeGreaterThan(40);
+    expect(lumaOf(stops[11]!)).toBeLessThan(lumaOf(stops[0]!));
   });
 
-  it("等距固定域 [0,32]×4 m/s×8 档：断点全 4 倍数、0 物理下界、域含本窗极值且蒲福 12 级落上外延档", () => {
-    const equal = windProfile.equal!;
-    expect(equal).toEqual({ min: 0, max: 32, bins: 8 });
+  it("threshold 阈值档（windy 风格断点）：低速端加密、大风端收拢、蒲福 12 级落上外延品红档", () => {
+    const thresholds = windProfile.thresholds!;
+    expect(thresholds).toEqual([1, 3, 5, 7, 10, 14, 17, 21, 24, 28, 32]);
     const scale = buildColorScale(windProfile, CN_SPEED_STATS);
-    expect(scale.breaks).toEqual(equalStepBreaks(0, 32, 8));
-    expect(scale.breaks).toEqual([4, 8, 12, 16, 20, 24, 28]);
+    expect(scale.breaks).toEqual(thresholds); // threshold 模式不看 stats：固定档界＝跨时次可比锚
     expect(scale.colors).toBe(windProfile.colorStops);
-    expect(scale.transparentBins).toBeUndefined(); // 风速无「无信号」档（静风是弱信号照画浅色）
+    expect(scale.colors).toHaveLength(thresholds.length + 1); // 档数＝断点数+1
+    expect(scale.transparentBins).toBeUndefined(); // 风速无「无信号」档（静风是弱信号照画灰档）
     expect(scale.logScale).toBeUndefined();
-    // 域容纳：本窗实测 max 20.44 在域内；蒲福 12 级界 32.7 落上外延档 [32,∞)（台风极端同色兜底）
-    expect(CN_SPEED_STATS.max).toBeLessThan(32);
+    // 域容纳：本窗实测 max 20.44 落 17–21 黄绿档内；蒲福 12 级界 32.7 落上外延品红档（台风极端同色兜底）
+    expect(CN_SPEED_STATS.max).toBeLessThan(21);
     expect(32.7).toBeGreaterThan(32);
   });
 
-  it("不立分位推荐（风速无业务分位口径，可比性锚是固定档界——单一推荐）", () => {
+  it("不立等距/分位推荐（threshold 为唯一推荐——windy 断点低速加密，等距匀分给不出）", () => {
+    expect(windProfile.equal).toBeUndefined();
     expect(windProfile.quantile).toBeUndefined();
-    expect(windProfile.defaultMode).toBe("equal");
+    expect(windProfile.defaultMode).toBe("threshold");
   });
 
   it("渲染形态＝三叠 filled+barbs+contours（0.3.2 T7）；杆口径 step 10＋静风阈 1 m/s＋四级 LOD；等值线 4 m/s 可选叠加", () => {
@@ -152,20 +159,25 @@ describe("wind（10m 风）档案", () => {
     });
   });
 
-  it("渲染集成：合成场沿档暖色渐进（低=浅亮、高=深暗），全域着色（静风照画浅色）", () => {
-    // 一行四值合成风速 0.5/4/12/20 → 档 0/1/3/5（浅黄→中黄→橙→深橙棕）
-    const [u, v] = pairOf([0.5, 4, 12, 20], [0, 0, 0, 0], 4, 1);
+  it("渲染集成：合成场沿档全谱渐进（弱风灰亮、冷段蓝主导、暖段红主导），全域着色（静风照画灰档）", () => {
+    // 一行四值合成风速 0.5/4/12/26 → 档 0/2/5/9（灰→蓝→青绿→橙——全谱三段各取代表）
+    const [u, v] = pairOf([0.5, 4, 12, 26], [0, 0, 0, 0], 4, 1);
     const speed = windSpeedGrid(u, v);
     const img = renderToImageData(speed, buildColorScale(windProfile, CN_SPEED_STATS), {
       convert: windProfile.toDisplay,
     });
-    const luma = (i: number): number => {
+    const chan = (i: number): [number, number, number] => {
       const a = img.data.subarray(i * 4, i * 4 + 4);
-      return 0.299 * (a[0] ?? 0) + 0.587 * (a[1] ?? 0) + 0.114 * (a[2] ?? 0);
+      return [a[0] ?? 0, a[1] ?? 0, a[2] ?? 0];
     };
-    expect(luma(0)).toBeGreaterThan(luma(1)); // 弱风浅
-    expect(luma(1)).toBeGreaterThan(luma(2));
-    expect(luma(2)).toBeGreaterThan(luma(3)); // 强风深
+    const luma = (i: number): number => {
+      const [r, g, b] = chan(i);
+      return 0.299 * r + 0.587 * g + 0.114 * b;
+    };
+    expect(luma(0)).toBeGreaterThan(luma(1)); // 弱风灰档亮于蓝档（起步即区分）
+    expect(chan(1)[2]).toBeGreaterThan(chan(1)[0]); // 冷段：蓝高于红
+    expect(chan(2)[2]).toBeGreaterThan(chan(2)[0]); // 青绿段：仍冷主导
+    expect(chan(3)[0]).toBeGreaterThan(chan(3)[2]); // 暖段：红高于蓝
     for (let i = 0; i < 4; i++) {
       expect(img.data[i * 4 + 3]).toBe(255); // 全域着色（无透明档）
     }

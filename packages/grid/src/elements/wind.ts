@@ -54,9 +54,26 @@ export const windProfile: ElementProfile = {
   storageUnit: "m s-1",
   displayUnit: "m/s",
   toDisplay: (value) => value,
-  colorStops: ["#ffffe5", "#fff7bc", "#fee391", "#fec44f", "#fe9929", "#ec7014", "#cc4c02"],
-  equal: { min: 0, max: 32, bins: 8 },
-  defaultMode: "equal",
+  // 色卡（2026-10-27 owner 定向：对表 windy 风格全谱，近似复刻非逐点）：灰起步（静风
+  // 不着彩）→蓝→青→绿→黄→橙→红→品红收；threshold 阈值档（替原 YlOrBr 等距 8 档）——
+  // 低速端加密（1/3/5/7，微风分辨）、大风端收拢（24/28/32）、32+ 品红兜底台风极端。
+  // 档界不随 stats（固定阈值＝跨时次可比，沿原固定域的可比性锚）。
+  colorStops: [
+    "#b3b3b3", // 0–1 静/微风：近中性灰（静风不着彩）
+    "#9dc3e6", // 1–3 浅蓝
+    "#6fafe8", // 3–5 蓝
+    "#3f96e0", // 5–7 深蓝
+    "#00b4d8", // 7–10 青
+    "#00c2a8", // 10–14 青绿
+    "#35c74f", // 14–17 绿
+    "#a8d800", // 17–21 黄绿
+    "#ffe000", // 21–24 黄
+    "#ffb000", // 24–28 橙
+    "#ff5000", // 28–32 橙红
+    "#c40068", // 32+ 品红（台风极端兜底档）
+  ],
+  thresholds: [1, 3, 5, 7, 10, 14, 17, 21, 24, 28, 32],
+  defaultMode: "threshold",
   renderForm: "filled+barbs+contours",
   barbs: {
     step: 10,
