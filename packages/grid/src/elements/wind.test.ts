@@ -182,6 +182,22 @@ describe("wind（10m 风）档案", () => {
     }
   });
 
+  it("渲染像素＝档案停靠色逐档精确（停靠数＝档数时逐档取停靠原色，不与相邻档混色）", () => {
+    // 七列一行取七档代表值 1/4/7/12/17/25/35 → 档 0–6 逐一命中；width 7 时像素中心恰落列中心
+    const [u, v] = pairOf([1, 4, 7, 12, 17, 25, 35], [0, 0, 0, 0, 0, 0, 0], 7, 1);
+    const speed = windSpeedGrid(u, v);
+    const img = renderToImageData(speed, buildColorScale(windProfile, CN_SPEED_STATS), {
+      width: 7,
+      convert: windProfile.toDisplay,
+    });
+    expect(img.width).toBe(7);
+    expect(img.height).toBe(1);
+    for (let bin = 0; bin < 7; bin++) {
+      const [r, g, b] = rgbOf(windProfile.colorStops[bin]!);
+      expect([img.data[bin * 4], img.data[bin * 4 + 1], img.data[bin * 4 + 2]]).toEqual([r, g, b]);
+    }
+  });
+
   it("杆位集成：档案口径出杆（step 10 抽稀格位、静风阈滤除、方向/速度数学锚）", () => {
     // 21×2 小场（step 10 的格位：列 0/10/20、行 0——中心对齐起点恰为 0）：
     // (0,0) 西风 3 m/s（u=3,v=0）、(10,0) 静风 0.5 m/s（阈值内滤除）、(20,0) 北风 4 m/s（v=−4）

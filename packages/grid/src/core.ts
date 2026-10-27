@@ -260,20 +260,17 @@ function parseHex(color: string, index: number): RgbaColor {
 
 /**
  * 色带取样（内部）：t ∈ [0,1]（0=最低档、1=最高档），在停靠色间线性插值（straight sRGB，
- * 色斑档级差下与感知均匀空间的差异不可辨）。t 自动钳制；colors 须已校验非空。
+ * 色斑档级差下与感知均匀空间的差异不可辨）。t 自动钳制；stops 须已预编译非空。
  * 单停靠色（length===1）＝纯色填充：无插值伙伴，t 无关恒取该色。
  */
-function colorAt(colors: readonly string[], t: number): RgbaColor {
-  if (colors.length === 1) {
-    const c = parseHex(colors[0] ?? "", 0);
-    return { r: c.r, g: c.g, b: c.b, a: c.a };
-  }
+function colorAt(stops: readonly RgbaColor[], t: number): RgbaColor {
+  if (stops.length === 1) return stops[0] ?? { r: 0, g: 0, b: 0, a: 255 };
   const clamped = Math.min(Math.max(t, 0), 1);
-  const scaled = clamped * (colors.length - 1);
-  const i = Math.min(Math.floor(scaled), colors.length - 2);
+  const scaled = clamped * (stops.length - 1);
+  const i = Math.min(Math.floor(scaled), stops.length - 2);
   const frac = scaled - i;
-  const c0 = parseHex(colors[i] ?? "", i);
-  const c1 = parseHex(colors[i + 1] ?? "", i + 1);
+  const c0 = stops[i] ?? { r: 0, g: 0, b: 0, a: 255 };
+  const c1 = stops[i + 1] ?? c0;
   return {
     r: c0.r + (c1.r - c0.r) * frac,
     g: c0.g + (c1.g - c0.g) * frac,
@@ -321,7 +318,7 @@ export function renderToImageData(
   if (scale.colors.length === 0) {
     throw new GridError("invalid-scale", "色带为空（colors 至少一色）");
   }
-  scale.colors.forEach((c, i) => parseHex(c, i)); // 逐色预检——坏色在渲染前报错（含具体值），不在半途
+  const rgbaStops = scale.colors.map((c, i) => parseHex(c, i)); // 逐色预编译（坏色渲染前报错＋热循环免重复解析）
   // 透明档序号校验：整数且落在 [0, breaks.length]（末档序号＝档数-1）——越界序号是配置
   // 笔误，静默不生效比报错更难查（不静默纪律；与断点/色带校验同一道关口）
   if (scale.transparentBins !== undefined) {
@@ -330,7 +327,7 @@ export function renderToImageData(
       if (!Number.isInteger(bin) || bin < 0 || bin > topBin) {
         throw new GridError(
           "invalid-scale",
-          `透明档序号 ${String(bin)} 非法（须为 0–${topBin} 的整数，档数共 ${topBin + 1}）`,
+          `透明档序号 ${String(bin)} 非法（须 0–${topBin} 的整数，档数共 ${topBin + 1}）`,
         );
       }
     }
@@ -338,6 +335,12 @@ export function renderToImageData(
   const { nx, ny, di } = grid.header.grid;
   if (di <= 0 || grid.header.grid.dj <= 0) {
     throw new GridError("invalid-scale", "网格步距非正，无法渲染");
+  }
+  if (grid.values.length !== nx * ny) {
+    throw new GridError(
+      "invalid-scale",
+      `场值长度与网格不符（values ${String(grid.values.length)} ≠ nx×ny ${nx}×${ny}）——越界读值会静默全透明`,
+    );
   }
   // log₁₀ 前置变换（可选）：值与断点在定档前统一进对数空间——两侧变换必须原子地
   // 同处一处（若靠调用方分别复合 convert 与断点，忘一侧即静默错档）；断点声明仍留
@@ -349,10 +352,24 @@ export function renderToImageData(
   if (!Number.isInteger(width) || width < 1) {
     throw new GridError("invalid-scale", `渲染宽度非法（width=${width}，须 ≥1 的整数）`);
   }
-  const height = Math.max(1, Math.round((width * ny) / nx));
+  // 输出高按**地理跨度比**（ny·dj : nx·di）取整——di≠dj 的网格（如 0.5°×0.25°）若按
+  // 格点数比（ny:nx）取会地理失真；现有方形步距网格两者相同、行为不变
+  const height = Math.max(1, Math.round((width * ny * grid.header.grid.dj) / (nx * di)));
   const convert = options.convert ?? ((v: number) => v);
   const opacity = Math.min(Math.max(options.opacity ?? 1, 0), 1);
   const bins = scale.breaks.length + 1;
+  // 档→色查找表（循环外一次装配，热循环直读）：**停靠色数＝档数时逐档精确取停靠色**
+  // （i ↔ stop i 一一对应——七档档案七停靠色即每档原色上屏；此前的档中心取样
+  // (bin+0.5)/bins 在该形态下会采到相邻停靠的混合点，与图例/粒子定档着色不一致）；
+  // 停靠多于档（渐变意图）维持档中心取样
+  const binColors: RgbaColor[] = [];
+  for (let bin = 0; bin < bins; bin++) {
+    binColors.push(
+      rgbaStops.length === bins
+        ? (rgbaStops[bin] ?? rgbaStops[0] ?? { r: 0, g: 0, b: 0, a: 255 })
+        : colorAt(rgbaStops, (bin + 0.5) / bins),
+    );
+  }
   const transparentBins = scale.transparentBins; // 缺省 undefined → 逐像素检查短路（既有路径零漂移）
   const data = new Uint8ClampedArray(width * height * 4);
   for (let py = 0; py < height; py++) {
@@ -368,7 +385,7 @@ export function renderToImageData(
         data[o + 3] = 0;
         continue;
       }
-      const c = colorAt(scale.colors, (bin + 0.5) / bins);
+      const c = binColors[bin] ?? { r: 0, g: 0, b: 0, a: 255 };
       data[o] = c.r;
       data[o + 1] = c.g;
       data[o + 2] = c.b;

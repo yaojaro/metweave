@@ -168,8 +168,15 @@ describe("renderToImageData", () => {
     expect(img.height).toBe(2);
     const px = (x: number, y: number): readonly number[] =>
       Array.from(img.data.subarray((y * img.width + x) * 4, (y * img.width + x) * 4 + 4));
-    expect(px(0, 0)).toEqual([64, 0, 191, 255]); // 低档中心取样 t=0.25：蓝 75%＋红 25%
-    expect(px(1, 0)).toEqual([191, 0, 64, 255]); // 高档中心 t=0.75
+    expect(px(0, 0)).toEqual([0, 0, 255, 255]); // 停靠数＝档数（2 色 2 档）→ 逐档精确取停靠原色（蓝档即蓝）
+    expect(px(1, 0)).toEqual([255, 0, 0, 255]); // 红档即红（不再按档中心混色——与图例/定档着色一致）
+  });
+
+  it("停靠多于档（渐变意图）：档中心取样维持渐变混色", () => {
+    const grid = tinyGrid([0, 10, 0, 10]); // 2 档 × 3 停靠（黑→灰→白渐变）
+    const img = renderToImageData(grid, { breaks: [5], colors: ["#000000", "#808080", "#ffffff"] });
+    expect(img.data[0]).toBe(64); // 档 0 中心 t=0.25 → 黑灰间 50%
+    expect(img.data[4]).toBe(192); // 档 1 中心 t=0.75 → 灰白间 50%（Uint8Clamped 就近取整）
   });
 
   it("缺测 NaN → alpha 0（与 opacity 无关）", () => {
@@ -181,8 +188,8 @@ describe("renderToImageData", () => {
   it("convert 换算后进档（K 场配 °C 断点）", () => {
     const grid = tinyGrid([273.15, 283.15, 273.15, 283.15]); // 0°C / 10°C
     const img = renderToImageData(grid, scale, { convert: (v) => v - 273.15 });
-    expect(img.data[0]).toBe(64); // (0,0)=0°C<5 → 低档（蓝向）
-    expect(img.data[4]).toBe(191); // (1,0)=10°C≥5 → 高档（红向）
+    expect(img.data[0]).toBe(0); // (0,0)=0°C<5 → 低档＝纯蓝（停靠数＝档数逐档精确）
+    expect(img.data[4]).toBe(255); // (1,0)=10°C≥5 → 高档＝纯红
   });
 
   it("opacity 乘进 alpha", () => {
