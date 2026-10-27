@@ -1,9 +1,9 @@
 /**
  * wind（10m 风）要素档案单测：双分量合成口径（variable WIND 对齐合成场、层/单位沿
- * 分量头）、windy 风格全谱色带形态（十二段：灰起步→蓝青冷段→绿黄→橙红→品红收，
- * 2026-10-27 owner 定向替原 YlOrBr 暖色七段）、threshold 阈值档（断点 1/3/5/7/10/14/
- * 17/21/24/28/32——低速加密大风收拢、蒲福 12 级 32.7 落上外延品红档、不看 stats 固定
- * 可比）、等距/分位不立（单一推荐）、renderForm "filled+barbs" 与风向杆口径
+ * 分量头）、windy 原版克隆色带（七段：灰蓝→钴蓝→青→青绿→黄绿→红棕→品红，2026-10-27
+ * owner 定向——从 windy.com 图例 linear-gradient 定义逐色抽取 rgb 换算）、threshold
+ * 阈值档＝windy m/s 锚点（3/5/10/15/20/30——蒲福 12 级 32.7 落 30+ 品红档、不看
+ * stats 固定可比）、等距/分位不立（单一推荐）、renderForm "filled+barbs" 与风向杆口径
  * （step 10／calmThreshold 1）＋等值线 4 m/s 留位、渲染像素方向（合成风速低浅高深）
  * ＋杆位集成（windBarbsOf 按档案口径）——档案是色标与档位的单一事实来源，本测试锁其
  * 口径不被无意改动。
@@ -93,44 +93,43 @@ describe("wind（10m 风）档案", () => {
     expect(windProfile.labelZh).toBe("10m 风");
   });
 
-  it("色带为 windy 风格全谱十二段（灰起步→冷段蓝青→绿黄→橙红→品红收）", () => {
+  it("色带为 windy 原版克隆七段（灰蓝起步→钴蓝→青→青绿→黄绿→红棕→品红收）", () => {
     const stops = windProfile.colorStops;
-    expect(stops).toHaveLength(12);
+    expect(stops).toHaveLength(7);
     for (const c of stops) expect(c).toMatch(/^#[0-9a-fA-F]{6}$/);
-    // 首档近中性灰（0–1 m/s 静/微风不着彩——windy 低端惯例）
-    const [r0, g0, b0] = rgbOf(stops[0]!);
-    expect(Math.abs(r0 - g0)).toBeLessThanOrEqual(8);
-    expect(Math.abs(g0 - b0)).toBeLessThanOrEqual(8);
-    // 冷段（1–10 m/s，stops 2–5）：蓝高于红
-    for (const c of stops.slice(1, 5)) {
+    // 首档灰蓝（windy 首段原色 rgb(98,113,184)——蓝主导带灰度）
+    const [r0, , b0] = rgbOf(stops[0]!);
+    expect(b0).toBeGreaterThan(r0);
+    // 冷段（0–10 m/s，前三档）：蓝高于红
+    for (const c of stops.slice(0, 3)) {
       const [r, , b] = rgbOf(c);
       expect(b).toBeGreaterThan(r);
     }
-    // 暖段（21 m/s 起，末四档）：红高于蓝
-    for (const c of stops.slice(8)) {
+    // 暖段（15 m/s 起，末三档）：红高于蓝
+    for (const c of stops.slice(4)) {
       const [r, , b] = rgbOf(c);
       expect(r).toBeGreaterThan(b);
     }
-    // 浅纪律沿旧例：末档品红可读非墨、且深于首档灰
-    expect(lumaOf(stops[11]!)).toBeGreaterThan(40);
-    expect(lumaOf(stops[11]!)).toBeLessThan(lumaOf(stops[0]!));
+    // 浅纪律沿旧例：末档品红可读非墨、且深于首档灰蓝
+    expect(lumaOf(stops[6]!)).toBeGreaterThan(40);
+    expect(lumaOf(stops[6]!)).toBeLessThan(lumaOf(stops[0]!));
   });
 
-  it("threshold 阈值档（windy 风格断点）：低速端加密、大风端收拢、蒲福 12 级落上外延品红档", () => {
+  it("threshold 阈值档＝windy m/s 锚点（3/5/10/15/20/30），蒲福 12 级落 30+ 品红档", () => {
     const thresholds = windProfile.thresholds!;
-    expect(thresholds).toEqual([1, 3, 5, 7, 10, 14, 17, 21, 24, 28, 32]);
+    expect(thresholds).toEqual([3, 5, 10, 15, 20, 30]);
     const scale = buildColorScale(windProfile, CN_SPEED_STATS);
     expect(scale.breaks).toEqual(thresholds); // threshold 模式不看 stats：固定档界＝跨时次可比锚
     expect(scale.colors).toBe(windProfile.colorStops);
     expect(scale.colors).toHaveLength(thresholds.length + 1); // 档数＝断点数+1
-    expect(scale.transparentBins).toBeUndefined(); // 风速无「无信号」档（静风是弱信号照画灰档）
+    expect(scale.transparentBins).toBeUndefined(); // 风速无「无信号」档（静风是弱信号照画灰蓝档）
     expect(scale.logScale).toBeUndefined();
-    // 域容纳：本窗实测 max 20.44 落 17–21 黄绿档内；蒲福 12 级界 32.7 落上外延品红档（台风极端同色兜底）
-    expect(CN_SPEED_STATS.max).toBeLessThan(21);
-    expect(32.7).toBeGreaterThan(32);
+    // 域容纳：本窗实测 max 20.44 落 20–30 红棕档内；蒲福 12 级界 32.7 落 30+ 品红档（台风极端同色兜底）
+    expect(CN_SPEED_STATS.max).toBeLessThan(30);
+    expect(32.7).toBeGreaterThan(30);
   });
 
-  it("不立等距/分位推荐（threshold 为唯一推荐——windy 断点低速加密，等距匀分给不出）", () => {
+  it("不立等距/分位推荐（threshold 为唯一推荐——windy 锚点低速加密，等距匀分给不出）", () => {
     expect(windProfile.equal).toBeUndefined();
     expect(windProfile.quantile).toBeUndefined();
     expect(windProfile.defaultMode).toBe("threshold");
@@ -159,8 +158,8 @@ describe("wind（10m 风）档案", () => {
     });
   });
 
-  it("渲染集成：合成场沿档全谱渐进（弱风灰亮、冷段蓝主导、暖段红主导），全域着色（静风照画灰档）", () => {
-    // 一行四值合成风速 0.5/4/12/26 → 档 0/2/5/9（灰→蓝→青绿→橙——全谱三段各取代表）
+  it("渲染集成：合成场沿档全谱渐进（弱风灰蓝亮、冷段蓝主导、暖段红主导），全域着色（静风照画灰蓝档）", () => {
+    // 一行四值合成风速 0.5/4/12/26 → 档 0/1/3/5（灰蓝→钴蓝→青绿→红棕——全谱各段取代表）
     const [u, v] = pairOf([0.5, 4, 12, 26], [0, 0, 0, 0], 4, 1);
     const speed = windSpeedGrid(u, v);
     const img = renderToImageData(speed, buildColorScale(windProfile, CN_SPEED_STATS), {
