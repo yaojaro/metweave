@@ -1696,3 +1696,54 @@ body:has(#iwxxm-compare) #map {
   flex: 1;
   min-height: 0;
 }
+
+/* wf 色卡图例（windfield.html）：底部左下横条，叠在地图上（低于弹窗/控件层） */
+.wf-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 24px;
+  z-index: 800;
+  padding: 8px 10px 6px;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  font:
+    11px/1.4 system-ui,
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+  color: #26313c;
+}
+.wf-legend-title {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.wf-legend-bar {
+  display: flex;
+  width: 320px;
+  height: 10px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.wf-legend-seg {
+  flex: 1;
+}
+.wf-legend-ticks {
+  position: relative;
+  height: 14px;
+  margin-top: 1px;
+  width: 320px;
+}
+.wf-legend-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: #3c4a58;
+}
+.wf-legend-tick.first {
+  transform: none;
+}
+.wf-legend-tick.last {
+  transform: translateX(-100%);
+}

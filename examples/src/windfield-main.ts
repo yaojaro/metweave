@@ -8,6 +8,7 @@
  * 边界：演示的是「该时次的定常近似」——粒子是示踪物不是气块追踪，动画不构成预报。
  */
 import {
+  buildColorScale,
   parseGrid,
   streamlinesOf,
   arrowFieldOf,
@@ -68,6 +69,37 @@ void (async () => {
           `（u ${uu.toFixed(1)} / v ${vv.toFixed(1)}）<br>风向（来向）${Math.round((((270 - (Math.atan2(vv, uu) * 180) / Math.PI) % 360) + 360) % 360)}°`;
     L.popup().setLatLng(e.latlng).setContent(content).openOn(map);
   });
+
+  // 色卡图例（windy 式底部左下横条）：12 档分格、界值标注——色与档界与色斑同一份
+  // 档案色标（buildColorScale 单一来源），阈值档等宽分格（每格一档，界值即标签）
+  const scale = buildColorScale(windProfile, speed.header.stats);
+  const legend = document.createElement("div");
+  legend.className = "wf-legend";
+  const title = document.createElement("div");
+  title.className = "wf-legend-title";
+  title.textContent = `${windProfile.labelZh}（${windProfile.displayUnit}）`;
+  const bar = document.createElement("div");
+  bar.className = "wf-legend-bar";
+  for (const c of scale.colors) {
+    const seg = document.createElement("span");
+    seg.className = "wf-legend-seg";
+    seg.style.background = c;
+    bar.append(seg);
+  }
+  const ticks = document.createElement("div");
+  ticks.className = "wf-legend-ticks";
+  const labels = ["0", ...scale.breaks.map((b) => String(b)), "+"];
+  labels.forEach((t, i) => {
+    const tick = document.createElement("span");
+    tick.className = "wf-legend-tick";
+    tick.textContent = t;
+    tick.style.left = `${(i / (labels.length - 1)) * 100}%`;
+    if (i === 0) tick.classList.add("first");
+    if (i === labels.length - 1) tick.classList.add("last");
+    ticks.append(tick);
+  });
+  legend.append(title, bar, ticks);
+  map.getContainer().append(legend);
 
   let gridLayer: L.ImageOverlay | undefined;
   let barbLayer: L.LayerGroup | undefined;
