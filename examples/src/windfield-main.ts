@@ -51,11 +51,12 @@ void (async () => {
   const speed = windSpeedGrid(u, v);
   const map = L.map("wf-map", { center: [35, 105], zoom: 4 });
   map.fitBounds(gridOverlayBounds(u), { padding: [12, 12] });
-  // 对比页专用底图：OSM（免 key、与 windy 观感接近，方便同框对比）；主 demo 的
-  // 天地图口径不变（key 门控，见 basemaps.ts）——两层底图策略按页各取所需
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "底图 © OpenStreetMap 贡献者",
-    maxZoom: 18,
+  // 对比页专用底图：CARTO light_nolabels（OSM 数据、无地名标注的纯底图——色斑与
+  // 粒子是主角，地名只抢视觉；观感贴近 windy 的干净底）；主 demo 的天地图口径不变
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+    attribution: "底图 © OpenStreetMap 贡献者 · © CARTO",
+    subdomains: "abcd",
+    maxZoom: 19,
   }).addTo(map);
 
   // 显示口径（页面级记忆，默认 m/s）：切 kt 时图例界值/点查询读数/风羽杆形三处联动；
