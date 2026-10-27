@@ -94,6 +94,39 @@ describe("interpolateBilinear", () => {
     expect(interpolateBilinear(nanGrid, 39.5, 100.5)).toBeNaN();
     expect(interpolateBilinear(nanGrid, 40, 100)).toBe(0); // 干净格点不受邻点影响
   });
+
+  it("全球网格经度环绕：首尾相接（nx·di ≥ 360）时负经度/越东经度归一读值，环绕缝双线性配对", () => {
+    // 8×1 全球 45° 网格（lo0=0，首列 0° 末列 315°）：值=列号 ×10
+    const values = Float32Array.from([0, 10, 20, 30, 40, 50, 60, 70]);
+    const globe: Grid = {
+      header: {
+        version: 1,
+        variable: "X",
+        level: "sfc",
+        unit: "1",
+        grid: { nx: 8, ny: 1, la0: 45, lo0: 0, di: 45, dj: 45, order: "N2S,W2E,row-major" },
+        stats: statsOf({}),
+        meta: {
+          referenceTime: "2026-10-27T00:00Z",
+          forecastHour: 0,
+          source: "test",
+          license: "",
+          generated: "2026-10-27",
+        },
+      },
+      values,
+    };
+    // lon=-45（即 315°E）＝末列原值；lon=359 同
+    expect(interpolateBilinear(globe, 45, -45)).toBe(70);
+    expect(interpolateBilinear(globe, 45, 315)).toBe(70);
+    // 环绕缝（315° 与 0°+360 之间，fx∈(7,8)）：中点＝(70+0)/2
+    expect(interpolateBilinear(globe, 45, 337.5)).toBeCloseTo(35, 6);
+    // lon=360 ≡ lon=0（首列）
+    expect(interpolateBilinear(globe, 45, 360)).toBe(0);
+    // 区域网格（nx·di < 360）不受环绕影响：负经度仍场外 NaN
+    const regional = tinyGrid([0, 10, 20, 30]);
+    expect(interpolateBilinear(regional, 40, 99.9)).toBeNaN();
+  });
 });
 
 describe("分级函数", () => {

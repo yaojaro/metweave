@@ -64,6 +64,14 @@ export function cropGrid(
   win: { la0: number; la1: number; lo0: number; lo1: number },
 ): Grid {
   const { nx, ny, la0, lo0, di, dj } = grid.header.grid;
+  // 跨 180° 经窗（lo0 > lo1，如 [170, −170]）与网格明明相交却被判无交集——先显式报
+  // 「不支持跨缝」而非误导性的「无交集」（两段拼合裁剪留后续）
+  if (win.lo0 > win.lo1) {
+    throw new GridError(
+      "empty-input",
+      `裁剪窗跨 180° 经线（lo0=${win.lo0} > lo1=${win.lo1}）暂不支持——请拆成两段分别裁剪再拼接`,
+    );
+  }
   const rowStart = Math.max(0, Math.round((la0 - win.la0) / dj));
   const rowEnd = Math.min(ny, Math.round((la0 - win.la1) / dj));
   const colStart = Math.max(0, Math.round((win.lo0 - lo0) / di));

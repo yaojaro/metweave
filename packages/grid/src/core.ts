@@ -65,18 +65,61 @@ function bilinearAt(values: Float32Array, nx: number, ny: number, fy: number, fx
 }
 
 /**
+ * 环绕缝上的双线性采样（内部）：fx ∈ (nx−1, nx) 的全球网格查询——末列与「首列＋360」
+ * 配对插值（全球场首尾相接，GFS 0..359.75 的 0° 经线缝）；NaN 参与格点任一为缺测即
+ * NaN（与 bilinearAt 同纪律）。
+ */
+function seamBilinearAt(
+  values: Float32Array,
+  nx: number,
+  ny: number,
+  fy: number,
+  fx: number,
+): number {
+  const t = fx - (nx - 1); // 末列 → 首列(+360) 的环绕权重
+  const y0 = Math.floor(fy);
+  const ty = fy - y0;
+  const y1 = Math.min(y0 + 1, ny - 1);
+  const at = (y: number, x: number): number => values[y * nx + x] ?? Number.NaN;
+  if (ty === 0) {
+    const a = at(y0, nx - 1);
+    const b = at(y0, 0);
+    return Number.isNaN(a) || Number.isNaN(b) ? Number.NaN : (1 - t) * a + t * b;
+  }
+  const a = at(y0, nx - 1);
+  const b = at(y0, 0);
+  const c = at(y1, nx - 1);
+  const d = at(y1, 0);
+  if (Number.isNaN(a) || Number.isNaN(b) || Number.isNaN(c) || Number.isNaN(d)) {
+    return Number.NaN;
+  }
+  return (1 - ty) * ((1 - t) * a + t * b) + ty * ((1 - t) * c + t * d);
+}
+
+/**
  * 任意经纬度取值（双线性插值）：读值探针/未来等值线与鼠标读值的地基。
  * 网格外（含半开边界外）返回 NaN；任一参与格点缺测同样返回 NaN（口径同 bilinearAt）。
  * 几何按 GridGeometry 惯例：la0 为北界、行序北→南，lo0 为西界、行内西→东。
+ * **全球网格经度环绕**：nx·di ≥ 360 的场首尾相接（如 GFS 0..359.75 的 0° 经线缝），
+ * 查询经度先归一到 [lo0, lo0+360)——lon=−0.1（即 359.9°E）不再误判场外，环绕半格
+ * （末列与首列+360 之间）在 seamBilinearAt 配对插值。
  */
 export function interpolateBilinear(grid: Grid, lat: number, lon: number): number {
   const { nx, ny, la0, lo0, di, dj } = grid.header.grid;
   if (!(di > 0) || !(dj > 0)) {
     throw new GridError("invalid-scale", `网格步距非正（di=${di}, dj=${dj}）`);
   }
+  const global = nx * di >= 360 - 1e-9;
   const fy = (la0 - lat) / dj;
-  const fx = (lon - lo0) / di;
-  if (fy < 0 || fy > ny - 1 || fx < 0 || fx > nx - 1) return Number.NaN;
+  let fx = (lon - lo0) / di;
+  if (global && (fx < 0 || fx > nx - 1)) {
+    fx = ((((lon - lo0) % 360) + 360) % 360) / di; // 归一到 [lo0, lo0+360)
+  }
+  if (fy < 0 || fy > ny - 1 || fx < 0 || fx > nx) return Number.NaN;
+  if (fx > nx - 1) {
+    if (fy >= 0 && fy <= ny - 1 && global) return seamBilinearAt(grid.values, nx, ny, fy, fx);
+    return Number.NaN;
+  }
   return bilinearAt(grid.values, nx, ny, fy, fx);
 }
 

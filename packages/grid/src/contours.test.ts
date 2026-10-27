@@ -105,6 +105,14 @@ describe("contoursOf（等值线几何）", () => {
     expect(lines.map((l) => l.value)).toEqual([4, 6]);
   });
 
+  it("阈值数量护栏：interval 极小误配（>500 条）显式抛错，不分钟级挂死", () => {
+    // 0..4 值域配 interval=0.001 → ~4000 条阈值（d3 逐条全场扫）——此前无任何拦截
+    const grid = tinyGrid([0, 1, 2, 3, 4, 0, 1, 2, 3, 4], 5, 2);
+    expect(() => contoursOf(grid, { interval: 0.001, highlighted: [] })).toThrowError(
+      /阈值数 3999 超上限 500/,
+    );
+  });
+
   it("convert 进显示空间定 threshold（Pa 场 ÷100 → hPa 倍数）", () => {
     const grid = tinyGrid([99600, 100000, 100400, 100800, 99600, 100000, 100400, 100800], 4, 2);
     const lines = contoursOf(grid, { interval: 4, highlighted: [] }, (v) => v / 100);

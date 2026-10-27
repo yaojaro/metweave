@@ -84,6 +84,15 @@ function assertContourSpec(spec: ContourSpec): void {
 }
 
 /**
+ * d3-contour 的 @types 面只收 `number[]`（运行时对 TypedArray 官方支持——只按数值
+ * 下标读值）。断言桥点（仓内既有抑制惯例，见 format.ts 同款）：直喂 Float32Array，
+ * 免掉全场装箱拷贝（1M 点约 8MB 垃圾）。
+ */
+const asD3Field = (values: Float32Array): number[] =>
+  // oxlint-disable-next-line no-unsafe-type-assertion -- d3 运行时只按下标读值，TypedArray 官方支持；@types 签名错位
+  values as unknown as number[];
+
+/**
  * 格点场 → 等值线几何（纯函数）。
  *
  * 值先经 convert 进显示单位空间（如 Pa→hPa ÷100——量纲换算只在档案层），threshold
@@ -104,6 +113,12 @@ export function contoursOf(
 ): ContourLine[] {
   assertContourSpec(spec);
   const { nx, ny, la0, lo0, di, dj } = grid.header.grid;
+  if (grid.values.length !== nx * ny) {
+    throw new GridError(
+      "invalid-scale",
+      `场值长度与网格不符（values ${String(grid.values.length)} ≠ nx×ny ${nx}×${ny}）——越界读值会静默出空线`,
+    );
+  }
   // 显示空间值场（NaN 保留——d3-contour 按「低于一切阈值」环绕缺测不穿越）
   const values = new Float32Array(nx * ny);
   let min = Number.POSITIVE_INFINITY;
@@ -130,6 +145,14 @@ export function contoursOf(
   const sorted = [...thresholds];
   sorted.sort((a, b) => a - b);
   if (sorted.length === 0) return [];
+  // 阈值数量护栏：d3-contour 对每个阈值独立全场扫一遍（实测 1.04M 点 22 条 157ms、
+  // 180 条 1.0s 线性外推）——interval 误配成极小值会分钟级挂死且此前无任何拦截
+  if (sorted.length > 500) {
+    throw new GridError(
+      "invalid-scale",
+      `等值线阈值数 ${sorted.length} 超上限 500（d3-contour 逐阈值全场扫描，误配的极小 interval 会分钟级挂死）——检查 interval/minorInterval 与场值域`,
+    );
+  }
 
   const lines: ContourLine[] = [];
   // 环点 (x, y) → [lat, lon]：d3-contour 点约定 ⟨i+0.5, j+0.5⟩＝格点 (行 j, 列 i) 中心
@@ -143,9 +166,9 @@ export function contoursOf(
     }
     return [la0 - (y - 0.5) * dj, lo0 + (x - 0.5) * di];
   };
-  // d3-contour 类型面只收 number[]（实现只按下标读）——拷贝一份 plain array 喂入
-  //（58k 值 ~0.2ms，免类型断言；显示值已在拷贝前算好）
-  const field = Array.from(values);
+  // d3-contour 运行时只按数值下标读场（对 TypedArray 官方支持；@types/d3-contour@3 的
+  // number[] 签名是类型面错位）——经泛型桥点直喂 Float32Array，免 8MB 级装箱拷贝
+  const field = asD3Field(values);
   for (const multipolygon of d3Contours().size([nx, ny]).thresholds(sorted)(field)) {
     // 多边形层级摊平为环族：描线只逐环描，外环/洞环不区分
     const rings = multipolygon.coordinates.flatMap((polygon) =>
@@ -200,6 +223,12 @@ export interface CentersOptions {
  */
 export function centersOf(grid: Grid, options: CentersOptions = {}): FieldCenter[] {
   const { nx, ny, la0, lo0, di, dj } = grid.header.grid;
+  if (grid.values.length !== nx * ny) {
+    throw new GridError(
+      "invalid-scale",
+      `场值长度与网格不符（values ${String(grid.values.length)} ≠ nx×ny ${nx}×${ny}）——越界读值会静默漏检`,
+    );
+  }
   const convert = options.convert ?? identity;
   const radius = options.radius ?? 16;
   const minDepth = options.minDepth ?? 0;

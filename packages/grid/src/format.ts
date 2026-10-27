@@ -67,12 +67,13 @@ export interface Grid {
   values: Float32Array;
 }
 
-/** 分布统计：NaN 排除后取（哨兵/缺测不污染分位——docs/10 十五节实证口径）。 */
+/** 分布统计：NaN 与 ±Infinity 排除后取（哨兵/缺测不污染分位——docs/10 十五节实证口径；
+ *  Inf 混入会以「断点含非有限值」的间接形态在 quantileBreaks 炸出且难溯源，入口同通道滤除）。 */
 export function computeStats(values: Float32Array | number[]): GridStats {
   const nums: number[] = [];
   for (let i = 0; i < values.length; i++) {
     const v = values[i] ?? Number.NaN;
-    if (!Number.isNaN(v)) nums.push(v);
+    if (Number.isFinite(v)) nums.push(v);
   }
   if (nums.length === 0) {
     const nan = Number.NaN;

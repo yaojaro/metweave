@@ -170,6 +170,14 @@ describe("GRIB2 5.3 解码（仓内 fixture：GFS tmp 2m 全球场）", () => {
       expect(cn.values[i]).toBeCloseTo(expected[i] ?? Number.NaN, 4);
     }
   });
+
+  it("cropGrid 跨 180° 经窗显式报「不支持跨缝」——不再误报「与网格无交集」", () => {
+    const f = decodeGrib2(readFixtureGrib())[0]!;
+    const grid = fieldToGrid(f, { variable: "TMP", level: "2m", unit: "K" });
+    expect(() => cropGrid(grid, { la0: 20, la1: -20, lo0: 170, lo1: -170 })).toThrowError(
+      /跨 180° 经线/,
+    );
+  });
 });
 
 /** 数据区全量对账：15 场（14 要素，wind 双 message）逐场 sha256 与 eccodes 基准相等。

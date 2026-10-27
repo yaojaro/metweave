@@ -78,4 +78,11 @@ describe("viz-ready 容器（MWGRID1）", () => {
     const s = computeStats([Number.NaN, Number.NaN]);
     expect(Number.isNaN(s.p50)).toBe(true);
   });
+
+  it("computeStats ±Infinity 与 NaN 同通道滤除（Inf 混入不再以间接形态在分位断点炸出）", () => {
+    const s = computeStats([1, Number.POSITIVE_INFINITY, 3, Number.NEGATIVE_INFINITY, 2]);
+    expect(s.min).toBe(1);
+    expect(s.max).toBe(3);
+    expect(s.p50).toBe(2); // 只剩 1/2/3 三个有限值
+  });
 });
