@@ -332,6 +332,15 @@ export interface RenderOptions {
   convert?: (value: number) => number;
   /** 整体不透明度乘子（0–1，缺省 1；乘进像素 alpha——NaN 透明档不受影响恒为 0）。 */
   opacity?: number;
+  /**
+   * 输出像素行的纬度映射（缺省 `"linear"` 等纬度）：`"web-mercator"` 时像素行在
+   * Web Mercator y 空间等步分布（行纬度非均匀）——专为「图像被线性拉伸到麦卡托投影
+   * 矩形」的贴图方式（Leaflet `L.imageOverlay`、Web Mercator 瓦片底图）而设：该贴图
+   * 方式下等纬度行的图像内容会系统性向高纬错位（域越宽越狠：3–55°N 的中国域低纬内容
+   * 北移可达 ~2.5–3.6°），麦卡托行映射与拉伸严格互逆、贴回零错位。经度方向麦卡托
+   * 恒均匀，列映射两形态相同。
+   */
+  projection?: "linear" | "web-mercator";
 }
 
 /** 渲染产物：与浏览器 ImageData 同构（RGBA、行序北→南、行内西→东——与网格同向）。 */
@@ -352,6 +361,11 @@ export interface RenderedImage {
  * 整体不透明度而复活；透明档仍占色带取样位，档数＝breaks+1 不变，相邻档取样无副作用）。
  * scale 校验（断点严格递增、色带非空合法、透明档序号在档范围内）失败抛 GridError("invalid-scale")。
  */
+/** Web Mercator 纬度 → y（纯函数，模块级——不捕获作用域）。 */
+const mercY = (lat: number): number => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+/** y → Web Mercator 纬度（同上）。 */
+const invMercY = (y: number): number => ((Math.atan(Math.exp(y)) - Math.PI / 4) * 360) / Math.PI;
+
 export function renderToImageData(
   grid: Grid,
   scale: ColorScale,
@@ -414,9 +428,19 @@ export function renderToImageData(
     );
   }
   const transparentBins = scale.transparentBins; // 缺省 undefined → 逐像素检查短路（既有路径零漂移）
+  // 行映射（贴图投影）：web-mercator 时像素行在麦卡托 y 空间等步（lat = invMerc(lerp)），
+  // linear 等纬度与既有公式逐位一致（f·ny−0.5 ⟺ 像元边界外延半格的边缘语义）
+  const { la0, dj } = grid.header.grid;
+  const northEdge = la0 + dj / 2; // 与 gridOverlayBounds 同式（像元边界外延半格）
+  const southEdge = la0 - (ny - 1) * dj - dj / 2;
+  const mercN = mercY(northEdge);
+  const mercSpan = mercY(southEdge) - mercN;
+  const mercator = options.projection === "web-mercator";
   const data = new Uint8ClampedArray(width * height * 4);
   for (let py = 0; py < height; py++) {
-    const fy = ((py + 0.5) / height) * ny - 0.5;
+    const fy = mercator
+      ? (la0 - invMercY(mercN + ((py + 0.5) / height) * mercSpan)) / dj
+      : ((py + 0.5) / height) * ny - 0.5;
     for (let px = 0; px < width; px++) {
       const fx = ((px + 0.5) / width) * nx - 0.5;
       const value = convert(bilinearAt(grid.values, nx, ny, fy, fx));

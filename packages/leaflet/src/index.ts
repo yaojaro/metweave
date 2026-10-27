@@ -1187,7 +1187,9 @@ const ADD_GRID_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set(["width", "opaci
  * 网格头几何是格点中心坐标（la0 北界首行、lo0 西界首列）；贴图按像元边界外延半格
  * （north = la0+dj/2、south = 末行-dj/2、west = lo0-di/2、east = 末列+di/2）——
  * 与 renderToImageData 的像素中心采样几何一致，像素与地理一一对齐不歪半格。
- * 纯函数（不触 Leaflet），宿主自行 fitBounds/裁剪可用。
+ * **行方向的投影**由 addGridLayer 的 `projection:"web-mercator"` 承担（此处只给边界，
+ * 图像在投影矩形内的行分布由内核行映射决定）。纯函数（不触 Leaflet），宿主自行
+ * fitBounds/裁剪可用。
  */
 export function gridOverlayBounds(grid: Grid): [[number, number], [number, number]] {
   const { nx, ny, la0, lo0, di, dj } = grid.header.grid;
@@ -1232,6 +1234,10 @@ export async function addGridLayer(
   const image = renderToImageData(grid, scale, {
     width: options.width ?? grid.header.grid.nx * 2,
     convert: profile.toDisplay,
+    // 贴图按 Web Mercator 行映射渲染（Leaflet 缺省 CRS EPSG:3857）：imageOverlay 把图像
+    // 线性拉伸到投影矩形，等纬度行的图像内容会系统性北移（宽域低纬 2.5–3.6°），与
+    // 粒子/流线/风羽等逐点投影的图层错位由此而来——麦卡托行映射与拉伸严格互逆
+    projection: "web-mercator",
   });
   // Canvas 2D → PNG data URL：渲染本体是零 DOM 的 renderToImageData（Node 可测），
   // 此处仅做位图封装——无 2D 能力的宿主（SSR/测试环境）显式报错不静默
@@ -2219,6 +2225,9 @@ export async function addParticleLayer(
     const north2 = Math.min(b.getNorth(), north);
     const west2 = Math.max(b.getWest(), west);
     const east2 = Math.min(b.getEast(), east);
+    // 交集判空即回落全场：视口完全在场外属正常（拖出场再回来自愈）；跨 180° 经线的视口
+    // （getWest > getEast 或越 ±180 的回绕形态）west2≥east2 同样判空回落——大域深放大时
+    // 密度短暂回归全场，跨缝视口求交留后续
     viewBox =
       south2 < north2 && west2 < east2
         ? { south: south2, north: north2, west: west2, east: east2 }

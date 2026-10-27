@@ -514,3 +514,51 @@ describe("冻结基线渲染（像素快照锁）", () => {
     );
   });
 });
+
+/** 60 行南北纵贯条带场（la0=60、dj=1 → 像元边界 60.5..0.5；行 r 的值＝r，即值 = 60 − 纬度）——
+ * 行映射投影测试工厂（模块级——不捕获 describe 作用域）。 */
+const bandedGrid = (): Grid => ({
+  header: {
+    version: 1,
+    variable: "BAND",
+    level: "sfc",
+    unit: "1",
+    grid: { nx: 1, ny: 60, la0: 60, lo0: 100, di: 1, dj: 1, order: "N2S,W2E,row-major" },
+    stats: { min: 0, max: 59, p10: 6, p25: 15, p50: 30, p75: 45, p90: 53, p99: 59 },
+    meta: {
+      referenceTime: "2026-10-27T00:00Z",
+      forecastHour: 0,
+      source: "test",
+      license: "",
+      generated: "2026-10-27",
+    },
+  },
+  values: Float32Array.from({ length: 60 }, (_v, r) => r),
+});
+describe("renderToImageData 行映射投影（贴图几何：linear 等纬度 / web-mercator 麦卡托行）", () => {
+  const banded = bandedGrid;
+  const scale: ColorScale = { breaks: [17, 30], colors: ["#0a0b0c", "#0d0e0f", "#101112"] };
+  const BIN = [10, 11, 12, 255];
+  const BIN1 = [13, 14, 15, 255];
+  const BIN2 = [16, 17, 18, 255];
+
+  it("linear（缺省）：像素行＝网格行原样（py20→值20 档1、py30→值30 档2）；未传 projection 与显式 linear 逐位一致", () => {
+    const lin = renderToImageData(banded(), scale, { width: 1 });
+    expect(lin.height).toBe(60);
+    expect(pxAt(lin, 20)).toEqual(BIN1); // 值 20 ∈ [17,30)
+    expect(pxAt(lin, 30)).toEqual(BIN2); // 值 30（左闭归上档）
+    const explicit = renderToImageData(banded(), scale, { width: 1, projection: "linear" });
+    expect(pxAt(explicit, 20)).toEqual(pxAt(lin, 20));
+  });
+
+  it("web-mercator：像素行纬度＝麦卡托逆映射（独立公式复算）——域 0.5..60.5°N 的中带内容整体来自更高纬", () => {
+    const mer = renderToImageData(banded(), scale, { width: 1, projection: "web-mercator" });
+    expect(mer.height).toBe(60);
+    // py20：麦卡托分数 0.34167 ↔ 纬度 45.0（等纬度误读 30.5）→ 值 15 → 档 0
+    expect(pxAt(mer, 20)).toEqual(BIN);
+    // py30：分数 0.50833 ↔ 纬度 ~35.4 → 值 ~24.6 → 档 1（linear 同行是值 30 档 2）
+    expect(pxAt(mer, 30)).toEqual(BIN1);
+    // 反向锁：两投影在同一像素行读不同档（行映射真实生效，非恒等）
+    expect(pxAt(mer, 20)).not.toEqual(pxAt(renderToImageData(banded(), scale, { width: 1 }), 20));
+  });
+});
