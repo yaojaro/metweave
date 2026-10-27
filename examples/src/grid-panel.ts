@@ -41,6 +41,7 @@ import {
   type LoadedGrid,
   type UrlFetch,
 } from "./grid-data";
+import { inputById } from "./shared";
 
 /** 滑杆刻度：0.2–0.9、步进 0.05；缺省 0.6 与 addGridLayer 的 API 缺省一致 */
 export const GRID_OPACITY_MIN = 0.2;
@@ -230,10 +231,7 @@ const btnById = (id: string): HTMLButtonElement | null => {
   const el = document.getElementById(id);
   return el instanceof HTMLButtonElement ? el : null;
 };
-const inputById = (id: string): HTMLInputElement | null => {
-  const el = document.getElementById(id);
-  return el instanceof HTMLInputElement ? el : null;
-};
+// inputById 走 ./shared（三份手抄副本收口）
 
 /**
  * 渲染形态按 `+` 分段识别（v0.3.2：三态枚举扩为四态，"filled+barbs+contours" 三叠由此
@@ -433,8 +431,12 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
         unit: windBarbUnit,
       },
     ).then((builtBarbs) => {
-      // 竞态守卫：等待期间要素被切走/重建时，lastBuilt 已变——丢弃本次重建
-      if (lastBuilt !== built) return;
+      // 竞态守卫：等待期间要素被切走/重建时，lastBuilt 已变——摘掉已上图的新杆层再丢弃
+      //（addWindBarbLayer 创建即上图，直接 return 会漏一张僵尸层——E5 同族）
+      if (lastBuilt !== built) {
+        map.removeLayer(builtBarbs);
+        return;
+      }
       if (barbLayer !== undefined) map.removeLayer(barbLayer);
       barbLayer = builtBarbs;
     });
@@ -479,6 +481,9 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
     ) {
       return;
     }
+    // 就地重建前换代（E5）：在途的 showElement 渲染（buildOverlay 内部逐段核对换代）
+    // 感知过期即自清，不与本次重建交错
+    generation++;
     void buildOverlay(built.spec, built.loaded);
   });
 
@@ -511,7 +516,16 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
    * 标注是形态主导，不随滑杆淡出）。
    */
   const buildOverlay = async (spec: GridElementSpec, loaded: LoadedGrid): Promise<void> => {
+    // 换代令牌（E5）：入口定格当前代，每个 await 落地前核对——等值线开关的就地重建、
+    // 切要素、取消都会换代，过期半成品自摘不上图（否则开关翻转与在途渲染交错，
+    // 会出现「开关已关、旧等值线层仍挂图」的错序终态）
+    const gen = generation;
+    const stale = (): boolean => gen !== generation;
     const built = await addGridLayer(map, loaded.grid, spec.profile, { opacity });
+    if (stale()) {
+      map.removeLayer(built);
+      return;
+    }
     if (overlay !== undefined) map.removeLayer(overlay);
     overlay = built;
     lastBuilt = { spec, loaded };
@@ -524,6 +538,10 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
         // 争夺同一片视觉，实测把图读成噪点（UI 审查）。独立的等值线主导形态照旧标值。
         ...(parts.has("barbs") ? { labels: false } : {}),
       });
+      if (stale()) {
+        map.removeLayer(builtContours);
+        return;
+      }
       if (contourLayer !== undefined) map.removeLayer(contourLayer);
       contourLayer = builtContours;
     } else if (contourLayer !== undefined) {
@@ -538,6 +556,10 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
         spec.profile,
         { unit: windBarbUnit },
       );
+      if (stale()) {
+        map.removeLayer(builtBarbs);
+        return;
+      }
       if (barbLayer !== undefined) map.removeLayer(barbLayer);
       barbLayer = builtBarbs;
     } else if (barbLayer !== undefined) {
@@ -604,8 +626,8 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
     try {
       await buildOverlay(spec, loaded);
       if (gen !== generation) {
-        // 渲染期间被切走/取消：即刻清掉刚挂的层
-        removeLayers();
+        // 渲染期间被切走/取消：buildOverlay 已按换代令牌自清半成品（E5），此处不再
+        // removeLayers——那会把换代方（开关就地重建/新要素）刚落的层一并误摘
         return;
       }
     } catch (err) {
@@ -634,10 +656,7 @@ export function mountGridLayerPanel(map: LeafletNS.Map, opts: GridPanelOptions =
           currentFhour = upgraded.grid.header.meta.forecastHour;
           syncFhourControl(); // 自动跳档后值钮文案刷新（自动·fXX）
           await buildOverlay(spec, upgraded);
-          if (gen !== generation) {
-            removeLayers();
-            return;
-          }
+          if (gen !== generation) return; // 半成品由 buildOverlay 换代自清（E5），不误摘新会话的层
           applyRowContent(spec, upgraded);
         } catch {
           // 最近档产物缺席（静态部署/未拉过）——记落空防重复探测，留在 f000 不报错

@@ -14,6 +14,7 @@ import { mountRawToggle, parse, parseTaf, renderTafCard } from "metweave";
 import { getMetarReports, getTafs } from "metweave/sources";
 import { addMetarLayer } from "@metweave/leaflet";
 import { setupBasemap } from "./basemaps";
+import { statusLineOf } from "./shared";
 import stationsFile from "../stations.json";
 import {
   ROUTE_POINTS,
@@ -206,15 +207,7 @@ map.fitBounds(
   ]).pad(0.15),
 );
 
-const status = document.getElementById("status");
-const statusText = document.getElementById("status-text");
-const setStatus = (text: string, tone: "loading" | "ok" | "error"): void => {
-  if (status === null || statusText === null) return;
-  status.dataset.tone = tone;
-  statusText.textContent = text;
-  status.hidden = false;
-  if (tone === "ok") window.setTimeout(() => (status.hidden = true), 8000);
-};
+const setStatus = statusLineOf(); // ok 态 8s 自收（共享件，见 shared.ts）
 
 // ---------------------------------------------------------------- 问一：地面实况（机场报文＝低空最便宜的地面真值）
 
@@ -333,7 +326,10 @@ const fetchOwPoints = async (
   return rows;
 };
 
-const loadSnapshot = async (): Promise<readonly OwPointForecast[]> => {
+const loadSnapshot = async (): Promise<{
+  points: readonly OwPointForecast[];
+  fetchedAt: string | undefined;
+}> => {
   // 兜底：仓内快照（示例航线固化，快照时刻随文标注——不静默假充实时）；用户自设航路不可用
   const mod: unknown = await import("./lowalt-ow-fallback.json");
   if (typeof mod !== "object" || mod === null || !("default" in mod)) {
@@ -351,7 +347,9 @@ const loadSnapshot = async (): Promise<readonly OwPointForecast[]> => {
   ) {
     throw new Error("快照点 schema 不符");
   }
-  return points;
+  const fetchedAt =
+    "fetchedAt" in def && typeof def.fetchedAt === "string" ? def.fetchedAt : undefined;
+  return { points, fetchedAt };
 };
 
 const analyzeRoute = async (): Promise<void> => {
@@ -377,20 +375,10 @@ const analyzeRoute = async (): Promise<void> => {
       if (customized) {
         throw liveErr instanceof Error ? liveErr : new Error(String(liveErr));
       }
-      points = await loadSnapshot();
+      const snap = await loadSnapshot();
+      points = snap.points;
       source = "snapshot";
-      const snap: unknown = await import("./lowalt-ow-fallback.json");
-      if (typeof snap === "object" && snap !== null && "default" in snap) {
-        const d: unknown = snap.default;
-        if (
-          typeof d === "object" &&
-          d !== null &&
-          "fetchedAt" in d &&
-          typeof d.fetchedAt === "string"
-        ) {
-          fetchedAt = d.fetchedAt;
-        }
-      }
+      fetchedAt = snap.fetchedAt;
     }
     bundle = { points, samples, source, fetchedAt };
     hourIndex = hourIndexAt(points[0]?.hourly.time ?? [], localNow());

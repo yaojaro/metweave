@@ -10,7 +10,9 @@
  *                                              定档后面板按它构造产物文件名直载；output
  *                                              为进度尾部，诊断用）
  *   400 {ok:false, error}                       element 缺失（兼作中间件存在性探测）或非法
- *   405 {ok:false, error}                       非 GET
+ *   405 {ok:false, error}                       非 GET/HEAD
+ *   HEAD（任意参数）→ 400 探测应答，零副作用（不 spawn、不占并发槽——健康检查误带
+ *   element 也不得触发拉取；响应体由 Node 按 HEAD 语义丢弃）
  *   409 {ok:false, error}                       上一拉取仍在进行中（并发防抖）
  *   500 {ok:false, error}                       grid dist 未构建（先构建再拉）或 gen-grid 退出非 0
  *   504 {ok:false, error}                       5 分钟兜底超时（子进程被杀）
@@ -123,7 +125,16 @@ export function createGenGridMiddleware(deps: {
       return;
     }
     const url = new URL(req.url, "http://localhost");
-    if (req.method !== "GET" && req.method !== "HEAD") {
+    if (req.method === "HEAD") {
+      // HEAD 一律按探测应答（可分辨的 400，Node 对 HEAD 自动丢弃响应体）：不 spawn、
+      // 不占并发槽——健康检查/预检即便误带 element 也不得触发拉取副作用
+      sendJson(res, 400, {
+        ok: false,
+        error: "HEAD 仅探测中间件存在（拉取请用 GET /api/gen-grid?element=…）",
+      });
+      return;
+    }
+    if (req.method !== "GET") {
       sendJson(res, 405, { ok: false, error: "仅支持 GET" });
       return;
     }

@@ -12,8 +12,8 @@ import {
   parseGrid,
   streamlinesOf,
   arrowFieldOf,
-  interpolateBilinear,
   toKnots,
+  windAt,
   windProfile,
   windSpeedGrid,
   type Grid,
@@ -30,6 +30,8 @@ import {
   type ParticleLayer,
 } from "@metweave/leaflet";
 import * as L from "leaflet";
+import { renderColorScaleLegend } from "metweave";
+import { inputById } from "./shared";
 import "leaflet/dist/leaflet.css";
 import "./style.css";
 
@@ -39,12 +41,25 @@ const loadGrid = async (file: string): Promise<Grid> => {
   return parseGrid(await res.arrayBuffer());
 };
 
-const inputById = (id: string): HTMLInputElement | null => {
-  const node = document.getElementById(id);
-  return node instanceof HTMLInputElement ? node : null;
-};
-
 const status = document.getElementById("wf-status");
+
+/**
+ * 复选框→图层开关联线（模块级——不捕获页面局部）：apply 是异步的（add*Layer 内有
+ * await），快速连点勾选框会交错——「关」先发、「开」的落地在后，终态与复选框相反。
+ * 序列化排队＋换代令牌（过期请求不落地），终态恒等于最后一次勾选。
+ */
+const wire = (id: string, apply: (on: boolean) => Promise<void>): void => {
+  const box = inputById(id);
+  if (box === null) return;
+  let gen = 0;
+  let tail: Promise<void> = Promise.resolve();
+  const request = (on: boolean): void => {
+    const mine = ++gen;
+    tail = tail.then(() => (mine === gen ? apply(on) : undefined));
+  };
+  box.addEventListener("change", () => request(box.checked));
+  request(box.checked);
+};
 
 void (async () => {
   const [u, v] = await Promise.all([loadGrid("windu_cn.mwgrid"), loadGrid("windv_cn.mwgrid")]);
@@ -65,54 +80,35 @@ void (async () => {
   const fmtValue = (mps: number): string =>
     unit === "kt" ? toKnots(mps).toFixed(1) : mps.toFixed(1);
 
-  // 点查询：点击读当地风（双线性采样，与粒子同源）——对比锚点：在 windy 点同一点
-  // 读数对照，即可分辨「色卡映射差」与「数据差」（色可以不同档，数值该一致）
+  // 点查询：点击读当地风（库的点查询原语 windAt——双线性采样与粒子同源，读数数学
+  // 单源在内核）——对比锚点：在 windy 点同一点读数对照，即可分辨「色卡映射差」
+  // 与「数据差」（色可以不同档，数值该一致）
   map.on("click", (e: L.LeafletMouseEvent) => {
     const { lat, lng } = e.latlng;
-    const uu = interpolateBilinear(u, lat, lng);
-    const vv = interpolateBilinear(v, lat, lng);
+    const w = windAt(u, v, lat, lng);
     const content =
-      Number.isNaN(uu) || Number.isNaN(vv)
+      w === null
         ? `${lat.toFixed(2)}°N ${lng.toFixed(2)}°E<br>场外（无数据）`
-        : `${lat.toFixed(2)}°N ${lng.toFixed(2)}°E<br><b>${fmtValue(Math.hypot(uu, vv))} ${unit}</b>` +
-          `（u ${fmtValue(uu)} / v ${fmtValue(vv)}）<br>风向（来向）${Math.round((((270 - (Math.atan2(vv, uu) * 180) / Math.PI) % 360) + 360) % 360)}°`;
+        : `${lat.toFixed(2)}°N ${lng.toFixed(2)}°E<br><b>${fmtValue(w.speed)} ${unit}</b>` +
+          `（u ${fmtValue(w.u)} / v ${fmtValue(w.v)}）<br>风向（来向）${Math.round(w.direction)}°`;
     L.popup().setLatLng(e.latlng).setContent(content).openOn(map);
   });
 
-  // 色卡图例（windy 式底部左下横条）：阈值档等宽分格（每格一档，界值即标签）——
-  // 色与档界与色斑同一份档案色标（buildColorScale 单一来源）；界值随显示口径换算
+  // 色卡图例（windy 式底部左下横条）：分格形态（每格一档、界值即标签）——
+  // 色与档界与色斑同一份档案色标（buildColorScale 单一来源）；界值随显示口径换算。
+  // 组件来自 @metweave/render 的 renderColorScaleLegend（页内不再手搓第二份图例）
   const scale = buildColorScale(windProfile, speed.header.stats);
-  let legendEl: HTMLDivElement | undefined;
+  let legendEl: HTMLElement | undefined;
   const mountLegend = (): void => {
     legendEl?.remove();
-    const legend = document.createElement("div");
-    legend.className = "wf-legend";
-    const title = document.createElement("div");
-    title.className = "wf-legend-title";
-    title.textContent = `${windProfile.labelZh}（${unit}）`;
-    const bar = document.createElement("div");
-    bar.className = "wf-legend-bar";
-    for (const c of scale.colors) {
-      const seg = document.createElement("span");
-      seg.className = "wf-legend-seg";
-      seg.style.background = c;
-      bar.append(seg);
-    }
-    const ticks = document.createElement("div");
-    ticks.className = "wf-legend-ticks";
-    const labels = ["0", ...scale.breaks.map((b) => fmtValue(b)), "+"];
-    labels.forEach((t, i) => {
-      const tick = document.createElement("span");
-      tick.className = "wf-legend-tick";
-      tick.textContent = t;
-      tick.style.left = `${(i / (labels.length - 1)) * 100}%`;
-      if (i === 0) tick.classList.add("first");
-      if (i === labels.length - 1) tick.classList.add("last");
-      ticks.append(tick);
+    legendEl = renderColorScaleLegend(scale, {
+      mode: "categorical",
+      title: `${windProfile.labelZh}（${unit}）`,
+      firstEdgeLabel: "0",
+      formatValue: (mps) => fmtValue(mps),
     });
-    legend.append(title, bar, ticks);
-    map.getContainer().append(legend);
-    legendEl = legend;
+    legendEl.classList.add("wf-legend-pos"); // 页内只留定位（左下角悬浮），视觉全在组件
+    map.getContainer().append(legendEl);
   };
   mountLegend();
 
@@ -176,12 +172,7 @@ void (async () => {
     }
   };
 
-  const wire = (id: string, apply: (on: boolean) => Promise<void>): void => {
-    const box = inputById(id);
-    if (box === null) return;
-    box.addEventListener("change", () => void apply(box.checked));
-    void apply(box.checked);
-  };
+  // 五层开关（wire 的竞态纪律见模块层定义）
   wire("wf-on-grid", applyGrid);
   wire("wf-on-barbs", applyBarbs);
   wire("wf-on-stream", applyStream);

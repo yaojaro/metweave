@@ -20,16 +20,13 @@
  */
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { mountRawToggle, parse, parseIwxxm, renderCard } from "metweave";
-import { addMetarLayer, TIER_COLORS, type ConditionTier } from "@metweave/leaflet";
+import { mountRawToggle, isConditionTier, parse, parseIwxxm, renderCard } from "metweave";
+import { addMetarLayer, TIER_COLORS } from "@metweave/leaflet";
 import { setupBasemap } from "./basemaps";
 import { altRawsOfIwxxm } from "./iwxxm-alt-raw";
 import { COMPARE_STATIONS, EMBEDDED } from "./iwxxm-samples";
+import { statusLineOf } from "./shared";
 import "./style.css";
-
-/** 档名字符串守卫（DOM 回读值收窄到 ConditionTier，免类型断言） */
-const isTier = (x: string): x is ConditionTier =>
-  x === "good" || x === "caution" || x === "poor" || x === "unknown";
 
 interface StationRow {
   readonly icao: string;
@@ -43,15 +40,7 @@ interface StationRow {
 const map = L.map("map", { center: [30, 10], zoom: 2, worldCopyJump: true });
 const hasBasemap = setupBasemap(map);
 
-const status = document.getElementById("status");
-const statusText = document.getElementById("status-text");
-const setStatus = (text: string, tone: "loading" | "ok" | "error"): void => {
-  if (status === null || statusText === null) return;
-  status.dataset.tone = tone;
-  statusText.textContent = text;
-  status.hidden = false;
-  if (tone === "ok") window.setTimeout(() => (status.hidden = true), 8000);
-};
+const setStatus = statusLineOf(); // ok 态 8s 自收（共享件，见 shared.ts）
 
 const guideBox = document.getElementById("guide");
 if (guideBox !== null) {
@@ -64,7 +53,7 @@ if (legendBox !== null) {
   for (const item of Array.from(legendBox.querySelectorAll<HTMLElement>(".lg-item"))) {
     const chip = item.querySelector("i");
     const tier = chip?.getAttribute("data-tier") ?? null;
-    if (chip instanceof HTMLElement && tier !== null && isTier(tier)) {
+    if (chip instanceof HTMLElement && tier !== null && isConditionTier(tier)) {
       chip.style.background = TIER_COLORS[tier];
     }
   }

@@ -110,10 +110,21 @@ describe("createGenGridMiddleware", () => {
     expect(r.body).toEqual({ passthrough: true });
   });
 
-  it("非 GET → 405", async () => {
+  it("非 GET/HEAD → 405", async () => {
     const mw = createGenGridMiddleware({ runner: okRunner, distReady: distReadyTrue });
     const r = await call(mw, "/?element=tmp", "POST");
     expect(r.status).toBe(405);
+  });
+
+  it("HEAD 恒为探测应答零副作用：即便带合法 element 也不触 runner、不占并发槽", async () => {
+    const runner = vi.fn(okRunner);
+    const mw = createGenGridMiddleware({ runner, distReady: distReadyTrue });
+    const head = await call(mw, "/?element=tmp&fhour=auto", "HEAD");
+    expect(head.status).toBe(400); // 可分辨的探测形态（区别于静态部署 404）
+    expect(head.body.ok).toBe(false);
+    expect(runner).not.toHaveBeenCalled(); // 健康检查误带参数不得触发拉取
+    const after = await call(mw, "/?element=tmp"); // 紧跟的 GET 不受影响（HEAD 未占槽）
+    expect(after.status).toBe(200);
   });
 
   it("element 非法（大写/注入形态）→ 400 且不触 runner", async () => {

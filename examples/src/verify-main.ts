@@ -15,6 +15,7 @@
  */
 import { parse } from "metweave";
 import { renderWindChip, renderWindLegend } from "metweave";
+import { inputById } from "./shared";
 import {
   WIND_LEGEND_UNITS,
   toKnots,
@@ -69,12 +70,6 @@ const paintVerdict = (id: string): void => {
 const judge = (id: string, ok: boolean, detail: string): void => {
   verdicts.set(id, { ok, detail });
   paintVerdict(id);
-};
-
-/** 取 input（happy-dom 与浏览器都适用；不用裸断言，走 instanceof 收窄）。 */
-const inputById = (id: string): HTMLInputElement | null => {
-  const node = document.getElementById(id);
-  return node instanceof HTMLInputElement ? node : null;
 };
 
 const sameCode = (a: readonly number[] | null, b: readonly number[]): boolean =>

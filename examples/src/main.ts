@@ -2,7 +2,7 @@ import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 // 主流程分两阶段：① 站点元数据（stations.json，静态可信）立即上图「待更新」态，杜绝空白地图；
 // ② 实况到达后移除待更新层、渲染条件色实况层。取数（含解析与定位联表）→ 卡片上图（底图切换见 basemaps.ts）
-import { parse, parseTaf, renderCard, type MetarReport } from "metweave";
+import { isConditionTier, parse, parseTaf, renderCard, type MetarReport } from "metweave";
 import { getMetarReports, getTafs, getTafsOgimet } from "metweave/sources";
 import type { TafObservation } from "metweave/sources";
 import {
@@ -37,11 +37,8 @@ import { stationTitleOf } from "./zh-stations";
 import { setupBasemap } from "./basemaps";
 import { altRawsFromAwc, fetchAwcIwxxm } from "./iwxxm-prefetch";
 import { mountGridLayerPanel } from "./grid-panel";
+import { inputById, statusLineOf } from "./shared";
 import "./style.css";
-
-/** 档名字符串守卫（DOM 回读值收窄到 ConditionTier，免类型断言） */
-const isTier = (x: string): x is ConditionTier =>
-  x === "good" || x === "caution" || x === "poor" || x === "unknown";
 
 const map = L.map("map", { center: [35.5, 105], zoom: 4 });
 const hasBasemap = setupBasemap(map);
@@ -68,7 +65,12 @@ if (legendBox !== null) {
   for (const item of Array.from(legendBox.querySelectorAll<HTMLElement>(".lg-item"))) {
     const chip = item.querySelector("i");
     const tier = chip?.getAttribute("data-tier");
-    if (chip instanceof HTMLElement && tier !== null && tier !== undefined && isTier(tier)) {
+    if (
+      chip instanceof HTMLElement &&
+      tier !== null &&
+      tier !== undefined &&
+      isConditionTier(tier)
+    ) {
       chip.style.background = TIER_COLORS[tier];
       item.title = TIER_CRITERIA[tier];
     }
@@ -125,19 +127,7 @@ const show = (message: string): void => {
   panel.hidden = false;
 };
 
-const status = document.getElementById("status");
-const statusText = document.getElementById("status-text");
-const setStatus = (text: string, tone: "loading" | "ok" | "error"): void => {
-  if (status === null || statusText === null) return;
-  status.dataset.tone = tone;
-  statusText.textContent = text;
-  status.hidden = false;
-  if (tone === "ok") {
-    window.setTimeout(() => {
-      status.hidden = true;
-    }, 6000);
-  }
-};
+const setStatus = statusLineOf(6000); // ok 态 6s 自收（共享件见 shared.ts）
 
 // 弹窗内容走 DOM 构建（与渲染层同一纪律：不经 innerHTML 拼接）
 const spinnerSpan = (): HTMLSpanElement => {
@@ -299,12 +289,7 @@ const modeBar = {
 // TAF 时间轴条（窄条批）：提示栏上方一条窄轴——播放键 + 现在 + 带刻度滑道 + 当前时刻；
 // 点刻度/拖动跳时刻（手动介入即停播），播放自动按 10 分钟步进扫过 24 小时（到尾循环）
 const timelineBar = document.getElementById("taf-timeline");
-/** 按类型守卫取 input（禁 as 断言）：非 input 元素返回 null，调用点各自判空 */
-const inputById = (id: string): HTMLInputElement | null => {
-  const el = document.getElementById(id);
-  return el instanceof HTMLInputElement ? el : null;
-};
-const tlInput = inputById("tl-input");
+const tlInput = inputById("tl-input"); // 守卫取件见 shared.ts
 const tlValue = document.getElementById("tl-value");
 const tlTicksBox = document.getElementById("tl-ticks");
 const tlPlayBtn = document.getElementById("tl-play");
@@ -643,10 +628,11 @@ const loadTaf = async (): Promise<void> => {
     const latest = await getTafs(ids, { baseUrl: "/aw-taf", timeoutMs: 20_000 });
     const prevRows = await prevPromise;
     const byIcao = new Map(stationsFile.stations.map((s) => [s.icao, s]));
-    let failed = 0;
     // 两代周期合并进按站报池（raw 去重、生效起点升序——同起点晚发布者在后）；
     // 续行归并与站码提取已在 sources getTafs 完成（取数侧整理），这里只解析+入池
     const seen = new Set<string>();
+    // 解析失败的行记站码（可观测：状态行点名「谁坏了」，不再只有个位数）
+    const failedStations: string[] = [];
     /** 解析+去重入池，返回「未被去重挡下的新报数」（批4#22：上一周期整体缺失的可观测降级） */
     const ingest = (rows: readonly TafObservation[]): number => {
       let added = 0;
@@ -660,7 +646,7 @@ const loadTaf = async (): Promise<void> => {
           pool.push(taf);
           reportsByStation.set(taf.station, pool);
         } catch {
-          failed += 1;
+          failedStations.push(obs.station);
         }
       }
       return added;
@@ -883,7 +869,7 @@ const loadTaf = async (): Promise<void> => {
     setMode("taf");
     renderPanel();
     statusOk = () =>
-      `TAF 预报已上图：${items.length} 站${failed > 0 ? ` · ${failed} 条解析跳过` : ""}${ogimetFilled > 0 ? ` · ogimet 补充 ${ogimetFilled} 站${ogimetMissed > 0 ? `（${ogimetMissed} 站缺数）` : ""}` : ""} · 下方时间轴可拖动/播放换时刻`;
+      `TAF 预报已上图：${items.length} 站${failedStations.length > 0 ? ` · ${failedStations.length} 条解析跳过（${failedStations.slice(0, 5).join("、")}${failedStations.length > 5 ? " 等" : ""}）` : ""}${ogimetFilled > 0 ? ` · ogimet 补充 ${ogimetFilled} 站${ogimetMissed > 0 ? `（${ogimetMissed} 站缺数）` : ""}` : ""} · 下方时间轴可拖动/播放换时刻`;
     setStatus(statusOk(), "ok");
     // 批4#22：上一周期整体缺失（空响应或全部与最新周期重复）——附一句可见降级（评测签派：宁可标一句「上一周期缺」）
     if (latestAdded > 0 && prevAdded === 0) {
