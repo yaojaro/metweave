@@ -2054,6 +2054,13 @@ export interface AddParticleLayerOptions {
   /** 静风阈（场单位，缺省 1——低于此速的粒子滞留到期重生；与杆/流线同惯例） */
   readonly calmThreshold?: number;
   /**
+   * 视口感知重生（可选，缺省 false＝全网格均匀撒点，既有行为）：开启后重生只撒在
+   * **当前视口与场域的交集**内（拖动/缩放后按 `moveend` 视口重算，视口取不到时回落
+   * 全场）——深放大时可见粒子密度不再按「视口面积/全场面积」比例骤减、屏外粒子不再
+   * 空转模拟；代价是视口外的场不布粒子（示踪演示口径不变）。
+   */
+  readonly respawnInViewport?: boolean;
+  /**
    * 风速色标（可选，缺省缺席＝单色 `color`）：提供后**尾迹按当地风速定档着色**——
    * 传 `buildColorScale(profile, stats)`（与色斑/图例同一份档案色标，单一事实来源），
    * 即得「颜色＝风速档」的满屏流场观感（速度→色彩的视觉连续由粒子密度与尾迹长度补足）。
@@ -2082,6 +2089,7 @@ const ADD_PARTICLE_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([
   "width",
   "calmThreshold",
   "scale",
+  "respawnInViewport",
 ]);
 
 /**
@@ -2107,7 +2115,7 @@ export async function addParticleLayer(
   for (const key of Object.keys(options)) {
     if (!ADD_PARTICLE_LAYER_OPTION_KEYS.has(key)) {
       throw new Error(
-        `addParticleLayer 收到未知选项 "${key}"（可用项：color、count、speedFactor、fade、width、calmThreshold、scale）——拼错的选项不会生效`,
+        `addParticleLayer 收到未知选项 "${key}"（可用项：color、count、speedFactor、fade、width、calmThreshold、scale、respawnInViewport）——拼错的选项不会生效`,
       );
     }
   }
@@ -2195,9 +2203,31 @@ export async function addParticleLayer(
     lon: number;
     age: number;
   }
+  // 视口感知重生（可选）：重生域＝当前视口∩场域（moveend 重算；取不到视口或交集为空
+  // 回落全场撒点——缺省关＝恒全场，既有行为逐字节不变）
+  let viewBox: { south: number; north: number; west: number; east: number } | undefined;
+  const respawnInViewport = options.respawnInViewport === true;
+  const recomputeViewBox = (): void => {
+    if (!respawnInViewport) return;
+    const size = map.getSize();
+    if (size.x <= 0 || size.y <= 0) {
+      viewBox = undefined;
+      return;
+    }
+    const b = map.getBounds();
+    const south2 = Math.max(b.getSouth(), south);
+    const north2 = Math.min(b.getNorth(), north);
+    const west2 = Math.max(b.getWest(), west);
+    const east2 = Math.min(b.getEast(), east);
+    viewBox =
+      south2 < north2 && west2 < east2
+        ? { south: south2, north: north2, west: west2, east: east2 }
+        : undefined;
+  };
   const respawn = (p: Particle): void => {
-    p.lat = south + Math.random() * (north - south);
-    p.lon = west + Math.random() * (east - west);
+    const box = viewBox;
+    p.lat = (box?.south ?? south) + Math.random() * ((box?.north ?? north) - (box?.south ?? south));
+    p.lon = (box?.west ?? west) + Math.random() * ((box?.east ?? east) - (box?.west ?? west));
     p.age = 0;
   };
   const particles: Particle[] = Array.from({ length: count }, () => {
@@ -2267,6 +2297,7 @@ export async function addParticleLayer(
   const onMoveEnd = (): void => {
     reposition();
     clear();
+    recomputeViewBox(); // 视口感知重生：按新视口重算重生域（下一轮重生的粒子落进新视口）
     suspended = false;
     lastTs = undefined; // 拖动后不补 dt（暂停期间的时间不入平流）
   };
@@ -2284,6 +2315,7 @@ export async function addParticleLayer(
   map.on("movestart", onMoveStart);
   map.on("moveend", onMoveEnd);
   map.on("unload", onUnload);
+  recomputeViewBox(); // 初次视口（respawnInViewport 开启时；关＝空操作）
   rafId = requestAnimationFrame(frame);
 
   return {

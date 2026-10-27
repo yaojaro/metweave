@@ -263,6 +263,25 @@ describe("getMetarReports（取数→解析→定位一步到位）", () => {
     expect(items[0]?.position).toEqual([22.6, 114.0]);
   });
 
+  it("onSkipped 可观测：无坐标行逐条回调（跳过 ≠ 静默；reason 机读不靠中文 message）", async () => {
+    vi.stubGlobal(
+      "fetch",
+      okFetch({
+        data: [
+          { station: "ZGGG", raw: "ZGGG 120000Z 9999 26/22 Q1009", lat: 23.4, lon: 113.5 },
+          { station: "XXXX", raw: "XXXX 120000Z 9999 30/24 Q1010", lat: null, lon: null },
+        ],
+      }),
+    );
+    const skips: { station: string; raw: string; reason: string }[] = [];
+    const items = await getMetarReports("CN__ASOS", { onSkipped: (s) => skips.push(s) });
+    expect(items.length).toBe(1);
+    expect(skips.length).toBe(1);
+    expect(skips[0]?.station).toBe("XXXX");
+    expect(skips[0]?.raw).toBe("XXXX 120000Z 9999 30/24 Q1010");
+    expect(skips[0]?.reason).toBe("no-position");
+  });
+
   it("不静默：任一报文解析整体失败 → 聚合抛出（含站名与条数，绝不静默丢行）", async () => {
     vi.stubGlobal(
       "fetch",
@@ -528,6 +547,22 @@ describe("getTafReports（取数→解析→定位一步到位，契约沿 getMe
     const items = await getTafReports("ZBAA", { stations });
     expect(items.length).toBe(1);
     expect(items[0]?.report.station).toBe("ZBAA");
+  });
+
+  it("onSkipped 可观测：站表未命中行逐条回调（reason 机读 station-table-miss）", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, status: 200, text: async () => body })),
+    );
+    const skips: { station: string; reason: string }[] = [];
+    const items = await getTafReports(["ZBAA", "ZZZZ"], {
+      stations,
+      onSkipped: (s) => skips.push(s),
+    });
+    expect(items.length).toBe(1);
+    expect(skips.length).toBe(1);
+    expect(skips[0]?.station).toBe("ZZZZ");
+    expect(skips[0]?.reason).toBe("station-table-miss");
   });
 });
 

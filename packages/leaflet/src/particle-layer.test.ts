@@ -136,4 +136,15 @@ describe("addParticleLayer（粒子动画层装配与生命周期）", () => {
     await new Promise((resolve) => setTimeout(resolve, 40));
     layer.remove();
   });
+
+  it("respawnInViewport 视口感知重生：选项被接受，帧循环与地图平移照跑不炸", async () => {
+    const map = freshMap();
+    const [u, v] = uniformPair();
+    const layer = await addParticleLayer(map, u, v, { count: 16, respawnInViewport: true });
+    layers.push(layer);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    map.panBy([30, -20], { animate: false }); // moveend 触发重生域重算（happy-dom 无真布局，只锁不炸）
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    layer.remove();
+  });
 });

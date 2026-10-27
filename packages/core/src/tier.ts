@@ -63,6 +63,14 @@ export function assertConditionTier(value: unknown): void {
 }
 
 /**
+ * 档名字符串的类型守卫（DOM/JSON 回读值收窄到 ConditionTier——assertConditionTier 的
+ * 谓词版：不抛错、返回布尔）。此前示例页各自手抄同一份四值判断，2026-10-27 收口单源。
+ */
+export function isConditionTier(value: unknown): value is ConditionTier {
+  return typeof value === "string" && CONDITION_TIER_SET.has(value);
+}
+
+/**
  * 判据输入面（结构子集）：METAR 报结构性满足本接口（metarTierOf 直收）；
  * TAF 展开结果由消费方投影构造（@metweave/leaflet 的 asConditionInput——runwayStates 与
  * windShear 恒缺省：TAF 语汇无跑道状态与风切变组位）。

@@ -14,6 +14,7 @@
  */
 import { GridError } from "./errors";
 import { computeStats } from "./format";
+import { interpolateBilinear } from "./core";
 import type { Grid } from "./format";
 import type { BarbSpec } from "./element";
 
@@ -171,6 +172,43 @@ export interface WindBarbsOptions {
 }
 
 /**
+ * 分量 → 气象来向（0–360°，北 0／东 90／南 180／西 270）：`dir = (270° − atan2(v,u)) mod 360`
+ * （u>0,v=0 西风 270、v>0,u=0 南风 180）。**单点风的「读数数学」只有这一份**——
+ * `windBarbsOf`／`arrowFieldOf`／`windAt` 与宿主点查询一律经此（此前四处各写一遍）。
+ */
+export function windDirectionOf(u: number, v: number): number {
+  return (((270 - (Math.atan2(v, u) * 180) / Math.PI) % 360) + 360) % 360;
+}
+
+/** 单点风读数：u/v 双场在某经纬度的采样矢量（双线性，与粒子平流同源）。 */
+export interface WindSample {
+  readonly lat: number;
+  readonly lon: number;
+  /** 东向分量（m/s，存储单位原值） */
+  readonly u: number;
+  /** 北向分量（m/s，存储单位原值） */
+  readonly v: number;
+  /** 合成风速 √(u²+v²)——与 `windSpeedGrid` 同源同值 */
+  readonly speed: number;
+  /** 风向（气象口径来向；与 `windBarbsOf`／`arrowFieldOf` 同公式——`windDirectionOf`） */
+  readonly direction: number;
+}
+
+/**
+ * 任意经纬度读当地风（u/v 双场双线性采样 → 分量/风速/来向，纯函数零 DOM）。
+ * 点查询/鼠标读值/与 windy 同点位对表读数的地基。场外或任一分量缺测返回 `null`
+ * （矢量未知——与色斑缺测透明、粒子入缺测重生同一纪律）；采样走 `interpolateBilinear`
+ * （含全球网格经度环绕），与粒子层每帧平流同一只采样手。
+ */
+export function windAt(u: Grid, v: Grid, lat: number, lon: number): WindSample | null {
+  assertPairedFields(u, v);
+  const uu = interpolateBilinear(u, lat, lon);
+  const vv = interpolateBilinear(v, lat, lon);
+  if (Number.isNaN(uu) || Number.isNaN(vv)) return null;
+  return { lat, lon, u: uu, v: vv, speed: Math.hypot(uu, vv), direction: windDirectionOf(uu, vv) };
+}
+
+/**
  * u/v 双场 × 杆口径 → 杆位序列（抽稀格点上的风向/风速，纯函数）。
  *
  * 抽稀＝两向同 step 的格点子采样，起点对网格中心对齐（`floor(((n−1) % step) / 2)`——
@@ -218,7 +256,7 @@ export function windBarbsOf(
       if (Number.isNaN(uu) || Number.isNaN(vv)) continue; // 缺测：矢量未知不画杆
       const speed = Math.hypot(uu, vv);
       if (speed < spec.calmThreshold) continue; // 静风：无方向可读不画杆
-      const direction = (((270 - (Math.atan2(vv, uu) * 180) / Math.PI) % 360) + 360) % 360;
+      const direction = windDirectionOf(uu, vv);
       barbs.push({ lat: la0 - y * dj, lon: lo0 + x * di, direction, speed });
     }
   }
@@ -659,7 +697,7 @@ export function arrowFieldOf(u: Grid, v: Grid, options: ArrowFieldOptions = {}):
       const vv = v.values[y * nx + x] ?? Number.NaN;
       if (Number.isNaN(uu) || Number.isNaN(vv)) continue; // 缺测：矢量未知不出箭
       if (Math.hypot(uu, vv) < calmThreshold) continue; // 静风：无方向可指不出箭
-      const direction = (((270 - (Math.atan2(vv, uu) * 180) / Math.PI) % 360) + 360) % 360;
+      const direction = windDirectionOf(uu, vv);
       arrows.push({ lat: la0 - y * dj, lon: lo0 + x * di, direction });
     }
   }

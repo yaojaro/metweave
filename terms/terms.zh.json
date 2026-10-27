@@ -3911,7 +3911,7 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": ";\n/** PARTICLE_PANE 的 z-index：粒子线细，压色斑与流线、让等值线与杆 */\nconst PARTICLE_PANE_Z = 358;\n\n/** `addParticleLayer` 的选项。 */\nexport interface AddParticleLayerOptions {\n  /** 粒子基色（缺省 #0e7490 深青——与流线同族；速度→色彩映射留后续增强） */\n  readonly color?: string;\n  /** 粒子数（缺省 800；须 ≥1 的整数） */\n  readonly count?: number;\n  /**\n   * 时间加速（每真实秒平流的「小时数」，缺省 2）。10 m/s 的风真实速率约 0.32°/时——\n   * 实时看不动，必须加速：×2 下每秒约 0.65°，中国域 zoom 4 恰好目视舒适。\n   * **这是演示口径不是物理口径**（粒子是示踪物，不是气块追踪）。\n   */\n  readonly speedFactor?: number;\n  /** 尾迹留存（0–1 开区间，缺省 0.96——越大尾越长；0.8 短尾、0.99 长流线尾） */\n  readonly fade?: number;\n  /** 线宽（像素，缺省 1.4；须 >0 的有限数） */\n  readonly width?: number;\n  /** 静风阈（场单位，缺省 1——低于此速的粒子滞留到期重生；与杆/流线同惯例） */\n  readonly calmThreshold?: number;\n  /**\n   * 风速色标（可选，缺省缺席＝单色 `color`）：提供后**尾迹按当地风速定档着色**——\n   * 传 `buildColorScale(profile, stats)`（与色斑/图例同一份档案色标，单一事实来源），\n   * 即得「颜色＝风速档」的满屏流场观感（速度→色彩的视觉连续由粒子密度与尾迹长度补足）。\n   */\n  readonly scale?: ColorScale;\n}\n\n/**\n * 粒子层控制柄：粒子层有自己的 rAF 生命周期，`remove()` 停帧并整层移除（幂等）——\n * 比裸 LayerGroup 多一个自清理位；canvas 层不走 `map.removeLayer` 的 Layer 协议。\n */\nexport interface ParticleLayer {\n  /** 画布本体（挂 `mw-particle` pane；宿主可读不可改） */\n  readonly canvas: HTMLCanvasElement;\n  readonly pane: string;\n  /** 停帧并整层移除（幂等） */\n  remove(): void;\n}\n\n/** addParticleLayer 的合法选项键（运行时校验用——不静默纪律）。 */\nconst ADD_PARTICLE_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([\n  ",
+   "text": ";\n/** PARTICLE_PANE 的 z-index：粒子线细，压色斑与流线、让等值线与杆 */\nconst PARTICLE_PANE_Z = 358;\n\n/** `addParticleLayer` 的选项。 */\nexport interface AddParticleLayerOptions {\n  /** 粒子基色（缺省 #0e7490 深青——与流线同族；速度→色彩映射留后续增强） */\n  readonly color?: string;\n  /** 粒子数（缺省 800；须 ≥1 的整数） */\n  readonly count?: number;\n  /**\n   * 时间加速（每真实秒平流的「小时数」，缺省 2）。10 m/s 的风真实速率约 0.32°/时——\n   * 实时看不动，必须加速：×2 下每秒约 0.65°，中国域 zoom 4 恰好目视舒适。\n   * **这是演示口径不是物理口径**（粒子是示踪物，不是气块追踪）。\n   */\n  readonly speedFactor?: number;\n  /** 尾迹留存（0–1 开区间，缺省 0.96——越大尾越长；0.8 短尾、0.99 长流线尾） */\n  readonly fade?: number;\n  /** 线宽（像素，缺省 1.4；须 >0 的有限数） */\n  readonly width?: number;\n  /** 静风阈（场单位，缺省 1——低于此速的粒子滞留到期重生；与杆/流线同惯例） */\n  readonly calmThreshold?: number;\n  /**\n   * 视口感知重生（可选，缺省 false＝全网格均匀撒点，既有行为）：开启后重生只撒在\n   * **当前视口与场域的交集**内（拖动/缩放后按 `moveend` 视口重算，视口取不到时回落\n   * 全场）——深放大时可见粒子密度不再按「视口面积/全场面积」比例骤减、屏外粒子不再\n   * 空转模拟；代价是视口外的场不布粒子（示踪演示口径不变）。\n   */\n  readonly respawnInViewport?: boolean;\n  /**\n   * 风速色标（可选，缺省缺席＝单色 `color`）：提供后**尾迹按当地风速定档着色**——\n   * 传 `buildColorScale(profile, stats)`（与色斑/图例同一份档案色标，单一事实来源），\n   * 即得「颜色＝风速档」的满屏流场观感（速度→色彩的视觉连续由粒子密度与尾迹长度补足）。\n   */\n  readonly scale?: ColorScale;\n}\n\n/**\n * 粒子层控制柄：粒子层有自己的 rAF 生命周期，`remove()` 停帧并整层移除（幂等）——\n * 比裸 LayerGroup 多一个自清理位；canvas 层不走 `map.removeLayer` 的 Layer 协议。\n */\nexport interface ParticleLayer {\n  /** 画布本体（挂 `mw-particle` pane；宿主可读不可改） */\n  readonly canvas: HTMLCanvasElement;\n  readonly pane: string;\n  /** 停帧并整层移除（幂等） */\n  remove(): void;\n}\n\n/** addParticleLayer 的合法选项键（运行时校验用——不静默纪律）。 */\nconst ADD_PARTICLE_LAYER_OPTION_KEYS: ReadonlySet<string> = new Set([\n  ",
    "usage": [
     "packages/leaflet/src/index.ts"
    ],
@@ -3932,7 +3932,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2084
+   "line": 2092
   },
   "leaflet.msg55": {
    "kind": "product",
@@ -3943,12 +3943,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": "（可用项：color、count、speedFactor、fade、width、calmThreshold、scale）——拼错的选项不会生效`,\n      );\n    }\n  }\n  if (options.count !== undefined && (!Number.isInteger(options.count) || options.count < 1)) {\n    throw new Error(`addParticleLayer 的 count 非法（${String(options.count)}，须 ≥1 的整数）`);\n  }\n  if (\n    options.speedFactor !== undefined &&\n    (!Number.isFinite(options.speedFactor) || options.speedFactor <= 0)\n  ) {\n    throw new Error(\n      `addParticleLayer 的 speedFactor 非法（${String(options.speedFactor)}，须 >0 的有限数）`,\n    );\n  }\n  if (\n    options.fade !== undefined &&\n    (!Number.isFinite(options.fade) || options.fade <= 0 || options.fade >= 1)\n  ) {\n    throw new Error(`addParticleLayer 的 fade 非法（${String(options.fade)}，须 0–1 开区间）`);\n  }\n  if (options.width !== undefined && (!Number.isFinite(options.width) || options.width <= 0)) {\n    throw new Error(\n      `addParticleLayer 的 width 非法（${String(options.width)}，须 >0 的有限数〔像素〕）`,\n    );\n  }\n  if (\n    options.calmThreshold !== undefined &&\n    (!Number.isFinite(options.calmThreshold) || options.calmThreshold < 0)\n  ) {\n    throw new Error(\n      `addParticleLayer 的 calmThreshold 非法（${String(options.calmThreshold)}，须 ≥0 的有限数）`,\n    );\n  }\n  const L = await loadLeaflet();\n  const color = options.color ?? ",
+   "text": "（可用项：color、count、speedFactor、fade、width、calmThreshold、scale、respawnInViewport）——拼错的选项不会生效`,\n      );\n    }\n  }\n  if (options.count !== undefined && (!Number.isInteger(options.count) || options.count < 1)) {\n    throw new Error(`addParticleLayer 的 count 非法（${String(options.count)}，须 ≥1 的整数）`);\n  }\n  if (\n    options.speedFactor !== undefined &&\n    (!Number.isFinite(options.speedFactor) || options.speedFactor <= 0)\n  ) {\n    throw new Error(\n      `addParticleLayer 的 speedFactor 非法（${String(options.speedFactor)}，须 >0 的有限数）`,\n    );\n  }\n  if (\n    options.fade !== undefined &&\n    (!Number.isFinite(options.fade) || options.fade <= 0 || options.fade >= 1)\n  ) {\n    throw new Error(`addParticleLayer 的 fade 非法（${String(options.fade)}，须 0–1 开区间）`);\n  }\n  if (options.width !== undefined && (!Number.isFinite(options.width) || options.width <= 0)) {\n    throw new Error(\n      `addParticleLayer 的 width 非法（${String(options.width)}，须 >0 的有限数〔像素〕）`,\n    );\n  }\n  if (\n    options.calmThreshold !== undefined &&\n    (!Number.isFinite(options.calmThreshold) || options.calmThreshold < 0)\n  ) {\n    throw new Error(\n      `addParticleLayer 的 calmThreshold 非法（${String(options.calmThreshold)}，须 ≥0 的有限数）`,\n    );\n  }\n  const L = await loadLeaflet();\n  const color = options.color ?? ",
    "usage": [
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2110
+   "line": 2118
   },
   "leaflet.msg56": {
    "kind": "product",
@@ -3964,7 +3964,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2145
+   "line": 2153
   },
   "leaflet.msg57": {
    "kind": "product",
@@ -3980,7 +3980,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2165
+   "line": 2173
   },
   "leaflet.msg58": {
    "kind": "product",
@@ -3991,12 +3991,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": ");\n  }\n\n  const resize = (): void => {\n    const size = map.getSize();\n    canvas.width = size.x;\n    canvas.height = size.y;\n  };\n  /** 画布左上角对齐容器左上角（画布随 pane 平移，绘制一律用容器坐标） */\n  const reposition = (): void => {\n    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));\n  };\n  const clear = (): void => ctx.clearRect(0, 0, canvas.width, canvas.height);\n  resize();\n  reposition();\n\n  const rad = Math.PI / 180;\n  // (m/s)·s → 度：speedFactor 小时/秒 × 3600 s/时 ÷ 111000 m/度\n  const degPerUnit = (speedFactor * 3600) / 111000;\n  const MAX_AGE_S = 5; // 寿限：到期重生（防尾迹无限堆积在同一圈轨道上）\n\n  interface Particle {\n    lat: number;\n    lon: number;\n    age: number;\n  }\n  const respawn = (p: Particle): void => {\n    p.lat = south + Math.random() * (north - south);\n    p.lon = west + Math.random() * (east - west);\n    p.age = 0;\n  };\n  const particles: Particle[] = Array.from({ length: count }, () => {\n    const p = { lat: 0, lon: 0, age: 0 };\n    respawn(p);\n    return p;\n  });\n\n  let running = true;\n  let suspended = false; // 地图拖动/缩放中：清画布暂停，moveend 复位续跑\n  let rafId = 0;\n  let lastTs: number | undefined;\n\n  const frame = (ts: number): void => {\n    if (!running) return;\n    rafId = requestAnimationFrame(frame);\n    if (document.hidden || suspended) {\n      lastTs = ts;\n      return;\n    }\n    const dt = lastTs === undefined ? 0 : Math.min((ts - lastTs) / 1000, 0.1);\n    lastTs = ts;\n    // 尾迹渐隐：destination-in 半透明擦除（画布保持透明，不糊底图）\n    ctx.globalCompositeOperation = ",
+   "text": ");\n  }\n\n  const resize = (): void => {\n    const size = map.getSize();\n    canvas.width = size.x;\n    canvas.height = size.y;\n  };\n  /** 画布左上角对齐容器左上角（画布随 pane 平移，绘制一律用容器坐标） */\n  const reposition = (): void => {\n    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));\n  };\n  const clear = (): void => ctx.clearRect(0, 0, canvas.width, canvas.height);\n  resize();\n  reposition();\n\n  const rad = Math.PI / 180;\n  // (m/s)·s → 度：speedFactor 小时/秒 × 3600 s/时 ÷ 111000 m/度\n  const degPerUnit = (speedFactor * 3600) / 111000;\n  const MAX_AGE_S = 5; // 寿限：到期重生（防尾迹无限堆积在同一圈轨道上）\n\n  interface Particle {\n    lat: number;\n    lon: number;\n    age: number;\n  }\n  // 视口感知重生（可选）：重生域＝当前视口∩场域（moveend 重算；取不到视口或交集为空\n  // 回落全场撒点——缺省关＝恒全场，既有行为逐字节不变）\n  let viewBox: { south: number; north: number; west: number; east: number } | undefined;\n  const respawnInViewport = options.respawnInViewport === true;\n  const recomputeViewBox = (): void => {\n    if (!respawnInViewport) return;\n    const size = map.getSize();\n    if (size.x <= 0 || size.y <= 0) {\n      viewBox = undefined;\n      return;\n    }\n    const b = map.getBounds();\n    const south2 = Math.max(b.getSouth(), south);\n    const north2 = Math.min(b.getNorth(), north);\n    const west2 = Math.max(b.getWest(), west);\n    const east2 = Math.min(b.getEast(), east);\n    viewBox =\n      south2 < north2 && west2 < east2\n        ? { south: south2, north: north2, west: west2, east: east2 }\n        : undefined;\n  };\n  const respawn = (p: Particle): void => {\n    const box = viewBox;\n    p.lat = (box?.south ?? south) + Math.random() * ((box?.north ?? north) - (box?.south ?? south));\n    p.lon = (box?.west ?? west) + Math.random() * ((box?.east ?? east) - (box?.west ?? west));\n    p.age = 0;\n  };\n  const particles: Particle[] = Array.from({ length: count }, () => {\n    const p = { lat: 0, lon: 0, age: 0 };\n    respawn(p);\n    return p;\n  });\n\n  let running = true;\n  let suspended = false; // 地图拖动/缩放中：清画布暂停，moveend 复位续跑\n  let rafId = 0;\n  let lastTs: number | undefined;\n\n  const frame = (ts: number): void => {\n    if (!running) return;\n    rafId = requestAnimationFrame(frame);\n    if (document.hidden || suspended) {\n      lastTs = ts;\n      return;\n    }\n    const dt = lastTs === undefined ? 0 : Math.min((ts - lastTs) / 1000, 0.1);\n    lastTs = ts;\n    // 尾迹渐隐：destination-in 半透明擦除（画布保持透明，不糊底图）\n    ctx.globalCompositeOperation = ",
    "usage": [
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2172
+   "line": 2180
   },
   "leaflet.msg59": {
    "kind": "product",
@@ -4007,12 +4007,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": ";\n    for (const p of particles) {\n      const uu = interpolateBilinear(u, p.lat, p.lon);\n      const vv = interpolateBilinear(v, p.lat, p.lon);\n      p.age += dt;\n      const speed = Math.hypot(uu, vv);\n      if (Number.isNaN(uu) || Number.isNaN(vv) || p.age > MAX_AGE_S || speed < calmThreshold) {\n        respawn(p);\n        continue;\n      }\n      if (speedScale !== undefined) {\n        // 风速定档着色：档数＝breaks+1，越界档（−1/超长）回退单色（防御，正常不到达）\n        ctx.strokeStyle = speedScale.colors[binIndexAt(speed, speedScale.breaks)] ?? color;\n      }\n      const cosLat = Math.max(Math.cos(p.lat * rad), 1e-6);\n      const dLat = vv * degPerUnit * dt;\n      const dLon = (uu * degPerUnit * dt) / cosLat;\n      const from = map.latLngToContainerPoint(L.latLng(p.lat, p.lon));\n      p.lat += dLat;\n      p.lon += dLon;\n      const to = map.latLngToContainerPoint(L.latLng(p.lat, p.lon));\n      ctx.beginPath();\n      ctx.moveTo(from.x, from.y);\n      ctx.lineTo(to.x, to.y);\n      ctx.stroke();\n    }\n  };\n\n  const onResize = (): void => {\n    resize();\n    reposition();\n    clear();\n  };\n  const onMoveStart = (): void => {\n    suspended = true;\n    clear();\n  };\n  const onMoveEnd = (): void => {\n    reposition();\n    clear();\n    suspended = false;\n    lastTs = undefined; // 拖动后不补 dt（暂停期间的时间不入平流）\n  };\n  /** map 销毁（unload）即停帧——层不拥有地图生命周期，但也不该比地图活得久 */\n  const onUnload = (): void => {\n    running = false;\n    cancelAnimationFrame(rafId);\n    map.off(",
+   "text": ";\n    for (const p of particles) {\n      const uu = interpolateBilinear(u, p.lat, p.lon);\n      const vv = interpolateBilinear(v, p.lat, p.lon);\n      p.age += dt;\n      const speed = Math.hypot(uu, vv);\n      if (Number.isNaN(uu) || Number.isNaN(vv) || p.age > MAX_AGE_S || speed < calmThreshold) {\n        respawn(p);\n        continue;\n      }\n      if (speedScale !== undefined) {\n        // 风速定档着色：档数＝breaks+1，越界档（−1/超长）回退单色（防御，正常不到达）\n        ctx.strokeStyle = speedScale.colors[binIndexAt(speed, speedScale.breaks)] ?? color;\n      }\n      const cosLat = Math.max(Math.cos(p.lat * rad), 1e-6);\n      const dLat = vv * degPerUnit * dt;\n      const dLon = (uu * degPerUnit * dt) / cosLat;\n      const from = map.latLngToContainerPoint(L.latLng(p.lat, p.lon));\n      p.lat += dLat;\n      p.lon += dLon;\n      const to = map.latLngToContainerPoint(L.latLng(p.lat, p.lon));\n      ctx.beginPath();\n      ctx.moveTo(from.x, from.y);\n      ctx.lineTo(to.x, to.y);\n      ctx.stroke();\n    }\n  };\n\n  const onResize = (): void => {\n    resize();\n    reposition();\n    clear();\n  };\n  const onMoveStart = (): void => {\n    suspended = true;\n    clear();\n  };\n  const onMoveEnd = (): void => {\n    reposition();\n    clear();\n    recomputeViewBox(); // 视口感知重生：按新视口重算重生域（下一轮重生的粒子落进新视口）\n    suspended = false;\n    lastTs = undefined; // 拖动后不补 dt（暂停期间的时间不入平流）\n  };\n  /** map 销毁（unload）即停帧——层不拥有地图生命周期，但也不该比地图活得久 */\n  const onUnload = (): void => {\n    running = false;\n    cancelAnimationFrame(rafId);\n    map.off(",
    "usage": [
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2230
+   "line": 2260
   },
   "leaflet.msg60": {
    "kind": "product",
@@ -4023,12 +4023,12 @@
      "clause": "显示自拟（无标准对应条款）"
     }
    ],
-   "text": ", onUnload);\n  rafId = requestAnimationFrame(frame);\n\n  return {\n    canvas,\n    pane: PARTICLE_PANE,\n    remove: (): void => {\n      if (!running) return;\n      onUnload(); // 同一套清理（幂等：running 置 false 后再入直接返回）\n    },\n  };\n}\n\n// ---------------------------------------------------------------- 箭头场层（0.3.4 矢量批次）\n\n/** 箭头场层专用 pane 名：流线（z 355）与粒子（z 358）之间 */\nconst ARROW_FIELD_PANE = ",
+   "text": ", onUnload);\n  recomputeViewBox(); // 初次视口（respawnInViewport 开启时；关＝空操作）\n  rafId = requestAnimationFrame(frame);\n\n  return {\n    canvas,\n    pane: PARTICLE_PANE,\n    remove: (): void => {\n      if (!running) return;\n      onUnload(); // 同一套清理（幂等：running 置 false 后再入直接返回）\n    },\n  };\n}\n\n// ---------------------------------------------------------------- 箭头场层（0.3.4 矢量批次）\n\n/** 箭头场层专用 pane 名：流线（z 355）与粒子（z 358）之间 */\nconst ARROW_FIELD_PANE = ",
    "usage": [
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2286
+   "line": 2317
   },
   "leaflet.msg61": {
    "kind": "product",
@@ -4044,7 +4044,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2302
+   "line": 2334
   },
   "leaflet.msg62": {
    "kind": "product",
@@ -4060,7 +4060,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2318
+   "line": 2350
   },
   "leaflet.msg63": {
    "kind": "product",
@@ -4076,7 +4076,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2334
+   "line": 2366
   },
   "leaflet.msg64": {
    "kind": "product",
@@ -4092,7 +4092,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2354
+   "line": 2386
   },
   "leaflet.msg65": {
    "kind": "product",
@@ -4108,7 +4108,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2378
+   "line": 2410
   },
   "leaflet.msg66": {
    "kind": "product",
@@ -4124,7 +4124,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2385
+   "line": 2417
   },
   "leaflet.msg67": {
    "kind": "product",
@@ -4140,7 +4140,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2406
+   "line": 2438
   },
   "leaflet.msg68": {
    "kind": "product",
@@ -4156,7 +4156,7 @@
     "packages/leaflet/src/index.ts"
    ],
    "zhOnly": true,
-   "line": 2409
+   "line": 2441
   },
   "sources.msg01": {
    "kind": "product",
@@ -4172,7 +4172,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 196
+   "line": 216
   },
   "sources.msg02": {
    "kind": "product",
@@ -4188,7 +4188,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 211
+   "line": 231
   },
   "sources.msg03": {
    "kind": "product",
@@ -4204,7 +4204,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 233
+   "line": 253
   },
   "sources.msg04": {
    "kind": "product",
@@ -4220,7 +4220,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 246
+   "line": 266
   },
   "sources.msg05": {
    "kind": "product",
@@ -4236,7 +4236,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 254
+   "line": 274
   },
   "sources.msg06": {
    "kind": "product",
@@ -4252,7 +4252,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 262
+   "line": 282
   },
   "sources.msg07": {
    "kind": "product",
@@ -4268,7 +4268,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 318
+   "line": 341
   },
   "sources.msg08": {
    "kind": "product",
@@ -4284,7 +4284,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 406
+   "line": 429
   },
   "sources.msg09": {
    "kind": "product",
@@ -4300,7 +4300,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 419
+   "line": 442
   },
   "sources.msg10": {
    "kind": "product",
@@ -4316,7 +4316,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 439
+   "line": 462
   },
   "sources.msg11": {
    "kind": "product",
@@ -4332,7 +4332,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 448
+   "line": 471
   },
   "sources.msg12": {
    "kind": "product",
@@ -4348,7 +4348,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 632
+   "line": 664
   },
   "sources.msg13": {
    "kind": "product",
@@ -4364,7 +4364,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 644
+   "line": 676
   },
   "sources.msg14": {
    "kind": "product",
@@ -4380,7 +4380,7 @@
     "packages/metweave/src/sources.ts"
    ],
    "zhOnly": true,
-   "line": 652
+   "line": 684
   },
   "parser.msg001": {
    "kind": "product",

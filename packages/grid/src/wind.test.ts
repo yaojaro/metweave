@@ -11,6 +11,8 @@ import {
   windBarbOf,
   streamlinesOf,
   arrowFieldOf,
+  windDirectionOf,
+  windAt,
   toKnots,
   toMps,
   WIND_BARB_SCALES,
@@ -548,5 +550,58 @@ describe("arrowFieldOf（等长箭头阵，v0.3.4 矢量批次）", () => {
     expect(() => arrowFieldOf(u, v, { step: 1.5 })).toThrow(/步长非法/);
     expect(() => arrowFieldOf(u, v, { calmThreshold: -1 })).toThrow(/静风阈值非法/);
     expect(() => arrowFieldOf(u, v, { stride: 2 } as never)).toThrow(/未知选项/);
+  });
+});
+
+describe("windDirectionOf（气象来向单源公式，v0.3.5 点查询批）", () => {
+  it("四轴锚：西风 270／南风 180／东风 90／北风 0（来向口径）", () => {
+    expect(windDirectionOf(1, 0)).toBe(270); // 向东吹＝西风来向
+    expect(windDirectionOf(0, 1)).toBe(180); // 向北吹＝南风来向
+    expect(windDirectionOf(-1, 0)).toBe(90); // 向西吹＝东风来向
+    expect(windDirectionOf(0, -1)).toBe(0); // 向南吹＝北风来向（360 归 0）
+  });
+
+  it("3-4-5 锚：atan2 权重落在西南象限 216.87°（与杆位/箭头阵同读数）", () => {
+    expect(windDirectionOf(3, 4)).toBeCloseTo(216.87, 2);
+  });
+});
+
+describe("windAt（任意经纬度单点读风——点查询地基）", () => {
+  it("格点上取原值：分量/√(u²+v²)/来向齐备（3-4-5 锚）", () => {
+    const u = gridOf("UGRD", [3, -3, 0, 6]);
+    const v = gridOf("VGRD", [4, 4, -5, 0]);
+    const s = windAt(u, v, 40, 100);
+    expect(s?.u).toBe(3);
+    expect(s?.v).toBe(4);
+    expect(s?.speed).toBeCloseTo(5, 10);
+    expect(s?.direction).toBeCloseTo(windDirectionOf(3, 4), 10);
+    expect(s?.lat).toBe(40);
+    expect(s?.lon).toBe(100);
+  });
+
+  it("格点间双线性（与粒子平流同一只采样手）：中心＝四点均值", () => {
+    const u = gridOf("UGRD", [0, 10, 20, 30]);
+    const v = gridOf("VGRD", [0, 0, 0, 0]);
+    const s = windAt(u, v, 39.5, 100.5);
+    expect(s?.u).toBeCloseTo(15, 6); // (0+10+20+30)/4
+    expect(s?.speed).toBeCloseTo(15, 6);
+    expect(s?.direction).toBe(270);
+  });
+
+  it("场外或任一分量缺测 → null（矢量未知，与色斑/粒子同纪律）", () => {
+    const u = gridOf("UGRD", [3, Number.NaN, 0, 6]);
+    const v = gridOf("VGRD", [4, 4, -5, 0]);
+    expect(windAt(u, v, 40.1, 100)).toBeNull(); // 网格外（半开边界）
+    expect(windAt(u, v, 40, 101)).toBeNull(); // 邻点缺测传染
+    expect(windAt(u, v, 40, 100)).not.toBeNull(); // 干净格点不受邻点影响
+  });
+
+  it("几何不匹配显式抛错（与 windSpeedGrid 同守卫）", () => {
+    const u = gridOf("UGRD", [3, -3, 0, 6]);
+    const v = gridOf("VGRD", [4, 4, -5, 0], {
+      grid: { nx: 3, ny: 2, la0: 40, lo0: 100, di: 1, dj: 1, order: "N2S,W2E,row-major" },
+    });
+    expect(() => windAt(u, v, 40, 100)).toThrow(GridError);
+    expect(() => windAt(u, v, 40, 100)).toThrow(/网格几何不匹配/);
   });
 });

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   cloudLayerTone,
   conditionTierOf,
+  CONDITION_TIERS,
+  isConditionTier,
   isConditionUnknown,
   metarTierOf,
   visibilityGroupTone,
@@ -241,5 +243,21 @@ describe("isConditionUnknown（unknown 档谓词单源：三条件合成）", ()
     };
     expect(conditionTierOf(allMissing)).toBe("unknown");
     expect(conditionTierOf({ ...allMissing, nil: true })).toBe("unknown"); // NIL 恒灰（先于谓词）
+  });
+});
+
+describe("isConditionTier（档名字符串类型守卫——DOM/JSON 回读值收窄）", () => {
+  it("四档全真（与 CONDITION_TIERS 单源同集）", () => {
+    for (const tier of CONDITION_TIERS) expect(isConditionTier(tier)).toBe(true);
+  });
+
+  it("拼残档名与非字符串恒假（守卫不抛错——assertConditionTier 的谓词版）", () => {
+    expect(isConditionTier("por")).toBe(false); // 拼写残缺（注入抛错文案同款样例）
+    expect(isConditionTier("")).toBe(false);
+    expect(isConditionTier("GOOD")).toBe(false); // 大小写敏感
+    expect(isConditionTier(undefined)).toBe(false);
+    expect(isConditionTier(null)).toBe(false);
+    expect(isConditionTier(0)).toBe(false);
+    expect(isConditionTier({ tier: "good" })).toBe(false);
   });
 });

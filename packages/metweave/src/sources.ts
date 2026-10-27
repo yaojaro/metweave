@@ -81,6 +81,21 @@ export interface UnparseableReport {
 }
 
 /**
+ * Per-row skip detail (the onSkipped callback argument): a row was dropped by a documented
+ * non-failure rule (no coordinates available / station table miss) — observable, not silent.
+ * 逐行跳过详情（onSkipped 回调入参）：一行报文被**非失败规则**略过（无坐标可回落／
+ * 站表未命中——规则文档化，但「跳了几站、跳了谁」此前调用方完全无感）。
+ */
+export interface SkippedRow {
+  /** 源站站名（电头提取） */
+  station: string;
+  /** 报文原文 */
+  raw: string;
+  /** 跳过原因（机读短语：no-position / station-table-miss） */
+  reason: "no-position" | "station-table-miss";
+}
+
+/**
  * Options for getMetarReports: fetch options plus station metadata and the per-row tolerance callback.
  * getMetarReports 的选项：取数选项 + 站点联表元数据 + 逐行容错回调。
  */
@@ -92,6 +107,11 @@ export interface GetMetarReportsOptions extends GetMetarsOptions {
    * 不传时任一失败仍聚合抛出（默认行为不变，全有或全无）。
    */
   onUnparseable?: (failure: UnparseableReport) => void;
+  /**
+   * 跳行可观测（可选）：无坐标／站表未命中的行跳过时逐条回调（与 onUnparseable 同一
+   * 可观测口径——规则跳过不是失败，但也不该无声；缺省不回调，行为不变）。
+   */
+  onSkipped?: (skip: SkippedRow) => void;
   /**
    * 紧凑模式：parse 产物剥除全部 span 字段（存储体积约 -32%，入库供屏场景推荐）；
    * 缺省 undefined = 完整模式（span 在位，原文回溯用）。
@@ -291,7 +311,10 @@ export async function getMetarReports(
     const station = table.get(obs.station);
     const lat = station?.lat ?? obs.lat;
     const lon = station?.lon ?? obs.lon;
-    if (lat === null || lon === null) continue;
+    if (lat === null || lon === null) {
+      options.onSkipped?.({ station: obs.station, raw: obs.raw, reason: "no-position" });
+      continue;
+    }
     try {
       items.push({
         report: parse(obs.raw, spans === false ? { spans: false } : undefined),
@@ -460,6 +483,11 @@ export interface GetTafReportsOptions extends GetTafsOptions {
   stations?: readonly StationRef[];
   /** 逐行容错（缺省关闭）：传入时解析失败的行跳过并逐条回调；不传时聚合抛出（全有或全无） */
   onUnparseable?: (failure: UnparseableReport) => void;
+  /**
+   * 逐行跳过可观测（沿 getMetarReports 的 onSkipped 契约）：站表未命中的行跳过时逐条回调；
+   * 与 onUnparseable 的分工——那是「报文解析失败」，这是「非失败规则略过」。
+   */
+  onSkipped?: (skip: SkippedRow) => void;
   /** 紧凑模式：parseTaf 产物剥除全部 span 字段（存储场景推荐）；缺省完整模式 */
   spans?: false;
 }
@@ -495,7 +523,11 @@ export async function getTafReports(
     // 次序与 getMetarReports 同位：先查站表（未命中跳过、不付解析成本、不计失败），命中才解析。
     // 取数侧 stationHeadOf 与 parseTaf 电头判式同源，先查不丢行
     const station = table.get(obs.station);
-    if (station === undefined) continue; // 站表未命中（端点无坐标可回落）——跳过，规则同 getMetarReports
+    if (station === undefined) {
+      // 站表未命中（端点无坐标可回落）——跳过，规则同 getMetarReports；onSkipped 在位则逐条出声
+      options.onSkipped?.({ station: obs.station, raw: obs.raw, reason: "station-table-miss" });
+      continue;
+    }
     try {
       const report = parseTaf(obs.raw, spans === false ? { spans: false } : undefined);
       items.push({
