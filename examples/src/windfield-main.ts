@@ -13,9 +13,11 @@ import {
   streamlinesOf,
   arrowFieldOf,
   interpolateBilinear,
+  toKnots,
   windProfile,
   windSpeedGrid,
   type Grid,
+  type WindSpeedUnit,
 } from "@metweave/grid";
 import {
   addArrowFieldLayer,
@@ -56,6 +58,12 @@ void (async () => {
     maxZoom: 18,
   }).addTo(map);
 
+  // 显示口径（页面级记忆，默认 m/s）：切 kt 时图例界值/点查询读数/风羽杆形三处联动；
+  // 色斑档位是档案固定域不随口径切（主 demo 同口径——换算只发生在显示侧）
+  let unit: WindSpeedUnit = "m/s";
+  const fmtValue = (mps: number): string =>
+    unit === "kt" ? toKnots(mps).toFixed(1) : mps.toFixed(1);
+
   // 点查询：点击读当地风（双线性采样，与粒子同源）——对比锚点：在 windy 点同一点
   // 读数对照，即可分辨「色卡映射差」与「数据差」（色可以不同档，数值该一致）
   map.on("click", (e: L.LeafletMouseEvent) => {
@@ -65,41 +73,47 @@ void (async () => {
     const content =
       Number.isNaN(uu) || Number.isNaN(vv)
         ? `${lat.toFixed(2)}°N ${lng.toFixed(2)}°E<br>场外（无数据）`
-        : `${lat.toFixed(2)}°N ${lng.toFixed(2)}°E<br><b>${Math.hypot(uu, vv).toFixed(1)} m/s</b>` +
-          `（u ${uu.toFixed(1)} / v ${vv.toFixed(1)}）<br>风向（来向）${Math.round((((270 - (Math.atan2(vv, uu) * 180) / Math.PI) % 360) + 360) % 360)}°`;
+        : `${lat.toFixed(2)}°N ${lng.toFixed(2)}°E<br><b>${fmtValue(Math.hypot(uu, vv))} ${unit}</b>` +
+          `（u ${fmtValue(uu)} / v ${fmtValue(vv)}）<br>风向（来向）${Math.round((((270 - (Math.atan2(vv, uu) * 180) / Math.PI) % 360) + 360) % 360)}°`;
     L.popup().setLatLng(e.latlng).setContent(content).openOn(map);
   });
 
-  // 色卡图例（windy 式底部左下横条）：12 档分格、界值标注——色与档界与色斑同一份
-  // 档案色标（buildColorScale 单一来源），阈值档等宽分格（每格一档，界值即标签）
+  // 色卡图例（windy 式底部左下横条）：阈值档等宽分格（每格一档，界值即标签）——
+  // 色与档界与色斑同一份档案色标（buildColorScale 单一来源）；界值随显示口径换算
   const scale = buildColorScale(windProfile, speed.header.stats);
-  const legend = document.createElement("div");
-  legend.className = "wf-legend";
-  const title = document.createElement("div");
-  title.className = "wf-legend-title";
-  title.textContent = `${windProfile.labelZh}（${windProfile.displayUnit}）`;
-  const bar = document.createElement("div");
-  bar.className = "wf-legend-bar";
-  for (const c of scale.colors) {
-    const seg = document.createElement("span");
-    seg.className = "wf-legend-seg";
-    seg.style.background = c;
-    bar.append(seg);
-  }
-  const ticks = document.createElement("div");
-  ticks.className = "wf-legend-ticks";
-  const labels = ["0", ...scale.breaks.map((b) => String(b)), "+"];
-  labels.forEach((t, i) => {
-    const tick = document.createElement("span");
-    tick.className = "wf-legend-tick";
-    tick.textContent = t;
-    tick.style.left = `${(i / (labels.length - 1)) * 100}%`;
-    if (i === 0) tick.classList.add("first");
-    if (i === labels.length - 1) tick.classList.add("last");
-    ticks.append(tick);
-  });
-  legend.append(title, bar, ticks);
-  map.getContainer().append(legend);
+  let legendEl: HTMLDivElement | undefined;
+  const mountLegend = (): void => {
+    legendEl?.remove();
+    const legend = document.createElement("div");
+    legend.className = "wf-legend";
+    const title = document.createElement("div");
+    title.className = "wf-legend-title";
+    title.textContent = `${windProfile.labelZh}（${unit}）`;
+    const bar = document.createElement("div");
+    bar.className = "wf-legend-bar";
+    for (const c of scale.colors) {
+      const seg = document.createElement("span");
+      seg.className = "wf-legend-seg";
+      seg.style.background = c;
+      bar.append(seg);
+    }
+    const ticks = document.createElement("div");
+    ticks.className = "wf-legend-ticks";
+    const labels = ["0", ...scale.breaks.map((b) => fmtValue(b)), "+"];
+    labels.forEach((t, i) => {
+      const tick = document.createElement("span");
+      tick.className = "wf-legend-tick";
+      tick.textContent = t;
+      tick.style.left = `${(i / (labels.length - 1)) * 100}%`;
+      if (i === 0) tick.classList.add("first");
+      if (i === labels.length - 1) tick.classList.add("last");
+      ticks.append(tick);
+    });
+    legend.append(title, bar, ticks);
+    map.getContainer().append(legend);
+    legendEl = legend;
+  };
+  mountLegend();
 
   let gridLayer: L.ImageOverlay | undefined;
   let barbLayer: L.LayerGroup | undefined;
@@ -120,7 +134,8 @@ void (async () => {
       map.removeLayer(barbLayer);
       barbLayer = undefined;
     }
-    if (on) barbLayer = await addWindBarbLayer(map, u, v, windProfile);
+    // unit 联动：kt 时杆形按国际航空口径重编码（旗 50/长划 10/短划 5——库层换算）
+    if (on) barbLayer = await addWindBarbLayer(map, u, v, windProfile, { unit });
   };
   const applyStream = async (on: boolean): Promise<void> => {
     if (streamLayer !== undefined) {
@@ -180,6 +195,18 @@ void (async () => {
       speedOut.textContent = `×${String(speedFactor)}`;
       const box = inputById("wf-on-particle");
       if (box?.checked) void applyParticle(true); // remove+add 换速（v0.3.4：原地调速留后续）
+    });
+  }
+
+  // 单位切换（m/s ⇄ kt）：图例界值/标题、点查询读数、风羽杆形三处联动；
+  // 色斑档位维持档案固定域（换算只发生在显示侧——跨口径可比的口径锚不变）
+  const unitSel = document.getElementById("wf-unit");
+  if (unitSel instanceof HTMLSelectElement) {
+    unitSel.addEventListener("change", () => {
+      unit = unitSel.value === "kt" ? "kt" : "m/s";
+      mountLegend();
+      const box = inputById("wf-on-barbs");
+      if (box?.checked) void applyBarbs(true);
     });
   }
 
