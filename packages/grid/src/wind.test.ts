@@ -13,6 +13,8 @@ import {
   arrowFieldOf,
   windDirectionOf,
   windAt,
+  windProfileOf,
+  windTimeHeightOf,
   toKnots,
   toMps,
   WIND_BARB_SCALES,
@@ -603,5 +605,190 @@ describe("windAt（任意经纬度单点读风——点查询地基）", () => {
     });
     expect(() => windAt(u, v, 40, 100)).toThrow(GridError);
     expect(() => windAt(u, v, 40, 100)).toThrow(/网格几何不匹配/);
+  });
+});
+
+// ---------------------------------------------------------------- 廓线/剖面适配器（v0.6 垂直与时间批次）
+
+/** 一层 u/v 均匀场工厂（level 串进 header 供锚解析；meta 可覆写做时刻维——只依赖入参与
+ *  模块层 gridOf，故置模块层，与上方 uniform 同纪律）。 */
+const layerOf = (
+  level: string,
+  uu: number,
+  vv: number,
+  overrides: Partial<Grid["header"]> = {},
+): { u: Grid; v: Grid } => ({
+  u: gridOf("UGRD", [uu, uu, uu, uu], { level, ...overrides }),
+  v: gridOf("VGRD", [vv, vv, vv, vv], { level, ...overrides }),
+});
+
+describe("windProfileOf（u/v 多层场 → 多层风廓线）", () => {
+  it("逐层采样：速度/方向同 windAt 口径（气象来向公式）、产出按气压降序自下而上", () => {
+    const fields = [layerOf("500mb", 3, 0), layerOf("850mb", 0, 4), layerOf("200mb", -5, 0)];
+    const profile = windProfileOf(fields, 40, 100);
+    expect(profile.map((l) => l.pressure)).toEqual([850, 500, 200]); // 乱序进、自下而上出
+    expect(profile.map((l) => l.height)).toEqual([null, null, null]);
+    const p850 = profile[0];
+    expect(p850?.speed).toBeCloseTo(4, 6);
+    expect(p850?.direction).toBeCloseTo(180, 6); // v>0（南风分量）→ 来向 180
+    expect(profile[1]?.direction).toBeCloseTo(270, 6); // u>0 → 西风来向 270
+    expect(profile[2]?.direction).toBeCloseTo(90, 6); // u<0 → 东风来向 90
+  });
+
+  it("层锚解析：显式 pressure/height 优先；header.level 的 mb/hPa/m 形态可解析", () => {
+    const explicit = windProfileOf(
+      [{ ...layerOf("nonsense-level", 3, 0), pressure: 700 }],
+      40,
+      100,
+    );
+    expect(explicit[0]?.pressure).toBe(700);
+    const hpa = windProfileOf([{ ...layerOf("300hPa", 3, 0) }], 40, 100);
+    expect(hpa[0]?.pressure).toBe(300);
+    const agl = windProfileOf([{ ...layerOf("10m", 0, 2) }], 40, 100);
+    expect(agl[0]?.height).toBe(10);
+    expect(agl[0]?.pressure).toBeNull();
+  });
+
+  it("缺测层：场值 NaN 或场外 → 该层 speed/direction 全 null、层位保留", () => {
+    const withNaN = layerOf("850mb", Number.NaN, 0);
+    const u: Grid = { ...withNaN.u, values: Float32Array.from([Number.NaN, 3, 3, 3]) };
+    const profile = windProfileOf([{ u, v: withNaN.v }], 40, 100);
+    expect(profile[0]).toEqual({ pressure: 850, height: null, speed: null, direction: null });
+    expect(windProfileOf([layerOf("850mb", 3, 0)], 50, 120)[0]?.speed).toBeNull(); // 场外
+  });
+
+  it("静风阈：速度低于阈（缺省 1 m/s）→ direction null、speed 保留", () => {
+    const profile = windProfileOf([layerOf("850mb", 0.6, 0)], 40, 100);
+    expect(profile[0]?.speed).toBeCloseTo(0.6, 6);
+    expect(profile[0]?.direction).toBeNull();
+    const zero = windProfileOf([layerOf("850mb", 0.6, 0)], 40, 100, { calmThreshold: 0 });
+    expect(zero[0]?.direction).toBeCloseTo(270, 6);
+  });
+
+  it("防线：空输入/层锚不可解析/双场不配对/未知选项/非法静风阈显式抛错", () => {
+    expect(() => windProfileOf([], 40, 100)).toThrow(/至少一层/);
+    expect(() => windProfileOf([layerOf("sigma-0.5", 3, 0)], 40, 100)).toThrow(/缺层锚/);
+    const mismatch = layerOf("850mb", 3, 0);
+    const badV = gridOf("VGRD", [0, 0, 0, 0], {
+      grid: { nx: 3, ny: 2, la0: 40, lo0: 100, di: 1, dj: 1, order: "N2S,W2E,row-major" },
+    });
+    expect(() => windProfileOf([{ u: mismatch.u, v: badV }], 40, 100)).toThrow(/网格几何不匹配/);
+    expect(() => windProfileOf([layerOf("850mb", 3, 0)], 40, 100, { zoom: 5 } as never)).toThrow(
+      /未知选项 "zoom"/,
+    );
+    expect(() => windProfileOf([layerOf("850mb", 3, 0)], 40, 100, { calmThreshold: -1 })).toThrow(
+      /静风阈值非法/,
+    );
+  });
+
+  it("同锚重复显式抛错（P2-2 行为锁）：同层两层入参不被 last-wins 静默吞掉", () => {
+    expect(() => windProfileOf([layerOf("850mb", 3, 0), layerOf("850mb", 0, 4)], 40, 100)).toThrow(
+      /重复层输入（第 2 层的层锚 850hPa 与前层重复）/,
+    );
+  });
+
+  it("层锚混装显式抛错且带逐层锚清单（P2-10 行为锁）：不把 render 必拒的产物放出去", () => {
+    expect(() => windProfileOf([layerOf("850mb", 3, 0), layerOf("10m", 0, 4)], 40, 100)).toThrow(
+      /层锚混装（第 1 层 850hPa、第 2 层 10m）/,
+    );
+    // 多时刻路径同口径（层行维度）
+    expect(() =>
+      windTimeHeightOf([hourLayerOf("850mb", 0, 1, 1), hourLayerOf("10m", 0, 1, 1)], 40, 100),
+    ).toThrow(/层锚混装/);
+  });
+
+  it("双分量时效配对校验（P2-3 行为锁）：v 场接错时效显式抛错，不错出矢量", () => {
+    const base = hourLayerOf("850mb", 0, 3, 0);
+    const vWrongHour = hourLayerOf("850mb", 6, 0, 4); // v 来自另一时效
+    expect(() => windProfileOf([{ u: base.u, v: vWrongHour.v }], 40, 100)).toThrow(
+      /第 1 层双分量时效不匹配（u 2026-10-06T18:00Z\+0h ≠ v 2026-10-06T18:00Z\+6h）/,
+    );
+    const vOtherCycle = hourLayerOf("850mb", 0, 0, 4);
+    const shiftedV = {
+      ...vOtherCycle.v,
+      header: {
+        ...vOtherCycle.v.header,
+        meta: { ...vOtherCycle.v.header.meta, referenceTime: "2026-10-07T00:00Z" },
+      },
+    };
+    expect(() => windProfileOf([{ u: base.u, v: shiftedV }], 40, 100)).toThrow(/时效不匹配/);
+  });
+});
+
+/** 时刻维工厂：一层一时的 u/v 均匀场（referenceTime 固定单 cycle、forecastHour 可变）。 */
+const hourLayerOf = (
+  level: string,
+  forecastHour: number,
+  uu: number,
+  vv: number,
+): { u: Grid; v: Grid } => {
+  const meta = {
+    referenceTime: "2026-10-06T18:00Z",
+    forecastHour,
+    source: "test",
+    license: "",
+    generated: "2026-10-07",
+  };
+  return {
+    u: gridOf("UGRD", [uu, uu, uu, uu], { level, meta }),
+    v: gridOf("VGRD", [vv, vv, vv, vv], { level, meta }),
+  };
+};
+
+describe("windTimeHeightOf（u/v 多层场 → 多层×多时刻二维序列）", () => {
+  it("时刻维：forecastHour 升序、标签＝起报＋时效现算的 ISO 串；层缺场补 null 格", () => {
+    const fields = [
+      hourLayerOf("850mb", 6, 3, 0),
+      hourLayerOf("500mb", 0, 6, 0),
+      hourLayerOf("850mb", 0, 0, 4),
+    ];
+    const data = windTimeHeightOf(fields, 40, 100);
+    expect(data.times).toEqual(["2026-10-06T18:00Z", "2026-10-07T00:00Z"]);
+    // timeLabel:"short" 直出「日T时Z」短标签（剖面列标签用）；ISO 形态缺省可用不受影响
+    const short = windTimeHeightOf(fields, 40, 100, { timeLabel: "short" });
+    expect(short.times).toEqual(["06T18Z", "07T00Z"]);
+    // 层行按气压降序（自下而上＝地面层在前，与 windProfileOf 同序；显示侧自再排）
+    expect(data.levels.map((l) => l.pressure)).toEqual([850, 500]);
+    const row850 = data.levels[0];
+    const row500 = data.levels[1];
+    expect(row500?.cells).toHaveLength(2);
+    expect(row500?.cells[1]?.speed).toBeNull(); // f006 的 500 缺场 → null 格（缺测可辨）
+    expect(row850?.cells[0]?.speed).toBeCloseTo(4, 6);
+    expect(row850?.cells[0]?.direction).toBeCloseTo(180, 6);
+    expect(row850?.cells[1]?.direction).toBeCloseTo(270, 6);
+  });
+
+  it("多 cycle 混装与重复层输入显式抛错（不静默吸收接线错误）", () => {
+    const other = hourLayerOf("850mb", 0, 1, 1);
+    // 整层平移到另一 cycle（u/v 同改——跨场时效配对校验由下一条用例单锁）
+    const shiftedMeta = { ...other.u.header.meta, referenceTime: "2026-10-07T00:00Z" };
+    const shifted = {
+      u: { ...other.u, header: { ...other.u.header, meta: shiftedMeta } },
+      v: { ...other.v, header: { ...other.v.header, meta: shiftedMeta } },
+    };
+    expect(() => windTimeHeightOf([shifted, hourLayerOf("500mb", 0, 1, 1)], 40, 100)).toThrow(
+      /多 cycle 混装/,
+    );
+    expect(() =>
+      windTimeHeightOf([hourLayerOf("850mb", 0, 1, 1), hourLayerOf("850mb", 0, 2, 2)], 40, 100),
+    ).toThrow(/重复层输入/);
+  });
+
+  it("referenceTime 不可解析显式抛错；空输入同 windProfileOf 防线", () => {
+    const bad = hourLayerOf("850mb", 0, 1, 1);
+    // 整层同改（u/v 时效配对在场——坏 referenceTime 由时刻标签现算路径拦）
+    const brokenMeta = { ...bad.u.header.meta, referenceTime: "not-a-time" };
+    const broken = {
+      u: { ...bad.u, header: { ...bad.u.header, meta: brokenMeta } },
+      v: { ...bad.v, header: { ...bad.v.header, meta: brokenMeta } },
+    };
+    expect(() => windTimeHeightOf([broken], 40, 100)).toThrow(/解析不出时刻/);
+    expect(() => windTimeHeightOf([], 40, 100)).toThrow(/至少一层/);
+    expect(() =>
+      windTimeHeightOf([hourLayerOf("850mb", 0, 1, 1)], 40, 100, { step: 2 } as never),
+    ).toThrow(/未知选项 "step"/);
+    expect(() =>
+      windTimeHeightOf([hourLayerOf("850mb", 0, 1, 1)], 40, 100, { timeLabel: "compact" as never }),
+    ).toThrow(/timeLabel 形态 "compact" 不受支持/);
   });
 });

@@ -2,6 +2,25 @@
 
 本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，六个包锁步同版本发布。
 
+## [0.3.5] - 2026-10-28
+
+风的垂直与时间：五个风序列图组件（风廓线／高空风图／时间-高度剖面／风速时序＋阵风／风向时序条）与多层场数据适配器。六包锁步发布，公共 API 只增不改，无既有行为变更（新能力均为可选参数、缺省不启用）。
+
+### 新增
+
+- **`@metweave/render` 新增五个风序列图组件**（输入契约集中在 `wind-profile.ts`，缺测三态显式）：
+  - `windProfileChart(levels, { unit })`——风廓线图：气压对数轴（1000 hPa 在下、100 hPa 在上，只带高度的层退线性高度轴），风速曲线＋逐层方向箭头；缺测层断线＋「缺测」短划，静风层有点无箭。
+  - **`windProfileChart` 新增 `glyph:"barb"` 垂直风羽模式**（缺省折线零变化）：每层一枚按风速着色的完整风羽——杆指来向、旗/长划/短划可数，色标必传、随件内嵌色标图例；静风＝着色圆圈，等行距布层、行行有层锚标签。
+  - `hodograph(samples)`——高空风图：每层风矢量画成 u/v 平面端点，端点连线＝层间切变矢量（线长＝切变大小）；连线按原始层序相邻判定，跨缺测不连；低空段高亮分色（缺省 0–1 km 可自定）。
+  - `windTimeHeight(series2d, { scale })`——时间-高度剖面：多层×多时刻热图，风速当色、风向当标记（色标必传，与场图同一份档案色卡，图例随件）；缺测格灰底斜纹，列标签按估宽自动抽稀。
+  - **`windTimeHeight` 新增 `windGlyph:"barb"` 风羽标记模式**（缺省箭头零变化）：每格一枚完整风羽、静风＝圆圈，刻度直传 `WIND_BARB_SCALES` 按 `unit` 选档；另有 `shaded` 色斑开关（缺省不变，`false` 为符号主导形态——格底透明、色标不画）。
+  - `gustBand(series)`——风速时序＋阵风：折线＋浅色包络带；阵风按事件画独立标记、不连成带（时次之间无观测不编造）；缺测双断、孤点点标记。
+  - `windDirStrip(series)`——风向时序条：色相角＝风向角，色环天然循环——350° 与 10° 相邻不断裂；静风灰点、缺测斜纹，方向越界显式抛错。
+  - 五组件 `unit` 均为量纲声明、非换算开关（与 `windBarbOf` 同纪律）。
+- **`@metweave/render` 新增两件工具**：`windComponentsOf(direction, speed)`（风向/风速 → u/v，与 grid `windDirectionOf` 互逆）；`windObservationSeries(rows)`（观测逐时行的缺测容忍归一，IEM 一类逐时源可直喂）。
+- **`@metweave/grid` 新增多层场适配器**：`windProfileOf(fields, lat, lon)`（u/v 多层场 → 单点多层廓线）与 `windTimeHeightOf(fields, lat, lon, { timeLabel })`（→ 多层×多时刻二维序列，`timeLabel:"short"` 直出「日T时Z」紧凑标签）；双分量时效不匹配、重复层、混装层锚均显式报错；产出与 render 输入逐字段兼容（包间零依赖）。
+- **新示例页「风的垂直与时间」（`vertical.html`）**：五组件一页可视——风廓线「折线 ⇄ 风羽」、剖面「箭头 ⇄ 风羽」双切换；数据页内自备、不拉外网。
+
 ## [0.3.4] - 2026-10-27
 
 矢量三件套（流线／粒子动画／箭头场）与 10m 风色卡改版。六包锁步发布，**含两处视觉行为变更（色斑配色整体更换、色斑贴图跨纬度位置修正——见「更改」「修复」；两处调用代码均无需改）**。
@@ -242,5 +261,6 @@ TAF（FM 51）预报侧工具链全量落地：解析 → 时间线展开 → �
 [0.3.1]: https://github.com/yaojaro/metweave/releases/tag/v0.3.1
 [0.3.3]: https://github.com/yaojaro/metweave/releases/tag/v0.3.3
 [0.3.4]: https://github.com/yaojaro/metweave/releases/tag/v0.3.4
+[0.3.5]: https://github.com/yaojaro/metweave/releases/tag/v0.3.5
 [0.3.2]: https://github.com/yaojaro/metweave/releases/tag/v0.3.2
 [未发布]: https://github.com/yaojaro/metweave/compare/v0.3.4...HEAD

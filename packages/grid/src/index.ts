@@ -52,6 +52,8 @@ export {
   arrowFieldOf,
   windDirectionOf,
   windAt,
+  windProfileOf,
+  windTimeHeightOf,
   WIND_BARB_SCALES,
   WIND_LEGEND_UNITS,
   MPS_PER_KT,
@@ -71,6 +73,14 @@ export type {
   StreamlinesOptions,
   WindArrow,
   ArrowFieldOptions,
+  WindLevelField,
+  WindLevelSample,
+  WindTimeHeightValue,
+  WindTimeHeightRow,
+  WindTimeHeightData,
+  WindProfileOfOptions,
+  WindTimeHeightOfOptions,
+  WindTimeLabelForm,
 } from "./wind";
 export { buildColorScale } from "./element";
 export type { ElementProfile, EqualScaleSpec, ContourSpec, BarbSpec, BarbLodStep } from "./element";

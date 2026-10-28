@@ -28,6 +28,32 @@ TAF 卡与 METAR 卡同契约：分段明细（主导段 / BECMG 过渡带 / TEM
 
 文档见[主仓库](https://github.com/yaojaro/metweave)。
 
+## 风序列图组件（v0.6「垂直与时间」批次）
+
+```ts
+import {
+  windProfileChart,
+  hodograph,
+  windTimeHeight,
+  gustBand,
+  windDirStrip,
+  windObservationSeries,
+  windComponentsOf,
+} from "@metweave/render";
+```
+
+五个风的垂直/时间序列图组件＋两件工具，输入契约集中在 `wind-profile.ts`（`WindProfile` 多层廓线、`WindTimeHeightSeries` 二维剖面、`WindHourlySeries` 逐时观测三种形态——值字段 `number | null`，null＝缺测）：
+
+- `windProfileChart(levels, { unit })`——风廓线：气压对数轴（探空惯例；层数据只带高度时退线性高度轴）、逐层方向箭头；≥6 层起画，缺测层断线＋「缺测」短划；`glyph:"barb"` 切**垂直风羽模式**（风廓线面板形态：每层一枚居中的完整风羽、按风速着色——色标必传且随件内嵌图例；等行距布层图高自适应、静风＝着色圆圈；刻度选项与 windTimeHeight 的 barb 族同款）。
+- `hodograph(samples)`——高空风图：每层风矢量画成 u/v 平面端点，端点连线＝层间切变矢量（线长＝切变大小）；低空段（缺省 0–1 km，`highlight` 自定）高亮分色；≥8 层起画。
+- `windTimeHeight(series2d, { scale })`——时间-高度剖面：多层×多时刻热图，风速当色（`scale` 必传——与场图家族同一份档案色标，组件内嵌 `renderColorScaleLegend`）、风向当标记、缺测格不着色（浅灰斜纹）；列标签按估宽自动抽稀（长标签稀疏示出，格阵过窄＋超长标签时宿主可传短标签——grid 适配器 `timeLabel: "short"` 直出「日T时Z」）；`windGlyph: "barb"` 切**风羽标记**（时间-高度风羽剖面图：杆指来向、旗/划＝可数风速、静风＝圆圈、尺寸随 `cellWidth` 自适应降级——缺省 arrow 零变化；刻度经 `barbScale` 直传 `@metweave/grid` 的 `WIND_BARB_SCALES`，编码口径单源在 grid、render 只做几何）；`shaded: false` 切符号主导形态（格底透明、内嵌色标不画，符号层全保留——缺省 true 零变化）。
+- `gustBand(series)`——风速时序＋阵风：平均风速折线＋包络带；**阵风按事件画独立标记**（时次间不连线不铺带——阵风是事件性观测，连线＝编造），缺测时次断线。
+- `windDirStrip(series)`——风向时序条：HSL 色相环直接当风向环（色相角＝风向角，循环量天然无缝——350° 与 10° 相邻不断裂）；静风/缺测各有专属形态；方向越界（0–360 之外）显式抛错。
+- `windComponentsOf(direction, speed)`——风向/风速 → u/v 分量（高空风图的极坐标数学单源，与 grid 的 `windDirectionOf` 互逆）。
+- `windObservationSeries(rows)`——观测逐时行缺测容忍归一（占位串/空串/越界哨兵 → null），IEM 一类逐时源直喂。
+
+单位口径与 `windBarbOf` 同纪律：`unit` 是**量纲声明不是换算开关**（传 `"kt"` 意味数值已是 kt；m/s → kt 折算走 `@metweave/grid` 的 `toKnots`）。多层场 → 廓线/剖面的数据管道在 `@metweave/grid` 的 `windProfileOf` / `windTimeHeightOf`（产出结构与本包输入类型逐字段兼容——包间零依赖，同 `ColorScaleLegendInput` 的配对纪律）。
+
 ## 许可
 
 [MIT](https://github.com/yaojaro/metweave/blob/main/LICENSE) © 2026 YaoJaro——授权仅覆盖本仓库的代码与文档；随包分发的报文样本不在其列，详见主仓库 README 的「许可」说明。

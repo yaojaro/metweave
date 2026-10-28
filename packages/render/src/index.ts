@@ -8,9 +8,18 @@
  * 宿主可用 className 叠加，或绕过组件直接消费 IR 自建 UI。
  * 路线图（planned）：图表组件计划采用 Canvas 2D 优先、context 注入式内核
  * （零 DOM 依赖；WebGL 为风场粒子阶段的可选后端）。
+ * v0.6「垂直与时间」批次新增五个风序列图组件（windProfileChart / hodograph /
+ * windTimeHeight / gustBand / windDirStrip，SVG/DOM 直构）与它们的共享输入类型
+ * （wind-profile.ts——多层廓线/二维剖面/逐时观测三形态，与 grid 侧适配器结构配对）。
  */
 export * from "./card";
 export * from "./taf-card";
 export * from "./wind-chip";
 export * from "./wind-legend";
 export * from "./color-scale-legend";
+export * from "./wind-profile";
+export * from "./wind-profile-chart";
+export * from "./hodograph";
+export * from "./wind-time-height";
+export * from "./gust-band";
+export * from "./wind-dir-strip";

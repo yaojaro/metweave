@@ -153,6 +153,26 @@ const barbs = windBarbsOf(uGrid, vGrid, windProfile.barbs);
 barbs[0]; // → { lat, lon, direction: 270, speed: 5 }（方向/速度数学锚见 wind.test）
 ```
 
+### 多层廓线/剖面适配器（v0.6「垂直与时间」批次起）
+
+```ts
+import { windProfileOf, windTimeHeightOf } from "@metweave/grid";
+
+// u/v 多层场 → 某经纬度的多层风廓线（逐层双线性采样，windAt 同一只采样手）：
+// 层锚显式传入（pressure/height）或从 u.header.level 解析（"850mb"/"850hPa"/"10m"）；
+// 场外/缺测层 speed/direction 全 null 且层位保留；静风阈（缺省 1 m/s）下方向置 null；
+// 产出按层锚自下而上排序。结构上与 @metweave/render 的 WindProfileLevel 逐字段兼容
+// （包间零依赖，接缝由消费方 typecheck 兜住）。
+const levels = windProfileOf(fields, 39.5, 100.5); // → [{ pressure: 850, height: null, speed, direction }, …]
+
+// u/v 多层场（各场自带 meta.referenceTime/forecastHour）→ 多层×多时刻二维序列：
+// 单一 cycle 内按 forecastHour 升序、时刻标签＝起报＋时效现算（`timeLabel` 选项：
+// 缺省 "iso"＝分精度 ISO；"short"＝「日T时Z」紧凑形态——render 剖面组件的列标签用，
+// 估宽抽稀下能示出更多枚）；层锚并集为行（缺场补 null 格）；多 cycle 混装与重复层
+// 输入显式抛错。
+const series2d = windTimeHeightOf(fields, 39.5, 100.5); // → { times: […], levels: [{ pressure, height, cells: […] }] }
+```
+
 ## 要素档案（色标与档位的单一事实来源）
 
 ```ts

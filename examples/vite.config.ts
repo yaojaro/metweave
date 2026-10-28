@@ -59,10 +59,11 @@ export default defineConfig({
     },
   },
   plugins: [genGridDevPlugin()],
-  // 六页面：主 demo（index.html，TAC 实况/TAF＋格点图层面板）+ IWXXM 演示（iwxxm.html，v0.3 alpha）
+  // 七页面：主 demo（index.html，TAC 实况/TAF＋格点图层面板）+ IWXXM 演示（iwxxm.html，v0.3 alpha）
   // + 低空航路天气面板（lowalt.html，2026-10 场景演示件）+ 风的画法（wind.html，v0.3.2 风批次）
   // + 七项验收台（verify.html，0.3.2 T1–T7 的可点可判定面）
-  // + 风怎么流动（windfield.html，0.3.4 矢量批次——真实中国域风场的色斑/风羽/流线/粒子整页可视）。
+  // + 风怎么流动（windfield.html，0.3.4 矢量批次——真实中国域风场的色斑/风羽/流线/粒子整页可视）
+  // + 风的垂直与时间（vertical.html，v0.6 批次——廓线/高空风图/时间-高度剖面/阵风/风向条五组件）。
   // 格点填色不再单设页面——图层控制并入主示例页（src/grid-panel.ts），`/api/gen-grid`
   // 中间件与 publicDir=data 照旧（首页「拉最新」与 /grid/<file> 直出仍依赖）
   build: {
@@ -74,6 +75,7 @@ export default defineConfig({
         wind: fileURLToPath(new URL("./wind.html", import.meta.url)),
         verify: fileURLToPath(new URL("./verify.html", import.meta.url)),
         windfield: fileURLToPath(new URL("./windfield.html", import.meta.url)),
+        vertical: fileURLToPath(new URL("./vertical.html", import.meta.url)),
       },
     },
   },

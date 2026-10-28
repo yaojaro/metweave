@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>metweave · 风的垂直与时间（演示）</title>
+    <!-- favicon：空 data URI 显式声明（消除浏览器默认 /favicon.ico 404；无二进制资产、无痕） -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body class="vp-page">
+    <header id="vp-topbar">
+      <strong>风的垂直与时间</strong>
+      <span class="vp-sub"
+        >风不只发生在地面：往上是廓线与切变（W-10/W-11），横过来是时间（W-12/W-13/W-14）。
+        左右两组数据分别是页内合成的多层模式场（经 grid 适配器在采样点派生）与 IEM
+        形态的逐时观测行（缺测容忍归一）——不拉外网，图形现算。</span
+      >
+    </header>
+
+    <main id="vp-main">
+      <div class="vp-row">
+        <section class="vp-block" aria-labelledby="vp-profile-title">
+          <h2 id="vp-profile-title">① 风廓线：风速怎么随高度变 <code>windProfileChart</code></h2>
+          <p class="vp-hint">
+            折线模式：纵轴＝气压（对数刻度，探空惯例：1000 hPa 在下、100 hPa
+            在上），横轴＝风速，每层一枚方向箭头（箭杆指风的去向）。勾选切<b>风羽模式</b>
+            （Windy 风廓线面板形态）：每层一枚居中的完整风羽、按风速着色（色卡＝10m 风
+            档案同一份，刻度＝WIND_BARB_SCALES）。500 hPa
+            层缺测——两种模式都在该层画「缺测」短划，不跨缺测连线。
+          </p>
+          <label class="vp-ctrl"
+            ><input id="vp-pf-glyph" type="checkbox" />风羽模式（缺省折线）</label
+          >
+          <div id="vp-profile" class="vp-mount"></div>
+        </section>
+
+        <section class="vp-block" aria-labelledby="vp-hodograph-title">
+          <h2 id="vp-hodograph-title">② 高空风图：切变矢量 <code>hodograph</code></h2>
+          <p class="vp-hint">
+            每层风画成 u/v 平面上的端点（离原点越远风越大），相邻端点连线＝层间切变矢量
+            （线长＝切变大小、拐弯越急切变越强）。0–3 km 低空段高亮（高度为标准大气近似示意）。
+          </p>
+          <div id="vp-hodograph" class="vp-mount"></div>
+        </section>
+      </div>
+
+      <section class="vp-block" aria-labelledby="vp-timeheight-title">
+        <h2 id="vp-timeheight-title">③ 时间-高度剖面：多层×24h 热图 <code>windTimeHeight</code></h2>
+        <p class="vp-hint">
+          行＝层（高空在上）、列＝预报时效（每 3h × 8 时效跨 24h）；风速当色（与 10m
+          风色斑同一份档案色卡，图例随件）、风向当标记——缺省箭头（指去向），勾选切
+          <b>风羽</b>：杆指来向、旗/长划/短划＝可数风速（刻度直取 @metweave/grid 的
+          WIND_BARB_SCALES，与地图风羽同一份口径）。500 hPa 起报与 300 hPa
+          末时效各有一块缺测——浅灰斜纹格，与弱风格一眼可分。
+        </p>
+        <label class="vp-ctrl"><input id="vp-th-barb" type="checkbox" />风羽标记（缺省箭头）</label>
+        <div id="vp-timeheight" class="vp-mount"></div>
+      </section>
+
+      <section class="vp-block" aria-labelledby="vp-gustband-title">
+        <h2 id="vp-gustband-title">④ 风速时序＋阵风事件 <code>gustBand</code></h2>
+        <p class="vp-hint">
+          平均风速＝连续折线＋浅色包络带；阵风＝按事件独立标记（竖茎＋端点，时次之间不连线——
+          阵风只在有阵风的时次编报，连成带＝在无观测的时次之间编造数据）。缺测时次断线； 静风时次贴
+          0 线。
+        </p>
+        <div id="vp-gustband" class="vp-mount"></div>
+      </section>
+
+      <section class="vp-block" aria-labelledby="vp-dirstrip-title">
+        <h2 id="vp-dirstrip-title">⑤ 风向时序条：色环映射 <code>windDirStrip</code></h2>
+        <p class="vp-hint">
+          色相角＝风向角（北 0°＝红），色环天然循环——序列中段 355°→4°
+          跨北接缝在色环上相邻，线性色带会在那里断裂出「风向剧变」的假象。静风＝灰底圆点、
+          缺测＝斜纹格。
+        </p>
+        <div id="vp-dirstrip" class="vp-mount"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/vertical-main.ts"></script>
+  </body>
+</html>

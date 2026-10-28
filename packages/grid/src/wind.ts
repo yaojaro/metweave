@@ -707,3 +707,377 @@ export function arrowFieldOf(u: Grid, v: Grid, options: ArrowFieldOptions = {}):
   }
   return arrows;
 }
+
+// ------------------------------------------------------- 多层场 → 廓线/剖面适配器（v0.6「垂直与时间」批次）
+
+/**
+ * 一层风场的双分量输入（适配器入参）：u/v 双场（几何/量纲配对校验同 `windSpeedGrid`）
+ * ＋层锚。层锚显式传入优先；缺席时从 `u.header.level` 解析（gen:grid 产物的
+ * `"850mb"`/`"850hPa"` → 气压 hPa、`"10m"`/`"10m AGL"` → 高度 m）。
+ */
+export interface WindLevelField {
+  readonly u: Grid;
+  readonly v: Grid;
+  /** 层锚一：气压（hPa，正有限数）；显式传入优先于 header.level 解析 */
+  readonly pressure?: number | null;
+  /** 层锚二：高度（m，AGL；≥0 有限数） */
+  readonly height?: number | null;
+}
+
+/**
+ * 适配器产出的单层读数：层锚＋采样风（缺测全 null）。结构与 @metweave/render 的
+ * `WindProfileLevel` 逐字段兼容（render 不依赖 grid、grid 不依赖 render——接缝由
+ * 消费方 typecheck 兜住，同 ColorScaleLegendInput 的配对纪律）。
+ */
+export interface WindLevelSample {
+  readonly pressure: number | null;
+  readonly height: number | null;
+  /** 采样风速（m/s，存储单位原值——双线性采样同 windAt） */
+  readonly speed: number | null;
+  /** 采样风向（来向 0–360°；速度低于 calmThreshold 或缺测时 null——静风无方向可读） */
+  readonly direction: number | null;
+}
+
+/** 多层×多时刻二维序列的一格（与 render 的 WindTimeHeightCell 结构配对）。 */
+export interface WindTimeHeightValue {
+  readonly speed: number | null;
+  readonly direction: number | null;
+}
+
+/** 二维序列的一行：层锚 × 逐时刻格（与 render 的 WindTimeHeightLevel 结构配对）。 */
+export interface WindTimeHeightRow {
+  readonly pressure: number | null;
+  readonly height: number | null;
+  readonly cells: readonly WindTimeHeightValue[];
+}
+
+/** 适配器产出的二维序列（与 render 的 WindTimeHeightSeries 结构配对）。 */
+export interface WindTimeHeightData {
+  /** 时刻标签（ISO 串，`referenceTime + forecastHour` 现算；按 forecastHour 升序） */
+  readonly times: readonly string[];
+  readonly levels: readonly WindTimeHeightRow[];
+}
+
+/** 廓线/剖面适配器的选项。 */
+export interface WindProfileOfOptions {
+  /**
+   * 静风阈（m/s，缺省 1＝杆口径惯例）：采样风速低于此值 → 该层 direction 置 null
+   * （速度保留——小风是真实值，只是方向无读法；与 windBarbOf 的静风不出杆同源）。
+   */
+  readonly calmThreshold?: number;
+}
+
+/** `windTimeHeightOf` 的选项：廓线适配器选项＋时刻标签形态（剖面列标签用）。 */
+export interface WindTimeHeightOfOptions extends WindProfileOfOptions {
+  /**
+   * 时刻标签形态（缺省 `"iso"`＝分精度 ISO；`"short"`＝「日T时Z」紧凑形态）。
+   * ISO 全标信息最全、跨日无歧义；short 供剖面列标签（render 侧按估宽抽稀，短标签
+   * 能示出更多枚）。
+   */
+  readonly timeLabel?: WindTimeLabelForm;
+}
+
+/** header.level → 层锚（gen:grid 产物口径："850mb"/"850hPa" → 气压；"10m"/"10m AGL" → 高度）。 */
+function anchorOfLevelText(text: string): { pressure: number | null; height: number | null } {
+  const hpa = /^(\d+(?:\.\d+)?)\s*(?:hpa|mb)$/i.exec(text.trim());
+  if (hpa !== null) return { pressure: Number(hpa[1]), height: null };
+  const m = /^(\d+(?:\.\d+)?)\s*m(?:\s*agl)?$/i.exec(text.trim());
+  if (m !== null) return { pressure: null, height: Number(m[1]) };
+  return { pressure: null, height: null };
+}
+
+/** 单层锚解析：显式传入优先；否则解析 u.header.level；两处皆无 → 显式抛错（不静默丢层）。 */
+function anchorOf(
+  field: WindLevelField,
+  index: number,
+): { pressure: number | null; height: number | null } {
+  const explicit: { pressure: number | null; height: number | null } = {
+    pressure: field.pressure ?? null,
+    height: field.height ?? null,
+  };
+  if (explicit.pressure !== null || explicit.height !== null) return explicit;
+  const parsed = anchorOfLevelText(field.u.header.level);
+  if (parsed.pressure !== null || parsed.height !== null) return parsed;
+  throw new GridError(
+    "invalid-scale",
+    `第 ${index + 1} 层缺层锚（pressure/height 未传，且 u.header.level "${field.u.header.level}" 解析不出层锚——` +
+      '可解析形态如 "850mb"/"850hPa"/"10m"；其余写法请显式传 pressure 或 height）',
+  );
+}
+
+/** 适配器入参整体校验：双场配对（逐层）＋锚值域＋层锚解析。返回带锚的层列表（输入序）。 */
+function assertLevelFields(fields: readonly WindLevelField[]): ReadonlyArray<{
+  field: WindLevelField;
+  anchor: { pressure: number | null; height: number | null };
+}> {
+  if (fields.length === 0) {
+    throw new GridError("invalid-scale", "多层场输入为空（fields 至少一层）");
+  }
+  const out: Array<{
+    field: WindLevelField;
+    anchor: { pressure: number | null; height: number | null };
+  }> = [];
+  for (const [index, field] of fields.entries()) {
+    assertPairedFields(field.u, field.v);
+    // 时刻维配对（v0.6 P2 修复）：几何/量纲配对不够——v 场接错时效会静默产出错矢量
+    // （u 来自 f000、v 来自 f006），逐层核对 referenceTime/forecastHour
+    const mu = field.u.header.meta;
+    const mv = field.v.header.meta;
+    if (mu.referenceTime !== mv.referenceTime || mu.forecastHour !== mv.forecastHour) {
+      throw new GridError(
+        "grid-mismatch",
+        `第 ${index + 1} 层双分量时效不匹配（u ${mu.referenceTime}+${mu.forecastHour}h ≠ v ` +
+          `${mv.referenceTime}+${mv.forecastHour}h）——逐点合成的矢量一半来自另一时刻，请核对层装配`,
+      );
+    }
+    if (
+      field.pressure !== undefined &&
+      field.pressure !== null &&
+      !(Number.isFinite(field.pressure) && field.pressure > 0)
+    ) {
+      throw new GridError(
+        "invalid-scale",
+        `第 ${index + 1} 层的 pressure 非法（${String(field.pressure)}，须为正有限数〔hPa〕或缺测 null）`,
+      );
+    }
+    if (
+      field.height !== undefined &&
+      field.height !== null &&
+      !(Number.isFinite(field.height) && field.height >= 0)
+    ) {
+      throw new GridError(
+        "invalid-scale",
+        `第 ${index + 1} 层的 height 非法（${String(field.height)}，须为 ≥0 的有限数〔m〕或缺测 null）`,
+      );
+    }
+    out.push({ field, anchor: anchorOf(field, index) });
+  }
+  return out;
+}
+
+/**
+ * 层锚混装检查（两适配器共用前置，v0.6 P2-10 修复）：气压锚与高度锚混在一套
+ * fields 里，产出喂 render 组件必被「层锚混装」拒收——管道错误在适配器前置爆
+ * （错误信息带逐层锚清单），不延迟到渲染层。
+ */
+function assertNoMixedAnchors(
+  levels: ReadonlyArray<{ anchor: { pressure: number | null; height: number | null } }>,
+): void {
+  const anyPressure = levels.some((l) => l.anchor.pressure !== null);
+  const anyHeight = levels.some((l) => l.anchor.height !== null);
+  if (anyPressure && anyHeight) {
+    const list = levels
+      .map(
+        (l, i) =>
+          `第 ${i + 1} 层 ${l.anchor.pressure !== null ? `${l.anchor.pressure}hPa` : `${l.anchor.height}m`}`,
+      )
+      .join("、");
+    throw new GridError(
+      "invalid-scale",
+      `层锚混装（${list}）——对数气压轴与线性高度轴无法同图（render 组件同口径拒收），请统一层锚`,
+    );
+  }
+}
+
+/**
+ * 同锚查重（仅单时刻廓线路径 `windProfileOf`，v0.6 P2-2 修复）：同一条锚出现两次＝
+ * 接线错误（last-wins 会静默吞层）。多时刻路径不查全局同锚——同层跨时效合法，
+ * 查重在（时刻, 锚）维度（`windTimeHeightOf` 既有校验）。
+ */
+function assertNoDuplicateAnchors(
+  levels: ReadonlyArray<{ anchor: { pressure: number | null; height: number | null } }>,
+): void {
+  const seen = new Set<string>();
+  for (const [index, level] of levels.entries()) {
+    const key = `${level.anchor.pressure ?? ""}|${level.anchor.height ?? ""}`;
+    if (seen.has(key)) {
+      const what =
+        level.anchor.pressure !== null ? `${level.anchor.pressure}hPa` : `${level.anchor.height}m`;
+      throw new GridError(
+        "invalid-scale",
+        `重复层输入（第 ${index + 1} 层的层锚 ${what} 与前层重复）——last-wins 会静默吞掉接线错误`,
+      );
+    }
+    seen.add(key);
+  }
+}
+
+/** 锚排序：全气压 → 气压降序（自下而上）；全高度 → 高度升序（混装已在入口拦截）。 */
+function sortByAnchor<T extends { anchor: { pressure: number | null; height: number | null } }>(
+  rows: readonly T[],
+): T[] {
+  const allPressure = rows.every((r) => r.anchor.pressure !== null);
+  const ordered = [...rows];
+  ordered.sort((a, b) => {
+    if (allPressure) return (b.anchor.pressure ?? 0) - (a.anchor.pressure ?? 0);
+    return (a.anchor.height ?? 0) - (b.anchor.height ?? 0);
+  });
+  return ordered;
+}
+
+/** 静风阈校验（两适配器共用的入口段）。 */
+function assertCalmThreshold(calmThreshold: number): void {
+  if (!Number.isFinite(calmThreshold) || calmThreshold < 0) {
+    throw new GridError(
+      "invalid-scale",
+      `静风阈值非法（calmThreshold=${String(calmThreshold)}，须 ≥0 的有限数〔m/s〕）`,
+    );
+  }
+}
+
+/**
+ * u/v 多层场 → 某经纬度的多层风廓线（W-10/W-11 的数据管道，纯函数零 DOM）。
+ *
+ * 逐层双线性采样（`windAt` 同一只采样手：场外/缺测 → 该层 speed/direction 全 null，
+ * **层位保留**——廓线上的缺测层可辨）；方向＝`windDirectionOf` 气象来向口径，
+ * 静风阈下方向置 null（缺省 1 m/s，杆口径惯例）。产出按层锚自下而上排序（气压降序/
+ * 高度升序）。**层锚混装与同锚重复显式抛错**（混装产物喂 render 组件必被拒收——
+ * 管道错误前置爆，错误信息带逐层锚清单）。速度/方向的量纲即存储原值（m/s）——要
+ * kt 显示由 render 侧的量纲声明与 `toKnots` 承担。
+ */
+export function windProfileOf(
+  fields: readonly WindLevelField[],
+  lat: number,
+  lon: number,
+  options: WindProfileOfOptions = {},
+): WindLevelSample[] {
+  for (const key of Object.keys(options)) {
+    if (key !== "calmThreshold") {
+      throw new GridError(
+        "invalid-scale",
+        `windProfileOf 收到未知选项 "${key}"（可用项：calmThreshold）——拼错的选项不会生效`,
+      );
+    }
+  }
+  const calmThreshold = options.calmThreshold ?? 1;
+  assertCalmThreshold(calmThreshold);
+  const asserted = assertLevelFields(fields);
+  assertNoMixedAnchors(asserted);
+  assertNoDuplicateAnchors(asserted);
+  const levels = sortByAnchor(asserted);
+  return levels.map(({ field, anchor }) => {
+    const sample = windAt(field.u, field.v, lat, lon);
+    if (sample === null) {
+      return { pressure: anchor.pressure, height: anchor.height, speed: null, direction: null };
+    }
+    return {
+      pressure: anchor.pressure,
+      height: anchor.height,
+      speed: sample.speed,
+      direction: sample.speed < calmThreshold ? null : sample.direction,
+    };
+  });
+}
+
+/** 时刻标签形态：`"iso"`＝分精度 ISO（缺省，与容器头 referenceTime 同形）；`"short"`＝「日T时Z」紧凑形态（剖面的列标签用——估宽抽稀下能示出更多枚）。 */
+export type WindTimeLabelForm = "iso" | "short";
+
+/** referenceTime（"…Z"）＋forecastHour → 时刻标签（ISO 或 short 形态）。 */
+function hourLabelOf(referenceTime: string, forecastHour: number, form: WindTimeLabelForm): string {
+  const base = Date.parse(referenceTime);
+  if (Number.isNaN(base)) {
+    throw new GridError(
+      "invalid-scale",
+      `referenceTime "${referenceTime}" 解析不出时刻（须 ISO 形如 "2026-10-06T18:00Z"）`,
+    );
+  }
+  const at = new Date(base + forecastHour * 3_600_000);
+  if (form === "short") {
+    return `${String(at.getUTCDate()).padStart(2, "0")}T${String(at.getUTCHours()).padStart(2, "0")}Z`;
+  }
+  return at.toISOString().replace(/:\d{2}\.\d{3}Z$/, "Z");
+}
+
+/**
+ * u/v 多层场（含多时刻：各场自带 meta.referenceTime/forecastHour）→ 某经纬度的
+ * 多层×多时刻二维序列（W-12 的数据管道，纯函数零 DOM）。
+ *
+ * 时刻维：按 `referenceTime|forecastHour` 分组——**多 cycle 混装显式抛错**（跨 cycle
+ * 的「多层×多时刻」不是一张可比的剖面）；单一 cycle 内按 forecastHour 升序，时刻标签
+ * ＝起报＋时效现算的 ISO 串。层维：层锚并集为行（某层在某时刻缺场 → 该格 null，
+ * 缺测可辨），按层锚自下而上排序（同 `windProfileOf`）。**层锚混装、同锚重复、
+ * 同一（时刻，层锚）重复入参均显式抛错**（接线错误不该被 last-wins 静默吸收；
+ * 混装层行喂 render 剖面必被拒收——前置爆）。
+ */
+export function windTimeHeightOf(
+  fields: readonly WindLevelField[],
+  lat: number,
+  lon: number,
+  options: WindTimeHeightOfOptions = {},
+): WindTimeHeightData {
+  for (const key of Object.keys(options)) {
+    if (key !== "calmThreshold" && key !== "timeLabel") {
+      throw new GridError(
+        "invalid-scale",
+        `windTimeHeightOf 收到未知选项 "${key}"（可用项：calmThreshold、timeLabel）——拼错的选项不会生效`,
+      );
+    }
+  }
+  if (
+    options.timeLabel !== undefined &&
+    options.timeLabel !== "iso" &&
+    options.timeLabel !== "short"
+  ) {
+    const badForm: string = options.timeLabel; // never 收窄后的宽化中转（同 card.ts）
+    throw new GridError(
+      "invalid-scale",
+      `timeLabel 形态 "${badForm}" 不受支持（可用："iso" | "short"）`,
+    );
+  }
+  const calmThreshold = options.calmThreshold ?? 1;
+  assertCalmThreshold(calmThreshold);
+  const levels = assertLevelFields(fields);
+  assertNoMixedAnchors(levels); // 混装层行喂 render 剖面必被拒——前置爆（同 windProfileOf）
+  // —— 时刻分组（单 cycle 校验＋forecastHour 升序）
+  const cycleSet = new Set(levels.map(({ field }) => field.u.header.meta.referenceTime));
+  if (cycleSet.size > 1) {
+    throw new GridError(
+      "invalid-scale",
+      `多 cycle 混装（referenceTime 有 ${String(cycleSet.size)} 个不同值：${[...cycleSet].join("、")}）——` +
+        "多层×多时刻剖面须同一 cycle 的预报序列，跨 cycle 请分图",
+    );
+  }
+  const referenceTime = levels[0]?.field.u.header.meta.referenceTime ?? "";
+  const hourSet = new Set(levels.map(({ field }) => field.u.header.meta.forecastHour));
+  const hours = [...hourSet];
+  hours.sort((a, b) => a - b);
+  const times = hours.map((h) => hourLabelOf(referenceTime, h, options.timeLabel ?? "iso"));
+  // —— 层行：锚并集（首现序），逐（时刻, 锚）采样；重复组合显式抛错
+  const anchors = new Map<string, { pressure: number | null; height: number | null }>();
+  for (const { anchor } of levels) {
+    const key = `${anchor.pressure ?? ""}|${anchor.height ?? ""}`;
+    if (!anchors.has(key)) anchors.set(key, anchor);
+  }
+  const sampled = new Map<string, WindTimeHeightValue>();
+  for (const { field, anchor } of levels) {
+    const key = `${field.u.header.meta.forecastHour}|${anchor.pressure ?? ""}|${anchor.height ?? ""}`;
+    if (sampled.has(key)) {
+      throw new GridError(
+        "invalid-scale",
+        `重复层输入（forecastHour ${field.u.header.meta.forecastHour} 的层锚 ${anchor.pressure ?? ""}hPa/${anchor.height ?? ""}m 出现多次）——last-wins 会静默吞掉接线错误`,
+      );
+    }
+    const sample = windAt(field.u, field.v, lat, lon);
+    sampled.set(key, {
+      speed: sample === null ? null : sample.speed,
+      direction: sample === null || sample.speed < calmThreshold ? null : sample.direction,
+    });
+  }
+  const rows = sortByAnchor(
+    [...anchors.entries()].map(([key, anchor]) => {
+      const cells = hours.map((h) => {
+        const hit = sampled.get(`${h}|${key}`);
+        return hit === undefined ? { speed: null, direction: null } : hit;
+      });
+      return { anchor, cells };
+    }),
+  );
+  return {
+    times,
+    levels: rows.map(({ anchor, cells }) => ({
+      pressure: anchor.pressure,
+      height: anchor.height,
+      cells,
+    })),
+  };
+}
