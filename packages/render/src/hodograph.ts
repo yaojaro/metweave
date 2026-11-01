@@ -71,7 +71,7 @@ const HODO_CSS = `
 .mw-hodo { display: inline-block; padding: 8px 10px; border: 1px solid #d8dee6; border-radius: 8px; background: #fbfcfd; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1f2a37; }
 .mw-hodo-title { font-size: 13px; font-weight: 600; color: #33506b; margin: 0 0 4px; }
 .mw-hodo svg { display: block; }
-.mw-hodo .mw-hodo-grid { stroke: #e3e8ee; stroke-width: 1; }
+.mw-hodo .mw-hodo-grid { stroke: #e3e8ee; stroke-width: 1; fill: none; }
 .mw-hodo .mw-hodo-ringtext { font: 9.5px system-ui, sans-serif; fill: #6b7785; }
 .mw-hodo .mw-hodo-axis { stroke: #b9c4cf; stroke-width: 1; }
 .mw-hodo .mw-hodo-seg { stroke-width: 2; stroke-linecap: round; }

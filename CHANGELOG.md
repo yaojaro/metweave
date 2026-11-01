@@ -2,6 +2,14 @@
 
 本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，六个包锁步同版本发布。
 
+## [0.3.6] - 2026-11-01
+
+hodograph 缺陷修复：同心参考环补 `fill:none`。六包锁步发布，公共 API 与行为面零变化（纯视觉缺陷修复）。
+
+### 修复
+
+- **hodograph 同心参考环渲染为黑盘（视觉缺陷）**：环 circle 的 CSS 只声明 `stroke` 未声明 `fill`，SVG circle 缺省黑填充使最大环盖住整个绘图区（环刻度、端点螺旋全不可见）。现显式 `fill: none`，环恢复为纯描边参考线。随批：全组件巡检 circle 元素的 fill 声明（gustBand 阵风点/孤点、风羽静风圈、廓线标记均已有显式声明，无同类缺陷）＋行为锁（注入样式必须含环的 `fill:none`）。
+
 ## [0.3.5] - 2026-10-28
 
 风的垂直与时间：五个风序列图组件（风廓线／高空风图／时间-高度剖面／风速时序＋阵风／风向时序条）与多层场数据适配器。六包锁步发布，公共 API 只增不改，无既有行为变更（新能力均为可选参数、缺省不启用）。
@@ -262,5 +270,6 @@ TAF（FM 51）预报侧工具链全量落地：解析 → 时间线展开 → �
 [0.3.3]: https://github.com/yaojaro/metweave/releases/tag/v0.3.3
 [0.3.4]: https://github.com/yaojaro/metweave/releases/tag/v0.3.4
 [0.3.5]: https://github.com/yaojaro/metweave/releases/tag/v0.3.5
+[0.3.6]: https://github.com/yaojaro/metweave/releases/tag/v0.3.6
 [0.3.2]: https://github.com/yaojaro/metweave/releases/tag/v0.3.2
 [未发布]: https://github.com/yaojaro/metweave/compare/v0.3.4...HEAD

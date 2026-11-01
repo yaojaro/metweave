@@ -191,6 +191,16 @@ describe("hodograph（W-11 高空风图）", () => {
     expect(en.querySelector("svg")?.getAttribute("aria-label")).toBe("Hodograph");
   });
 
+  it("参考环 fill:none（0.3.6 行为锁）：SVG circle 缺省黑填充——注入样式必须显式声明，否则最大环成黑盘盖住全图", () => {
+    hodograph(SAMPLES_10);
+    const css = [...document.head.querySelectorAll("style")]
+      .map((s) => s.textContent ?? "")
+      .join("\n");
+    const rule = css.match(/\.mw-hodo \.mw-hodo-grid \{[^}]*\}/);
+    expect(rule).toBeTruthy();
+    expect(rule![0]).toContain("fill: none");
+  });
+
   it("输入面防线：层数/值域/highlight 区间/未知选项显式抛错", () => {
     expect(() => hodograph(SAMPLES_10.slice(0, 7))).toThrow(/层数不足/);
     expect(() => hodograph(SAMPLES_10, { bad: 1 } as never)).toThrow(/未知选项 "bad"/);
