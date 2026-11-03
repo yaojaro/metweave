@@ -2,7 +2,7 @@
 
 本项目的显著变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)——v0.x 期间 minor 即可能引入破坏性变更，六个包锁步同版本发布。
 
-## [未发布]
+## [0.3.7] - 2026-11-03
 
 风的统计与台风：两张逐时观测统计图（风玫瑰／风向频率）与两个地图叠加层（台风四象限风圈／告警多边形），外加两页示例。六包锁步，公共 API 只增不改，无既有行为变更。
 
@@ -289,5 +289,6 @@ TAF（FM 51）预报侧工具链全量落地：解析 → 时间线展开 → �
 [0.3.4]: https://github.com/yaojaro/metweave/releases/tag/v0.3.4
 [0.3.5]: https://github.com/yaojaro/metweave/releases/tag/v0.3.5
 [0.3.6]: https://github.com/yaojaro/metweave/releases/tag/v0.3.6
+[0.3.7]: https://github.com/yaojaro/metweave/releases/tag/v0.3.7
 [0.3.2]: https://github.com/yaojaro/metweave/releases/tag/v0.3.2
-[未发布]: https://github.com/yaojaro/metweave/compare/v0.3.4...HEAD
+[未发布]: https://github.com/yaojaro/metweave/compare/v0.3.7...HEAD
