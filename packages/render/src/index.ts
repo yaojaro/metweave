@@ -11,6 +11,9 @@
  * v0.6「垂直与时间」批次新增五个风序列图组件（windProfileChart / hodograph /
  * windTimeHeight / gustBand / windDirStrip，SVG/DOM 直构）与它们的共享输入类型
  * （wind-profile.ts——多层廓线/二维剖面/逐时观测三形态，与 grid 侧适配器结构配对）。
+ * v0.7 统计批次新增两张逐时观测统计图：windRose（风玫瑰，扇区×风速档堆叠＋账目
+ * 披露行）与 windDirFrequency（风向频率，环/条形双形态——与 windRose 同一份统计
+ * 单源，披露行逐字相等）。
  */
 export * from "./card";
 export * from "./taf-card";
@@ -23,3 +26,5 @@ export * from "./hodograph";
 export * from "./wind-time-height";
 export * from "./gust-band";
 export * from "./wind-dir-strip";
+export * from "./wind-rose";
+export * from "./wind-dir-frequency";

@@ -72,3 +72,18 @@ dev server 起后访问 `/lowalt.html`：低空航路天气覆盖演示——**�
 - **短临（问五补充）**：商业源仅展示接入形态（占位令牌示例卡），本页不代跑、不携带任何密钥。
 - **布局注意**：主 demo 的 `#map` 满高与 `#disclaimer`/`#status` 固定定位不适配分节文档流，本页以 `body.lw-page` 作用域覆盖（不动主 demo 一行）；刷新禁用滚动位恢复（`history.scrollRestoration`）——滚动恢复会让地图容器在视口外初始化，Leaflet 按错位尺寸排版后瓦片与取景双输，另以 IntersectionObserver 首次可见时 `invalidateSize` 兜底。
 - **验收**：`examples/src/lowalt-profile.test.ts` 锁纯函数内核（时刻索引/北京时串/八方位/风速分档/箭头角/URL 拼装）。
+
+## 台风路径与风圈回放（v0.7 批次）
+
+dev server 起后访问 `/typhoon.html`：`@metweave/leaflet` 两个新图层（`addTyphoonWindCircleLayer` 四象限风圈／`addHazardPolygonLayer` 告警多边形）的整页消费演示——2613「白海豚 DOLPHIN」178 个实况时次的固化快照（`typhoon-dolphin-2613.json`，中央气象台台风网公开接口 2026-10-22 抓取），时间滑杆逐时次选点渲染风圈＋已走过的强度六级路径，播放键按 55ms/时次推进；告警多边形消费一条**页内合成**的样例；底图＝OpenStreetMap 公共瓦片（无 key，实时拉取，© OpenStreetMap contributors，随 Leaflet 归属控件显示）。
+
+- **数据边界（页面常驻声明）**：路径与风圈半径以中央气象台发布为权威口径，本页是固化快照的呈现演示；告警多边形为样例数据——境内无公开官方告警多边形数据源，`addHazardPolygonLayer` 只做呈现接口、不代取数。**本页不构成任何台风研判，不得用于运行决策。**
+- **宽容归一**：快照的 `r` 表（"30KTS"/"50KTS"/"64KTS" → 四象限半径 km，序 NE/SE/SW/NW）由 `src/typhoon-data.ts` 的守卫收窄成组件契约——临消散时次空 `r` 表＝无任何级，图层只出中心标签。
+- **验收**：`examples/src/typhoon-demo.test.ts` 锁渲染面（逐时次选点的多边形数、空 r 时次的中心标签、样例多边形常驻标签、边界声明在位）。
+
+## 验收台统计面板（v0.7 统计批次，verify.html V3）
+
+`windRose` 与 `windDirFrequency` 并排吃同一份数据——上海浦东（ZSPD）2024 全年 8,760 时次逐时观测（构建期从 IEM 公有领域 CSV 派生 JSON 内嵌：`examples/zspd-rose-data.json`，`pnpm gen:zspd-rose --csv=<iem CSV>` 可再生，运行时零网络）。
+
+- **判定口径**：披露行（样本/静风/缺向/缺速/入扇区）与构建期实算期望逐项对账＋两组件逐字对拍；月度玫瑰阵 12 宫格＝同一组件 12 次调用＋宿主侧共尺（同一 `radiusMax`，取各月最长瓣占比向上取整——7 月 48.2% → 满圈 50%），组件不新增 API。
+- **验收**：`examples/src/verify-rose.test.ts` 锁实数据账目（静风 26 · 缺向 232 · 入扇区 8,502 的固化锚，与 IEM 原始 CSV 逐行实算互证）。

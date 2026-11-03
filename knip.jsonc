@@ -7,12 +7,9 @@
       "entry": ["code/fetch.mjs", "code/rose.mjs", "code/barbs-batch.mjs"],
     },
     "packages/metweave": {},
-    // examples 第二页面入口（v0.3 起）：knip 的 vite 插件默认只认 index.html——
-    // iwxxm.html 的脚本 src 须显式登记，否则判未用文件
-    //（gen-grid-api.ts 由 vite.config.ts 引用，vite 插件按 config 入口可达；
-    //  格点图层控制 grid-panel.ts 经 index.html 的 main.ts 可达）
-    "examples": {
-      "entry": ["src/iwxxm-main.ts"],
-    },
+    // examples 全部页面入口由 vite 插件解析（vite.config.ts build.rollupOptions.input
+    // 登记八页 html，html 引的脚本与 config 引用的 gen-grid-api.ts 均可达）——
+    // 不再显式登记 src/iwxxm-main.ts（knip 判其冗余，登记反出 Configuration hint）
+    "examples": {},
   },
 }

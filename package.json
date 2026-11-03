@@ -22,6 +22,7 @@
     "fuzz": "node scripts/fuzz.mjs",
     "gen:stations": "node scripts/generate-stations.mjs",
     "gen:iwxxm": "node scripts/gen-iwxxm.mjs",
+    "gen:zspd-rose": "node scripts/gen-zspd-rose.mjs",
     "gen:unknown": "node scripts/gen-unknown-shapes.mjs",
     "publish:all": "pnpm build && pnpm check:artifact && pnpm -r publish --access public",
     "gen:terms": "node scripts/terms.mjs gen",

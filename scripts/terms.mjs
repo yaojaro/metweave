@@ -181,26 +181,173 @@ function extractConst(file, constName, scope = {}) {
   return vm.runInNewContext(`(${initText})`, scope);
 }
 
-/** 从源码里抽取含 CJK 的字符串字面量（双引号/反引号；撇号等注释内引号不再误收） */
+/**
+ * 从源码里抽取含 CJK 的字符串字面量（单遍词法态扫描：代码 / 行注释 / 块注释 /
+ * 单双引号串 / 模板串 / 正则六态显式分态——引号配对只发生在字符串态）。
+ *
+ * 根修记录（v2，取代「先收块注释区间再跑引号正则」的旧实现）：旧实现有两类漏判，
+ * 都会让注释块或代码片段被当成文案入册——
+ *  1. 引号正则对整份源码盲目配对：行注释（//）里的引号完全不设防；块注释区间也只
+ *     挡「起点落区间内」的匹配，配对从注释里起头时会吞掉后续整段代码（2026-09-16
+ *     实测事故：注释里 source's 的撇号被当引号起配，把整段接口注释吞成文案入册）；
+ *  2. 正则字面量里的引号（如 escapeHtml 的 /[&<>"']/g）同样被当字符串起配，一旦失
+ *     同步，后面真实字面量被拆成碎片、注释块被并入文案（msg 编号全部漂移）。
+ * 现实现按 JS 词法逐字符走状态机：注释态整体跳过（行注释、块注释与 JSDoc 同束）；
+ * 字符串态收到闭引号（转义对原样保留）；模板串整段收（含 ${} 插值原文——入册文案
+ * 与旧实现逐字一致），插值内部递归走代码态（嵌套串/嵌套模板/注释不再误配）；
+ * 正则态用「上一有效代码字符＋上一词」判位（标识符/数字/右括号后是除号位、其余是
+ * 正则位，return/typeof 等关键字后仍正则位），字符类内的 / 不收尾、类内引号不误配。
+ */
 function extractCjkLiterals(file) {
   const src = readFileSync(path.join(root, file), "utf8");
   const out = [];
-  // 块注释区间表：匹配起点落在 /* */ 内的「字符串」是注释文本而非代码字面量
-  //（2026-09-16 实测事故：注释里 source's 的撇号被当引号起配，把整段接口注释吞成文案入册）
-  const commentRanges = [];
-  const commentRe = /\/\*[\s\S]*?\*\//g;
-  let cm;
-  while ((cm = commentRe.exec(src))) commentRanges.push([cm.index, cm.index + cm[0].length]);
-  const inComment = (idx) => commentRanges.some(([s, e]) => idx > s && idx < e);
-  const re = /(["'`])((?:\\.|(?!\1)[^\\])*?)\1/gs;
-  let m;
-  while ((m = re.exec(src))) {
-    if (inComment(m.index)) continue;
-    const line = src.slice(0, m.index).split("\n").length;
-    const raw = m[2];
-    if (!/[一-龥]/.test(raw)) continue;
-    out.push({ text: raw, line });
+  const n = src.length;
+  let i = 0;
+  let prevSig = ""; // 上一非空白有效代码字符（字符串/注释/正则内容不计入）
+  let prevWord = ""; // 上一标识符/关键字词（正则位的关键字上下文判定用）
+  const CJK = /[一-龥]/;
+  const IDENT = /[A-Za-z0-9_$]/;
+  // 上一词是这些关键字时，`/` 仍是正则起点（标识符之后本应是除号位）
+  const REGEX_KEYWORDS = new Set([
+    "return",
+    "typeof",
+    "instanceof",
+    "in",
+    "of",
+    "new",
+    "delete",
+    "void",
+    "do",
+    "else",
+    "case",
+    "yield",
+    "await",
+    "throw",
+  ]);
+
+  const note = (ch) => {
+    if (/\s/.test(ch)) return;
+    if (IDENT.test(ch)) prevWord = IDENT.test(prevSig) ? prevWord + ch : ch;
+    else prevWord = "";
+    prevSig = ch;
+  };
+  const regexAllowed = () =>
+    prevSig === ""
+      ? true
+      : IDENT.test(prevSig) || prevSig === ")" || prevSig === "]"
+        ? REGEX_KEYWORDS.has(prevWord)
+        : true;
+  const capture = (raw, start) => {
+    if (CJK.test(raw)) out.push({ text: raw, line: src.slice(0, start).split("\n").length });
+  };
+  const readLineComment = () => {
+    while (i < n && src[i] !== "\n") i++;
+  };
+  const readBlockComment = () => {
+    const end = src.indexOf("*/", i + 2);
+    i = end === -1 ? n : end + 2;
+  };
+  // 字符串态：i 在开引号后一位，扫到闭引号（转义对原样保留），返回原文
+  const readQuoted = (q) => {
+    const start = i;
+    while (i < n && src[i] !== q) i += src[i] === "\\" ? 2 : 1;
+    return src.slice(start, i);
+  };
+  // 正则态：i 在 '/'，字符类内的 '/' 不收尾；扫完 flags 后按一个原子计入
+  const readRegex = () => {
+    i++;
+    let inClass = false;
+    while (i < n) {
+      const c = src[i];
+      if (c === "\\") {
+        i += 2;
+        continue;
+      }
+      if (c === "[") inClass = true;
+      else if (c === "]") inClass = false;
+      else if (c === "/" && !inClass) break;
+      i++;
+    }
+    i++; // 收尾 '/'
+    while (i < n && /[dgimsuvy]/.test(src[i])) i++; // flags
+    note("/");
+  };
+  // 模板态：i 在开反引号后一位；整段原文（含 ${} 插值原文）为文案候选——插值内部
+  // 递归走代码态，嵌套串/嵌套模板/注释不再误配；插值原文并入候选（与旧实现整段收法一致）
+  const readTemplate = () => {
+    const start = i;
+    let raw = "";
+    while (i < n) {
+      if (src[i] === "\\") {
+        raw += src.slice(i, i + 2);
+        i += 2;
+        continue;
+      }
+      if (src[i] === "$" && src[i + 1] === "{") {
+        raw += "${";
+        i += 2;
+        const mark = i;
+        scanInterp(true);
+        raw += src.slice(mark, i);
+        continue;
+      }
+      if (src[i] === "`") break;
+      raw += src[i];
+      i++;
+    }
+    capture(raw, start - 1);
+  };
+  // 代码态：bounded=true 时扫描到本层插值的 '}' 为止（含其消费）；顶层不设界（EOF）
+  function scanInterp(bounded) {
+    let depth = bounded ? 1 : 0;
+    while (i < n) {
+      const c = src[i];
+      if (c === "/" && src[i + 1] === "/") {
+        readLineComment();
+        continue;
+      }
+      if (c === "/" && src[i + 1] === "*") {
+        readBlockComment();
+        continue;
+      }
+      if (c === "/") {
+        if (regexAllowed()) readRegex();
+        else {
+          note(c);
+          i++;
+        }
+        continue;
+      }
+      if (c === '"' || c === "'") {
+        const start = i;
+        i++;
+        const raw = readQuoted(c);
+        i++; // 闭引号
+        capture(raw, start);
+        note(c); // 串按一个原子计入
+        continue;
+      }
+      if (c === "`") {
+        i++;
+        readTemplate();
+        i++; // 闭反引号
+        note("`");
+        continue;
+      }
+      if (c === "{") depth++;
+      else if (c === "}") {
+        depth--;
+        if (bounded && depth === 0) {
+          note(c);
+          i++;
+          return;
+        }
+      }
+      note(c);
+      i++;
+    }
   }
+  scanInterp(false);
   return out;
 }
 

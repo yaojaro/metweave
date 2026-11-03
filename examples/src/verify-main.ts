@@ -14,7 +14,15 @@
  *    `addContourLayer`，唯一区别是数据来自内存而不是 .mwgrid 文件。
  */
 import { parse } from "metweave";
-import { renderWindChip, renderWindLegend } from "metweave";
+import { renderWindChip, renderWindLegend, windDirFrequency, windRose } from "metweave";
+import roseData from "../zspd-rose-data.json";
+import {
+  LEDGER_KEYS,
+  isZspdRoseData,
+  toSamples,
+  type LedgerKey,
+  type LedgerNumbers,
+} from "./zspd-rose-data";
 import { inputById } from "./shared";
 import {
   WIND_LEGEND_UNITS,
@@ -454,6 +462,102 @@ const mountV2 = (): void => {
     });
 };
 
+// ---------------------------------------------------------------- V3（0.7 统计批次·风玫瑰与风向频率）
+
+/** 构建期派生数据（gen-zspd-rose.mjs 产物）——守卫核对后才消费（unknown 收窄靠守卫
+ *  不靠断言，守卫与类型在 ./zspd-rose-data 单源）。 */
+if (!isZspdRoseData(roseData)) {
+  throw new Error("验收台统计面板的数据形态不符（重跑 pnpm gen:zspd-rose 可再生）");
+}
+const ROSE_DATA = roseData;
+
+/** 组件披露行的机读账（dataset 键与 windRose/windDirFrequency 两组件同名同义）。 */
+const readLedger = (el: HTMLElement): Record<LedgerKey, string> => ({
+  samples: el.dataset.samples ?? "",
+  inSector: el.dataset.inSector ?? "",
+  calm: el.dataset.calm ?? "",
+  missingDirection: el.dataset.missingDirection ?? "",
+  missingSpeed: el.dataset.missingSpeed ?? "",
+});
+
+const matchesExpected = (ledger: Record<LedgerKey, string>, expected: LedgerNumbers): boolean =>
+  LEDGER_KEYS.every((key) => ledger[key] === String(expected[key]));
+
+const mountV3 = (): void => {
+  const pair = document.getElementById("vf-v3-pair");
+  const read = document.getElementById("vf-v3-read");
+  const monthsBox = document.getElementById("vf-v3-months");
+  if (pair === null || read === null || monthsBox === null) return;
+
+  // 全年一图：windRose 与 windDirFrequency 并排吃同一份数据（披露行逐字对拍）
+  const yearSamples = toSamples(ROSE_DATA.months.flatMap((m) => m.samples));
+  const rose = windRose(yearSamples, { title: "风玫瑰 · ZSPD 2024（来向 × kt 档）" });
+  const freq = windDirFrequency(yearSamples, { form: "ring", title: "风向频率 · 同一份数据" });
+  const roseFig = document.createElement("figure");
+  const freqFig = document.createElement("figure");
+  roseFig.append(rose);
+  freqFig.append(freq);
+  pair.replaceChildren(roseFig, freqFig);
+
+  // 判定一：披露行与构建期实算期望逐项全等（组件账 vs gen 脚本独立实算账）
+  const yearOk = matchesExpected(readLedger(rose), ROSE_DATA.expected.totals);
+  // 判定二：两组件同输入的披露行逐字对拍（统计单源的机械保证，不只靠快照眼验）
+  const parityOk = LEDGER_KEYS.every((key) => readLedger(freq)[key] === readLedger(rose)[key]);
+
+  // 月度玫瑰阵：同一组件 12 次调用＋宿主侧共尺——radiusMax 由宿主从数据算出
+  // （各月最长瓣占比向上取整到 5 的倍数；7 月 48.2% → 50%），组件不新增 API
+  const half = 11.25;
+  const width = 22.5; // 16 扇区：中心对齐归桶（＋半格取整）
+  let maxShare = 0;
+  for (const m of ROSE_DATA.months) {
+    const tally = Array.from({ length: 16 }, () => 0);
+    let inSector = 0;
+    for (const [direction, speed] of m.samples) {
+      if (
+        speed === null ||
+        speed === undefined ||
+        speed < 1 ||
+        direction === null ||
+        direction === undefined
+      )
+        continue; // 与组件同剔除口径
+      const si = Math.floor(((direction + half) % 360) / width);
+      const cell = tally[si];
+      if (cell !== undefined) tally[si] = cell + 1;
+      inSector += 1;
+    }
+    maxShare = Math.max(maxShare, (Math.max(...tally) / inSector) * 100);
+  }
+  const sharedRadiusMax = Math.ceil(maxShare / 5) * 5;
+  const monthPanels = ROSE_DATA.months.map((m, i) => {
+    const panel = windRose(toSamples(m.samples), {
+      radiusMax: sharedRadiusMax,
+      title: `${m.month} 月`,
+    });
+    const fig = document.createElement("figure");
+    fig.append(panel);
+    const cap = document.createElement("figcaption");
+    cap.textContent = `${m.month} 月 · 入扇区 n=${panel.dataset.inSector}`;
+    fig.append(cap);
+    const expected = ROSE_DATA.expected.months[i];
+    if (expected === undefined) throw new Error(`V3 期望账缺 ${m.month} 月`);
+    return { fig, panel, expected };
+  });
+  monthsBox.replaceChildren(...monthPanels.map((m) => m.fig));
+  // 判定三：逐月披露行对期望全等＋共尺落位（12 张 data-rim 逐张相同）
+  const monthsOk =
+    monthPanels.every((m) => matchesExpected(readLedger(m.panel), m.expected)) &&
+    monthPanels.every((m) => m.panel.dataset.rim === String(sharedRadiusMax));
+
+  judge(
+    "V3",
+    yearOk && parityOk && monthsOk,
+    `全年账对期望 ${yearOk ? "✓" : "✗"} · 两组件披露行对拍 ${parityOk ? "✓" : "✗"} · 逐月账＋共尺 ${monthsOk ? "✓" : "✗"}`,
+  );
+  const ledger = readLedger(rose);
+  read.textContent = `样本 ${ledger.samples}＝静风 ${ledger.calm}＋缺向 ${ledger.missingDirection}＋缺速 ${ledger.missingSpeed}＋入扇区 ${ledger.inSector}（与 IEM 原始 CSV 的构建期实算逐项全等；满圈 ${String(sharedRadiusMax)}% 共尺）`;
+};
+
 // ---------------------------------------------------------------- 启动
 
 mountT1();
@@ -465,3 +569,4 @@ mountT6();
 mountT7();
 mountV1();
 mountV2();
+mountV3();

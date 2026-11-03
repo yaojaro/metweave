@@ -47,3 +47,15 @@ export function setupBasemap(map: L.Map): boolean {
   tiandituLayers(key).addTo(map);
   return true;
 }
+
+/**
+ * OpenStreetMap 公共瓦片底图：无 key、示例合规口径（低流量演示；OSM 使用政策要求
+ * 可见归属——attribution 随 Leaflet 归属控件显示）。换底图不动业务代码：底图只在
+ * 图层工厂这一层。
+ */
+export function osmBasemap(): L.TileLayer {
+  return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "© OpenStreetMap contributors",
+  });
+}

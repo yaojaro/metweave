@@ -1791,3 +1791,185 @@ body:has(#iwxxm-compare) #map {
   gap: 12px;
   align-items: flex-start;
 }
+
+/* V3 统计面板（0.7 批次）：并排件与月度玫瑰阵的布局 */
+.vf-months-title {
+  width: 100%;
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #33506b;
+}
+.vf-months {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+}
+.vf-months figure {
+  margin: 0;
+  text-align: center;
+}
+.vf-months figcaption {
+  font-size: 11px;
+  color: #6b7785;
+}
+
+/* 台风回放页（0.7 批次演示件）：地图＋滑杆＋读数的整页布局 */
+.ty-page {
+  margin: 0;
+  background: #f5f6f8;
+  color: #1c2430;
+  font:
+    14px/1.6 system-ui,
+    -apple-system,
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    sans-serif;
+}
+#ty-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e3e6ea;
+}
+#ty-topbar strong {
+  font-size: 16px;
+}
+.ty-sub {
+  font-size: 12px;
+  color: #697484;
+}
+#ty-main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px 20px 32px;
+}
+.ty-map-block {
+  position: relative;
+  border: 1px solid #e3e6ea;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fbfcfd;
+}
+#ty-map {
+  height: 460px;
+  background: #eef2f5;
+}
+#ty-legend {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 500;
+  background: rgba(255, 255, 255, 0.93);
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 11.5px;
+  color: #3d4754;
+}
+.ty-legend-title {
+  font-weight: 600;
+  color: #33506b;
+  margin: 4px 0 2px;
+}
+.ty-legend-row {
+  margin: 2px 0;
+}
+.ty-chip {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  vertical-align: -1px;
+  margin-right: 4px;
+}
+.ty-chip-grade {
+  border-radius: 50%;
+}
+.ty-chip-30 {
+  background: rgba(245, 197, 24, 0.08);
+  border: 1px solid rgba(245, 197, 24, 0.45);
+}
+.ty-chip-50 {
+  background: rgba(240, 140, 26, 0.14);
+  border: 1px solid rgba(240, 140, 26, 0.7);
+}
+.ty-chip-64 {
+  background: rgba(217, 48, 37, 0.22);
+  border: 1px solid rgba(217, 48, 37, 0.95);
+}
+.ty-ctl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+}
+.ty-ctl input[type="range"] {
+  flex: 1;
+}
+.ty-ctl button {
+  border: 1px solid #e3e6ea;
+  background: #fff;
+  border-radius: 7px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  color: inherit;
+}
+#ty-stamp {
+  min-width: 170px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  color: #697484;
+}
+.ty-readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  background: #fff;
+  border: 1px solid #e3e6ea;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+}
+.ty-read-item {
+  white-space: nowrap;
+}
+.ty-read-item b {
+  font-weight: 600;
+  color: #33506b;
+}
+.ty-note {
+  background: #fff;
+  border: 1px solid #e3e6ea;
+  border-left: 3px solid #d98c00;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: #3d4754;
+}
+.ty-note h2 {
+  font-size: 13px;
+  margin: 0 0 6px;
+  color: #8a5a12;
+}
+.ty-note ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.ty-note li {
+  margin: 3px 0;
+}
+#ty-footer {
+  padding: 10px 20px 20px;
+  text-align: center;
+  font-size: 11.5px;
+  color: #8b96a3;
+}

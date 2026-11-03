@@ -2505,3 +2505,464 @@ export async function addArrowFieldLayer(
     remove: onUnload,
   };
 }
+
+// ---------------------------------------------------------------- 台风风圈层（v0.7 批次）
+
+/**
+ * 一个风速级的风圈半径：`speedKt` 级下限（kt）＋四象限半径（km）。
+ *
+ * 象限序 **[东北 NE, 东南 SE, 西南 SW, 西北 NW]**——中央气象台口径的四象限排列
+ * （固化快照的 30KTS/50KTS/64KTS 各级半径数组即此序）。风圈不是一个圆：四级半径
+ * 各自成 90° 弧段，拼成一个非对称多边形——画成单圆会把危险区画错。
+ */
+export interface TyphoonWindQuadrants {
+  /** 风速级下限（kt，如 30/50/64——七级/十级/十二级风圈的通行口径） */
+  readonly speedKt: number;
+  /** 四象限半径（km）：[东北 NE, 东南 SE, 西南 SW, 西北 NW]；null/0＝该象限缺席 */
+  readonly radiiKm: readonly [number | null, number | null, number | null, number | null];
+}
+
+/** 一个时次的台风风圈：中心＋可选强度注记＋逐级四象限半径。 */
+export interface TyphoonWindCircle {
+  /** 时次标签（ISO 或宿主串——原样进标签与 tooltip，组件不解析时刻算术） */
+  readonly time?: string;
+  /** 中心（WGS-84 [lat, lon]） */
+  readonly center: readonly [number, number];
+  /** 强度类别（TD/TS/STS/TY/STY/SuperTY 一类——中心标签首段，原样透传） */
+  readonly grade?: string;
+  /** 中心气压（hPa——中心标签注记；null＝缺测） */
+  readonly pressureHpa?: number | null;
+  /** 逐级四象限半径（缺席级＝整级不画；时次无任何级＝只出中心标签） */
+  readonly quadrants?: readonly TyphoonWindQuadrants[];
+}
+
+/** `addTyphoonWindCircleLayer` 的选项。 */
+export interface AddTyphoonWindCircleLayerOptions {
+  /** 文案语言（缺省 zh——tooltip 的象限注记语言） */
+  readonly locale?: "zh" | "en";
+  /** 逐级填充/描边色（弱→强对齐；缺省黄/橙/红通行色族——中央气象台台风风圈配色口径，
+   *  30/50/64 kt 三级即 7/10/12 级风圈；传入则逐级取用、级数超出循环取色） */
+  readonly colors?: readonly string[];
+  /** 填充不透明度（0–1；缺省按级递进 0.08/0.14/0.22——显式传入则各级恒定） */
+  readonly fillOpacity?: number;
+  /** 描边不透明度（0–1；缺省按级递进 0.45/0.7/0.95——显式传入则各级恒定） */
+  readonly opacity?: number;
+  /** 描边宽（像素，缺省 1.3） */
+  readonly weight?: number;
+  /** 中心常驻标签（缺省 true——强度类别＋气压注记；两级皆缺省时不画标签） */
+  readonly label?: boolean;
+}
+
+/** addTyphoonWindCircleLayer 的合法选项键（运行时校验用——不静默纪律）。 */
+const ADD_TYPHOON_CIRCLE_OPTION_KEYS: ReadonlySet<string> = new Set([
+  "locale",
+  "colors",
+  "fillOpacity",
+  "opacity",
+  "weight",
+  "label",
+]);
+
+/** km → 度（沿经线的近似：1° ≈ 111.32 km——验证件同款常数，弧段插值的几何口径）。 */
+const KM_PER_DEG = 111.32;
+/** 象限弧段的方位角步长（度）：6° 一点，90° 弧段 15 点——圆滑与顶点数的折中（验证件同款）。 */
+const ARC_STEP_DEG = 6;
+/** 级别递进的透明度族（弱→强）：填充与描边各自一档——风圈叠罗汉时强圈恒更实。 */
+const LEVEL_FILL_OPACITIES: readonly number[] = [0.08, 0.14, 0.22];
+const LEVEL_STROKE_OPACITIES: readonly number[] = [0.45, 0.7, 0.95];
+/** 级别递进的配色族（弱→强）：中央气象台台风风圈通行口径——7 级黄、10 级橙、12 级红
+ *  （固化快照 30/50/64 kt 三级即此序）；色相管分级、透明度族管强弱叠序，双通道正交。 */
+const LEVEL_COLORS: readonly string[] = ["#f5c518", "#f08c1a", "#d93025"];
+
+/** 风圈/告警多边形常驻标签样式（一次性注入的纯结构样式——白底挖空描边、字号、定位；
+ *  颜色走类名固定值：两类标签语义色恒定，不随层选项漂移）。 */
+const GEO_LABEL_STYLE_ID = "mw-geo-label-style";
+const injectGeoLabelStyle = (): void => {
+  if (document.getElementById(GEO_LABEL_STYLE_ID) !== null) return;
+  const style = document.createElement("style");
+  style.id = GEO_LABEL_STYLE_ID;
+  style.append(
+    document.createTextNode(
+      ".mw-typhoon-label { width:0; height:0; pointer-events:none; text-align:center; }" +
+        ".mw-typhoon-label > span { position:absolute; transform:translate(-50%,-50%); white-space:nowrap;" +
+        " font:600 10.5px/1.4 system-ui,sans-serif; color:#1f5fa8;" +
+        " text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff; }" +
+        ".mw-hazard-label { width:0; height:0; pointer-events:none; text-align:center; }" +
+        ".mw-hazard-label > span { position:absolute; transform:translate(-50%,-50%);" +
+        " display:flex; flex-direction:column; align-items:center; white-space:nowrap;" +
+        " font:600 11px/1.3 system-ui,sans-serif; color:#a83232;" +
+        " text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff; }" +
+        ".mw-hazard-label > span > b { font:600 9.5px/1.3 system-ui,sans-serif; color:#6b7785; }",
+    ),
+  );
+  document.head.append(style);
+};
+
+/**
+ * 四象限半径 → 非对称多边形顶点（纯几何）：每象限一段 90° 弧按 6° 插值，方位角 β
+ * 的顶点＝中心沿 β 方向推 `r/111.32` 度（纬度直推、经度除以 cos φ——局部等距近似）。
+ * 缺席象限（半径 null/0）＝该段弧整体缺席，多边形以弦直连相邻象限端点（危险区
+ * 不猜不补）；四级全缺返回空数组（调用方整级跳过）。经度**不折返**：跨 180° 的
+ * 风圈用连续经度表达（Leaflet 按连续经度处理世界缝合，归一是底图配置的事）。
+ */
+function quadrantRing(
+  center: readonly [number, number],
+  radiiKm: readonly (number | null)[],
+): [number, number][] {
+  const [lat, lon] = center;
+  const kx = Math.cos((lat * Math.PI) / 180);
+  const rad = Math.PI / 180;
+  const out: [number, number][] = [];
+  const pushArc = (fromDeg: number, radiusKm: number | undefined | null): void => {
+    if (radiusKm === null || radiusKm === undefined || radiusKm <= 0) return; // 缺席象限跳弧
+    const d = radiusKm / KM_PER_DEG;
+    for (let b = fromDeg; b < fromDeg + 90; b += ARC_STEP_DEG) {
+      out.push([lat + d * Math.cos(b * rad), lon + (d * Math.sin(b * rad)) / kx]);
+    }
+  };
+  pushArc(0, radiiKm[0]); // NE：0–90°
+  pushArc(90, radiiKm[1]); // SE：90–180°
+  pushArc(180, radiiKm[2]); // SW：180–270°
+  pushArc(270, radiiKm[3]); // NW：270–360°
+  return out;
+}
+
+/** 象限半径的 tooltip 位（缺席象限显式「—」，不静默吞位；模块层——不捕获作用域）。 */
+const fmtQuadrantRadius = (r: number | undefined | null): string =>
+  r === null || r === undefined || r <= 0 ? "—" : `${r}`;
+
+/** 四象限半径的 tooltip 文案（缺席象限显式「—」，不静默吞位）。 */
+function quadrantTip(
+  speedKt: number,
+  radiiKm: readonly (number | null)[],
+  locale: "zh" | "en",
+): string {
+  const word = locale === "en" ? `${speedKt}-kt wind radius` : `${speedKt} kt 风圈`;
+  const names: readonly (readonly [string, number])[] = [
+    ["NE", 0],
+    ["SE", 1],
+    ["SW", 2],
+    ["NW", 3],
+  ];
+  const slots = names
+    .map(([name, i]) => `${name} ${fmtQuadrantRadius(radiiKm[i])}`)
+    .join(locale === "en" ? " / " : " / ");
+  return `${word} ${locale === "en" ? "(NE/SE/SW/NW): " : "（NE/SE/SW/NW）："}${slots} km`;
+}
+
+/**
+ * Put typhoon wind circles (four-quadrant radius polygons) onto a Leaflet map.
+ * 把一批台风风圈（四象限半径多边形）贴上 Leaflet 地图：每级风速一段非对称多边形
+ * （四象限弧段 6° 插值——弱圈先画、强圈后画压顶；缺省黄/橙/红逐级通行配色〔中央
+ * 气象台口径，`colors` 可逐级覆盖〕，透明度随级递进），中心一枚常驻
+ * 标签（强度类别＋气压注记），每级多边形带象限半径 tooltip。缺象限显式处理（该段
+ * 弧缺席、tooltip 出「—」）；时次无任何半径时只出中心标签，不静默空层。几何与
+ * 检测是纯函数（Node 可测），本函数只做矢量装配。异步：leaflet 惰性装载（同族层同款）。
+ *
+ * 数据边界：四象限风圈半径来自气象台公开发布形态（固化快照对齐）；本层只做呈现，
+ * 不做定强/预报解读——路径与强度的研判是台风预警机构的事。
+ */
+export async function addTyphoonWindCircleLayer(
+  map: Leaflet.Map,
+  circles: readonly TyphoonWindCircle[],
+  options: AddTyphoonWindCircleLayerOptions = {},
+): Promise<Leaflet.LayerGroup> {
+  for (const key of Object.keys(options)) {
+    if (!ADD_TYPHOON_CIRCLE_OPTION_KEYS.has(key)) {
+      throw new Error(
+        `addTyphoonWindCircleLayer 收到未知选项 "${key}"（可用项：locale、colors、fillOpacity、opacity、weight、label）——拼错的选项不会生效`,
+      );
+    }
+  }
+  const locale = options.locale ?? "zh";
+  if (locale !== "zh" && locale !== "en") {
+    const bad: string = locale;
+    throw new Error(
+      `addTyphoonWindCircleLayer 的 locale 选项值 "${bad}" 不受支持（可用："zh" | "en"）`,
+    );
+  }
+  if (
+    options.fillOpacity !== undefined &&
+    (!Number.isFinite(options.fillOpacity) || options.fillOpacity < 0 || options.fillOpacity > 1)
+  ) {
+    throw new Error(
+      `addTyphoonWindCircleLayer 的 fillOpacity 非法（${String(options.fillOpacity)}，须 0–1）`,
+    );
+  }
+  if (
+    options.opacity !== undefined &&
+    (!Number.isFinite(options.opacity) || options.opacity < 0 || options.opacity > 1)
+  ) {
+    throw new Error(
+      `addTyphoonWindCircleLayer 的 opacity 非法（${String(options.opacity)}，须 0–1）`,
+    );
+  }
+  if (options.colors !== undefined) {
+    if (!Array.isArray(options.colors) || options.colors.length === 0) {
+      throw new Error(
+        "addTyphoonWindCircleLayer 的 colors 非法（须为非空的颜色字符串数组，弱→强逐级对齐）",
+      );
+    }
+    for (const c of options.colors) {
+      if (typeof c !== "string" || c.trim() === "") {
+        throw new Error(
+          `addTyphoonWindCircleLayer 的 colors 含非法条目（${JSON.stringify(c)}，须非空颜色字符串）`,
+        );
+      }
+    }
+  }
+  if (options.weight !== undefined && (!Number.isFinite(options.weight) || options.weight <= 0)) {
+    throw new Error(
+      `addTyphoonWindCircleLayer 的 weight 非法（${String(options.weight)}，须 >0 的有限数〔像素〕）`,
+    );
+  }
+  const palette: readonly string[] = options.colors ?? LEVEL_COLORS;
+  const weight = options.weight ?? 1.3;
+  const withLabel = options.label ?? true;
+  const L = await loadLeaflet();
+  const group = L.layerGroup();
+  for (const [ci, circle] of circles.entries()) {
+    const at = `第 ${ci + 1} 个风圈`;
+    const [lat, lon] = circle.center;
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+      throw new Error(
+        `addTyphoonWindCircleLayer ${at}的中心纬度非法（${String(lat)}，须 [-90, 90] 的有限数）`,
+      );
+    }
+    if (!Number.isFinite(lon)) {
+      throw new Error(`addTyphoonWindCircleLayer ${at}的中心经度非法（${String(lon)}，须有限数）`);
+    }
+    // 逐级多边形：弱圈先画（绘制序按 speedKt 升序——强圈后画压顶，与透明度递进同向）
+    const quadrants: readonly TyphoonWindQuadrants[] = circle.quadrants ?? [];
+    // oxlint-disable-next-line unicorn/no-array-sort -- 包 lib ES2022 无 toSorted；此处排序的是新建副本（不动入参序）
+    const levels = [...quadrants].sort((a, b) => a.speedKt - b.speedKt);
+    levels.forEach((level, li) => {
+      const [ne, se, sw, nw] = level.radiiKm;
+      for (const r of [ne, se, sw, nw]) {
+        if (r !== null && r !== undefined && (!Number.isFinite(r) || r < 0)) {
+          throw new Error(
+            `addTyphoonWindCircleLayer ${at}的 ${level.speedKt} kt 级半径非法（${String(r)}，须 ≥0 的有限数或 null＝缺席）`,
+          );
+        }
+      }
+      if (!Number.isFinite(level.speedKt) || level.speedKt <= 0) {
+        throw new Error(
+          `addTyphoonWindCircleLayer ${at}的风速级非法（${String(level.speedKt)}，须 >0 的有限数〔kt〕）`,
+        );
+      }
+      const ring = quadrantRing(circle.center, level.radiiKm);
+      if (ring.length < 3) return; // 整级缺席（四级全缺/零半径）＝该级不画，不静默出退化多边形
+      const fillOpacity = options.fillOpacity ?? LEVEL_FILL_OPACITIES[li] ?? 0.22;
+      const strokeOpacity = options.opacity ?? LEVEL_STROKE_OPACITIES[li] ?? 0.95;
+      const levelColor = palette[li % palette.length] ?? "#d93025";
+      const polygon = L.polygon(
+        ring.map(([la, lo]) => [la, lo] as Leaflet.LatLngExpression),
+        {
+          color: levelColor,
+          weight,
+          opacity: strokeOpacity,
+          fillColor: levelColor,
+          fillOpacity,
+        },
+      );
+      polygon.bindTooltip(textCarrier(quadrantTip(level.speedKt, level.radiiKm, locale)));
+      polygon.addTo(group);
+    });
+    // 中心常驻标签：强度类别＋气压注记（两者皆缺不画——无话可说不出空标签）
+    if (withLabel) {
+      const parts: string[] = [];
+      if (circle.grade !== undefined) parts.push(circle.grade);
+      if (circle.pressureHpa !== undefined && circle.pressureHpa !== null) {
+        parts.push(`${circle.pressureHpa} hPa`);
+      }
+      if (parts.length > 0) {
+        const text = parts.join(" · ");
+        L.marker([lat, lon], {
+          icon: L.divIcon({
+            className: "mw-typhoon-label",
+            html: `<span role="img" aria-label="${escapeHtml(text)}">${escapeHtml(text)}</span>`,
+            iconSize: [0, 0],
+          }),
+          interactive: false,
+          keyboard: false,
+        }).addTo(group);
+      }
+    }
+  }
+  injectGeoLabelStyle();
+  group.addTo(map);
+  return group;
+}
+
+// ---------------------------------------------------------------- 告警多边形层（v0.7 批次）
+
+/** 一个告警多边形：边界顶点＋可选标签与类别注记（呈现接口——数据由宿主自备）。 */
+export interface HazardPolygon {
+  /** 边界顶点（WGS-84 [lat, lon]，≥3 点闭合由渲染层处理） */
+  readonly coords: readonly (readonly [number, number])[];
+  /** 标签（常驻 label 或 tooltip 首行） */
+  readonly label?: string;
+  /** 类别注记（tooltip 第二行/标签副行——如「暴雨橙色」「大风蓝色」一类展示词） */
+  readonly kind?: string;
+}
+
+/** `addHazardPolygonLayer` 的选项。 */
+export interface AddHazardPolygonLayerOptions {
+  /** 描边/填充基色（缺省 #d05656 警示红——与档位色 poor 同族） */
+  readonly color?: string;
+  /** 描边宽（像素，缺省 1.6） */
+  readonly weight?: number;
+  /** 描边不透明度（0–1，缺省 0.9） */
+  readonly opacity?: number;
+  /** 填充不透明度（0–1，缺省 0.18——半透明：底图地名可辨、告警区可辨） */
+  readonly fillOpacity?: number;
+  /** 标签形态（缺省 "persistent" 常驻形心标签；"tooltip" 悬停显示） */
+  readonly labelMode?: "persistent" | "tooltip";
+  /** 文案语言（缺省 zh——tooltip 的类别行前缀词） */
+  readonly locale?: "zh" | "en";
+}
+
+/** addHazardPolygonLayer 的合法选项键（运行时校验用——不静默纪律）。 */
+const ADD_HAZARD_OPTION_KEYS: ReadonlySet<string> = new Set([
+  "color",
+  "weight",
+  "opacity",
+  "fillOpacity",
+  "labelMode",
+  "locale",
+]);
+
+/** 多边形形心（鞋带公式，平面近似——告警多边形尺度小，经纬平面形心足够定位）。 */
+function polygonCentroid(coords: readonly (readonly [number, number])[]): [number, number] {
+  let a = 0;
+  let cx = 0;
+  let cy = 0;
+  const n = coords.length;
+  for (let i = 0; i < n; i++) {
+    const [lat0, lon0] = coords[i] ?? [0, 0];
+    const [lat1, lon1] = coords[(i + 1) % n] ?? [0, 0];
+    const cross = lat0 * lon1 - lat1 * lon0;
+    a += cross;
+    cx += (lat0 + lat1) * cross;
+    cy += (lon0 + lon1) * cross;
+  }
+  if (Math.abs(a) < 1e-12) {
+    // 退化（共线/零面积）：顶点均值兜底（标签总要有个落点）
+    const lat = coords.reduce((s, p) => s + (p[0] ?? 0), 0) / n;
+    const lon = coords.reduce((s, p) => s + (p[1] ?? 0), 0) / n;
+    return [lat, lon];
+  }
+  a *= 3;
+  return [cx / a, cy / a];
+}
+
+/**
+ * Put hazard polygons (semi-transparent fill + label) onto a Leaflet map.
+ * 把一批告警多边形贴上 Leaflet 地图：半透明填充＋描边＋标签（缺省常驻形心标签，
+ * `labelMode:"tooltip"` 换悬停显示；标签首行 label、副行 kind）。
+ *
+ * **数据边界（本组件只做呈现接口）**：官方告警多边形在境内无公开数据源——本组件
+ * 不代取数、不内置任何告警源，多边形由宿主按自有授权数据传入；样例/演示数据须由
+ * 使用方在页面注明「样例数据」。
+ */
+export async function addHazardPolygonLayer(
+  map: Leaflet.Map,
+  polygons: readonly HazardPolygon[],
+  options: AddHazardPolygonLayerOptions = {},
+): Promise<Leaflet.LayerGroup> {
+  for (const key of Object.keys(options)) {
+    if (!ADD_HAZARD_OPTION_KEYS.has(key)) {
+      throw new Error(
+        `addHazardPolygonLayer 收到未知选项 "${key}"（可用项：color、weight、opacity、fillOpacity、labelMode、locale）——拼错的选项不会生效`,
+      );
+    }
+  }
+  const locale = options.locale ?? "zh";
+  if (locale !== "zh" && locale !== "en") {
+    const bad: string = locale;
+    throw new Error(
+      `addHazardPolygonLayer 的 locale 选项值 "${bad}" 不受支持（可用："zh" | "en"）`,
+    );
+  }
+  if (
+    options.labelMode !== undefined &&
+    options.labelMode !== "persistent" &&
+    options.labelMode !== "tooltip"
+  ) {
+    const badMode: string = options.labelMode;
+    throw new Error(
+      `addHazardPolygonLayer 的 labelMode 选项值 "${badMode}" 不受支持（可用："persistent" | "tooltip"）`,
+    );
+  }
+  for (const key of ["opacity", "fillOpacity"] as const) {
+    const v = options[key];
+    if (v !== undefined && (!Number.isFinite(v) || v < 0 || v > 1)) {
+      throw new Error(`addHazardPolygonLayer 的 ${key} 非法（${String(v)}，须 0–1）`);
+    }
+  }
+  if (options.weight !== undefined && (!Number.isFinite(options.weight) || options.weight <= 0)) {
+    throw new Error(
+      `addHazardPolygonLayer 的 weight 非法（${String(options.weight)}，须 >0 的有限数〔像素〕）`,
+    );
+  }
+  const color = options.color ?? "#d05656";
+  const weight = options.weight ?? 1.6;
+  const opacity = options.opacity ?? 0.9;
+  const fillOpacity = options.fillOpacity ?? 0.18;
+  const labelMode = options.labelMode ?? "persistent";
+  const L = await loadLeaflet();
+  const group = L.layerGroup();
+  for (const [pi, polygon] of polygons.entries()) {
+    const at = `第 ${pi + 1} 个多边形`;
+    if (polygon.coords.length < 3) {
+      throw new Error(
+        `addHazardPolygonLayer ${at}的边界顶点不足（${String(polygon.coords.length)} < 3）——多边形至少三点`,
+      );
+    }
+    for (const [vi, point] of polygon.coords.entries()) {
+      const [lat, lon] = point;
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        throw new Error(
+          `addHazardPolygonLayer ${at}第 ${vi + 1} 顶点坐标非法（${String(point)}，须 [lat, lon] 有限数）`,
+        );
+      }
+    }
+    const latlngs = polygon.coords.map(([la, lo]) => [la, lo] as Leaflet.LatLngExpression);
+    const shape = L.polygon(latlngs, { color, weight, opacity, fillColor: color, fillOpacity });
+    const tipParts: string[] = [];
+    if (polygon.label !== undefined) tipParts.push(polygon.label);
+    if (polygon.kind !== undefined) {
+      tipParts.push(locale === "en" ? `Category: ${polygon.kind}` : `类别：${polygon.kind}`);
+    }
+    if (tipParts.length > 0) {
+      // tooltip 内容节点走 textContent 装载（title/类别词是宿主任意串——非 HTML 路径无注入面）；
+      // 行间用显式 <br>（textContent 的 \n 在 HTML 里塌成空格，不换行）
+      const tip = document.createElement("span");
+      tipParts.forEach((part, i) => {
+        if (i > 0) tip.append(document.createElement("br"));
+        tip.append(textCarrier(part));
+      });
+      shape.bindTooltip(tip);
+    }
+    shape.addTo(group);
+    if (polygon.label !== undefined && labelMode === "persistent") {
+      const [lat, lon] = polygonCentroid(polygon.coords);
+      L.marker([lat, lon], {
+        icon: L.divIcon({
+          className: "mw-hazard-label",
+          html:
+            `<span role="img" aria-label="${escapeHtml(polygon.label)}">` +
+            escapeHtml(polygon.label) +
+            (polygon.kind !== undefined ? `<b>${escapeHtml(polygon.kind)}</b>` : "") +
+            `</span>`,
+          iconSize: [0, 0],
+        }),
+        interactive: false,
+        keyboard: false,
+      }).addTo(group);
+    }
+  }
+  injectGeoLabelStyle();
+  group.addTo(map);
+  return group;
+}

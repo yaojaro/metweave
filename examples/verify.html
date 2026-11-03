@@ -3,17 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>metweave · 验收台（0.3.2 七项 ＋ 0.3.4 矢量扩展）</title>
+    <title>metweave · 验收台（0.3.2 七项 ＋ 0.3.4 矢量扩展 ＋ 0.7 统计面板）</title>
     <!-- favicon：空 data URI 显式声明（消除浏览器默认 /favicon.ico 404；无二进制资产、无痕） -->
     <link rel="icon" href="data:," />
   </head>
   <body class="vf-page">
     <header id="vf-topbar">
-      <strong>验收台（0.3.2 七项 ＋ 0.3.4 矢量扩展）</strong>
+      <strong>验收台（0.3.2 七项 ＋ 0.3.4 矢量扩展 ＋ 0.7 统计面板）</strong>
       <span id="vf-score" class="vf-score" role="status" aria-live="polite">判定中…</span>
       <span class="vf-sub"
-        >每一项都在这一页上真跑一遍：控件能点、图形现算、右上角徽标由断言决定（不是写死的
-        ✅）。所有数据是页内合成的 30×24 格点场，不依赖外部取数——静态部署也能开。</span
+        >每一项都在这一页上真跑一遍：控件能点、图形现算、右上角徽标由断言决定（不是写死的 ✅）。T/V
+        各项数据是页内合成的 30×24 格点场；V3 统计面板用上海浦东 2024 全年逐时观测（构建期从公有领域
+        CSV 派生 JSON 内嵌，运行时零网络）。</span
       >
     </header>
 
@@ -219,6 +220,25 @@
             role="img"
             aria-label="等长箭头阵与对照风羽（合成场，无底图）"
           ></div>
+        </div>
+      </section>
+      <section class="vf-item" data-item="V3" aria-labelledby="vf-v3">
+        <div class="vf-head">
+          <h2 id="vf-v3"><b>V3</b> 风统计：风玫瑰 ＋ 风向频率（0.7 统计批次）</h2>
+          <output class="vf-verdict" data-verdict="V3">判定中</output>
+        </div>
+        <p class="vf-desc">
+          上海浦东（ZSPD）2024 全年逐时观测，8,760 时次：<code>windRose</code>（扇区×风速档堆叠）与
+          <code>windDirFrequency</code>
+          （单环形态）并排吃同一份数据——披露行（样本／静风／缺向／缺速／入扇区）与构建期实算的
+          期望值逐项对账，两组件之间逐字对拍。下方<strong>月度玫瑰阵</strong>＝同一组件 12
+          次调用＋宿主侧共尺（同一 <code>radiusMax</code> 同一色档——组件不新增 API）。
+        </p>
+        <div class="vf-body">
+          <div class="vf-pair" id="vf-v3-pair"></div>
+          <output class="vf-read" id="vf-v3-read">—</output>
+          <h3 class="vf-months-title">月度玫瑰阵（12 宫格共尺：满圈 50%，同 kt 色档）</h3>
+          <div id="vf-v3-months" class="vf-months"></div>
         </div>
       </section>
     </main>

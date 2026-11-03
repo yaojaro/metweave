@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>metweave · 台风路径与风圈回放（演示）</title>
+    <!-- favicon：空 data URI 显式声明（消除浏览器默认 /favicon.ico 404；无二进制资产、无痕） -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body class="ty-page">
+    <header id="ty-topbar">
+      <strong>台风路径与风圈回放 · 2613「白海豚 DOLPHIN」</strong>
+      <span class="ty-sub"
+        >178 个实况时次（2026-07-27 →
+        08-11，UTC）——时间滑杆逐时次渲染四象限风圈与已走过的路径。数据源：中央气象台台风网公开接口的固化快照（2026-10-22
+        抓取）。演示数据，不得用于运行决策。</span
+      >
+    </header>
+
+    <main id="ty-main">
+      <section class="ty-map-block" aria-label="台风路径与风圈地图（OpenStreetMap 底图）">
+        <div
+          id="ty-map"
+          role="img"
+          aria-label="台风路径与四象限风圈示意（OpenStreetMap 底图）"
+        ></div>
+        <aside id="ty-legend" aria-hidden="false">
+          <div class="ty-legend-title">强度（六级）</div>
+          <div id="ty-legend-grades"></div>
+          <div class="ty-legend-title">风圈（半径随强度涨缩）</div>
+          <div class="ty-legend-row"><i class="ty-chip ty-chip-64"></i>十二级风圈（≥64 kt）</div>
+          <div class="ty-legend-row"><i class="ty-chip ty-chip-50"></i>十级风圈（≥50 kt）</div>
+          <div class="ty-legend-row"><i class="ty-chip ty-chip-30"></i>七级风圈（≥30 kt）</div>
+        </aside>
+      </section>
+
+      <section class="ty-ctl">
+        <button id="ty-play" type="button">播放</button>
+        <input
+          id="ty-slider"
+          type="range"
+          min="0"
+          max="177"
+          step="1"
+          value="0"
+          aria-label="回放时次"
+        />
+        <output id="ty-stamp">—</output>
+      </section>
+
+      <section class="ty-readout" id="ty-readout" aria-live="polite"></section>
+
+      <section class="ty-note">
+        <h2>数据来源与边界（本页的诚实声明）</h2>
+        <ul>
+          <li>
+            路径与四象限风圈半径：中央气象台台风网公开接口的<strong>固化快照</strong>（
+            <code>examples/typhoon-dolphin-2613.json</code>，2026-10-22 抓取，178
+            时次）——实时接口形态无文档无承诺，快照保可复现；官方口径以中央气象台发布为准。
+          </li>
+          <li>
+            告警多边形为<strong>样例数据（页内合成）</strong>——境内无公开官方告警多边形数据源，
+            <code>addHazardPolygonLayer</code>
+            只做呈现接口、不代取数，多边形由使用方按自有授权数据传入。
+          </li>
+          <li>
+            本页是 <code>@metweave/leaflet</code> 的 <code>addTyphoonWindCircleLayer</code> ＋
+            <code>addHazardPolygonLayer</code> 两图层的消费演示；底图为
+            <strong>OpenStreetMap 公共瓦片</strong>（© OpenStreetMap contributors，实时拉取、 无
+            key）——仅作地理参照，宿主侧一行 <code>L.tileLayer</code> 配置的事。
+          </li>
+          <li><strong>本页不构成任何台风研判，不得用于运行决策。</strong></li>
+        </ul>
+      </section>
+    </main>
+
+    <footer id="ty-footer">
+      图层判定用库自身返回物（层内多边形数、tooltip 与标签文本），不另写期望值。
+    </footer>
+
+    <script type="module" src="/src/typhoon-main.ts"></script>
+  </body>
+</html>
