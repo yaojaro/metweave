@@ -34,15 +34,15 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
-    "happy-dom": "^21.0.3",
-    "knip": "^6.42.0",
-    "oxfmt": "^0.73.0",
-    "oxlint": "^1.88.0",
-    "oxlint-tsgolint": "^7.0.2004",
+    "happy-dom": "^21.0.4",
+    "knip": "^6.44.1",
+    "oxfmt": "^0.76.0",
+    "oxlint": "^1.91.0",
+    "oxlint-tsgolint": "^7.0.2006",
     "publint": "^0.3.25",
-    "tsdown": "^0.23.1",
+    "tsdown": "^0.23.5",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   },
   "engines": {
     "node": ">=20"
